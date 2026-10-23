@@ -70,6 +70,8 @@ header .sep{width:1px;height:14px;background:var(--line)}
 .wrap{display:grid;grid-template-columns:318px 1fr;height:calc(100vh - 52px)}
 aside{border-right:1px solid var(--line);overflow-y:auto;padding:16px 18px 96px}
 main{overflow-y:auto;padding:26px 40px 90px}
+/* 跳转落点：留一点上边距，别贴着顶栏 */
+.doc .blk,.doc .seg,#d-doc{scroll-margin-top:14px}
 
 .block{padding-bottom:14px;margin-bottom:14px;border-bottom:1px solid var(--line2)}
 .block:last-child{border-bottom:0}
@@ -215,16 +217,62 @@ main{overflow-y:auto;padding:26px 40px 90px}
 select{width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 8px;background:#fff;
   font-size:12.5px;outline:none}
 
-/* 文档区 */
-.sheet{max-width:756px;margin:0 auto}
-.docbar{display:flex;align-items:flex-start;gap:12px;margin-bottom:18px}
-.docbar .grow{flex:1;min-width:0}
-.docbar .acts{display:flex;gap:8px;align-items:center;white-space:nowrap}
+/* 文档区：正文与附加内容分栏
+   正文始终是一列窄版心，左栏放候选观点、右栏放待核对——
+   附加的东西有了自己的位置，就不再和正文抢同一行：按钮不会把企业名挤掉，
+   正文也不会因为多一条提示而变窄。宽屏用三栏，窄屏退回一栏、依序落到正文下面。 */
+.docgrid{display:grid;grid-template-columns:minmax(0,1fr);gap:0}
+.doccol{min-width:0;width:100%;max-width:756px;margin:0 auto}
+.docbar{display:block;margin-bottom:16px}
+.docbar .acts{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.docbar .acts .end{margin-left:auto;display:flex;align-items:center;gap:8px}
 .btn-sm{border:1px solid var(--line);background:#fff;border-radius:6px;padding:6px 12px;font-size:12.5px}
 .btn-sm:hover{border-color:#c4c9d1;background:var(--hover)}
 .btn-sm.solid{background:var(--ink);border-color:var(--ink);color:#fff}
 .btn-sm.solid:hover{background:#000}
 .btn-sm:disabled{color:#c2c7cf;border-color:var(--line2);cursor:not-allowed;background:#fff}
+/* 图标只用描边、跟着字色走，深浅两档按钮都不用另配一套 */
+.btn-sm .ic{width:13px;height:13px;flex:none;display:block;fill:none;stroke:currentColor;
+  stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.btn-sm.ico{display:inline-flex;align-items:center;gap:5px}
+
+/* 标题两行：企业名独占一行，主体代码与字数挪到第二行小字 */
+.doc-head{display:block;margin:0}
+.in-company{display:block;width:100%;font-size:17px;padding:2px 4px;margin:0 -4px}
+.doc-sub{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;margin-top:3px;
+  font-family:-apple-system,"PingFang SC",sans-serif;font-size:11.5px;color:var(--muted);
+  font-variant-numeric:tabular-nums}
+.doc-sub .subj{display:inline-flex;align-items:baseline;gap:1px;color:var(--ink);
+  font-family:"Kaiti SC","KaiTi","STKaiti","Songti SC","SimSun",serif;font-size:14px;font-weight:700}
+.doc-sub .subj .in-code{width:72px;font-size:14px}
+.doc-sub .sep2{color:#d5d9de}
+
+/* 宽屏：正文居中，两侧留白拿来做侧栏。
+   中间那栏是 1fr + 整体限宽：屏幕窄于设计宽度时先收窄正文，侧栏保持宽度，
+   三栏加起来不会超过视口，也就不出横向滚动条。
+   侧栏跟着 main 一起粘住，勾到第 8 条时还能看见正文同一处。
+   （这条必须写在上面基础规则之后，否则被同权重的单栏规则盖掉。） */
+@media(min-width:1500px){
+  main{padding-left:28px;padding-right:28px}
+  .docgrid{grid-template-columns:190px minmax(0,1fr) 214px;gap:18px;
+    max-width:1196px;margin:0 auto;align-items:start}
+  .doccol{max-width:none}
+  .docgrid.nol{grid-template-columns:minmax(0,1fr) 214px;max-width:970px}
+  .docgrid.nor{grid-template-columns:190px minmax(0,1fr);max-width:946px}
+  .docgrid.nol.nor{grid-template-columns:minmax(0,1fr);max-width:756px}
+  .rail{position:sticky;top:6px;max-height:calc(100vh - 52px - 18px);overflow-y:auto;
+    overscroll-behavior:contain;padding:3px 2px 26px;scrollbar-width:thin}
+  .rail::-webkit-scrollbar{width:6px}
+  .rail::-webkit-scrollbar-thumb{background:#e3e6ea;border-radius:3px}
+  /* 右栏与正文首段对齐：让过工具条与企业名两行 */
+  .rail-r{padding-top:120px}
+}
+@media(min-width:1780px){
+  .docgrid{grid-template-columns:212px minmax(0,1fr) 238px;gap:24px;max-width:1278px}
+  .docgrid.nol{grid-template-columns:minmax(0,1fr) 238px;max-width:1042px}
+  .docgrid.nor{grid-template-columns:212px minmax(0,1fr);max-width:1016px}
+  .docgrid.nol.nor{grid-template-columns:minmax(0,1fr);max-width:780px}
+}
 
 /* 打包下载：按钮下挂一层勾选面板，白底、细线，不遮挡正文 */
 .pkgwrap{position:relative;display:inline-block}
@@ -282,10 +330,9 @@ select{width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 8px
 
 .doc{font-family:"Kaiti SC","KaiTi","STKaiti","Songti SC","SimSun",serif;
   font-size:15.5px;line-height:1.82;color:#1b1f24}
-.doc-head{display:flex;align-items:baseline;gap:8px;margin-bottom:2px}
 .doc-head input{border:0;background:transparent;outline:none;font-family:inherit;font-weight:700}
-.in-company{flex:1;min-width:0;font-size:16.5px;padding:1px 2px}
-.in-code{width:64px;font-size:16.5px;padding:1px 2px;border-bottom:1px solid var(--line)!important;
+.in-code{font-size:16.5px;padding:1px 2px;border:0;border-bottom:1px solid var(--line)!important;
+  background:transparent;outline:none;font-family:inherit;
   text-align:center;font-weight:400!important}
 /* ── 版式：块间一个空行，块内不留 ───────────────────────────────
    --pgap 就是「一个空行」的高度（等于正文字号）。所有块间距都取这一个值，
@@ -351,13 +398,61 @@ select{width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 8px
 .tpmenu button{display:block;width:100%;text-align:left;border:0;background:transparent;
   font-family:inherit;font-size:12px;color:var(--ink2);padding:6px 9px;border-radius:5px;cursor:pointer}
 .tpmenu button:hover{background:var(--hover);color:var(--ink)}
-.notes{margin:14px 0 0;padding:10px 12px;border:1px solid var(--line);border-radius:6px;
-  background:#fcfcfd;font-family:-apple-system,"PingFang SC",sans-serif;font-size:12px;
-  line-height:1.7;color:var(--ink2)}
-.notes .h{font-weight:600;color:var(--ink);margin-bottom:4px}
-.notes ul{margin:0;padding-left:16px}
-.notes li{margin:2px 0}
-.notes li.bad{color:var(--red)}
+/* ── 侧栏：候选观点（左）／待核对（右） ───────────────────────────
+   两栏只在宽屏出现，位置在正文版心之外的留白里，与正文各自独立滚动。
+   窄屏时退回正文内部：候选观点回到各自的板块下面，待核对落到正文之后。 */
+.rail{min-width:0;font-family:-apple-system,"PingFang SC",sans-serif;font-size:12px}
+.rail-h{display:flex;align-items:baseline;gap:6px;font-size:11px;color:var(--muted);
+  letter-spacing:.06em;margin:0 0 8px}
+.rail-h::after{content:"";flex:1;height:1px;background:var(--line2);transform:translateY(-4px)}
+.rail-l .pool+.pool{margin-top:14px}
+.rail-l .pool-t{font-size:10.5px;letter-spacing:.04em;color:var(--muted);margin-bottom:5px}
+.rail-l .chip{white-space:normal;line-height:1.55;padding:5px 8px;font-size:11.5px}
+
+/* 待核对：一条一张卡，标题 + 复选框；点卡片正文跳到对应位置，
+   勾选与跳转互不干扰（勾选框自己吃掉点击）。 */
+.ck-h{display:flex;align-items:baseline;gap:6px;margin:0 0 6px}
+.ck-h b{font-size:11px;color:var(--muted);letter-spacing:.06em;font-weight:600}
+.ck-h .n{font-size:11px;color:var(--ink2);margin-left:auto;font-variant-numeric:tabular-nums}
+.ck-h .ck-reset{border:0;background:none;color:#c6cbd2;font-size:11px;padding:0 0 0 6px;cursor:pointer}
+.ck-h .ck-reset:hover{color:var(--red)}
+/* 折起：手机上十几条核对项会占掉半屏，默认折成一行，点开展开 */
+.ck-fold{border:0;background:none;color:#b9bfc8;font-size:9px;padding:0 1px;line-height:1;
+  cursor:pointer;transform:translateY(-1px)}
+.ck-fold:hover{color:var(--ink2)}
+.rail-r.collapsed .ck-list,.rail-r.collapsed .ck-bar{display:none}
+.rail-r.collapsed .ck-h{margin-bottom:0}
+.ck-bar{height:2px;background:var(--line2);border-radius:2px;margin:0 0 9px;overflow:hidden}
+.ck-bar i{display:block;height:100%;width:0;background:var(--ink);transition:width .25s ease}
+.ck{border:1px solid var(--line);border-radius:7px;background:#fff;padding:8px 9px;margin-bottom:7px;
+  transition:border-color .16s ease,background .16s ease,opacity .16s ease}
+.ck:hover{border-color:#d3d8de;background:#fcfcfd}
+.ck-row{display:flex;gap:7px;align-items:flex-start}
+.ck-row input{width:14px;height:14px;flex:none;margin:2px 0 0;accent-color:var(--ink);cursor:pointer}
+.ck-body{flex:1;min-width:0;cursor:pointer}
+.ck-t{display:block;font-size:12px;font-weight:600;color:var(--ink);line-height:1.55;
+  overflow-wrap:break-word}
+.ck-go{float:right;margin-left:6px;color:#ccd1d8;font-size:11px;line-height:1.6}
+.ck:hover .ck-go{color:var(--ink2)}
+.ck-m{font-size:11px;color:var(--muted);line-height:1.62;margin-top:3px;overflow-wrap:break-word}
+.ck.done{background:#fafbfc;border-color:var(--line2)}
+.ck.done .ck-t{color:#9aa1ac}
+.ck.done .ck-go{color:#e0e4e9}
+.ck-d{display:none;margin-top:7px;padding-top:6px;border-top:1px dashed var(--line2)}
+.ck-d.show{display:block}
+.ck-d .d{display:block;width:100%;text-align:left;border:0;background:none;font-family:inherit;
+  font-size:11px;color:var(--ink2);line-height:1.6;padding:2px 0;cursor:pointer}
+.ck-d .d:hover{color:#2f5fd0}
+.ck-more{border:0;background:none;color:#2f5fd0;font-size:10.5px;padding:4px 0 0;cursor:pointer}
+.ck-more:hover{text-decoration:underline}
+/* 勾完的整块换个颜色，剩下的自然浮上来 */
+.rail-r.all-done .ck-h b{color:#2e7d32}
+/* 跳到正文时的落点提示：底色与左侧竖条闪一下，两秒后自己退掉 */
+.flash{animation:ckflash 1.9s ease-out;border-radius:4px}
+@keyframes ckflash{
+  0%,45%{background:#fffaf0;box-shadow:inset 3px 0 0 #d9a441}
+  100%{background:transparent;box-shadow:inset 0 0 0 rgba(0,0,0,0)}
+}
 .empty{color:#c2c7cf;font-size:13px;text-align:center;padding:120px 0;
   font-family:-apple-system,"PingFang SC",sans-serif}
 
@@ -560,10 +655,22 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
   .wfoot .ghost{min-height:38px;padding:8px 4px}
   .wpad{padding:0 11px 12px}
 
-  .docbar{flex-direction:column;gap:10px;margin-bottom:14px}
-  .docbar .acts{flex-wrap:wrap;white-space:normal;gap:6px}
-  .doc-head{flex-wrap:wrap;row-gap:2px}
-  .in-code{width:86px!important}
+  /* 单栏：两侧栏退回正文内部（候选观点回各自板块，待核对排在工具条下面） */
+  .docgrid{display:block}
+  .rail{position:static;max-height:none;overflow:visible;padding:0}
+  .doccol{max-width:none}
+  .docbar{margin-bottom:12px}
+  .docbar .acts{gap:6px}
+  .docbar .acts .end{margin-left:0;flex-wrap:wrap}
+  .in-company{font-size:16px}
+  .doc-sub .subj .in-code{width:84px}
+  /* 触屏上的核对项：勾选框与整张卡片都要够大 */
+  .ck{padding:9px 10px}
+  .ck-row input{width:19px;height:19px;margin-top:1px}
+  .ck-t{font-size:13px}
+  .ck-m{font-size:12px}
+  .ck-d .d{font-size:12px;padding:4px 0}
+  .rail-r{margin:2px 0 16px}
 
   /* 表格：整表横向滑动，单元格不折行，否则「-10.66%」会被拆成两行看错 */
   .tscroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -14px;padding:0 14px}
@@ -708,7 +815,7 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
         <div class="wbar"><i></i></div>
       </div>
       <div class="wbody"><div class="winner"><div class="wpad">
-        <div class="whint">导出前先把正文改完。打包下载、发送邮件在正文右上角。</div>
+        <div class="whint">改完再导出。发送、下载、导出在正文上方一排；右侧待核对点一条就跳到对应段落。</div>
         <div class="wfoot">
           <span class="whint grow">文件名带日期，落在 output/</span>
           <button class="btn" data-export onclick="exportDocx()">导出 Word</button>
@@ -1438,7 +1545,7 @@ upBox.addEventListener("drop", e => {
    只在窄屏出现（CSS 控制），且正文没生成时不显示「正文」。 */
 function isPhone(){ return window.matchMedia("(max-width: 640px)").matches; }
 function jumpTo(where){
-  const el = where === "doc" ? document.querySelector(".sheet") : document.querySelector("aside");
+  const el = where === "doc" ? document.querySelector(".doccol") : document.querySelector("aside");
   if(el) el.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 function syncFab(){
@@ -1523,64 +1630,79 @@ function tableHtml(t){
   return h + `</tbody></table></div>`;
 }
 
+/* 按钮图标：只描边，颜色跟 currentColor，深浅两档按钮共用一套 */
+const ICON = {
+  mail: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.7" y="3.2" width="12.6" height="9.6" rx="1.5"/><path d="M2.4 4.3 8 8.5l5.6-4.2"/></svg>',
+  dl: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.6v7.2"/><path d="M5.3 7.4 8 10.1l2.7-2.7"/><path d="M2.9 12.5h10.2"/></svg>'
+};
+/* 宽屏三栏的断点，与 CSS 里的 1500px 同一个数 */
+const WIDE_MQ = window.matchMedia("(min-width:1500px)");
+const PHONE_MQ = window.matchMedia("(max-width:640px)");
+function isWide(){ return WIDE_MQ.matches; }
+
+/* 左栏只放候选观点；窄屏时这两个容器缩回各自的板块里 */
+function poolRail(){
+  return `<div class="rail-h">候选观点</div>
+    <div class="pool" id="p-pos"></div>
+    <div class="pool" id="p-con"></div>`;
+}
+
 function renderDraft(){
   const d = S.draft, c = d.commentary || {}, v = d.validation || {};
   const gapOn = !(d.layout && d.layout.para_gap === false);
-  let h = `<div class="sheet">
+  const wide = isWide();
+  const finRows = ((c.financial_table || {}).rows || []).length;
+  let h = `<div class="docgrid">
+  <aside class="rail rail-l" id="railL">${wide ? poolRail() : ""}</aside>
+  <div class="doccol">
     <div class="docbar">
-      <div class="grow">
-        <div class="doc-head">
-          <input class="in-company" id="d-company" value="${esc(d.company_full_name)}" spellcheck="false"/>
-          <span style="font-weight:700">主体：【</span>
-          <input class="in-code" id="d-code" value="${esc(d.internal_rating_code)}" placeholder="—" spellcheck="false"/>
-          <span style="font-weight:700">】</span>
-        </div>
-        <div style="font-size:11.5px;color:var(--muted);margin-top:2px">
-          正文 ${v.body_chars || 0} 字 · 财务表 ${((c.financial_table || {}).rows || []).length} 行${(c.financial_table || {}).from_materials ? "（取自材料原文）" : ""}${d.usage && d.usage.total_tokens ? ` · 本次 ${fmtTok(d.usage.total_tokens)} token` : ""}
-        </div>
-      </div>
       <div class="acts">
+        <button class="btn-sm" onclick="copyPrompt()" title="复制本次用的提示词">提示词</button>
         <button class="btn-sm" id="btnGap" onclick="toggleParaGap()"
           title="段与段之间是否空一行（加粗句与它的正文始终连着）">${gapOn ? "段落空行：有" : "段落空行：无"}</button>
-        <button class="btn-sm" onclick="copyPrompt()">提示词</button>
-        <button class="btn-sm solid" id="btnExport" data-export onclick="exportDocx()">导出 Word</button>
-        <div class="pkgwrap">
-          <button class="btn-sm" id="btnMail" onclick="toggleMail(event)">发送邮件</button>
-          <div class="mlpanel" id="mailPanel"></div>
+        <div class="end">
+          <div class="pkgwrap">
+            <button class="btn-sm ico" id="btnMail" onclick="toggleMail(event)" title="把正文当附件发到邮箱">${ICON.mail}发送</button>
+            <div class="mlpanel" id="mailPanel"></div>
+          </div>
+          <div class="pkgwrap">
+            <button class="btn-sm ico" id="btnPkg" onclick="toggleBundle(event)" title="底稿、材料与成品打包下载">${ICON.dl}下载</button>
+            <div class="pkgpanel" id="pkgPanel"></div>
+          </div>
+          <button class="btn-sm solid" id="btnExport" data-export onclick="exportDocx()">导出 Word</button>
         </div>
-        <div class="pkgwrap">
-          <button class="btn-sm" id="btnPkg" onclick="toggleBundle(event)">打包下载</button>
-          <div class="pkgpanel" id="pkgPanel"></div>
-        </div>
+      </div>
+      <div class="doc-head">
+        <input class="in-company" id="d-company" value="${esc(d.company_full_name)}" placeholder="企业全称" spellcheck="false"/>
+      </div>
+      <div class="doc-sub">
+        <span class="subj">主体：【<input class="in-code" id="d-code" value="${esc(d.internal_rating_code)}" placeholder="—" spellcheck="false"/>】</span>
+        <span class="sep2">·</span><span>正文 ${v.body_chars || 0} 字</span>
+        <span class="sep2">·</span><span>财务表 ${finRows} 行${(c.financial_table || {}).from_materials ? "（取自材料原文）" : ""}</span>${d.usage && d.usage.total_tokens ? `<span class="sep2">·</span><span>本次 ${fmtTok(d.usage.total_tokens)} token</span>` : ""}
       </div>
     </div>`;
 
-  if((v.issues || []).length){
-    h += `<div class="notes"><div class="h">待核对 ${v.issues.length} 项</div><ul>` +
-      v.issues.map(x => `<li class="${/不足|为空|未找到同值/.test(x) ? "bad" : ""}">${esc(x).replace(/\n/g, "<br>")}</li>`).join("") +
-      `</ul></div>`;
-  }
-
   // 版式：一块一个 .blk。块与块之间恰好一个空行，块内（加粗句 + 它的正文）不留空。
   // 空行值只由 CSS 变量 --pgap 决定，页面与导出的 Word 用同一个开关（正文工具条「空行」）。
-  h += `<div class="doc${gapOn ? "" : " tight"}">
-    <div class="blk">
+  // 每个块带 id，待核对里点一条就跳到对应的块。
+  h += `<div class="doc${gapOn ? "" : " tight"}" id="d-doc">
+    <div class="blk" id="blk-pos">
       <div class="doc-h first">正面：</div>
       <div class="items" id="d-pos"></div>
       <button class="add" onclick="addItem('pos')">+ 条目</button>
-      <div class="pool" id="p-pos"></div>
+      ${wide ? "" : '<div class="pool" id="p-pos"></div>'}
     </div>
-    <div class="blk">
+    <div class="blk" id="blk-con">
       <div class="doc-h">关注：</div>
       <div class="items" id="d-con"></div>
       <button class="add" onclick="addItem('con')">+ 条目</button>
-      <div class="pool" id="p-con"></div>
+      ${wide ? "" : '<div class="pool" id="p-con"></div>'}
     </div>
-    <div class="blk">
+    <div class="blk" id="blk-basic">
       <div class="doc-h first">1、基本情况</div>
       ${ta("basic", d.basic_info)}
     </div>
-    <div class="blk">
+    <div class="blk" id="blk-overview">
       <div class="doc-h first">2、点评</div>
       ${ta("ov-lead lead", c.overview && c.overview.lead)}
       ${ta("ov-body", c.overview && c.overview.body)}`;
@@ -1588,24 +1710,24 @@ function renderDraft(){
   if(c.segment_table && c.segment_table.rows) h += tableHtml(c.segment_table);
 
   h += `</div>
-    <div class="blk">
+    <div class="blk" id="blk-segments">
       <div id="d-segs"></div>
       <button class="add" onclick="addSeg()">+ 板块</button>
     </div>
-    <div class="blk">
+    <div class="blk" id="blk-asset">
       ${ta("as-lead lead", c.asset && c.asset.lead)}
       ${ta("as-body", c.asset && c.asset.body)}`;
 
-  if(c.financial_table && c.financial_table.rows){
-    h += `<div style="text-align:center;font-weight:700">${esc(c.financial_table.caption || "公司主要财务数据和财务指标（合并口径）")}</div>`;
-    h += tableHtml(c.financial_table);
+  if(finRows){
+    h += `<div id="blk-fintable"><div style="text-align:center;font-weight:700">${esc(c.financial_table.caption || "公司主要财务数据和财务指标（合并口径）")}</div>`;
+    h += tableHtml(c.financial_table) + `</div>`;
   }
   h += `</div>
-    <div class="blk">
+    <div class="blk" id="blk-debt">
       ${ta("db-lead lead", c.debt && c.debt.lead)}
       ${ta("db-body", c.debt && c.debt.body)}
     </div>
-    <div class="blk">
+    <div class="blk" id="blk-topics">
       <div id="d-topics"></div>
       <div class="tp-add">
         <button class="add" onclick="topicMenu()">+ 专题段（可选）</button>
@@ -1614,7 +1736,9 @@ function renderDraft(){
         </div>
       </div>
     </div>
-  </div></div>`;
+  </div></div>
+  <aside class="rail rail-r" id="railR">${ckHtml(v)}</aside>
+</div>`;
 
   $("#draftArea").innerHTML = h;
   $("#draftArea").style.display = "block";
@@ -1628,9 +1752,233 @@ function renderDraft(){
   renderPool("con", d.concern_pool || []);
   renderSegs(c.segments || []);
   renderTopics(c.special_topics || []);
+  syncRails();
+  placeRailR();
+  ckApplyFold();
+  ckPaint();
   autoGrowAll();
   syncFab();
 }
+
+/* ── 待核对事项 ────────────────────────────────────────────────
+   后端给回来的 issues 是一串自然语言：有的一句话，有的首行是汇总、后面跟明细。
+   这里做三件事：
+   ① 拆成一条一张卡，配一句短标题（标题按问题类型取名，原句放进小字里，不重复）；
+   ② 勾选状态按「企业+主体代码」存本地，同一份报告重开还是勾过的样子；
+   ③ 每条挂一个正文锚点，点一下滚过去闪一下，不用自己在两千字里找位置。 */
+const CK_RULES = [
+  [/^关注.*含数据/, "关注条目混进了数字", "blk-con"],
+  [/含数据.+摘要层应为纯定性/, "摘要层混进了数字", "blk-pos"],
+  [/找不到直接出处|请复核算式/, "数字在材料里找不到出处", "d-doc"],
+  [/data_notes 已声明为推算值/, "推算出来的数字要说清口径", "d-doc"],
+  [/期次写法在台账与材料原文中找不到依据/, "期次写法没有依据", "blk-fintable"],
+  [/资产总额与负债加权益相差/, "资产负债表不平", "blk-fintable"],
+  [/整列写「未披露」/, "写了未披露，材料里其实有", "blk-fintable"],
+  [/财务指标表为空|财务表.*为空/, "财务表是空的", "blk-fintable"],
+  [/财务表/, "财务表要核", "blk-fintable"],
+  [/交代资料来源的表述/, "还有交代来源的句子", "d-doc"],
+  [/同一表述在两处出现/, "同一句话出现了两遍", "d-doc"],
+  [/不可核实的程度词/, "程度词要换成数据", "d-doc"],
+  [/板块段内容偏薄/, "板块段内容偏薄", "blk-segments"],
+  [/正面不足/, "正面不足 3 条", "blk-pos"],
+  [/关注不足/, "关注不足 3 条", "blk-con"],
+  [/总述段缺加粗汇总句/, "总述段缺加粗句", "blk-overview"],
+  [/正文偏短/, "正文偏短", "d-doc"],
+  [/正文偏长/, "正文偏长", "d-doc"],
+];
+/* 明细行形如「· 12.34（疑似占比）—— 3、点评：「…」」，按 —— 后面的段名找落点 */
+const WHERE_RULES = [
+  [/关注/, "blk-con"], [/正面/, "blk-pos"], [/点评|总述/, "blk-overview"],
+  [/分部|板块|业务/, "blk-segments"], [/资产/, "blk-asset"],
+  [/债务|负债|有息/, "blk-debt"], [/基本/, "blk-basic"],
+  [/专题/, "blk-topics"], [/财务|表/, "blk-fintable"],
+];
+function whereAnchor(w){
+  for(const [re, a] of WHERE_RULES) if(re.test(w)) return a;
+  return "d-doc";
+}
+function ckHead(text){
+  for(const [re, t, a] of CK_RULES) if(re.test(text)) return { title: t, anchor: a, derived: true };
+  const first = (text.split("\n")[0] || "").replace(/[：:]\s*$/, "").trim();
+  return { title: first.length > 24 ? first.slice(0, 24) + "…" : first, anchor: "d-doc", derived: false };
+}
+function ckHash(s){
+  let h = 5381;
+  for(let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
+  return h.toString(36);
+}
+function ckOwner(){
+  const d = S.draft || {};
+  return (d.company_full_name || "") + "|" + (d.internal_rating_code || "");
+}
+function ckAll(){ try{ return JSON.parse(localStorage.getItem("nr_ck_v1") || "{}"); }catch(e){ return {}; } }
+function ckDoneSet(){ return new Set(ckAll()[ckOwner()] || []); }
+function ckPersist(set){
+  const all = ckAll(); all[ckOwner()] = [...set];
+  try{ localStorage.setItem("nr_ck_v1", JSON.stringify(all)); }catch(e){}
+}
+function ckItems(v){
+  const out = [];
+  for(const raw of (v.issues || [])){
+    const lines = String(raw).split("\n").map(x => x.trim()).filter(Boolean);
+    if(!lines.length) continue;
+    const head = lines[0];
+    const details = lines.slice(1).map(x => {
+      const t = x.replace(/^[·•]\s*/, "").trim();
+      const m = t.match(/——\s*([^：]+)：/);
+      return { text: t, anchor: m ? whereAnchor(m[1]) : "d-doc" };
+    });
+    const meta = ckHead(head);
+    // 汇总句自己是「全文」级别的，明细里若能定位到具体段，就落到那里
+    const anchor = meta.anchor === "d-doc" && details.length ? details[0].anchor : meta.anchor;
+    out.push({
+      k: ckHash(head + "\n" + details.map(d => d.text).join("\n")),
+      title: meta.title,
+      sub: meta.derived ? head : "",
+      anchor, details
+    });
+  }
+  return out;
+}
+function ckHtml(v){
+  const items = ckItems(v);
+  if(!items.length) return "";
+  const done = ckDoneSet();
+  const n = items.filter(x => done.has(x.k)).length;
+  return `<div class="ck-h"><button class="ck-fold" onclick="ckFold(this)" title="收起核对项">▾</button><b>待核对</b><span class="n"><i id="ckDoneN">${n}</i>/${items.length}</span>
+      <button class="ck-reset" onclick="ckReset()" title="清空勾选">重置</button></div>
+    <div class="ck-bar"><i id="ckBar" style="width:${items.length ? (n / items.length * 100).toFixed(1) : 0}%"></i></div>
+    <div class="ck-list">` + items.map(it => {
+      const on = done.has(it.k);
+      const more = it.details.length
+        ? `<button class="ck-more" onclick="ckMore(this,event)">看 ${it.details.length} 条明细</button>` : "";
+      const det = it.details.length
+        ? `<div class="ck-d">` + it.details.map(d =>
+            `<button class="d" data-t="${d.anchor}" onclick="ckJump(this,event)">${esc(d.text)}</button>`).join("") + `</div>`
+        : "";
+      return `<div class="ck${on ? " done" : ""}" data-k="${it.k}" data-t="${it.anchor}">
+        <div class="ck-row">
+          <input type="checkbox"${on ? " checked" : ""} aria-label="标记为已核对" onchange="ckToggle(this)"/>
+          <div class="ck-body" onclick="ckJump(this,event)" title="点一下跳到正文对应的位置">
+            <span class="ck-t"><span class="ck-go">↗</span>${esc(it.title)}</span>
+            ${it.sub ? `<span class="ck-m">${esc(it.sub)}</span>` : ""}
+            ${more}
+          </div>
+        </div>${det}</div>`;
+    }).join("") + `</div>`;
+}
+function ckPaint(){
+  const items = [...document.querySelectorAll(".ck")];
+  const done = items.filter(x => x.classList.contains("done")).length;
+  const n = $("#ckDoneN"), bar = $("#ckBar"), rail = $("#railR");
+  if(n) n.textContent = done;
+  if(bar) bar.style.width = (items.length ? done / items.length * 100 : 0) + "%";
+  if(rail) rail.classList.toggle("all-done", items.length > 0 && done === items.length);
+}
+function ckToggle(input){
+  const item = input.closest(".ck");
+  if(!item) return;
+  const set = ckDoneSet(), k = item.dataset.k;
+  if(input.checked) set.add(k); else set.delete(k);
+  ckPersist(set);
+  item.classList.toggle("done", input.checked);
+  ckPaint();
+}
+function ckMore(btn, ev){
+  if(ev) ev.stopPropagation();
+  const item = btn.closest(".ck");
+  const box = item && item.querySelector(".ck-d");
+  if(!box) return;
+  const show = !box.classList.contains("show");
+  box.classList.toggle("show", show);
+  btn.textContent = show ? "收起明细" : `看 ${box.children.length} 条明细`;
+}
+/* 折起/展开核对项。手动开过关过就记住，不再跟着断点走 */
+let ckFoldManual = null;
+function ckFold(btn){
+  const rail = btn.closest(".rail-r");
+  if(!rail) return;
+  const off = rail.classList.toggle("collapsed");
+  ckFoldManual = off;
+  btn.textContent = off ? "▸" : "▾";
+  btn.title = off ? "展开核对项" : "收起核对项";
+}
+function ckApplyFold(){
+  const rail = $("#railR");
+  if(!rail) return;
+  const btn = rail.querySelector(".ck-fold");
+  if(!btn) return;
+  const off = ckFoldManual === null ? PHONE_MQ.matches : ckFoldManual;
+  rail.classList.toggle("collapsed", off);
+  btn.textContent = off ? "▸" : "▾";
+  btn.title = off ? "展开核对项" : "收起核对项";
+}
+/* 手机上待核对排到工具条下面：正文很长，放在文末等于找不到；
+   宽屏回三栏时再挂回网格。挪的是同一个节点，勾过的状态不会丢。 */
+function placeRailR(){
+  const rail = $("#railR"), bar = document.querySelector(".docbar"), grid = document.querySelector(".docgrid");
+  if(!rail || !bar || !grid) return;
+  if(PHONE_MQ.matches){
+    if(rail.previousElementSibling !== bar) bar.after(rail);
+  }else if(rail.parentNode !== grid){
+    grid.appendChild(rail);
+  }
+}
+function ckJump(el, ev){
+  if(ev) ev.stopPropagation();
+  const t = (el && el.dataset && el.dataset.t) || (el && el.closest(".ck") && el.closest(".ck").dataset.t);
+  const target = t && document.getElementById(t);
+  if(!target) return;
+  target.scrollIntoView({ behavior: "smooth", block: t === "d-doc" ? "start" : "center" });
+  target.classList.remove("flash");
+  void target.offsetWidth;
+  target.classList.add("flash");
+  clearTimeout(target._fl);
+  target._fl = setTimeout(() => target.classList.remove("flash"), 1900);
+}
+function ckReset(){
+  const items = [...document.querySelectorAll(".ck")];
+  if(!items.length) return;
+  if(!confirm("清空这份报告的全部勾选？")) return;
+  ckPersist(new Set());
+  items.forEach(x => {
+    x.classList.remove("done");
+    const i = x.querySelector("input");
+    if(i) i.checked = false;
+  });
+  ckPaint();
+}
+/* 侧栏空着就整栏收掉，正文跟着居中；有内容才占位 */
+function syncRails(){
+  const g = document.querySelector(".docgrid");
+  if(!g) return;
+  const l = $("#railL"), r = $("#railR");
+  const hasL = !!(l && l.querySelector(".chip"));
+  const hasR = !!(r && r.querySelector(".ck"));
+  if(l) l.style.display = hasL ? "" : "none";
+  if(r) r.style.display = hasR ? "" : "none";
+  g.classList.toggle("nol", !hasL);
+  g.classList.toggle("nor", !hasR);
+}
+/* 跨过 1500px 时重排一次：候选观点要在「板块内」与「左栏」之间换位置 */
+let _wideNow = WIDE_MQ.matches;
+function onWideChange(){
+  if(WIDE_MQ.matches === _wideNow) return;
+  _wideNow = WIDE_MQ.matches;
+  if(!S.draft || !$("#d-company")) return;
+  const main = document.querySelector("main");
+  const y = main ? main.scrollTop : 0;
+  try{ S.draft = collectDraft(); }catch(e){ return; }
+  renderDraft();
+  if(main) main.scrollTop = y;
+}
+if(WIDE_MQ.addEventListener) WIDE_MQ.addEventListener("change", onWideChange);
+/* 跨过手机断点：待核对在「工具条下」与「文末」之间换位，再决定折起与否 */
+if(PHONE_MQ.addEventListener) PHONE_MQ.addEventListener("change", () => {
+  if(!S.draft) return;
+  placeRailR();
+  ckApplyFold();
+});
 
 function toggleParaGap(){
   // 先把页面上的改动收进草稿，再切开关重画，否则改了半天的段会被覆盖
@@ -1648,9 +1996,13 @@ function renderPool(kind, pool){
   if(!box) return;
   const cur = [...document.querySelectorAll(kind === "pos" ? ".it-pos" : ".it-con")].map(t => t.value.trim());
   const rest = (pool || []).filter(t => t && !cur.includes(t));
-  if(!rest.length){ box.innerHTML = ""; return; }
-  box.innerHTML = `<div class="pool-t">候选观点 ${rest.length} 条，点一条加进上面</div>` +
-    rest.map((t, i) => `<button class="chip" title="${esc(t)}" onclick="usePool('${kind}',${i})">${esc(t.slice(0, 42))}${t.length > 42 ? "…" : ""}</button>`).join("");
+  if(!rest.length){ box.innerHTML = ""; syncRails(); return; }
+  // 在左栏时有的是竖着的地方，整句铺出来；在板块里就压成一行，免得把正文顶下去
+  const inRail = !!(box.closest && box.closest("#railL"));
+  const cut = inRail ? 999 : 42;
+  box.innerHTML = `<div class="pool-t">${kind === "pos" ? "正面" : "关注"} · 候选 ${rest.length} 条，点一条加进去</div>` +
+    rest.map((t, i) => `<button class="chip" title="${esc(t)}" onclick="usePool('${kind}',${i})">${esc(t.slice(0, cut))}${t.length > cut ? "…" : ""}</button>`).join("");
+  syncRails();
   box.dataset.pool = JSON.stringify(rest);
 }
 
@@ -1663,6 +2015,21 @@ function usePool(kind, i){
   rest.splice(i, 1);                         // 从候选里拿掉
   renderPool(kind, rest);
   renumber();
+  // 左栏和正文隔着一条街：加进去的条目在视野外就滚过去闪一下，
+  // 否则点了没反应，会以为没加上
+  const items = document.querySelectorAll(kind === "pos" ? ".it-pos" : ".it-con");
+  const last = items[items.length - 1];
+  if(!last) return;
+  const r = last.getBoundingClientRect();
+  if(r.top < 70 || r.bottom > innerHeight - 40) last.scrollIntoView({ behavior: "smooth", block: "center" });
+  const blk = last.closest(".blk");
+  if(blk){
+    blk.classList.remove("flash");
+    void blk.offsetWidth;
+    blk.classList.add("flash");
+    clearTimeout(blk._fl);
+    blk._fl = setTimeout(() => blk.classList.remove("flash"), 1900);
+  }
 }
 
 function renderItems(kind, items){
