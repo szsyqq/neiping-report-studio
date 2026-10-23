@@ -307,17 +307,24 @@ SYSTEM_PROMPT = """你是信用评级机构的分析员，负责撰写内部「�
 1. 摘要层是定性概括，除判断核心依赖量级外不得出现金额、百分比、倍数、占比。判定口径：删掉这个数字，这条判断是否仍成立？成立就删掉数字。
 2. 摘要一条只讲一件事，正面与关注不得重复同一事实，不得互相矛盾。
 3. 正文每段以一句加粗汇总句开篇（总述段、资产段、债务段、专题段），汇总句带判断不带数字；分部业务段不加段首加粗。
-4. 金额统一亿元、两位小数、带千分位；比率两位小数加百分号；倍数两位小数。期次写明「2025年」「2026年9月末」「2026年1-9月」。
-5. 不得虚构任何数字、项目、名称。材料未披露的写「未披露」或不写，绝不推算、绝不用行业均值替代。
+4. 金额统一亿元、两位小数、带千分位；比率两位小数加百分号；倍数两位小数。期次写明「2025年」「2026年9月末」「2026年1-9月」。原始表格多以万元计（也有以元、美元计的），先换算再写，不得把万元数直接当亿元；同段落里的量级要能相互印证——按总资产规模判断，货币资金、有息债务不可能是差着两三个数量级的数。
+5. 不得虚构任何数字、项目、名称。材料里没有的信息就不写，不得推算、不得用行业均值替代；也不要在正文里交代「哪一项没拿到」——规则 9 的某一拍缺数据就整拍跳过，不要写成「××方面，材料未披露」。财务指标表单元格确实无值的填「—」。
 6. 不得照抄评级机构的结论句作为自己的判断；可复算的要用自己的口径重述。不得出现「中诚信国际认为」「评级时应注意到」这类元话语。
-7. 业务分部段六拍：业务模式与产出能力 → 报告期的产出量 → 价格或费率与收入 → 成本结构与毛利率变动原因 → 项目或订单储备 → 该板块风险点。产出量的计量单位按业务性质选（取该公司连续披露、可跨期比较、且与收入同向的那一个量），不同板块不必统一；找不到就跳过这一拍，不拿无关指标充数。
-8. 资产段的前五大科目必须按最新期次的实际金额降序排列（不是沿用旧名单换数字），写清每个科目「是什么」。
+7. 业务分部段六拍：业务模式与产出能力 → 报告期的产出量 → 价格或费率与收入 → 成本结构与毛利率变动原因 → 项目或订单储备 → 该板块风险点。产出量的计量单位按业务性质选（取该公司连续披露、可跨期比较、且与收入同向的那一个量），不同板块不必统一；找不到就跳过这一拍，不拿无关指标充数。单个板块的正文至少三句：做的是什么、当期经营数据、风险点，各占一句以上；收入占比不足 5% 的板块并成一段「其他业务」写，不要为凑板块数量把一句话拆成一段。
+8. 资产段的前五大科目必须按最新期次的实际金额降序排列（不是沿用旧名单换数字），写清每个科目「是什么」，并交代其质量——能否变现、是否已质押、账龄或回收对象。
 9. 债务段按固定顺序展开：负债总额与资产负债率 → 全部债务及长短债结构与占比 → 有息债务的融资构成 → 利息保障与经营获现 → 非受限货币资金对短债覆盖 → 授信与未使用额度 → 或有事项。
 10. 全文用合并口径。总债务（含政府专项债等）与有息债务是两个口径，混用时必须说明差额来源。
 11. 期次只能照抄台账『期次写法』里的字面写法：时点用「X年末／X年6月末／X年9月末」，区间用「X年／X年1-6月／X年1-9月」。资产类、负债类、债务类数据用时点写法，收入、利润、现金流用区间写法。台账写「中报」的，时点就是「X年6月末」，绝不允许写成 9 月末或 1-9 月。
 12. 不按行业套路写作。写外部条件时问三件事：钱从谁那里来、量由什么决定、价由谁定；三问的答案决定引什么数据。不要因为主体名称或行业标签就推断它应该有什么业务、什么风险——只写材料里有据、且该主体确实存在的事实。找不到某项惯常指标（例如某类产出量），就跳过，不用相近指标替代。
+13. 叙述视角：报告是评级机构对受评主体的判断，句中主语只能是公司、股东、政府、行业或政策，不能是「材料」。全文禁止出现「材料」「材料原文」「公开资料」「公开信息」「本报告」「本文」，禁止出现「披露」「未披露」「载明」「列示」「数据显示」「报表显示」这类转述来源的词，也禁止「从外部条件看」「从内部条件看」「从财务表现看」这类框架提示语——直接陈述事实与因果。判断标准：把这些词删掉后句子依然成立，就说明本来不该写。
+14. 正文不出现编制层面的说明：不写「因数据可得性」「受限于资料」「以××为准」「详见下表」「如下所示」。表格由程序排版，正文只管判断。
+15. 概念不得混用：已实现营业收入不等于合同金额、中标金额或订单储备；净利润不等于 EBITDA，也不等于经营活动现金流；年度数据不等于单季或累计数据；历史数据不等于预测数。用之前先确认是哪一种，口径不同时在句中点明。
+16. 变化要算幅度并归因：收入、利润、毛利率、资产负债率、有息债务等关键指标，与上期相比变动超过 5% 的，写出变动幅度并说明成因（量、价、结构、并表范围、政府补助、会计口径调整），不要只并列两期数字让读者自己算。
+17. 措辞分级、不用极端词与宣传语：判断词只用很强／较强／一般／较弱、可控／充足／尚可／承压这类分级表述，不用「极强」「极弱」「恶劣」「极大」「严重恶化」；材料里的「荣获」「行业领先」「填补空白」「有力保障」「成效显著」等宣传语与美化表述一律不进正文，只写可核实的事实与风险。
+18. 正文每段至少锚定一个具体数据或明确事实（金额、比率、期限、数量、协议条款），不写通篇定性的空段；也不为凑数据引与判断无关的数字——引的每个数都要能用在一句判断上。
+19. 两类专项按条件触发，不按行业标签触发。（1）收入主要来自政府结算（土地整理、代建、特许经营、购买服务）的，总述段交代「钱从谁来」时就要带上区域财力的实数——地区 GDP 与增速、一般公共预算收入、政府性债务余额或债务率，各一句、写明年份，并点明公司在这套结算体系里的层级与回款路径；不要只写「区域财力持续增长」这种不带数的判断，也不要把区域情况另起一段展开。（2）在建工程占非流动资产比重较高的，写清计划总投资、已累计投资、剩余投资，并与货币资金对照说明缺口。材料没有这些数据就整段不写，不许用「预计」「大致」补位。
 
-【写作风格】以跟踪评级报告正文为语体基准：段首归因（受……影响／受益于）、段中展开（具体来看／结构上／此外）、段末收口（整体来看，……）。判断词要分级（很强/较强/一般/较弱、可控/充足/尚可/承压）。不用「本期」「去年」「大幅」这类不可核实表述。
+【写作风格】以跟踪评级报告正文为语体基准：段首归因（受……影响／受益于）、段中展开（具体来看／结构上／此外）、段末收口（整体来看，……）。判断词要分级（很强/较强/一般/较弱、可控/充足/尚可/承压）。不用「本期」「去年」「大幅」这类不可核实表述，也不用「可能」「大概」「或许」——判断要么有据，要么不写。行文里不出现「材料」「披露」「外部条件」这类词：它们是分析员的作业对象，不是报告的语言。
 
 【输出】只输出一个 JSON 对象，不要任何解释文字。"""
 
@@ -360,7 +367,7 @@ def build_user_prompt(facts: dict, materials: list[dict]) -> str:
         ]
     else:
         fact_view["口径提示"] = [
-            "本次未取结构化台账：工商信息、股权、财务数据、主营构成一律以【材料原文】为准，材料没写的就写「未披露」，不得推算。",
+            "本次未取结构化台账：工商信息、股权、财务数据、主营构成一律以【材料原文】为准，材料没写的信息直接略过，不得推算；正文里不要交代哪项没拿到。",
             "期次写法照材料原文的表述，同一张表内的期次必须与材料表的表头一致。",
             "财务指标表需要你按【材料原文】的「主要财务数据」表整理输出，数字与材料逐一对应。",
         ]
@@ -372,8 +379,8 @@ def build_user_prompt(facts: dict, materials: list[dict]) -> str:
   "concern": ["...", "...", "..."],
   "basic_info": "150-300字，一段：成立与前身→主营与功能定位（含靠什么收钱）→注册资本/实收资本/股东及比例/实控人→报告期股权变动→增资、上市、外部评级、并表子公司",
   "commentary": {
-    "overview": {"lead": "加粗汇总句（不带数字）", "body": "总述段正文：三问展开外部条件→经营与盈利主线数据→收入构成概览→引出业务构成表"},
-    "segments": [{"name": "该主体披露的板块名，照材料写，不改写不带编号", "body": "承接『1）××业务方面，』之后的正文"}],
+    "overview": {"lead": "加粗汇总句（不带数字）", "body": "总述段正文：先交代钱的来源、量的决定、价的制定，再写经营与盈利主线数据与收入构成概览，收口引出业务构成表"},
+    "segments": [{"name": "该主体自己用的板块名，照原文写，不改写不带编号", "body": "承接『1）××业务方面，』之后的正文"}],
     "segment_table": {"unit_line": "单位：亿元", "header": ["业务板块", "营业收入", "收入占比", "毛利率"], "rows": [["板块名", "0.00", "0.00%", ""], ["营业总收入", "0.00", "100.00%", ""]]},
     "financial_table": {"unit_line": "单位：亿元", "periods": ["2023年", "2024年", "2025年"], "rows": [["资产总额", "0.00", "0.00", "0.00"], ["负债总额", "0.00", "0.00", "0.00"]]},
     "asset": {"lead": "加粗汇总句（不带数字）", "body": "资产段正文"},
@@ -452,6 +459,111 @@ def clean_segment_body(name: str, body: str) -> str:
     return b.strip()
 
 
+# ── 叙述视角：报告的主语是公司，不是「材料」 ────────────────────────────
+# 模型写材料摘要写惯了，正文里会漏出「材料未披露」「从外部条件看」这类
+# 交代来源与框架的串场话。评级报告的判断句里没有这些词，删掉后句子照样成立。
+_VIEW_WORDS = re.compile(
+    r"材料|公开资料|公开信息|外部资料|本报告|本文|披露|载明|列示|详见|"
+    r"资料来源|可得资料|未获取|数据表显示|数据显示|报表显示")
+# 「原材料」「新材料」是业务名，不是「材料未披露」的那个材料，先遮住再判
+_SAFE_WORDS = ("原材料", "材料采购", "材料成本", "材料供应", "材料费用", "材料费",
+               "建筑材料", "新材料", "包装材料", "材料价格")
+# 「授信方面，」「负债结构上，」这类只剩话题引子的碎句，删掉主要内容后一并清掉
+_HANG_WORDS = re.compile(r"^[^，。；：]{2,18}(?:方面|方面上|层面|上|来看)[，；]$")
+# 「从外部条件看，」这类框架提示语：删掉后直接进入事实与因果
+_FRAME_LEAD = re.compile(
+    r"从(?:外部|内部|自身|经营|财务|区域|行业|政策|产品|业务|数据|报表|资料|"
+    r"公开信息|公开资料|材料)[^，。；]{0,6}?(?:看|来看|观察|而言)[，,]\s*")
+
+# 先擦掉「材料显示」「据材料」这类前缀，多数句子擦完就能用，不必整块删
+_ERASE_RULES = (
+    re.compile(r"[^，。；\s]{0,10}?(?:数据显示|报表显示)[，,]?\s*"),
+    re.compile(r"(?:根据|据)\s*(?:材料|公开资料|公开信息)(?:原文|内容|记载)?[，,]?\s*"),
+    re.compile(r"(?:材料|公开资料|公开信息)(?:原文)?"
+               r"(?:显示|表明|载明|列示|披露|记载)(?:了|的)?[，,]?\s*"),
+    re.compile(r"(?:材料|公开资料|公开信息)(?:原文)?(?:中|里|上)[，,]?\s*"),
+    re.compile(r"(^|[，；])(?:另)?(?:据)?(?:披露|载明|列示)(?:的|，)"),
+    re.compile(r"详见(?:下|上|后)?(?:表|文|图)[，,]?\s*"),
+)
+
+
+# 这些是真的拿不到东西，句子留着只会显得在交代作业过程，应整句删（由 _VIEW_WORDS 命中）
+# 「同比大幅下降」这类程度词不可核实，同段通常已写明百分比，直接去掉程度词
+_VAGUE_DEGREE = re.compile(
+    r"(?:大幅|大幅度|显著)(?=(?:下降|上升|增长|减少|增加|提高|回落|波动|改善|恶化|提升))")
+
+
+def _mask_terms(text: str) -> tuple[str, dict[str, str]]:
+    """把「原材料」这类安全词换成占位符，避免被当成来源交代删掉。"""
+    book: dict[str, str] = {}
+    for i, w in enumerate(_SAFE_WORDS):
+        if w in text:
+            tok = f"\x01{i}\x01"
+            text = text.replace(w, tok)
+            book[tok] = w
+    return text, book
+
+
+def _unmask_terms(text: str, book: dict[str, str]) -> str:
+    for tok, w in book.items():
+        text = text.replace(tok, w)
+    return text
+
+
+def has_view_words(text: str) -> bool:
+    """给校验用：这段是不是还在交代资料来源。"""
+    masked, book = _mask_terms(text or "")
+    return bool(_VIEW_WORDS.search(masked))
+
+
+def polish_language(text: str) -> str:
+    """删掉正文里的来源交代与框架提示语，只留公司层面的判断。
+
+    两步：绝大多数情况只需擦掉「材料显示」这类前缀，句子本身就成立；
+    擦不干净的（「××方面，材料未披露。」）再按小句摘除。
+    """
+    t = (text or "").strip()
+    if not t:
+        return t
+    t = _FRAME_LEAD.sub("", t)
+    t = _VAGUE_DEGREE.sub("", t)
+    masked, book = _mask_terms(t)
+    for pat in _ERASE_RULES:
+        if pat.groups:
+            masked = pat.sub(lambda m: m.group(1) or "", masked)
+        else:
+            masked = pat.sub("", masked)
+    if not _VIEW_WORDS.search(masked):
+        return _unmask_terms(_tidy_punct(masked), book)
+
+    kept_sents: list[str] = []
+    for sent in re.split(r"(?<=[。！？])", masked):
+        if not sent.strip():
+            continue
+        if not _VIEW_WORDS.search(sent):
+            kept_sents.append(sent)
+            continue
+        # 句内还带来源交代：按逗号、分号拆小句，只摘掉带来源词的那几块
+        pieces = re.split(r"(?<=[，；])", sent)
+        kept = [p for p in pieces if not _VIEW_WORDS.search(p)]
+        kept = [p for p in kept if not _HANG_WORDS.match(p)]
+        if not kept:
+            continue  # 整句都是在交代来源，直接不要
+        body = "".join(kept).rstrip("，；、 ")
+        tail = sent[-1] if sent[-1] in "。！？" else ""
+        kept_sents.append(body + tail)
+    return _unmask_terms(_tidy_punct("".join(kept_sents)), book)
+
+
+def _tidy_punct(s: str) -> str:
+    s = re.sub(r"[，；、]{2,}", "，", s or "")
+    s = re.sub(r"^[，；、。\s]+", "", s)
+    s = re.sub(r"[，、]\s*(?=[。！？])", "", s)
+    s = re.sub(r"[，；、]+$", "", s)
+    s = re.sub(r"\s+", " ", s)
+    return s.strip()
+
+
 def segment_heading(i: int, name: str) -> str:
     n = clean_segment_name(name)
     if not n:
@@ -518,15 +630,22 @@ def _clean_fin_table(t: Any) -> dict | None:
     }
 
 
+def _lead(txt: str) -> str:
+    """段首加粗句：清理来源交代；万一被清空，宁可留原句，也不让段落没头。"""
+    raw = (txt or "").strip()
+    out = polish_language(raw)
+    return out or raw
+
+
 def _ensure_structure(draft: dict, facts: dict) -> dict:
     """补齐缺省字段，并把程序生成的表格塞进去。"""
     out: dict[str, Any] = {}
     out["company_full_name"] = draft.get("company_full_name") or facts.get("company", {}).get("name") or facts.get("query_name", "")
     out["internal_rating_code"] = draft.get("internal_rating_code") or ""
     out["traits"] = describe_traits(facts)
-    out["positive"] = [s.strip() for s in (draft.get("positive") or []) if str(s).strip()][:5]
-    out["concern"] = [s.strip() for s in (draft.get("concern") or []) if str(s).strip()][:5]
-    out["basic_info"] = (draft.get("basic_info") or "").strip()
+    out["positive"] = [s for s in (polish_language(x) for x in (draft.get("positive") or [])) if s][:5]
+    out["concern"] = [s for s in (polish_language(x) for x in (draft.get("concern") or [])) if s][:5]
+    out["basic_info"] = polish_language((draft.get("basic_info") or "").strip())
 
     c = draft.get("commentary") or {}
     ov = c.get("overview") or {}
@@ -536,19 +655,19 @@ def _ensure_structure(draft: dict, facts: dict) -> dict:
     if not _table_has_values(fin_table):
         fin_table = _clean_fin_table(c.get("financial_table")) or fin_table
     out["commentary"] = {
-        "overview": {"lead": (ov.get("lead") or "").strip(), "body": (ov.get("body") or "").strip()},
+        "overview": {"lead": _lead(ov.get("lead")), "body": polish_language(ov.get("body") or "")},
         "segment_table": build_segment_table(facts) or _clean_llm_table(c.get("segment_table")),
         "segments": [
             {"name": clean_segment_name(str(s.get("name") or "")),
-             "body": clean_segment_body(clean_segment_name(str(s.get("name") or "")),
-                                        str(s.get("body") or ""))}
+             "body": polish_language(clean_segment_body(clean_segment_name(str(s.get("name") or "")),
+                                                        str(s.get("body") or "")))}
             for s in (c.get("segments") or []) if str(s.get("body") or "").strip()
         ],
-        "asset": {"lead": (at.get("lead") or "").strip(), "body": (at.get("body") or "").strip()},
+        "asset": {"lead": _lead(at.get("lead")), "body": polish_language(at.get("body") or "")},
         "financial_table": fin_table,
-        "debt": {"lead": (db.get("lead") or "").strip(), "body": (db.get("body") or "").strip()},
+        "debt": {"lead": _lead(db.get("lead")), "body": polish_language(db.get("body") or "")},
         "special_topics": [
-            {"lead": str(t.get("lead") or "").strip(), "body": str(t.get("body") or "").strip()}
+            {"lead": _lead(t.get("lead")), "body": polish_language(t.get("body") or "")}
             for t in (c.get("special_topics") or []) if str(t.get("body") or "").strip()
         ],
     }
@@ -598,6 +717,16 @@ def _walk_numbers(obj, out: set[str], depth: int = 0):
 def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
     """数字溯源校验 + 摘要层数据扫描 + 结构检查。"""
     issues: list[str] = []
+
+    def _sketch(t: str, width: int = 60) -> str:
+        """取命中处前后一小段，提示里看得懂是哪句话。"""
+        masked, _book = _mask_terms(t or "")
+        m = _VIEW_WORDS.search(masked)
+        if not m:
+            return (t or "")[:width]
+        i = m.start()
+        return ("…" if i > 12 else "") + t[max(0, i - 12):i + width] + "…"
+
     # traits 也会进入提示词，模型引用其中的占比属正常，必须纳入可溯源集合
     corpus = (json.dumps(facts, ensure_ascii=False)
               + json.dumps(describe_traits(facts), ensure_ascii=False)
@@ -746,7 +875,25 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
             issues.append("财务表 " + "、".join(per for _i, per in miss_cols)
                           + " 有整列空缺，确认材料确实未披露该期次")
 
-    # 6) 结构检查
+    # 6) 叙述视角残留：程序已清理过一轮，还漏的就是句子结构太绕
+    left = [t for t in texts if has_view_words(t or "")]
+    if left:
+        sample = "；".join(_sketch(t) for t in left[:3])
+        issues.append(f"正文仍有 {len(left)} 处交代资料来源的表述（程序未能自动改写），"
+                      f"建议改为直接陈述或删去：{sample}")
+
+    # 7) 程度词与过短板块：程度词留给数据去说，板块段要有实质内容
+    vague = sorted({w for w in ("极大", "极强", "极弱", "恶劣", "严重恶化", "显著")
+                    for t in texts if w in (t or "")})
+    if vague:
+        issues.append("正文含不可核实的程度词 " + "、".join(vague) + "，建议换成数据或分级判断词")
+    thin = [(s.get("name"), len((s.get("body") or "").strip()))
+            for s in (c.get("segments") or []) if 0 < len((s.get("body") or "").strip()) < 120]
+    if thin:
+        issues.append("以下板块段内容偏薄，补一句经营数据或风险点，或与同类小板块并为一段："
+                      + "、".join(f"{n}（{k} 字）" for n, k in thin))
+
+    # 8) 结构检查
     if len(draft.get("positive") or []) < 3:
         issues.append("正面不足 3 条")
     if len(draft.get("concern") or []) < 3:
