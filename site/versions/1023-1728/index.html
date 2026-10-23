@@ -318,6 +318,88 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
 </style>
 </head>
 <body class="locked">
+
+<style id="vbar-css">
+/* 用文档流而不是 fixed：旧版页面自带 sticky header，fixed 会把它们压住 32px。
+   横幅跟着滚走也无妨——用户是从「版本」面板点进来的，本来就知道自己在看旧版。 */
+#vbar{position:relative;z-index:9;display:flex;align-items:center;
+  gap:10px;padding:0 14px;height:32px;background:#1b1f24;color:#e8ebef;
+  font:12px/32px -apple-system,"PingFang SC","Helvetica Neue",Arial,sans-serif;
+  box-shadow:0 1px 0 rgba(255,255,255,.06);box-sizing:border-box}
+#vbar .tag{flex:none;font-weight:600;font-size:11px;letter-spacing:.02em;
+  color:#111418;background:#e8ebef;border-radius:3px;padding:1px 6px;line-height:17px}
+#vbar .tt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#c8ced6}
+#vbar .tt b{color:#fff;font-weight:600}
+#vbar .st{flex:none;color:#8b939d;font-size:11px}
+#vbar .st.ok{color:#7fd0a2}
+#vbar .st.bad{color:#f0a6a6}
+#vbar a{flex:none;color:#cfe2ff;text-decoration:none;font-size:11.5px;
+  border:1px solid rgba(255,255,255,.22);border-radius:4px;padding:0 8px;line-height:20px;height:20px}
+#vbar a:hover{background:rgba(255,255,255,.10)}
+</style>
+
+<div id="vbar">
+  <span class="tag">v13 · 10-23 17:28</span>
+  <span class="tt"><b>搬到云端，不用再启本机服务</b>　发布成独立网址，手机和别的电脑都能开；顺带修掉「连不上本机服务」。</span>
+  <span class="st" id="vstat">正在连接…</span>
+  <a href="../">全部版本</a>
+  <a href="../../">回到最新版</a>
+</div>
+
+<script id="vbar-js">
+(function () {
+  var stat = document.getElementById("vstat");
+  var tok = "";
+  try { tok = localStorage.getItem("nrToken") || ""; } catch (e) {}
+  try {
+    var q = new URLSearchParams(location.search);
+    if (q.get("t")) { tok = q.get("t"); localStorage.setItem("nrToken", tok); }
+  } catch (e) {}
+
+  function setStat(text, cls) { if (stat) { stat.textContent = text; stat.className = "st " + (cls || ""); } }
+
+  // 旧版页面没有登录概念：补一层请求头，让它们能用当前服务的数据接口。
+  if (tok && window.fetch) {
+    var raw = window.fetch;
+    window.fetch = function (u, o) {
+      o = o || {};
+      try {
+        var h = new Headers(o.headers || {});
+        if (!h.has("Authorization")) h.set("Authorization", "Bearer " + tok);
+        o.headers = h;
+      } catch (e) {}
+      return raw.call(window, u, o).then(function (r) {
+        if (r.status === 401) setStat("登录已失效", "bad");
+        return r;
+      });
+    };
+    var xo = XMLHttpRequest.prototype.open,
+        xs = XMLHttpRequest.prototype.send,
+        xh = XMLHttpRequest.prototype.setRequestHeader;
+    XMLHttpRequest.prototype.open = function () { this.__vbody = 1; return xo.apply(this, arguments); };
+    XMLHttpRequest.prototype.setRequestHeader = function (k) {
+      if (String(k).toLowerCase() === "authorization") this.__vauth = 1;
+      return xh.apply(this, arguments);
+    };
+    XMLHttpRequest.prototype.send = function () {
+      if (!this.__vauth) { try { xh.call(this, "Authorization", "Bearer " + tok); } catch (e) {} }
+      return xs.apply(this, arguments);
+    };
+  }
+
+  // 探活要校验内容：网关爱用 200 + 错误页，只看状态码会误判。
+  if (window.fetch) {
+    fetch("/api/health", { cache: "no-store" })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d || !d.ok) throw new Error("bad");
+        setStat(tok ? "数据接口已连接" : "已连接，未登录", tok ? "ok" : "");
+      })
+      .catch(function () { setStat("连不上服务 · 需配合本机或云端服务运行", "bad"); });
+  }
+})();
+</script>
+
 <div id="gate" class="show">
   <div class="gcard">
     <div class="gt">内评简评报告</div>
@@ -403,7 +485,7 @@ const S = { company: "", facts: null, uploads: [], mstate: {}, loaded: [], draft
 let API_BASE = (() => {
   const custom = (localStorage.getItem("apiBase") || "").trim();
   if (custom) return custom.replace(/\/+$/, "");
-  return (location.protocol === "file:") ? "http://127.0.0.1:8770" : "";
+  return (location.protocol === "file:") ? "" : "";
 })();
 const apiUrl = (p) => API_BASE + p;
 
@@ -421,8 +503,8 @@ async function probeBase(base){
 async function resolveApiBase(){
   if((localStorage.getItem("apiBase") || "").trim()) return;   // 用户手填的优先
   if(await probeBase(API_BASE)) return;                        // 同源即可
-  if(!API_BASE && await probeBase("http://127.0.0.1:8770")){
-    API_BASE = "http://127.0.0.1:8770";                        // 静态站 → 回落本机
+  if(!API_BASE && await probeBase("")){
+    API_BASE = "";                        // 静态站 → 回落本机
   }
 }
 
@@ -570,7 +652,7 @@ async function pingConn(){
     const el = $("#conn");
     el.className = "show";
     el.innerHTML = `未连上本机服务。取数与生成需要本机运行后端：<code>python app/server.py</code>
-      <a href="http://127.0.0.1:8770" style="color:inherit;margin-left:8px">改用本机地址打开</a>`;
+      <a href="" style="color:inherit;margin-left:8px">改用本机地址打开</a>`;
   }
 }
 
@@ -1675,45 +1757,6 @@ function bootData(){
 }
 gateBoot();
 $("#company").addEventListener("keydown", e => { if(e.key === "Enter") doSearch(); });
-</script>
-
-<script>
-(async () => {
-  document.querySelector("#gatePw").value = "ceshi";
-  await doLogin();
-  await new Promise(r => setTimeout(r, 1200));
-  const r = await fetch("/api/history").then(x => x.json());
-  const rec = await fetch("/api/history/" + r.items[0].id).then(x => x.json());
-  S.draft = rec.draft; S.company = rec.company; S.loaded = (rec.materials||[]).map(m=>m.title);
-  renderDraft();
-  await new Promise(r => setTimeout(r, 300));
-  await toggleMail();
-  await new Promise(r => setTimeout(r, 900));
-  const out = {};
-  const host = document.querySelector("#mlHost");
-  out.exists = !!host;
-  if(host){
-    const b = host.getBoundingClientRect();
-    const top = document.elementFromPoint(b.left + b.width/2, b.top + b.height/2);
-    out.coverBy = top ? (top.id || top.className || top.tagName) : "none";
-    out.sameEl = top === host;
-    host.focus();
-    host.value = "smtp.qq.com";
-    host.dispatchEvent(new Event("input", {bubbles:true}));
-    await new Promise(r => setTimeout(r, 200));
-    out.afterInput = host.value;
-    out.stillInDom = document.contains(host);
-    out.panelOpen = document.querySelector("#mailPanel").classList.contains("show");
-    out.focused = document.activeElement === host;
-    const cs = getComputedStyle(host);
-    out.pe = cs.pointerEvents; out.vis = cs.visibility;
-    const panel = document.querySelector("#mailPanel");
-    out.panelPE = getComputedStyle(panel).pointerEvents;
-    out.panelZ = getComputedStyle(panel).zIndex;
-    out.panelRect = [Math.round(b.left), Math.round(b.top), Math.round(b.width), Math.round(b.height)];
-  }
-  document.title = "T|" + JSON.stringify(out);
-})();
 </script>
 </body>
 </html>

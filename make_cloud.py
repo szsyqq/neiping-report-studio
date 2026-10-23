@@ -82,6 +82,11 @@ def build(keep_pw: bool) -> None:
                  OUT / "01_模板" / "内评简评报告通用模板_v1.1.json")
     shutil.copy2(BASE / "requirements.txt", OUT / "requirements.txt")
 
+    # 版本历史：/versions 时间线页与 /v/<id>/ 快照都从 site/ 读，
+    # 云端没有这份就点开是 404。docs 里是模板与方法论页面，同理。
+    shutil.copy2(BASE / "versions.json", OUT / "versions.json")
+    shutil.copytree(BASE / "site", OUT / "site")
+
     # 口令：默认沿用上次的，除非要求重新生成
     pw_file = BASE / "_cloud_pw.txt"
     if keep_pw and pw_file.exists():

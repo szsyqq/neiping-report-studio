@@ -172,7 +172,27 @@ git add -A && git commit -m "update" && git push
 
 **为什么 Pages 上的页面必须连本机后端**：财汇 MCP 不返回 `Access-Control-Allow-Origin`，浏览器直连会被 CORS 拦死。因此在线页面定位是「入口」——打开后它去 ping `http://127.0.0.1:8770`，连通就正常用（跨域头已由 `server.py` 放开，服务只监听本机回环）；不通就显示启动命令，并允许在页面上改服务地址（存 `localStorage.apiBase`）。
 
-## 七、已知限制
+## 七、版本历史
+
+每次改动都留了一份**当时的页面**，不是截图，是那天的界面接现在的数据接口——点开能真的检索、生成、导出。
+
+- `GET /versions` 时间线：所有版本、每版改了什么、一键打开
+- `GET /v/<id>/` 某个版本的界面（也支持 `/versions/<id>/`）
+- 工作台页头「版本」：同一个清单，带登录态直接打开旧版
+
+**怎么加一版**：改 `versions.json`（id 用「月日-时分」，写标题、一句话、2–5 条改动），然后
+
+```
+python3 make_versions.py     # 从 git 取出该 tag 的 app/static/index.html，注入横幅后写 site/versions/<id>/
+```
+
+脚本做两件事：把旧页面里写死的 `http://127.0.0.1:8770` 抹成空串（快照由同一个服务提供，同源即可）；注入顶部横幅与一个薄垫片——旧版页面没有 token 概念，垫片给 `fetch` 与 `XMLHttpRequest` 补 `Authorization`，并把探活结果写在横幅上（「数据接口已连接」／「连不上服务」）。所以旧界面能对着当前后端跑，而不是一张死图。
+
+横幅用文档流而不是固定定位：旧页面自带 sticky 页头，固定横幅会压住它 32px。
+
+**这是「界面」的历史，不是「代码」的历史**。后端行为的变化（提示词、清洗规则）在不同版本的界面上看不出差别，要看 git 或下表的说明。`152ecf1` 那一版界面与上一版完全相同，清单里用 `sameAs` 指过去。
+
+## 八、已知限制
 
 - 本机 `models.json` 里目前只有 `deepseek-v4-flash` 可用（其余端点返回 403/404）。该模型是推理模型，生成时程序会显式关闭思考（`thinking: disabled`），否则推理 token 会挤占输出预算、正文为空。换模型可在页面下拉里选。
 - 默认不取结构化台账，财务表由模型从评级报告原文整理，数字虽经溯源校验，仍建议抽取两三行与原文核对。
@@ -181,7 +201,7 @@ git add -A && git commit -m "update" && git push
 - 标题行的内部评级代码（如 `【4B】`）属内部结论，程序不猜，导出前在页面上填；不填则显示 `【待填】`。
 - 单次生成是「一份材料集出稿」，不做多期版本比较；同一主体要出两版，改材料清单重跑即可。
 
-## 八、目录
+## 九、目录
 
 ```
 01_模板/    通用模板 md + json + docx 骨架（_archive/ 存 v1.0）
@@ -190,8 +210,10 @@ git add -A && git commit -m "update" && git push
 app/        server.py（HTTP 服务）jobs.py（长任务进度）docx_writer.py（排版）
             facts.py（公告检索与清单）generator.py（生成与校验）
             mcp_client.py（财汇）pdf_text.py（PDF 解析）llm.py（模型）usage.py（用量统计）
-site/       GitHub Pages 站点（index.html + docs/）
+site/       GitHub Pages 站点（index.html + docs/ + versions/ 历史快照）
 data/       下载的原始 PDF；uploads/ 存上传件；usage.json 是用量统计（不入库）
 output/     导出的 docx 与草稿 JSON
+versions.json  版本清单（每次改动一条，含标题与逐项说明）
+make_versions.py  从 git 生成 site/versions/ 快照与时间线页
 _scratch/   e2e.py 端到端自检（python _scratch/e2e.py）、md2html.py 文档构建
 ```

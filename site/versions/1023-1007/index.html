@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>内评简评报告工作台</title>
+<style>
+:root{
+  --bg:#0d1016; --panel:#151922; --panel2:#1b2130; --line:#262d3b;
+  --text:#e6ebf5; --muted:#8b96ab; --accent:#7aa2f7; --accent2:#4fd1c5;
+  --warn:#f0a25a; --danger:#f07178; --ok:#7ec699;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);
+  font-family:-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  font-size:14px;line-height:1.7}
+a{color:var(--accent)}
+header{padding:18px 26px;border-bottom:1px solid var(--line);display:flex;
+  align-items:center;gap:16px;background:linear-gradient(180deg,#141926,#0d1016)}
+header h1{font-size:16px;margin:0;font-weight:600;letter-spacing:.5px}
+header .sub{color:var(--muted);font-size:12px}
+main{display:grid;grid-template-columns:320px 1fr;gap:0;min-height:calc(100vh - 61px)}
+aside{border-right:1px solid var(--line);padding:18px;overflow-y:auto;max-height:calc(100vh - 61px)}
+section{padding:20px 26px;overflow-y:auto;max-height:calc(100vh - 61px)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:14px}
+.card h2{font-size:13px;margin:0 0 10px;color:var(--accent2);font-weight:600;letter-spacing:.3px}
+.card h3{font-size:12.5px;margin:14px 0 6px;color:var(--muted);font-weight:500}
+input[type=text],textarea,select{width:100%;background:var(--panel2);border:1px solid var(--line);
+  color:var(--text);border-radius:8px;padding:9px 11px;font:inherit;outline:none}
+input[type=text]:focus,textarea:focus,select:focus{border-color:var(--accent)}
+textarea{resize:vertical;min-height:68px;line-height:1.75}
+button{background:var(--accent);color:#0b1020;border:0;border-radius:8px;padding:9px 16px;
+  font:inherit;font-weight:600;cursor:pointer}
+button.ghost{background:transparent;border:1px solid var(--line);color:var(--text);font-weight:500}
+button:disabled{opacity:.45;cursor:not-allowed}
+.row{display:flex;gap:8px;align-items:center}
+.muted{color:var(--muted);font-size:12px}
+.kv{display:grid;grid-template-columns:96px 1fr;gap:4px 10px;font-size:12.5px}
+.kv div:nth-child(odd){color:var(--muted)}
+.pill{display:inline-block;padding:1px 8px;border-radius:999px;background:#222a3a;
+  color:var(--muted);font-size:11px;margin-right:6px}
+.list-item{display:flex;gap:8px;align-items:flex-start;padding:7px 0;border-bottom:1px dashed var(--line);font-size:12.5px}
+.list-item:last-child{border-bottom:0}
+.list-item input{margin-top:4px}
+.list-item .t{flex:1}
+.steps{counter-reset:s;font-size:12.5px}
+.steps li{list-style:none;margin:0 0 8px;color:var(--muted);display:flex;gap:8px}
+.steps li b{color:var(--text);font-weight:600}
+.steps li.done b{color:var(--ok)}
+#status{position:fixed;right:22px;bottom:20px;background:var(--panel2);border:1px solid var(--line);
+  border-radius:10px;padding:10px 16px;font-size:12.5px;display:none;max-width:420px;box-shadow:0 8px 30px #0008}
+#status.show{display:block}
+#status.err{border-color:var(--danger);color:#ffd7d9}
+.seg{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:10px;background:#131722}
+.seg .head{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+.seg .head input{flex:0 0 180px}
+.tbl{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}
+.tbl th,.tbl td{border:1px solid var(--line);padding:5px 8px}
+.tbl th{background:#1c2231;color:var(--muted);font-weight:500;text-align:center}
+.tbl td.n{text-align:right;font-variant-numeric:tabular-nums}
+.tbl td:first-child{text-align:left}
+.badge{font-size:11px;padding:1px 7px;border-radius:6px;background:#243049;color:var(--accent)}
+.issues li{margin-bottom:5px;color:var(--warn);font-size:12.5px}
+.issues li.bad{color:var(--danger)}
+label.lbl{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.conn{display:none;padding:10px 18px;font-size:13px;line-height:1.7;background:#2a2416;color:#f0c674;border-bottom:1px solid #4a3c1c}
+.conn.show{display:block}
+.conn code{background:#00000040;padding:1px 5px;border-radius:4px;font-size:12px}
+.conn a{color:#ffd479}
+.doclink{color:var(--muted);font-size:12.5px;text-decoration:none;border:1px solid var(--line);
+  padding:3px 9px;border-radius:7px;margin-left:8px;white-space:nowrap}
+.doclink:hover{color:var(--accent);border-color:var(--accent)}
+@media(max-width:1100px){main{grid-template-columns:1fr}aside{max-height:none;border-right:0;border-bottom:1px solid var(--line)}}
+</style>
+</head>
+<body>
+
+<style id="vbar-css">
+/* 用文档流而不是 fixed：旧版页面自带 sticky header，fixed 会把它们压住 32px。
+   横幅跟着滚走也无妨——用户是从「版本」面板点进来的，本来就知道自己在看旧版。 */
+#vbar{position:relative;z-index:9;display:flex;align-items:center;
+  gap:10px;padding:0 14px;height:32px;background:#1b1f24;color:#e8ebef;
+  font:12px/32px -apple-system,"PingFang SC","Helvetica Neue",Arial,sans-serif;
+  box-shadow:0 1px 0 rgba(255,255,255,.06);box-sizing:border-box}
+#vbar .tag{flex:none;font-weight:600;font-size:11px;letter-spacing:.02em;
+  color:#111418;background:#e8ebef;border-radius:3px;padding:1px 6px;line-height:17px}
+#vbar .tt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#c8ced6}
+#vbar .tt b{color:#fff;font-weight:600}
+#vbar .st{flex:none;color:#8b939d;font-size:11px}
+#vbar .st.ok{color:#7fd0a2}
+#vbar .st.bad{color:#f0a6a6}
+#vbar a{flex:none;color:#cfe2ff;text-decoration:none;font-size:11.5px;
+  border:1px solid rgba(255,255,255,.22);border-radius:4px;padding:0 8px;line-height:20px;height:20px}
+#vbar a:hover{background:rgba(255,255,255,.10)}
+</style>
+
+<div id="vbar">
+  <span class="tag">v1 · 10-23 10:07</span>
+  <span class="tt"><b>第一版：能用的简评模板</b>　定下不绑行业的四段式模板，并把取数、成稿、导出、发布串成一条链。</span>
+  <span class="st" id="vstat">正在连接…</span>
+  <a href="../">全部版本</a>
+  <a href="../../">回到最新版</a>
+</div>
+
+<script id="vbar-js">
+(function () {
+  var stat = document.getElementById("vstat");
+  var tok = "";
+  try { tok = localStorage.getItem("nrToken") || ""; } catch (e) {}
+  try {
+    var q = new URLSearchParams(location.search);
+    if (q.get("t")) { tok = q.get("t"); localStorage.setItem("nrToken", tok); }
+  } catch (e) {}
+
+  function setStat(text, cls) { if (stat) { stat.textContent = text; stat.className = "st " + (cls || ""); } }
+
+  // 旧版页面没有登录概念：补一层请求头，让它们能用当前服务的数据接口。
+  if (tok && window.fetch) {
+    var raw = window.fetch;
+    window.fetch = function (u, o) {
+      o = o || {};
+      try {
+        var h = new Headers(o.headers || {});
+        if (!h.has("Authorization")) h.set("Authorization", "Bearer " + tok);
+        o.headers = h;
+      } catch (e) {}
+      return raw.call(window, u, o).then(function (r) {
+        if (r.status === 401) setStat("登录已失效", "bad");
+        return r;
+      });
+    };
+    var xo = XMLHttpRequest.prototype.open,
+        xs = XMLHttpRequest.prototype.send,
+        xh = XMLHttpRequest.prototype.setRequestHeader;
+    XMLHttpRequest.prototype.open = function () { this.__vbody = 1; return xo.apply(this, arguments); };
+    XMLHttpRequest.prototype.setRequestHeader = function (k) {
+      if (String(k).toLowerCase() === "authorization") this.__vauth = 1;
+      return xh.apply(this, arguments);
+    };
+    XMLHttpRequest.prototype.send = function () {
+      if (!this.__vauth) { try { xh.call(this, "Authorization", "Bearer " + tok); } catch (e) {} }
+      return xs.apply(this, arguments);
+    };
+  }
+
+  // 探活要校验内容：网关爱用 200 + 错误页，只看状态码会误判。
+  if (window.fetch) {
+    fetch("/api/health", { cache: "no-store" })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d || !d.ok) throw new Error("bad");
+        setStat(tok ? "数据接口已连接" : "已连接，未登录", tok ? "ok" : "");
+      })
+      .catch(function () { setStat("连不上服务 · 需配合本机或云端服务运行", "bad"); });
+  }
+})();
+</script>
+
+<div id="conn" class="conn"></div>
+<header>
+  <h1>内评简评报告工作台</h1>
+  <span class="sub">财汇 MCP 取数 · 通用模板 v1.1 · 方法论 v1.1</span>
+  <span style="flex:1"></span>
+  <a class="doclink" href="docs/template-v1.1.html" target="_blank">模板</a>
+  <a class="doclink" href="docs/method-v1.1.html" target="_blank">方法论</a>
+  <a class="doclink" href="docs/template-v1.1.docx" target="_blank">骨架 docx</a>
+  <span class="muted" id="modelHint" style="margin-left:12px">模型加载中…</span>
+</header>
+
+<main>
+<aside>
+  <div class="card">
+    <h2>流程</h2>
+    <ol class="steps" id="steps">
+      <li id="s1"><b>① 检索主体</b><span>财汇查档案、股权、评级、债券</span></li>
+      <li id="s2"><b>② 拉取材料</b><span>跟踪评级报告、募集说明书、年报</span></li>
+      <li id="s3"><b>③ 生成草稿</b><span>表格来自台账，文字来自材料</span></li>
+      <li id="s4"><b>④ 校对导出</b><span>改判断句，导出 docx</span></li>
+    </ol>
+  </div>
+  <div class="card">
+    <h2>主体</h2>
+    <input type="text" id="company" placeholder="输入企业全称，例如 无锡苏南国际机场集团有限公司" />
+    <div class="row" style="margin-top:8px">
+      <button id="btnSearch" onclick="search()">检索</button>
+      <button class="ghost" onclick="quickFill()">示例</button>
+    </div>
+    <div id="companyMeta" class="muted" style="margin-top:10px"></div>
+  </div>
+  <div class="card" id="factCard" style="display:none">
+    <h2>事实台账</h2>
+    <div id="facts"></div>
+  </div>
+  <div class="card" id="matCard" style="display:none">
+    <h2>可用材料</h2>
+    <div id="materials"></div>
+    <button class="ghost" style="margin-top:10px;width:100%" onclick="fetchMaterials()">拉取选中材料</button>
+    <div class="muted" id="matStat" style="margin-top:8px"></div>
+  </div>
+  <div class="card" id="genCard" style="display:none">
+    <h2>生成</h2>
+    <label class="lbl">模型</label>
+    <select id="model"></select>
+    <div class="row" style="margin-top:10px">
+      <button id="btnGen" onclick="generate()">生成草稿</button>
+      <button class="ghost" onclick="copyPrompt()">复制提示词</button>
+    </div>
+    <div class="muted" style="margin-top:8px">生成约需 1–3 分钟，请勿关闭页面</div>
+  </div>
+</aside>
+
+<section>
+  <div id="empty" class="card">
+    <h2>开始</h2>
+    <p class="muted" style="margin:0">左侧输入企业全称点「检索」，程序会通过财汇 MCP 拉取企业档案、股权、评级历史、存量债券与财务指标，再列出可下载的跟踪评级报告与募集说明书。拉取材料后生成草稿，正文可直接在此编辑，最后导出 Word。</p>
+  </div>
+  <div id="draftArea" style="display:none"></div>
+</section>
+</main>
+
+<div id="status"></div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+let STATE = { company: "", facts: null, materials: [], draft: null };
+
+// 同源直接访问（本机跑 server.py）时不加前缀；从 GitHub Pages 打开时指向本机后端。
+const API_BASE = (() => {
+  const h = location.hostname;
+  if (h === "127.0.0.1" || h === "localhost" || h === "") return "";
+  return (localStorage.getItem("apiBase") || "").replace(/\/+$/, "");
+})();
+const apiUrl = (p) => API_BASE + p;
+
+async function pingConn(){
+  if (!API_BASE) return true;
+  const el = $("#conn");
+  try{
+    const r = await fetch(apiUrl("/api/health"), { mode: "cors" });
+    if (!r.ok) throw new Error();
+    el.className = "conn";
+    el.textContent = "";
+    return true;
+  }catch(e){
+    el.className = "conn show";
+    el.innerHTML = `未连上本机服务（当前配置：${esc(API_BASE)}）。本页托管在 GitHub Pages，取数与生成需要本机跑后端：
+      <br><code>cd 评级报告外部自动生成 &amp;&amp; python app/server.py</code>
+      <br>启动后可直接 <a href="">用 127.0.0.1:8770 打开</a>（同源，最稳），或在下面改服务地址：
+      <div style="margin-top:8px"><input id="apiBaseIn" placeholder="" style="max-width:260px">
+      <button class="ghost" onclick="setApiBase()">保存</button></div>`;
+    return false;
+  }
+}
+function setApiBase(){
+  const v = ($("#apiBaseIn").value || "").trim();
+  if (!v) return;
+  localStorage.setItem("apiBase", v);
+  location.reload();
+}
+
+function status(msg, isErr) {
+  const el = $("#status");
+  el.textContent = msg;
+  el.className = "show" + (isErr ? " err" : "");
+  if (!isErr) setTimeout(() => { if (el.textContent === msg) el.className = ""; }, 6000);
+}
+async function api(path, body) {
+  const r = await fetch(apiUrl(path), { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body || {}) });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok || data.error) throw new Error(data.error || ("HTTP " + r.status));
+  return data;
+}
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+function step(n){ for(let i=1;i<=4;i++) $("#s"+i).classList.toggle("done", i<=n); }
+
+async function loadModels(){
+  try{
+    const d = await (await fetch(apiUrl("/api/models"))).json();
+    const sel = $("#model");
+    sel.innerHTML = d.models.map(m=>`<option value="${esc(m.id)}" ${m.id===d.default?"selected":""}>${esc(m.name)}${m.context?` · ${Math.round(m.context/1000)}k`:""}</option>`).join("");
+    $("#modelHint").textContent = d.models.length ? `${d.models.length} 个可用模型` : "未配置模型";
+  }catch(e){ $("#modelHint").textContent = "未连接本机服务"; }
+}
+function quickFill(){ $("#company").value = "无锡苏南国际机场集团有限公司"; }
+
+async function search(){
+  const company = $("#company").value.trim();
+  if(!company) return status("请先输入企业名称", true);
+  $("#btnSearch").disabled = true;
+  status("正在检索 " + company + " …");
+  try{
+    const d = await api("/api/search", { company });
+    STATE.company = company; STATE.facts = d.facts; STATE.materials = [];
+    step(1);
+    renderFacts(d.facts);
+    renderMaterials(d.facts);
+    $("#factCard").style.display = "block";
+    $("#matCard").style.display = "block";
+    $("#genCard").style.display = "block";
+    $("#empty").style.display = "none";
+    status("检索完成：" + d.company);
+  }catch(e){ status("检索失败：" + e.message, true); }
+  finally{ $("#btnSearch").disabled = false; }
+}
+
+function renderFacts(f){
+  const ind = (f.company && f.company.indicators) || {};
+  const ctrl = (f.equity && f.equity.controller) || {};
+  const holders = (f.equity && f.equity.shareholders) || [];
+  const ratings = f.ratings || [];
+  const bonds = f.bonds || [];
+  const fin = (f.financials && f.financials.data) || {};
+  const periods = (f.financials && f.financials.periods) || [];
+  let html = `<div class="kv">
+    <div>名称</div><div>${esc(f.company && f.company.name)}</div>
+    <div>信用代码</div><div>${esc(f.company && f.company.credit_code)}</div>
+    <div>实控人</div><div>${esc(ctrl["实际控制人名称"] || "—")}</div>
+    <div>持股</div><div>${esc(ctrl["持股比例（直接+间接）"] || "—")}</div>
+    <div>注册资本</div><div>${esc(ind["注册资本"] || "—")} 万元</div>
+    <div>所属行业</div><div>${esc(ind["所属行业"] || "—")}</div>
+    <div>是否城投</div><div>${esc(ind["是否城投"] || "—")}</div>
+    </div>`;
+  if(holders.length){
+    html += `<h3>直接股东</h3><div class="muted">` +
+      holders.map(h=>`${esc(h["股东名称"])} ${esc(h["持股比例"])}%`).join("　") + `</div>`;
+  }
+  if(ratings.length){
+    const r = ratings[0];
+    html += `<h3>最新外部评级</h3><div class="muted">${esc(r["评级机构名称"])} ${esc(r["主体评级"])}/${esc(r["评级展望"]||"")} · ${esc(r["评级日期"])}</div>`;
+  }
+  if(bonds.length){
+    html += `<h3>存量债券 ${bonds.length} 只</h3><div class="muted">` +
+      bonds.slice(0,6).map(b=>esc(b["债券简称"]||"")).join("、") + (bonds.length>6?"…":"") + `</div>`;
+  }
+  if(periods.length){
+    html += `<h3>财务台账（亿元）</h3>`;
+    for(const p of periods.slice(0,3)){
+      const d = fin[p] || {};
+      html += `<div class="muted" style="margin-bottom:4px">${esc(p)}：总资产 ${d["总资产"]??"—"} / 负债 ${d["总负债"]??"—"} / 收入 ${d["营业总收入"]??"—"} / 净利润 ${d["净利润"]??"—"} / 经营现金流 ${d["经营现金流"]??"—"}</div>`;
+    }
+  }
+  if((f.notes||[]).length){
+    html += `<h3>提示</h3><div class="muted">${f.notes.map(esc).join("<br>")}</div>`;
+  }
+  $("#facts").innerHTML = html;
+}
+
+function renderMaterials(f){
+  const ms = f.materials || {};
+  const order = ["跟踪评级报告","募集说明书","年度报告","半年报","季度报告","审计报告"];
+  let html = "";
+  for(const k of order){
+    const arr = ms[k] || [];
+    if(!arr.length) continue;
+    html += `<h3>${k}（${arr.length}）</h3>`;
+    arr.slice(0,4).forEach((m,i)=>{
+      const checked = (k==="跟踪评级报告"&&i===0) || (k==="募集说明书"&&i===0) || (k==="年度报告"&&i===0);
+      html += `<label class="list-item"><input type="checkbox" class="mchk" data-url="${esc(m.url)}" data-title="${esc(m.title)}" ${checked?"checked":""}/>
+        <span class="t">${esc(m.title)}<br><span class="muted">${esc(m.date)} · ${esc(m.source||"")}</span></span></label>`;
+    });
+  }
+  $("#materials").innerHTML = html || `<div class="muted">未检索到可用材料，可先在 WorkBuddy 里手动取 PDF</div>`;
+}
+
+async function fetchMaterials(){
+  const picks = [...document.querySelectorAll(".mchk:checked")].map(el=>({url:el.dataset.url,title:el.dataset.title}));
+  if(!picks.length) return status("请至少勾选一份材料", true);
+  status("正在下载并解析 " + picks.length + " 份材料 …");
+  try{
+    const d = await api("/api/fetch", { company: STATE.company, materials: picks });
+    STATE.materials = d.loaded || [];
+    step(2);
+    const lines = d.materials.map(m => m.error ? `✗ ${m.title}：${m.error}` : `✓ ${m.title}（${m.pages}页，摘录${m.chars}字）`);
+    $("#matStat").innerHTML = lines.map(esc).join("<br>");
+    status("材料就绪：" + STATE.materials.length + " 份");
+  }catch(e){ status("拉取失败：" + e.message, true); }
+}
+
+async function generate(){
+  if(!STATE.materials.length) return status("请先拉取材料", true);
+  $("#btnGen").disabled = true;
+  status("正在生成草稿（1–3 分钟）…");
+  try{
+    const d = await api("/api/generate", { company: STATE.company, model: $("#model").value });
+    STATE.draft = d.draft;
+    step(3);
+    renderDraft();
+    status("草稿已生成，可直接编辑");
+  }catch(e){ status("生成失败：" + e.message, true); }
+  finally{ $("#btnGen").disabled = false; }
+}
+
+function ta(id, val, rows){
+  return `<textarea id="${id}" rows="${rows||4}">${esc(val||"")}</textarea>`;
+}
+function tableHtml(t, firstCol){
+  if(!t || !t.rows) return "";
+  const head = t.periods ? ["项目", ...t.periods] : (t.header || []);
+  let h = `<div class="muted" style="text-align:right">${esc(t.unit_line||"单位：亿元")}</div><table class="tbl"><thead><tr>` +
+    head.map(x=>`<th>${esc(x)}</th>`).join("") + `</tr></thead><tbody>`;
+  for(const r of t.rows){
+    h += `<tr>` + r.map((c,i)=>`<td class="${i===0?'':'n'}">${esc(c)}</td>`).join("") + `</tr>`;
+  }
+  return h + `</tbody></table>`;
+}
+
+function renderDraft(){
+  const d = STATE.draft, c = d.commentary || {};
+  const v = d.validation || {};
+  let h = `<div class="card">
+    <h2>草稿</h2>
+    <label class="lbl">标题行：企业全称与内部评级代码</label>
+    <div class="row">
+      <input type="text" id="d-company" value="${esc(d.company_full_name)}" style="flex:2"/>
+      <input type="text" id="d-code" value="${esc(d.internal_rating_code)}" placeholder="内部评级代码，如 4B" style="flex:1"/>
+    </div>
+    <div class="muted" style="margin-top:6px">财务表 ${(d.commentary&&d.commentary.financial_table&&d.commentary.financial_table.rows||[]).length} 行 · 正文约 ${v.body_chars||0} 字</div>
+  </div>`;
+
+  if((v.issues||[]).length){
+    h += `<div class="card"><h2>校验提示</h2><ul class="issues">` +
+      v.issues.map(x=>`<li class="${/未找到同值|不足|为空/.test(x)?'bad':''}">${esc(x)}</li>`).join("") + `</ul></div>`;
+  }
+
+  h += `<div class="card"><h2>摘要层</h2>
+    <label class="lbl">正面（3–5 条，纯定性，不写数字）</label><div id="d-pos"></div>
+    <button class="ghost" onclick="addItem('pos')">+ 加一条</button>
+    <label class="lbl" style="margin-top:16px">关注（3–5 条，纯定性，一条一事）</label><div id="d-con"></div>
+    <button class="ghost" onclick="addItem('con')">+ 加一条</button>
+  </div>`;
+
+  h += `<div class="card"><h2>1、基本情况</h2>${ta("d-basic", d.basic_info, 5)}</div>`;
+
+  h += `<div class="card"><h2>2、点评 · 总述段</h2>
+    <label class="lbl">加粗汇总句（判断，不带数字）</label>${ta("d-ov-lead", c.overview && c.overview.lead, 2)}
+    <label class="lbl">正文</label>${ta("d-ov-body", c.overview && c.overview.body, 8)}
+  </div>`;
+
+  h += `<div class="card"><h2>业务构成表 <span class="badge">由台账生成</span></h2>${tableHtml(c.segment_table) || '<div class="muted">台账无主营构成数据，可手工补表</div>'}</div>`;
+
+  h += `<div class="card"><h2>分部业务段</h2><div id="d-segs"></div>
+    <button class="ghost" onclick="addSeg()">+ 加一个板块</button></div>`;
+
+  h += `<div class="card"><h2>资产段</h2>
+    <label class="lbl">加粗汇总句</label>${ta("d-as-lead", c.asset && c.asset.lead, 2)}
+    <label class="lbl">正文</label>${ta("d-as-body", c.asset && c.asset.body, 7)}
+  </div>`;
+
+  h += `<div class="card"><h2>主要财务数据和财务指标 <span class="badge">由台账生成</span></h2>${tableHtml(c.financial_table)}</div>`;
+
+  h += `<div class="card"><h2>债务段</h2>
+    <label class="lbl">加粗汇总句</label>${ta("d-db-lead", c.debt && c.debt.lead, 2)}
+    <label class="lbl">正文</label>${ta("d-db-body", c.debt && c.debt.body, 8)}
+  </div>`;
+
+  h += `<div class="card"><h2>或有／专题段（可空）</h2><div id="d-topics"></div>
+    <button class="ghost" onclick="addTopic()">+ 加一段</button></div>`;
+
+  if((d.data_notes||[]).length || (d.sources||[]).length){
+    h += `<div class="card"><h2>模型标注</h2>`;
+    if((d.data_notes||[]).length) h += `<h3>口径与不确定处</h3><ul class="issues">` + d.data_notes.map(x=>`<li>${esc(x)}</li>`).join("") + `</ul>`;
+    if((d.sources||[]).length) h += `<h3>出处</h3><div class="muted">` + d.sources.map(s=>`${esc(s.claim||"")} — ${esc(s.where||"")}`).join("<br>") + `</div>`;
+    h += `</div>`;
+  }
+
+  h += `<div class="card" style="position:sticky;bottom:0;background:var(--panel)">
+    <div class="row"><button onclick="exportDocx()">导出 Word</button>
+    <button class="ghost" onclick="copyPrompt()">复制提示词</button>
+    <span class="muted" id="exportHint"></span></div></div>`;
+
+  $("#draftArea").innerHTML = h;
+  $("#draftArea").style.display = "block";
+  renderList("pos", d.positive || []);
+  renderList("con", d.concern || []);
+  renderSegs(c.segments || []);
+  renderTopics(c.special_topics || []);
+}
+
+function renderList(kind, items){
+  const box = $(kind==="pos" ? "#d-pos" : "#d-con");
+  box.innerHTML = items.map((t,i)=>`<div class="row" style="margin-bottom:6px">
+    <span class="muted" style="width:22px">${i+1}）</span>
+    <textarea class="d-item-${kind}" rows="2">${esc(t)}</textarea>
+    <button class="ghost" onclick="this.parentNode.remove()">×</button></div>`).join("");
+}
+function addItem(kind){
+  const box = $(kind==="pos" ? "#d-pos" : "#d-con");
+  const div = document.createElement("div");
+  div.className = "row"; div.style.marginBottom = "6px";
+  div.innerHTML = `<span class="muted" style="width:22px"></span><textarea class="d-item-${kind}" rows="2"></textarea><button class="ghost" onclick="this.parentNode.remove()">×</button>`;
+  box.appendChild(div);
+}
+function renderSegs(segs){
+  const box = $("#d-segs");
+  box.innerHTML = segs.map((s,i)=>`<div class="seg" data-seg>
+    <div class="head"><span class="muted">${i+1}）</span>
+      <input type="text" class="seg-name" value="${esc(s.name)}" placeholder="板块名，如 航空性"/>
+      <button class="ghost" onclick="this.closest('.seg').remove()">删除</button></div>
+    <textarea class="seg-body" rows="7">${esc(s.body)}</textarea></div>`).join("");
+}
+function addSeg(){
+  const div = document.createElement("div");
+  div.className = "seg"; div.setAttribute("data-seg","");
+  div.innerHTML = `<div class="head"><span class="muted"></span>
+    <input type="text" class="seg-name" placeholder="板块名"/>
+    <button class="ghost" onclick="this.closest('.seg').remove()">删除</button></div>
+    <textarea class="seg-body" rows="7"></textarea>`;
+  $("#d-segs").appendChild(div);
+}
+function renderTopics(ts){
+  $("#d-topics").innerHTML = ts.map(t=>`<div class="row" style="margin-bottom:8px;align-items:flex-start">
+    <div style="flex:1"><label class="lbl">加粗判断句</label><textarea class="topic-lead" rows="2">${esc(t.lead)}</textarea>
+    <label class="lbl">正文</label><textarea class="topic-body" rows="5">${esc(t.body)}</textarea></div>
+    <button class="ghost" onclick="this.parentNode.remove()">×</button></div>`).join("");
+}
+function addTopic(){
+  const div = document.createElement("div");
+  div.className = "row"; div.style.marginBottom = "8px"; div.style.alignItems = "flex-start";
+  div.innerHTML = `<div style="flex:1"><label class="lbl">加粗判断句</label><textarea class="topic-lead" rows="2"></textarea>
+    <label class="lbl">正文</label><textarea class="topic-body" rows="5"></textarea></div>
+    <button class="ghost" onclick="this.parentNode.remove()">×</button>`;
+  $("#d-topics").appendChild(div);
+}
+
+function collectDraft(){
+  const d = JSON.parse(JSON.stringify(STATE.draft));
+  d.company_full_name = $("#d-company").value.trim();
+  d.internal_rating_code = $("#d-code").value.trim();
+  d.positive = [...document.querySelectorAll(".d-item-pos")].map(t=>t.value.trim()).filter(Boolean);
+  d.concern = [...document.querySelectorAll(".d-item-con")].map(t=>t.value.trim()).filter(Boolean);
+  d.basic_info = $("#d-basic").value.trim();
+  d.commentary.overview = { lead: $("#d-ov-lead").value.trim(), body: $("#d-ov-body").value.trim() };
+  d.commentary.segments = [...document.querySelectorAll("[data-seg]")].map(s=>({
+    name: s.querySelector(".seg-name").value.trim(),
+    body: s.querySelector(".seg-body").value.trim()
+  })).filter(s=>s.body);
+  d.commentary.asset = { lead: $("#d-as-lead").value.trim(), body: $("#d-as-body").value.trim() };
+  d.commentary.debt = { lead: $("#d-db-lead").value.trim(), body: $("#d-db-body").value.trim() };
+  const topics = [];
+  document.querySelectorAll("#d-topics .row").forEach(r=>{
+    const lead = r.querySelector(".topic-lead"), body = r.querySelector(".topic-body");
+    if(lead && body && body.value.trim()) topics.push({lead: lead.value.trim(), body: body.value.trim()});
+  });
+  d.commentary.special_topics = topics;
+  return d;
+}
+
+async function exportDocx(){
+  try{
+    const d = collectDraft();
+    if(!d.company_full_name) return status("请填企业全称", true);
+    const r = await api("/api/export", { draft: d, company: STATE.company });
+    $("#exportHint").innerHTML = `已生成 <a href="${apiUrl(r.url)}" download>${esc(r.name)}</a>`;
+    step(4);
+    status("已导出：" + r.name);
+  }catch(e){ status("导出失败：" + e.message, true); }
+}
+
+async function copyPrompt(){
+  try{
+    const r = await api("/api/prompt", { company: STATE.company });
+    const text = `【系统提示】\n${r.system}\n\n【用户提示】\n${r.prompt}`;
+    await navigator.clipboard.writeText(text);
+    status("提示词已复制（约 " + Math.round(text.length/1000) + "k 字），可贴到 WorkBuddy 里用更强模型精修");
+  }catch(e){ status("复制失败：" + e.message, true); }
+}
+
+loadModels();
+pingConn();
+$("#company").addEventListener("keydown", e=>{ if(e.key==="Enter") search(); });
+</script>
+</body>
+</html>

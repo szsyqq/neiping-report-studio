@@ -43,6 +43,7 @@ STATIC = Path(__file__).resolve().parent / "static"
 OUTPUT = BASE / "output"
 OUTPUT.mkdir(parents=True, exist_ok=True)
 UPLOAD_DIR = BASE / "data" / "uploads"
+VERSIONS = BASE / "site" / "versions"
 DATA_DIR = BASE / "data"
 
 # 单份材料的摘录上限与本次生成的总上限（字符）。评级报告正文约 2.5 万字符，
@@ -585,6 +586,28 @@ class Handler(BaseHTTPRequestHandler):
             elif p.startswith("/docs/"):
                 # 模板与方法论的浏览页，与 GitHub Pages 上的同一份文件
                 self._file(BASE / "site" / "docs" / p[len("/docs/"):])
+            elif p == "/versions":
+                # 补斜杠，页面里的 ./<id>/ 才是相对于 /versions/ 解析
+                self._send(301, b"", "text/plain",
+                           {"Location": "/versions/" + (("?" + urlparse(self.path).query)
+                                                       if urlparse(self.path).query else "")})
+            elif p == "/versions/":
+                # 版本时间线：页面骨架公开，数据接口仍在闸门后
+                self._file(VERSIONS / "index.html")
+            elif p.startswith("/versions/") or p.startswith("/v/"):
+                # 历史版本快照：/v/<id>/ 与 /versions/<id>/ 等价
+                seg = p[len("/versions/"):] if p.startswith("/versions/") else p[len("/v/"):]
+                vid = seg.strip("/").split("/")[0]
+                if not re.fullmatch(r"[0-9A-Za-z_-]{1,32}", vid or ""):
+                    self._json({"error": "版本号不合法"}, 400)
+                else:
+                    fp = VERSIONS / vid / "index.html"
+                    if fp.is_file():
+                        self._file(fp)
+                    else:
+                        self._json({"error": f"没有这个版本：{vid}", "versions": "/versions"}, 404)
+            elif p == "/api/versions":
+                self._json(json.loads((BASE / "versions.json").read_text(encoding="utf-8")))
             elif p == "/api/session":
                 self._json({"authed": self._authed(),
                             "default_password": auth_mod.is_default()})

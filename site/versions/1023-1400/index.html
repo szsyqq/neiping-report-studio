@@ -194,34 +194,6 @@ select{width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 8px
 .pk-foot .sum{flex:1;color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums}
 .pk-foot .btn-sm{flex:none}
 
-/* ── 发送邮件面板 ───────────────────────────────────────────── */
-.mlpanel{position:absolute;right:0;top:calc(100% + 8px);width:392px;background:#fff;
-  border:1px solid var(--line);border-radius:8px;box-shadow:0 14px 34px rgba(17,20,24,.12);
-  padding:13px 14px 12px;display:none;z-index:46;text-align:left;white-space:normal;cursor:default}
-.mlpanel.show{display:block}
-.mlpanel .ml-h{font-size:12.5px;font-weight:600;display:flex;justify-content:space-between;gap:8px}
-.mlpanel .ml-h .x{border:0;background:transparent;color:#c9ced5;font-size:13px;padding:0 2px;line-height:1}
-.mlpanel .ml-h .x:hover{color:var(--red)}
-.mlpanel .ml-sub{color:var(--muted);font-size:11px;margin:2px 0 8px}
-.mlf{display:grid;grid-template-columns:44px 1fr;gap:6px 8px;align-items:center;margin-bottom:7px}
-.mlf label{font-size:11.5px;color:var(--muted);text-align:right}
-.mlf input,.mlf textarea{width:100%;font-family:inherit;font-size:12px;color:var(--ink);
-  border:1px solid var(--line);border-radius:4px;padding:4px 7px;outline:none;background:#fff}
-.mlf input:focus,.mlf textarea:focus{border-color:#cfd4dc}
-.mlf textarea{resize:vertical;min-height:52px;line-height:1.6}
-.mlf .full{grid-column:2}
-.mlatt{font-size:12px;border-top:1px solid var(--line2);padding-top:8px;margin-top:2px}
-.mlatt .r{display:flex;align-items:flex-start;gap:7px;padding:3px 0;cursor:pointer}
-.mlatt input{width:13px;height:13px;margin:2px 0 0;accent-color:var(--ink);flex:none}
-.mlatt .n{line-height:1.5;color:var(--ink2);word-break:break-all}
-.mlatt .n i{display:block;color:var(--muted);font-size:10.5px;font-style:normal}
-.ml-foot{display:flex;align-items:center;gap:8px;margin-top:10px}
-.ml-foot .st{flex:1;font-size:10.5px;color:var(--muted);line-height:1.4}
-.ml-foot .st.err{color:var(--red)}
-.ml-cfg{border-top:1px dashed var(--line);margin-top:9px;padding-top:9px}
-.ml-cfg .t{font-size:11px;color:var(--muted);margin-bottom:6px}
-.ml-cfg .hint{font-size:10.5px;color:var(--muted);line-height:1.6;margin-top:6px}
-
 .doc{font-family:"Kaiti SC","KaiTi","STKaiti","Songti SC","SimSun",serif;
   font-size:15.5px;line-height:1.82;color:#1b1f24}
 .doc-head{display:flex;align-items:baseline;gap:8px;margin-bottom:2px}
@@ -262,12 +234,14 @@ select{width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 8px
 .doc-table th:first-child,.doc-table td:first-child{text-align:left}
 .doc-table tr>*:last-child{border-right:0}
 .doc-table tbody tr:last-child>*{border-bottom:0}
-.seg{margin-bottom:2px;position:relative}
-.seg-line{line-height:1.85;padding:1px 16px 1px 0;border-radius:4px;outline:none;
-  white-space:pre-wrap;word-break:break-word}
-.seg-line:hover{background:#fcfcfd}
-.seg-line:focus{background:#fff;box-shadow:0 0 0 1px #e6e9ee inset}
-.seg .tool{position:absolute;right:0;top:4px}
+.seg{margin-bottom:2px}
+.seg-head{display:flex;align-items:baseline;gap:2px;line-height:1.6}
+.seg-body{margin-top:-3px}
+.seg-head .nm{border:0;background:transparent;outline:none;font-family:inherit;font-size:inherit;
+  font-weight:inherit;padding:1px 2px;border-bottom:1px dashed transparent;width:auto}
+.seg-head .nm:hover{border-bottom-color:var(--line)}
+.seg-head .nm:focus{border-bottom-color:#cfd4dc}
+.seg-head .suffix{color:var(--ink)}
 .topic{margin-bottom:6px}
 .notes{margin:14px 0 0;padding:10px 12px;border:1px solid var(--line);border-radius:6px;
   background:#fcfcfd;font-family:-apple-system,"PingFang SC",sans-serif;font-size:12px;
@@ -282,29 +256,7 @@ select{width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 8px
 #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(8px);
   background:#111418;color:#fff;font-size:12.5px;padding:8px 16px;border-radius:6px;
   opacity:0;pointer-events:none;transition:.2s;max-width:80vw}
-
-/* ── 口令闸门：没进来之前，整页糊在毛玻璃后面 ───────────────────── */
-#gate{position:fixed;inset:0;z-index:80;display:none;align-items:center;justify-content:center;
-  background:rgba(255,255,255,.5);
-  -webkit-backdrop-filter:blur(16px) saturate(.8);backdrop-filter:blur(16px) saturate(.8)}
-#gate.show{display:flex}
-body.locked{overflow:hidden}
-body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
-.gcard{width:330px;padding:26px 24px 20px;background:#fff;border:1px solid var(--line);
-  border-radius:10px;box-shadow:0 12px 40px rgba(17,20,24,.10),0 2px 8px rgba(17,20,24,.04);
-  text-align:center}
-.gcard .gt{font-size:15px;font-weight:700;letter-spacing:.5px}
-.gcard .gs{font-size:11.5px;color:var(--muted);margin:6px 0 16px;line-height:1.6}
-.gcard input{width:100%;height:34px;padding:0 10px;font-size:13.5px;font-family:inherit;
-  border:1px solid var(--line);border-radius:5px;outline:none;text-align:center;
-  letter-spacing:2px;background:#fff}
-.gcard input:focus{border-color:#cfd4dc;box-shadow:0 0 0 3px rgba(17,20,24,.04)}
-.gcard button{width:100%;height:34px;margin-top:10px;border:0;border-radius:5px;
-  background:#111418;color:#fff;font-size:13px;font-family:inherit;cursor:pointer}
-.gcard button:hover{background:#000}
-.gcard button:disabled{background:#c2c7cf;cursor:not-allowed}
-.gcard .gerr{min-height:16px;margin-top:8px;font-size:11.5px;color:var(--red)}
-.gcard .ghint{margin-top:12px;font-size:11px;color:var(--muted);line-height:1.6}#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 #toast.err{background:var(--red)}
 #conn{display:none;padding:8px 20px;font-size:12.5px;color:var(--amber);background:#fffbf0;
   border-bottom:1px solid #f3e6c8}
@@ -317,18 +269,89 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
 }
 </style>
 </head>
-<body class="locked">
-<div id="gate" class="show">
-  <div class="gcard">
-    <div class="gt">内评简评报告</div>
-    <div class="gs">请输入访问口令</div>
-    <input id="gatePw" type="password" autocomplete="current-password" placeholder="口令"
-      onkeydown="if(event.key==='Enter')doLogin()" />
-    <button id="gateGo" onclick="doLogin()">进入</button>
-    <div class="gerr" id="gateErr"></div>
-    <div class="ghint" id="gateHint"></div>
-  </div>
+<body>
+
+<style id="vbar-css">
+/* 用文档流而不是 fixed：旧版页面自带 sticky header，fixed 会把它们压住 32px。
+   横幅跟着滚走也无妨——用户是从「版本」面板点进来的，本来就知道自己在看旧版。 */
+#vbar{position:relative;z-index:9;display:flex;align-items:center;
+  gap:10px;padding:0 14px;height:32px;background:#1b1f24;color:#e8ebef;
+  font:12px/32px -apple-system,"PingFang SC","Helvetica Neue",Arial,sans-serif;
+  box-shadow:0 1px 0 rgba(255,255,255,.06);box-sizing:border-box}
+#vbar .tag{flex:none;font-weight:600;font-size:11px;letter-spacing:.02em;
+  color:#111418;background:#e8ebef;border-radius:3px;padding:1px 6px;line-height:17px}
+#vbar .tt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#c8ced6}
+#vbar .tt b{color:#fff;font-weight:600}
+#vbar .st{flex:none;color:#8b939d;font-size:11px}
+#vbar .st.ok{color:#7fd0a2}
+#vbar .st.bad{color:#f0a6a6}
+#vbar a{flex:none;color:#cfe2ff;text-decoration:none;font-size:11.5px;
+  border:1px solid rgba(255,255,255,.22);border-radius:4px;padding:0 8px;line-height:20px;height:20px}
+#vbar a:hover{background:rgba(255,255,255,.10)}
+</style>
+
+<div id="vbar">
+  <span class="tag">v7 · 10-23 14:00</span>
+  <span class="tt"><b>正文不再出现「材料未披露」「从外部条件看」</b>　根子是规则自相矛盾：一边要求不虚构，一边示范「未披露」这个写法。</span>
+  <span class="st" id="vstat">正在连接…</span>
+  <a href="../">全部版本</a>
+  <a href="../../">回到最新版</a>
 </div>
+
+<script id="vbar-js">
+(function () {
+  var stat = document.getElementById("vstat");
+  var tok = "";
+  try { tok = localStorage.getItem("nrToken") || ""; } catch (e) {}
+  try {
+    var q = new URLSearchParams(location.search);
+    if (q.get("t")) { tok = q.get("t"); localStorage.setItem("nrToken", tok); }
+  } catch (e) {}
+
+  function setStat(text, cls) { if (stat) { stat.textContent = text; stat.className = "st " + (cls || ""); } }
+
+  // 旧版页面没有登录概念：补一层请求头，让它们能用当前服务的数据接口。
+  if (tok && window.fetch) {
+    var raw = window.fetch;
+    window.fetch = function (u, o) {
+      o = o || {};
+      try {
+        var h = new Headers(o.headers || {});
+        if (!h.has("Authorization")) h.set("Authorization", "Bearer " + tok);
+        o.headers = h;
+      } catch (e) {}
+      return raw.call(window, u, o).then(function (r) {
+        if (r.status === 401) setStat("登录已失效", "bad");
+        return r;
+      });
+    };
+    var xo = XMLHttpRequest.prototype.open,
+        xs = XMLHttpRequest.prototype.send,
+        xh = XMLHttpRequest.prototype.setRequestHeader;
+    XMLHttpRequest.prototype.open = function () { this.__vbody = 1; return xo.apply(this, arguments); };
+    XMLHttpRequest.prototype.setRequestHeader = function (k) {
+      if (String(k).toLowerCase() === "authorization") this.__vauth = 1;
+      return xh.apply(this, arguments);
+    };
+    XMLHttpRequest.prototype.send = function () {
+      if (!this.__vauth) { try { xh.call(this, "Authorization", "Bearer " + tok); } catch (e) {} }
+      return xs.apply(this, arguments);
+    };
+  }
+
+  // 探活要校验内容：网关爱用 200 + 错误页，只看状态码会误判。
+  if (window.fetch) {
+    fetch("/api/health", { cache: "no-store" })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d || !d.ok) throw new Error("bad");
+        setStat(tok ? "数据接口已连接" : "已连接，未登录", tok ? "ok" : "");
+      })
+      .catch(function () { setStat("连不上服务 · 需配合本机或云端服务运行", "bad"); });
+  }
+})();
+</script>
+
 <div id="conn"></div>
 <header>
   <div class="brand">内评简评报告</div>
@@ -336,8 +359,6 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
   <button class="usage" id="usageBtn" onclick="toggleUsage(event)" title="点击查看调用明细">累计 0 次 · 财汇 0 点</button>
   <span class="sep"></span>
   <button class="usage" id="histBtn" onclick="toggleHistory(event)" title="查看生成过的报告">历史</button>
-  <span class="sep"></span>
-  <button class="usage" id="lockBtn" onclick="logout()" title="退出，重新需要口令">锁定</button>
   <span class="sep"></span>
   <a href="docs/template-v1.1.html" target="_blank">模板</a>
   <span class="sep"></span>
@@ -395,106 +416,12 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
 const $ = (s) => document.querySelector(s);
 const S = { company: "", facts: null, uploads: [], mstate: {}, loaded: [], draft: null, stats: null };
 
-/* 后端在哪：三种情况都要能自己认出来
-   1. 页面由后端自己发（本机 127.0.0.1 或云端域名）→ 同源，空串
-   2. 页面在 GitHub Pages 这类静态站 → 要连本机 127.0.0.1:8770（可用 localStorage.apiBase 改）
-   3. 用户在页面上手填过地址 → 以填的为准
-   靠「同源能不能打通」来判断，比按域名硬编码稳——换域名、换部署方式都不用改代码。 */
-let API_BASE = (() => {
-  const custom = (localStorage.getItem("apiBase") || "").trim();
-  if (custom) return custom.replace(/\/+$/, "");
-  return (location.protocol === "file:") ? "http://127.0.0.1:8770" : "";
+const API_BASE = (() => {
+  const h = location.hostname;
+  if (h === "127.0.0.1" || h === "localhost" || h === "") return "";
+  return (localStorage.getItem("apiBase") || "").replace(/\/+$/, "");
 })();
 const apiUrl = (p) => API_BASE + p;
-
-async function probeBase(base){
-  try{
-    const r = await fetch((base || "") + "/api/health", { cache: "no-store" });
-    if(!r.ok) return false;
-    // 分享链接的网关在缺 sharecode 时会回一个 200 的 HTML 提示页，
-    // 只看状态码会误判成「后端在」。必须确认回的是 JSON 且 ok:true。
-    const d = await r.json().catch(() => null);
-    return !!(d && d.ok);
-  }catch(e){ return false; }
-}
-
-async function resolveApiBase(){
-  if((localStorage.getItem("apiBase") || "").trim()) return;   // 用户手填的优先
-  if(await probeBase(API_BASE)) return;                        // 同源即可
-  if(!API_BASE && await probeBase("http://127.0.0.1:8770")){
-    API_BASE = "http://127.0.0.1:8770";                        // 静态站 → 回落本机
-  }
-}
-
-/* ── 访问口令 ──────────────────────────────────────────────────
-   服务端每个接口都要 token；token 放 localStorage，随请求头带过去。
-   下载走浏览器直接跳转（a[href]），带不了头，改用 ?t= 传。 */
-let TOKEN = localStorage.getItem("nrToken") || "";
-const authHead = () => TOKEN ? { Authorization: "Bearer " + TOKEN } : {};
-const dlUrl = (p) => apiUrl(p) + (TOKEN ? (p.includes("?") ? "&" : "?") + "t=" + encodeURIComponent(TOKEN) : "");
-
-const _fetch = window.fetch.bind(window);
-window.fetch = (u, o) => {
-  const opt = Object.assign({}, o || {});
-  opt.headers = Object.assign({}, (o && o.headers) || {}, authHead());
-  return _fetch(u, opt).then(r => {
-    if(r.status === 401) lockUI("登录已过期，请重新输入口令");
-    return r;
-  });
-};
-
-function lockUI(msg){
-  document.body.classList.add("locked");
-  $("#gate").classList.add("show");
-  $("#gateErr").textContent = msg || "";
-  setTimeout(() => { const el = $("#gatePw"); if(el) el.focus(); }, 60);
-}
-function unlockUI(){
-  document.body.classList.remove("locked");
-  $("#gate").classList.remove("show");
-  $("#gateErr").textContent = "";
-  const el = $("#gatePw"); if(el) el.value = "";
-}
-async function doLogin(){
-  const pw = ($("#gatePw").value || "").trim();
-  const btn = $("#gateGo");
-  if(!pw){ $("#gateErr").textContent = "请输入口令"; return; }
-  btn.disabled = true; $("#gateErr").textContent = "";
-  try{
-    const r = await _fetch(apiUrl("/api/login"), {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password: pw }) });
-    const d = await r.json().catch(() => ({}));
-    if(!r.ok || !d.token) throw new Error(d.error || "口令不对");
-    TOKEN = d.token;
-    localStorage.setItem("nrToken", TOKEN);
-    unlockUI();
-    if(d.default_password) toast("当前是默认口令 ceshi，建议改成自己的");
-    bootData();
-  }catch(e){
-    $("#gateErr").textContent = (API_BASE && /Failed to fetch|NetworkError/i.test(e.message))
-      ? "连不上本机服务，先运行 app/server.py"
-      : (e.message || "登录失败");
-  }finally{ btn.disabled = false; }
-}
-async function logout(){
-  try{ await api("/api/logout", {}); }catch(e){}
-  TOKEN = ""; localStorage.removeItem("nrToken");
-  lockUI("已退出");
-}
-async function gateBoot(){
-  // 页面本身是静态的，先定后端地址，再问服务端这个 token 还作不作数。
-  // 注意别在登录页上提示默认口令——那是给所有人看的。
-  await resolveApiBase();
-  try{
-    const r = await _fetch(apiUrl("/api/session"), { headers: authHead() });
-    const d = await r.json().catch(() => ({}));
-    if(d.authed){ unlockUI(); bootData(); return; }
-  }catch(e){
-    $("#gateErr").textContent = API_BASE ? "连不上本机服务，先运行 app/server.py" : "";
-  }
-  lockUI("");
-}
 
 const STEPS = [
   { key: "search", label: "检索主体" },
@@ -570,25 +497,15 @@ async function pingConn(){
     const el = $("#conn");
     el.className = "show";
     el.innerHTML = `未连上本机服务。取数与生成需要本机运行后端：<code>python app/server.py</code>
-      <a href="http://127.0.0.1:8770" style="color:inherit;margin-left:8px">改用本机地址打开</a>`;
+      <a href="" style="color:inherit;margin-left:8px">改用本机地址打开</a>`;
   }
 }
 
 async function loadModels(){
   try{
     const d = await (await fetch(apiUrl("/api/models"))).json();
-    if(!(d.models || []).length){
-      $("#model").innerHTML = `<option>没有可用模型</option>`;
-      return;
-    }
-    let h = d.models.map(m =>
+    $("#model").innerHTML = d.models.map(m =>
       `<option value="${esc(m.id)}" ${m.id === d.default ? "selected" : ""}>${esc(m.name)}</option>`).join("");
-    if(d.skipped) h += `<option disabled>另有 ${d.skipped} 个模型未通过验证</option>`;
-    $("#model").innerHTML = h;
-    const why = Object.entries(d.reasons || {});
-    $("#model").title = why.length
-      ? "未通过验证：\n" + why.map(([k, v]) => `${k} — ${v}`).join("\n")
-      : "";
   }catch(e){
     $("#model").innerHTML = `<option>未连接服务</option>`;
   }
@@ -765,7 +682,7 @@ async function restoreHistory(id){
 
 function histDocx(encoded){
   const a = document.createElement("a");
-  a.href = dlUrl("/download/" + encoded);
+  a.href = apiUrl("/download/" + encoded);
   a.download = decodeURIComponent(encoded);
   a.click();
 }
@@ -949,7 +866,6 @@ function uploadOne(file, u){
     const xhr = new XMLHttpRequest();
     xhr.open("POST", apiUrl("/api/upload?name=" + encodeURIComponent(file.name)));
     xhr.setRequestHeader("Content-Type", "application/pdf");
-    if(TOKEN) xhr.setRequestHeader("Authorization", "Bearer " + TOKEN);
     xhr.upload.onprogress = e => {
       if(!e.lengthComputable) return;
       u.pct = Math.round(e.loaded / e.total * 100);
@@ -1065,21 +981,6 @@ function fitSegName(el){
   for(const ch of (el.value || "")) w += /[\u2e80-\u9fff\uff00-\uffef]/.test(ch) ? 2 : 1;
   el.style.width = Math.max(2, w + 1) + "ch";
 }
-/* 分部段是整段可编辑：粘贴一律转纯文本，编辑后顺手记住板块名 */
-document.addEventListener("input", e => {
-  const line = e.target && e.target.closest && e.target.closest(".seg-line");
-  if(!line) return;
-  const p = parseSeg(line.innerText || line.textContent || "", line.dataset.name);
-  if(p.name) line.dataset.name = p.name;
-});
-document.addEventListener("paste", e => {
-  const line = e.target && e.target.closest && e.target.closest(".seg-line");
-  if(!line) return;
-  e.preventDefault();
-  const txt = (e.clipboardData || window.clipboardData).getData("text/plain")
-    .replace(/\s*\n+\s*/g, "");
-  document.execCommand("insertText", false, txt);
-});
 function tableHtml(t){
   if(!t || !t.rows) return "";
   const head = t.periods ? ["项目", ...t.periods] : (t.header || []);
@@ -1107,10 +1008,6 @@ function renderDraft(){
       <div class="acts">
         <button class="btn-sm" onclick="copyPrompt()">提示词</button>
         <button class="btn-sm solid" id="btnExport" onclick="exportDocx()">导出 Word</button>
-        <div class="pkgwrap">
-          <button class="btn-sm" id="btnMail" onclick="toggleMail(event)">发送邮件</button>
-          <div class="mlpanel" id="mailPanel"></div>
-        </div>
         <div class="pkgwrap">
           <button class="btn-sm" id="btnPkg" onclick="toggleBundle(event)">打包下载</button>
           <div class="pkgpanel" id="pkgPanel"></div>
@@ -1201,47 +1098,36 @@ function renumber(){
   });
 }
 
-/* 分部段：编号、板块名、正文在同一段里，像 Word 那样整段编辑 */
-function segText(name, body){
-  const n = (name || "").trim();
-  return (n ? n + segSuffix(n) : "") + (body || "").trim();
-}
-function parseSeg(raw, lastName){
-  const t = (raw || "").replace(/\u00a0/g, " ").trim();
-  const m = t.match(/^\s*\d+\s*[）)．.]?\s*([\s\S]*)$/);
-  let rest = m ? m[1] : t;
-  const d = rest.match(/^([^，。；：\n]{1,24}?)((?:业务|板块|产品|服务|行业)?方面[，,、：:])\s*/);
-  if(d) return { name: d[1].trim(), body: rest.slice(d[0].length).trim() };
-  return { name: (lastName || "").trim(), body: rest.trim() };
-}
 function renderSegs(segs){
   $("#d-segs").innerHTML = segs.map(s => `<div class="seg">
-    <div class="seg-line" contenteditable="plaintext-only" spellcheck="false"
-      data-name="${esc(s.name)}"></div>
-    <button class="tool" onclick="this.closest('.seg').remove();renumberSegs()">×</button>
+    <div class="seg-head">
+      <span class="num"></span>
+      <input class="nm seg-name" value="${esc(s.name)}" placeholder="板块名" spellcheck="false"
+        oninput="fitSegName(this);this.parentNode.querySelector('.suffix').textContent=segSuffix(this.value)"/>
+      <span class="suffix">${segSuffix(s.name)}</span>
+      <button class="tool" onclick="this.closest('.seg').remove();renumberSegs()">×</button>
+    </div>
+    <textarea class="ta seg-body" rows="5">${esc(s.body)}</textarea>
   </div>`).join("");
-  [...document.querySelectorAll("#d-segs .seg")].forEach((el, i) => {
-    const s = segs[i] || {};
-    el.querySelector(".seg-line").textContent = `${i + 1}）${segText(s.name, s.body)}`;
-  });
+  renumberSegs();
 }
 function addSeg(){
   const div = document.createElement("div");
   div.className = "seg";
-  div.innerHTML = `<div class="seg-line" contenteditable="plaintext-only" spellcheck="false"
-    data-name=""></div>
-    <button class="tool" onclick="this.closest('.seg').remove();renumberSegs()">×</button>`;
+  div.innerHTML = `<div class="seg-head"><span class="num"></span>
+    <input class="nm seg-name" placeholder="板块名" spellcheck="false"
+      oninput="fitSegName(this);this.parentNode.querySelector('.suffix').textContent=segSuffix(this.value)"/>
+    <span class="suffix">业务方面，</span>
+    <button class="tool" onclick="this.closest('.seg').remove();renumberSegs()">×</button></div>
+    <textarea class="ta seg-body" rows="5"></textarea>`;
   $("#d-segs").appendChild(div);
   renumberSegs();
-  const line = div.querySelector(".seg-line");
-  line.focus();
+  div.querySelector(".seg-name").focus();
 }
 function renumberSegs(){
   [...document.querySelectorAll("#d-segs .seg")].forEach((el, i) => {
-    const line = el.querySelector(".seg-line");
-    if(document.activeElement === line) return;   // 正在编辑的不动，免得光标跳走
-    const t = (line.textContent || "").replace(/^\s*\d+\s*[）)．.]?\s*/, "");
-    line.textContent = `${i + 1}）${t}`;
+    el.querySelector(".num").textContent = (i + 1) + "）";
+    fitSegName(el.querySelector(".seg-name"));
   });
 }
 
@@ -1279,10 +1165,10 @@ function collectDraft(){
   d.concern = [...document.querySelectorAll(".it-con")].map(t => t.value.trim()).filter(Boolean);
   d.basic_info = $(".ta.basic").value.trim();
   d.commentary.overview = { lead: $(".ta.ov-lead").value.trim(), body: $(".ta.ov-body").value.trim() };
-  d.commentary.segments = [...document.querySelectorAll("#d-segs .seg")].map(s => {
-    const line = s.querySelector(".seg-line");
-    return parseSeg(line.innerText || line.textContent || "", line.dataset.name);
-  }).filter(s => s.body);
+  d.commentary.segments = [...document.querySelectorAll("#d-segs .seg")].map(s => ({
+    name: s.querySelector(".seg-name").value.trim(),
+    body: s.querySelector(".seg-body").value.trim()
+  })).filter(s => s.body);
   d.commentary.asset = { lead: $(".ta.as-lead").value.trim(), body: $(".ta.as-body").value.trim() };
   d.commentary.debt = { lead: $(".ta.db-lead").value.trim(), body: $(".ta.db-body").value.trim() };
   d.commentary.special_topics = [...document.querySelectorAll("#d-topics .topic")].map(t => ({
@@ -1302,10 +1188,10 @@ async function exportDocx(){
     const r = await api("/api/export", { draft: d, company: S.company });
     setStep("export", { state: "done", pct: 100, detail: r.name });
     const a = document.createElement("a");
-    a.href = dlUrl(r.url);
+    a.href = apiUrl(r.url);
     a.download = r.name;
     a.click();
-    toast("已导出 " + r.name + (r.cleaned ? `（导出前清理 ${r.cleaned} 处重复或来源表述）` : ""));
+    toast("已导出 " + r.name);
     refreshUsage();
     btn.disabled = false;
     if(HIST.open) loadHistory();  // 记录里的「已导出」状态跟着更新
@@ -1325,182 +1211,6 @@ async function copyPrompt(){
   }catch(e){ toast(e.message, true); }
 }
 
-/* ---------------- 发送邮件 ---------------- */
-const MAIL = { open: false, cfg: null, busy: false, withPdf: false, docx: "" };
-
-function mailCompany(){
-  const el = $("#d-company");
-  return (el ? el.value.trim() : "") || S.company || $("#company").value.trim();
-}
-
-async function toggleMail(e){
-  if(e) e.stopPropagation();
-  if(MAIL.open){ closeMail(); return; }
-  MAIL.open = true;
-  $("#mailPanel").classList.add("show");
-  await loadMailPanel();
-}
-
-function closeMail(){
-  MAIL.open = false;
-  $("#mailPanel").classList.remove("show");
-}
-
-async function loadMailPanel(){
-  const panel = $("#mailPanel");
-  panel.innerHTML = `<div class="ml-h">发送邮件<span class="x" onclick="closeMail()">×</span></div>
-    <div class="ml-sub">正在读取发件配置…</div>`;
-  try{
-    MAIL.cfg = await (await fetch(apiUrl("/api/mail/config"))).json();
-  }catch(err){
-    MAIL.cfg = { ready: false, default_to: "" };
-  }
-  try{ await fetchFileList(); }catch(err){ /* 没有报告时也能发，附件现场排版 */ }
-  renderMailPanel();
-}
-
-function mailDocxOption(){
-  // 优先用已导出的最新一份；没有就现场排版
-  const docs = (PKG.data && PKG.data.docx) || [];
-  if(MAIL.docx) return { name: MAIL.docx, live: false };
-  if(docs.length) return { name: docs[0].name, live: false };
-  return { name: "", live: true };
-}
-
-function renderMailPanel(){
-  const cfg = MAIL.cfg || {};
-  const co = mailCompany() || (S.draft && S.draft.company_full_name) || "";
-  const d = mailDocxOption();
-  const pdfs = (PKG.data && PKG.data.materials) || [];
-  const to = (MAIL.to !== undefined ? MAIL.to : (cfg.default_to || ""));
-  const from = cfg.user || "";
-
-  let h = `<div class="ml-h">发送邮件<span class="x" onclick="closeMail()">×</span></div>
-    <div class="ml-sub">${cfg.ready
-      ? `发件人 ${esc(from)}${cfg.host ? " · " + esc(cfg.host) : ""}`
-      : "还没配置发件邮箱，先填下面的 SMTP 信息"}</div>
-    <div class="mlf">
-      <label>收件人</label>
-      <input id="mlTo" value="${esc(to)}" placeholder="多个邮箱用逗号分隔" spellcheck="false" />
-      <label>抄送</label>
-      <input id="mlCc" value="${esc(MAIL.cc || "")}" placeholder="可不填" spellcheck="false" />
-      <label>标题</label>
-      <input id="mlSubject" value="${esc(MAIL.subject !== undefined ? MAIL.subject : co)}" spellcheck="false" />
-      <label>正文</label>
-      <textarea id="mlBody" rows="3" placeholder="留空则自动生成一句说明">${esc(MAIL.body || "")}</textarea>
-    </div>
-    <div class="mlatt">
-      <label class="r"><input type="checkbox" checked disabled />
-        <span class="n">${d.live ? (esc(co) || "报告") + "内评简评报告.docx" : esc(d.name)}
-          <i>${d.live ? "尚未导出，发送时现场排版" : "报告正文"}</i></span></label>`;
-
-  if(pdfs.length){
-    h += `<label class="r"><input type="checkbox" id="mlPdf" ${MAIL.withPdf ? "checked" : ""}
-        onchange="MAIL.withPdf=this.checked" />
-      <span class="n">原底稿 ${pdfs.length} 份 PDF<i>${pdfs.map(x => fmtSize(x.size || 0)).join(" · ")}</i></span></label>`;
-  }
-
-  if(!cfg.ready){
-    h += `<div class="ml-cfg">
-      <div class="t">发件邮箱（只存本机 data/mail.json，不回传）</div>
-      <div class="mlf">
-        <label>服务器</label>
-        <input id="mlHost" placeholder="例如 smtp.qq.com" spellcheck="false" />
-        <label>端口</label>
-        <input id="mlPort" placeholder="465" value="465" spellcheck="false" />
-        <label>加密</label>
-        <select id="mlTls" style="font-size:12px;padding:4px 7px;border:1px solid var(--line);border-radius:4px">
-          <option value="ssl">SSL（465）</option>
-          <option value="starttls">STARTTLS（587）</option>
-          <option value="none">不加密（25）</option>
-        </select>
-        <label>账号</label>
-        <input id="mlUser" placeholder="完整邮箱地址" spellcheck="false" />
-        <label>授权码</label>
-        <input id="mlPass" type="password" placeholder="客户端授权码，不是登录密码" spellcheck="false" />
-      </div>
-      <div class="hint">这里发信走 SMTP，需要邮箱的「客户端授权码」（QQ 邮箱：设置→账号→生成授权码；服务器 smtp.qq.com、端口 465、SSL）。<br>
-        没配授权码也能发：在 WorkBuddy 对话里让我用 QQ 邮箱连接器代发——那条通道限额为单文件 1MB、合计 3MB，只够发报告本体，带不了原底稿。</div>
-    </div>`;
-  }else{
-    h += `<div class="ml-cfg"><div class="t">
-      <button class="btn-sm" onclick="resetMailCfg()" style="font-size:10.5px;padding:1px 6px">改发件配置</button>
-      </div></div>`;
-  }
-
-  h += `<div class="ml-foot">
-      <span class="st" id="mlSt">${cfg.ready ? "点右侧按钮即发送" : "填好配置后可直接发送"}</span>
-      <button class="btn-sm solid" id="mlGo" onclick="runMail()">${cfg.ready ? "发送" : "保存并发送"}</button>
-    </div>`;
-
-  $("#mailPanel").innerHTML = h;
-}
-
-function resetMailCfg(){
-  MAIL.cfg = Object.assign({}, MAIL.cfg, { ready: false });
-  renderMailPanel();
-}
-
-async function runMail(){
-  const go = $("#mlGo"), st = $("#mlSt");
-  const cfg = MAIL.cfg || {};
-  const payload = {
-    company: mailCompany(),
-    to: ($("#mlTo").value || "").trim(),
-    cc: ($("#mlCc").value || "").trim(),
-    subject: ($("#mlSubject").value || "").trim(),
-    body: $("#mlBody") ? $("#mlBody").value : "",
-    with_materials: !!($("#mlPdf") && $("#mlPdf").checked),
-    materials: ((PKG.data && PKG.data.materials) || []).map(x => x.name),
-    history_id: (S.draft && S.draft.history_id) || "",
-  };
-  if(!payload.to) return toast("请填收件人", true);
-  if(!payload.subject) return toast("请填邮件标题", true);
-  go.disabled = true;
-  const old = go.textContent;
-  go.textContent = "发送中…";
-  st.className = "st";
-  st.textContent = "正在连接邮件服务器…";
-  try{
-    if(!cfg.ready){
-      const saved = await api("/api/mail/config", {
-        save: true,
-        host: ($("#mlHost") || {}).value || "",
-        port: ($("#mlPort") || {}).value || "",
-        tls: ($("#mlTls") || {}).value || "ssl",
-        user: ($("#mlUser") || {}).value || "",
-        password: ($("#mlPass") || {}).value || "",
-      });
-      MAIL.cfg = saved;
-      if(!saved.ready) throw new Error("配置不完整：服务器、账号、授权码都要填");
-    }
-    // 没导出过就现场排版：把草稿带上，服务端会先出 docx 再发
-    if(!MAIL.docx && !((PKG.data && PKG.data.docx) || []).length && S.draft){
-      payload.draft = collectDraft();
-    }else{
-      payload.docx = MAIL.docx || (((PKG.data && PKG.data.docx) || [])[0] || {}).name || "";
-    }
-    const r = await api("/api/mail", payload);
-    st.textContent = `已发送 · ${r.attachments.length} 个附件 · ${fmtSize(r.size)}`;
-    toast(`已发送给 ${r.to.join("、")}`);
-    MAIL.to = payload.to; MAIL.subject = payload.subject; MAIL.body = payload.body;
-    refreshUsage();
-    setTimeout(() => { if(MAIL.open) closeMail(); }, 1200);
-  }catch(err){
-    st.className = "st err";
-    st.textContent = err.message;
-  }finally{
-    go.disabled = false;
-    go.textContent = old;
-  }
-}
-
-document.addEventListener("click", e => {
-  if(!MAIL.open) return;
-  if(e.target.closest("#mailPanel") || e.target.closest("#btnMail")) return;
-  closeMail();
-});
-
 /* ---------------- 打包下载 ---------------- */
 const PKG = { open: false, data: null, sel: {}, busy: false, loading: false };
 
@@ -1516,25 +1226,18 @@ async function toggleBundle(e){
   await loadBundle();
 }
 
-async function fetchFileList(force){
-  // 报告与底稿清单：打包和发邮件都要用，取一次存 PKG.data
-  if(PKG.data && !force) return PKG.data;
-  const q = new URLSearchParams();
-  q.set("company", pkgCompany());
-  (S.loaded || []).forEach(t => q.append("title", t));
-  const r = await (await fetch(apiUrl("/api/bundle?" + q.toString()))).json();
-  if(r.error) throw new Error(r.error);
-  PKG.data = r;
-  return r;
-}
-
 async function loadBundle(){
   PKG.sel = {};
   $("#pkgPanel").classList.add("show");
   $("#pkgPanel").innerHTML = `<div class="pk-h">打包下载<span class="x" onclick="closeBundle()">×</span></div>
     <div class="pk-sub">正在读取文件清单…</div>`;
   try{
-    const r = await fetchFileList(true);
+    const q = new URLSearchParams();
+    q.set("company", pkgCompany());
+    (S.loaded || []).forEach(t => q.append("title", t));
+    const r = await (await fetch(apiUrl("/api/bundle?" + q.toString()))).json();
+    if(r.error) throw new Error(r.error);
+    PKG.data = r;
     (r.docx || []).forEach((x, i) => { if(i === 0) PKG.sel["docx:" + x.name] = true; });
     (r.materials || []).forEach(x => { PKG.sel["pdf:" + x.name] = true; });
     renderBundle();
@@ -1644,7 +1347,7 @@ async function runBundle(){
   try{
     const r = await api("/api/bundle", body);
     const a = document.createElement("a");
-    a.href = dlUrl(r.url);
+    a.href = apiUrl(r.url);
     a.download = r.name;
     a.click();
     closeBundle();
@@ -1663,41 +1366,11 @@ document.addEventListener("click", e => {
   closeBundle();
 });
 
-// 口令校验通过后才去拉数据：没进来之前不发任何要 token 的请求
-let booted = false;
-function bootData(){
-  if(booted) return;
-  booted = true;
-  loadModels();
-  pingConn();
-  refreshUsage();
-  syncButtons();  // 初始状态：无材料时两个动作都灰着
-}
-gateBoot();
+loadModels();
+pingConn();
+refreshUsage();
+syncButtons();  // 初始状态：无材料时两个动作都灰着
 $("#company").addEventListener("keydown", e => { if(e.key === "Enter") doSearch(); });
-</script>
-
-<script>
-(async () => {
-  document.querySelector("#gatePw").value = "ceshi";
-  await doLogin();
-  await new Promise(r => setTimeout(r, 1200));
-  const r = await fetch("/api/history").then(x => x.json());
-  const rec = await fetch("/api/history/" + r.items[0].id).then(x => x.json());
-  S.draft = rec.draft; S.company = rec.company;
-  renderDraft();
-  await new Promise(r => setTimeout(r, 300));
-  await toggleMail();
-  await new Promise(r => setTimeout(r, 900));
-  const panel = document.querySelector("#mailPanel");
-  const mlf = document.querySelector(".mlf");
-  const host = document.querySelector("#mlHost");
-  const g = el => { const b = el.getBoundingClientRect(); const c = getComputedStyle(el);
-    return { w: Math.round(b.width), h: Math.round(b.height), display: c.display,
-             gridCols: c.gridTemplateColumns, width: c.width, pos: c.position }; };
-  document.title = "W|" + JSON.stringify({ panel: g(panel), mlf: mlf? g(mlf):null,
-      host: host? g(host):null, mlfParent: mlf? g(mlf.parentElement):null });
-})();
 </script>
 </body>
 </html>

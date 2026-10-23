@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>版本历史 · 内评简评报告工作台</title>
+<style>
+:root{--ink:#16191d;--ink2:#3f4650;--muted:#7d848e;--line:#e6e8ec;--line2:#f0f2f5;--hover:#f7f8fa}
+*{box-sizing:border-box}
+body{margin:0;background:#fff;color:var(--ink);
+  font:14px/1.7 -apple-system,"PingFang SC","Helvetica Neue",Arial,sans-serif;
+  -webkit-font-smoothing:antialiased}
+.wrap{max-width:820px;margin:0 auto;padding:44px 24px 80px}
+.top{display:flex;align-items:baseline;gap:10px;margin-bottom:6px}
+.top h1{font-size:20px;font-weight:600;margin:0;letter-spacing:.01em}
+.top .n{font-size:12px;color:var(--muted)}
+.lede{color:var(--ink2);font-size:13px;margin:0 0 30px;max-width:64ch}
+.lede a{color:#2f5fd0;text-decoration:none}
+.lede a:hover{text-decoration:underline}
+.timeline{position:relative;padding-left:26px}
+.timeline::before{content:"";position:absolute;left:5px;top:6px;bottom:6px;width:1px;background:var(--line)}
+.v{position:relative;padding:0 0 26px}
+.v::before{content:"";position:absolute;left:-25px;top:7px;width:9px;height:9px;border-radius:50%;
+  background:#fff;border:1.5px solid #c3c9d2}
+.v.cur::before{border-color:var(--ink);background:var(--ink)}
+.v .hd{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.v .lab{font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.04em}
+.v .at{font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.v .cur-tag{font-size:10px;color:#2e7d32;background:#f1f8f1;border:1px solid #c8e6c9;
+  border-radius:9px;padding:0 6px;line-height:16px}
+.v h2{font-size:14.5px;font-weight:600;margin:3px 0 4px;line-height:1.5}
+.v .sum{color:var(--ink2);font-size:12.5px;margin:0 0 7px;max-width:62ch}
+.v ul{margin:0 0 8px;padding-left:17px}
+.v li{color:var(--ink2);font-size:12.5px;margin:3px 0}
+.v .note{font-size:11.5px;color:#8a6d1f;background:#fffbf0;border:1px solid #f0e0b8;
+  border-radius:5px;padding:5px 9px;margin:6px 0 0;max-width:66ch}
+.v .open{display:inline-block;margin-top:7px;font-size:12px;color:#2f5fd0;text-decoration:none;
+  border:1px solid #d6ddea;border-radius:5px;padding:3px 10px;background:#fbfcfe}
+.v .open:hover{background:#f1f5fd;border-color:#bccbe6}
+.foot{margin-top:26px;padding-top:16px;border-top:1px solid var(--line2);
+  color:var(--muted);font-size:11.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><h1>版本历史</h1><span class="n">共 14 个版本</span></div>
+  <p class="lede">每次改动都留了一份当时的页面，点开能直接用——不是截图，是那时的界面接现在的数据接口。
+    想回最新版去 <a href="../../">工作台</a>。</p>
+  <div class="timeline"><div class="v cur">
+  <div class="hd"><span class="lab">v14</span><span class="at">2026-10-23 17:45</span>
+    <span class="cur-tag">当前</span></div>
+  <h2>设置收成一处，专题段改成自己加</h2>
+  <p class="sum">模型、邮件、财汇、口令四个设置合并到一个面板；或有事项不再自动写，改成点一下就加；数字核实提示能指到原句。</p>
+  <ul><li>页头新增「设置」：模型 API、发件邮箱、财汇、访问口令四块放一起，每块标明配置从哪来（环境变量 / 页面填写 / WorkBuddy 已配），密钥只进不出。</li><li>修掉 SMTP 输入框点不到——一个 div 没闭合，后面的输入框被当成了复选框，缩成 16×13 像素；字其实输得进去，所以更难察觉。</li><li>专题段（或有事项、在建工程、政府补助、受限资产）默认不生成，要就点「+ 专题段（可选）」从五个预设里挑，可加多段、可删；每段开头是一句加粗判断句，之前缺样式所以显示不加粗。</li><li>债务段不再尾巴上挂一句「或有事项方面，……」，那正是看着像多出来的那句的来源。</li><li>数字核实提示从一串光秃秃的数字，改成逐条「段名 + 原句 + 疑似指标」，例如「· 95.35%（疑似占比）—— 资产段：『……流动资产占比95.35%……』」。</li></ul>
+  
+  <a class="open" href="./1023-1745/">打开这个版本 →</a>
+</div><div class="v">
+  <div class="hd"><span class="lab">v13</span><span class="at">2026-10-23 17:28</span>
+    </div>
+  <h2>搬到云端，不用再启本机服务</h2>
+  <p class="sum">发布成独立网址，手机和别的电脑都能开；顺带修掉「连不上本机服务」。</p>
+  <ul><li>发布到 neiping-report.app.workbuddy.host，不再依赖这台电脑开着。</li><li>会话改成无状态签名 token：原来把 token 写文件，云端多副本下「登录成功、紧接着就 401」，因为写进去的读不回来。</li><li>登录同时下发 Cookie。分享网关会把 Authorization 头剥掉，自签 token 本地验签通过、云端照样 401，只有 Cookie 能过。</li><li>探活改成校验返回的 JSON。网关在缺 sharecode 时回 200 加一个提示页，只看状态码会误判成后端在。</li><li>顺带修 Chrome 的 Private Network Access：Pages 调 127.0.0.1 要求服务端回 Access-Control-Allow-Private-Network，之前没回，请求直接被拦。</li></ul>
+  <div class="note">数据不持久：容器重启后上传件、生成历史、导出的 Word 都会清空。要长期存档用本机。</div>
+  <a class="open" href="./1023-1728/">打开这个版本 →</a>
+</div><div class="v">
+  <div class="hd"><span class="lab">v12</span><span class="at">2026-10-23 17:00</span>
+    </div>
+  <h2>说清两条发信通道</h2>
+  <p class="sum">网页发信要 SMTP 授权码；助手用 QQ 邮箱连接器代发受 3MB 限额，发不了原底稿。</p>
+  <ul><li>网页「发送邮件」走 SMTP，需要邮箱的客户端授权码；QQ 邮箱服务器 smtp.qq.com、端口 465、SSL。</li><li>助手侧的 QQ 邮箱连接器是另一条通道：单文件 1MB、合计 3MB，报告本体 42KB 能发，评级报告 1.14MB、募集说明书 2.49MB 发不了。</li><li>面板未配置时的提示补全了两条路各自的前提，README 加了对照表。</li></ul>
+  
+  <a class="open" href="./1023-1700/">打开这个版本 →</a>
+</div><div class="v">
+  <div class="hd"><span class="lab">v11</span><span class="at">2026-10-23 16:46</span>
+    </div>
+  <h2>一键发送邮件</h2>
+  <p class="sum">纸面右上多一个「发送邮件」，标题默认企业全称，收件人默认 panyuping641@pingan.com.cn。</p>
+  <ul><li>附件可选：报告（没导出就当场排版）与原始底稿 PDF；收件人、抄送一个框里填多个，逗号分号都认。</li><li>发件配置只存本机，密码只进不出；连不上、认证失败、被拒收三类错误翻成中文分别提示。</li><li>实测平安邮箱：外网只能投递到它，提交端口 465/587 全部超时，要发信得在内网或 VPN，或换个能外发的发件邮箱。</li></ul>
+  
+  <a class="open" href="./1023-1646/">打开这个版本 →</a>
+</div><div class="v">
+  <div class="hd"><span class="lab">v10</span><span class="at">2026-10-23 15:42</span>
+    </div>
+  <h2>进门先输口令</h2>
+  <p class="sum">没输口令时整页毛玻璃，默认口令 ceshi；闸门在服务端，不在页面上。</p>
+  <ul><li>未登录时整页盖一层模糊，中间一张小卡，输对口令才加载内容。</li><li>除页面骨架外所有接口都要 token，包括统计、历史、打包、上传、下载——别人拿到线上地址也取不到你的报告和点数。</li><li>用请求头而不是 Cookie：Pages 跨站调本机，第三方 Cookie 会被浏览器丢掉（本机 http 也拿不到 Secure）。下载带不了头，改用链接上挂 ?t=。</li><li>页头加「锁定」，点一下即退。</li></ul>
+  
+  <a class="open" href="./1023-1542/">打开这个版本 →</a>
+</div><div class="v">
+  <div class="hd"><span class="lab">v9</span><span class="at">2026-10-23 15:31</span>
+    </div>
+  <h2>模型下拉只留能跑通的</h2>
+  <p class="sum">8 个模型里只有 1 个从本进程调得通，其余折成一行灰字并写明原因。</p>
+  <ul><li>启动时在后台逐个探活，下拉只列通过验证的（现在就是 deepseek-v4-flash），其余显示「另有 8 个模型未通过验证」，悬停看原因。</li><li>失败原因各不相同：OpenCode 那几个缺 x-opencode-session 请求头；GLM-5.3-Flash 的地址少了 /chat/completions；sensenova 的模型名对不上。</li><li>探活带浏览器 UA —— 用 Python 默认 UA 会被 Cloudflare 拦成 403，看起来像网关不通，真实原因是缺那个头。</li></ul>
+  
+  <a class="open" href="./1023-1531/">打开这个版本 →</a>
+</div><div class="v">
+  <div class="hd"><span class="lab">v8</span><span class="at">2026-10-23 14:39</span>
+    </div>
+  <h2>一个板块就是一整段</h2>
+  <p class="sum">分部段不再被拆成「编号 / 板块名 / 正文」三行；粘连病句和重复表述一并清掉。</p>
+  <ul><li>每个板块改成可编辑的一整段：编号、板块名、「业务方面，」和正文连排折行，改板块名后后缀自动跟着变。</li><li>以「和 / 与 / 及」开头的句子是模型把上下两段粘在一起留下的病句，整句删。</li><li>段内重复句、正文复述加粗句的自动删；跨段重复只提示不删——试过自动删，把专题段的证据句删掉后整段读不通。</li><li>导出前再清一遍：页面上手改、粘贴进来的文字同样过语言清理，提示里写明清了几处。</li></ul>
+  
+  <a class="open" href="./1023-1439/">打开这个版本 →</a>
+</div><div class="v">
+  <div class="hd"><span class="lab">v7</span><span class="at">2026-10-23 14:00</span>
+    </div>
+  <h2>正文不再出现「材料未披露」「从外部条件看」</h2>
+  <p class="sum">根子是规则自相矛盾：一边要求不虚构，一边示范「未披露」这个写法。</p>
+  <ul><li>系统提示新增叙述视角：句子的主语只能是公司、股东、政府、行业或政策，不能是「材料」。</li><li>禁「披露 / 载明 / 列示 / 数据显示」这类转述来源的词，也禁「从××看」这种把分析框架暴露给读者的提示语。</li><li>生成后再清一遍：先擦掉「材料显示，」这类前缀（擦完多数句子就能用），擦不净的按小句摘除；「原材料」「新材料」是业务词，先换占位符再判，不会被误删。</li><li>并入外部提示词里的几条：营收≠订单储备、净利≠EBITDA、年度≠季度≠累计、变化超 5% 要写幅度并归因、禁极端词与宣传语。</li><li>模板总述段放宽到 300–600 字，并要求政府结算类主体在「钱从谁那里来」处给出区域财力实数。</li></ul>
+  <div class="note">这一版界面与 13:40 那版完全一致（改动只在生成规则），打开看到的是同一张页面。</div>
+  <a class="open" href="./1023-1400/">打开这个版本 →</a>
+</div><div class="v">
+  <div class="hd"><span class="lab">v6</span><span class="at">2026-10-23 13:40</span>
+    </div>
+  <h2>2025 年写成「未披露」，问题出在摘录</h2>
+  <p class="sum">财务表页被摘录预算挤掉了，模型根本没看到那些数字；顺带把财汇点数从 3 点降到 1 点，用量改成按次。</p>
+  <ul><li>财务三表页（含跨页的后半张）优先占摘录预算。天心那份募集说明书 225 页，合并资产负债表从 99 页起，之前只保留了 99 页，资产总计与负债合计在 100、101 页，全被丢掉。</li><li>财汇检索改成一次宽查询、本地按标题分类，只有某类一条都没出现才补查；实测 1 点取回 4 份募集 + 3 份评级。</li><li>用量不再按月：页头写「累计 N 次 · 财汇 M 点」，明细逐条列时间、动作、主体、这一下花了多少点或多少 token。</li><li>新增生成历史：每次生成落一份到 data/history，列表可回看、把草稿恢复到编辑区、直接下当次 Word。</li><li>网页楷体加粗用四向文字阴影补偿——楷体没有第二档字重，font-weight:700 在浏览器里几乎看不出。</li></ul>
+  
+  <a class="open" href="./1023-1340/">打开这个版本 →</a>
+</div><div class="v">
+  <div class="hd"><span class="lab">v5</span><span class="at">2026-10-23 11:52</span>
+    </div>
+  <h2>报告和原底稿一起打包</h2>
+  <p class="sum">勾选要带的文件，一个 zip 里既有报告也有 PDF 底稿。</p>
+  <ul><li>纸面右上新增「打包下载」，分三组：报告（最近 4 份）、原底稿 PDF（标页数、大小、财汇下载还是本地上传）、草稿 JSON。</li><li>还没导出过 Word 也能打包，这一组显示「按当前内容现场排版」，打包时现生成。</li><li>底稿只认本次会话真正读过的——data 目录里没参与生成的年报不会被混进来。</li><li>中文文件名带 UTF-8 标记，Windows 解压不乱码；同一主体只留最近 3 个 zip，不撑爆目录。</li></ul>
+  
+  <a class="open" href="./1023-1152/">打开这个版本 →</a>
+</div><div class="v">
+  <div class="hd"><span class="lab">v4</span><span class="at">2026-10-23 11:41</span>
+    </div>
+  <h2>开始记用量</h2>
+  <p class="sum">页头显示生成次数与 token，点开看拆分与明细，统计重启不清零。</p>
+  <ul><li>页头右上角一行「N 次 · X token」，点开是明细：输入输出拆分、单次平均耗时、输入缓存命中率、按模型分布。</li><li>统计落 data/usage.json，重启不清零；端点没回 usage 时按字符估算并标注「含估算」。</li><li>（当时按「本月」统计，13:40 那版改成了今日 / 累计，并加了财汇点数。）</li></ul>
+  
+  <a class="open" href="./1023-1141/">打开这个版本 →</a>
+</div><div class="v">
+  <div class="hd"><span class="lab">v3</span><span class="at">2026-10-23 11:30</span>
+    </div>
+  <h2>财汇只查两类材料，也能自己上传</h2>
+  <p class="sum">检索从十余次调用降到两次，提示词从 14 万字符降到 5.9 万。</p>
+  <ul><li>材料只保留跟踪评级报告与募集说明书两类，其余工商、股权、评级历史、存量债券、财务指标、主营构成六个接口全部停用——单次返回体大、串起来要等十几秒，也把提示词撑得很大。</li><li>摘录预算按类别分配：评级报告 3.2 万字符、募集说明书 2.6 万，一次生成控制在 6 万上下。</li><li>新增上传入口，点选或拖入本机 PDF 即可，不连财汇也能生成。</li><li>财务表改由模型从材料原文的「主要财务数据」表整理，程序负责清洗、补千分位、限三期；之前 5 列时「2026年3月末」会换行、表格跨页断开。</li></ul>
+  
+  <a class="open" href="./1023-1130/">打开这个版本 →</a>
+</div><div class="v">
+  <div class="hd"><span class="lab">v2</span><span class="at">2026-10-23 10:54</span>
+    </div>
+  <h2>界面重做，四步都有真实进度</h2>
+  <p class="sum">白底两栏一纸面；进度不再是装饰，Word 版式照参考件重做。</p>
+  <ul><li>改成白底两栏：左边四步与材料清单，右边一张纸面，没开始的步骤整体灰掉。</li><li>四步都跑成后台任务，前端按 job_id 轮询真实百分比：检索显示在查哪个关键词，读材料显示每一份是在「下载 12.4MB」还是「解析 74/107 页」，生成显示已用时。</li><li>Word 版式照参考件的 XML 重做：外框上下 1.5pt、内部横竖线 0.5pt、左右不封口、行高 0.4cm、表头跨页重复。</li><li>段落之间补空段落（参考件就是这样分隔的），修掉「2）新材料业务方面，2）新材料业务方面，」这类重复导语。</li></ul>
+  
+  <a class="open" href="./1023-1054/">打开这个版本 →</a>
+</div><div class="v">
+  <div class="hd"><span class="lab">v1</span><span class="at">2026-10-23 10:07</span>
+    </div>
+  <h2>第一版：能用的简评模板</h2>
+  <p class="sum">定下不绑行业的四段式模板，并把取数、成稿、导出、发布串成一条链。</p>
+  <ul><li>模板 v1.1 与方法论：摘要（正面 / 关注）、基本情况、点评（总述 / 分部 / 资产 / 债务 / 专题）、财务表，不预设行业。</li><li>链路跑通：财汇 MCP 取数 → PDF 按页摘录 → 模型成稿 → 校验 → Word 导出。</li><li>页面、模板与方法论一起发布到 GitHub Pages，随时可查。</li></ul>
+  
+  <a class="open" href="./1023-1007/">打开这个版本 →</a>
+</div></div>
+  <div class="foot">快照由 <code>make_versions.py</code> 从 git 历史生成。清单在 <code>versions.json</code>，
+    改完重跑脚本即可。</div>
+</div>
+</body>
+</html>
