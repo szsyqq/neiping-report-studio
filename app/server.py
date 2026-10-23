@@ -17,6 +17,7 @@ import re
 import sys
 import threading
 import traceback
+import zipfile
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -38,6 +39,7 @@ STATIC = Path(__file__).resolve().parent / "static"
 OUTPUT = BASE / "output"
 OUTPUT.mkdir(parents=True, exist_ok=True)
 UPLOAD_DIR = BASE / "data" / "uploads"
+DATA_DIR = BASE / "data"
 
 # 单份材料的摘录上限与本次生成的总上限（字符）。评级报告正文约 2.5 万字符，
 # 募集说明书只取与主体相关的前半部；两份合计控制在 6 万字符内，
@@ -181,17 +183,176 @@ def api_generate(payload: dict) -> dict:
 
 def api_export(payload: dict) -> dict:
     draft = payload.get("draft") or {}
-    company = (draft.get("company_full_name") or payload.get("company") or "未命名主体").strip()
-    company = re.sub(r"[\\/:*?\"<>|]", "", company)
+    out = write_docx(draft, payload.get("company") or "")
+    name = (draft.get("company_full_name") or payload.get("company") or "").strip()
+    usage_mod.record("export", company=name or out.stem, note=out.name)
+    return {"path": str(out), "name": out.name, "url": "/download/" + quote(out.name)}
+
+
+def write_docx(draft: dict, company: str = "") -> Path:
+    """渲染 Word，按「企业名内评简评报告 日期」命名并避免覆盖。"""
+    name = (draft.get("company_full_name") or company or "未命名主体").strip()
+    name = re.sub(r"[\\/:*?\"<>|]", "", name)
     stamp = datetime.now().strftime("%y.%-m.%-d")
-    out = OUTPUT / f"{company}内评简评报告 {stamp}.docx"
+    out = OUTPUT / f"{name}内评简评报告 {stamp}.docx"
     n = 2
     while out.exists():
-        out = OUTPUT / f"{company}内评简评报告 {stamp}-{n}.docx"
+        out = OUTPUT / f"{name}内评简评报告 {stamp}-{n}.docx"
         n += 1
     docx_writer.render_report(draft, out)
-    usage_mod.record("export", company=company, note=out.name)
-    return {"path": str(out), "name": out.name, "url": "/download/" + quote(out.name)}
+    return out
+
+
+# ---------------------------------------------------------------- 打包下载
+
+def _base_name(name: str) -> str:
+    """只取文件名，并去掉仍是路径/通配的字符，防止拼出目录外的路径。"""
+    base = Path(str(name or "").replace("\\", "/")).name
+    return re.sub(r"[\\/:*?\"<>|\r\n]+", "_", base).strip()
+
+
+def _docx_index(company: str) -> list[dict]:
+    """output/ 下属于这家企业的报告，最新的在最前。"""
+    prefix = re.sub(r"[\\/:*?\"<>|]", "", company or "")
+    if not prefix:
+        return []
+    rows = [p for p in OUTPUT.glob("*.docx") if p.name.startswith(prefix + "内评简评报告")]
+    rows.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+    return [{"name": p.name, "size": p.stat().st_size,
+             "mtime": datetime.fromtimestamp(p.stat().st_mtime).strftime("%m-%d %H:%M")}
+            for p in rows[:4]]
+
+
+def _find_pdf(name_or_title: str) -> Path | None:
+    """按「材料标题」找回落盘的 PDF：缓存文件是「标题净化后_哈希.pdf」。"""
+    safe = re.sub(r"[^\w\u4e00-\u9fa5.\-]+", "_", name_or_title or "")[:80]
+    if not safe:
+        return None
+    for d in (DATA_DIR, UPLOAD_DIR):
+        p = d / safe
+        if p.suffix.lower() != ".pdf":
+            p = d / (safe + ".pdf")
+        if p.is_file():
+            return p
+        hits = sorted(d.glob(safe + "*.pdf"))
+        if hits:
+            return hits[0]
+    return None
+
+
+def _pdf_index(company: str, titles: list[str] | None = None) -> list[dict]:
+    """可打包的原底稿。
+
+    前端把本次读取过的材料标题传进来（服务重启后 STATE 是空的，靠标题
+    在缓存目录里重新对上文件）；标题缺失时再按企业名兜底扫 data/。
+    """
+    rows: list[dict] = []
+    seen: set[str] = set()
+
+    def add(path: Path, title: str, pages: int, source: str):
+        if not path.is_file() or path.name in seen:
+            return
+        seen.add(path.name)
+        rows.append({"name": path.name,
+                     "title": title or re.sub(r"_[0-9a-f]{12}$", "", path.stem),
+                     "size": path.stat().st_size, "pages": pages,
+                     "source": source or ("upload" if path.parent == UPLOAD_DIR else "caihui")})
+
+    with LOCK:
+        mats = ((STATE.get(_key(company)) or {}).get("materials") or []) if company else []
+    by_title = {m.get("title"): m for m in mats if m.get("title")}
+
+    if titles:
+        for t in titles:
+            m = by_title.get(t) or {}
+            path = Path(m["path"]) if m.get("path") and Path(m["path"]).is_file() else _find_pdf(t)
+            if path and path.is_file():
+                add(path, t, m.get("pages") or 0, m.get("source") or "")
+        if rows:
+            return rows
+
+    for m in mats:
+        add(Path(m.get("path") or ""), m.get("title") or "", m.get("pages") or 0,
+            m.get("source") or "")
+
+    # 仍然没有，按企业名在缓存目录里找回同名主体的材料
+    if company and len(company) >= 5:
+        for d in (DATA_DIR, UPLOAD_DIR):
+            for p in sorted(d.glob("*.pdf")):
+                if company in p.name:
+                    add(p, "", 0, "upload" if d == UPLOAD_DIR else "caihui")
+    return rows
+
+
+def api_bundle_items(company: str, titles: list[str] | None = None) -> dict:
+    company = (company or "").strip()
+    with LOCK:
+        has_draft = bool((STATE.get(_key(company)) or {}).get("draft"))
+    return {"company": company, "docx": _docx_index(company),
+            "materials": _pdf_index(company, titles), "has_draft": has_draft}
+
+
+def api_bundle(payload: dict) -> dict:
+    """把勾选的报告与原底稿打成一个 zip。"""
+    company = (payload.get("company") or "").strip()
+    draft = payload.get("draft") or {}
+    want_json = bool(payload.get("with_json"))
+    docx_name = _base_name(payload.get("docx") or "")
+    picked = [m for m in (_base_name(x) for x in (payload.get("materials") or [])) if m]
+
+    docx_path = OUTPUT / docx_name if docx_name else None
+    if not (docx_path and docx_path.is_file()):
+        docx_path = None
+        if draft:
+            docx_path = write_docx(draft, company)
+            usage_mod.record("export", company=company or docx_path.stem, note=docx_path.name)
+
+    pdfs = []
+    for name in picked:
+        for d in (DATA_DIR, UPLOAD_DIR):
+            p = d / name
+            if p.is_file():
+                pdfs.append(p)
+                break
+
+    if not docx_path and not pdfs and not (want_json and draft):
+        raise ValueError("没有可打包的文件")
+
+    label = re.sub(r"[\\/:*?\"<>|]", "", company or "内评简评报告")
+    stamp = datetime.now().strftime("%y.%-m.%-d %H%M")
+    out = OUTPUT / f"{label}内评简评报告打包 {stamp}.zip"
+    n = 2
+    while out.exists():
+        out = OUTPUT / f"{label}内评简评报告打包 {stamp}-{n}.zip"
+        n += 1
+
+    files = []
+    with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as z:
+        if docx_path:
+            z.write(docx_path, _base_name(docx_path.name))
+            files.append({"name": docx_path.name, "dir": "", "size": docx_path.stat().st_size})
+        for p in pdfs:
+            z.write(p, "原底稿/" + _base_name(p.name))
+            files.append({"name": p.name, "dir": "原底稿", "size": p.stat().st_size})
+        if want_json and draft:
+            blob = json.dumps(draft, ensure_ascii=False, indent=2).encode()
+            z.writestr("草稿数据.json", blob)
+            files.append({"name": "草稿数据.json", "dir": "", "size": len(blob)})
+
+    _prune_zips(label + "内评简评报告")
+    return {"name": out.name, "url": "/download/" + quote(out.name),
+            "size": out.stat().st_size, "files": files}
+
+
+def _prune_zips(prefix: str, keep: int = 3):
+    """同一主体反复打包会堆出很多大文件，只留最近几份（含刚生成的）。"""
+    rows = sorted(OUTPUT.glob(prefix + "*打包*.zip"),
+                  key=lambda p: p.stat().st_mtime, reverse=True)
+    for p in rows[keep:]:
+        try:
+            p.unlink()
+        except OSError:
+            pass
 
 
 def api_prompt(payload: dict) -> dict:
@@ -287,10 +448,15 @@ class Handler(BaseHTTPRequestHandler):
                 # 模板与方法论的浏览页，与 GitHub Pages 上的同一份文件
                 self._file(BASE / "site" / "docs" / p[len("/docs/"):])
             elif p.startswith("/download/"):
-                name = p[len("/download/"):]
-                self._send(200, (OUTPUT / name).read_bytes(),
-                           "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                           {"Content-Disposition": 'attachment; filename="report.docx"; '
+                name = _base_name(p[len("/download/"):])
+                fp = OUTPUT / name
+                if not fp.is_file():
+                    self._json({"error": "文件不存在"}, 404)
+                    return
+                ctype = mimetypes.guess_type(name)[0] or "application/octet-stream"
+                fallback = "bundle.zip" if name.lower().endswith(".zip") else "report.docx"
+                self._send(200, fp.read_bytes(), ctype,
+                           {"Content-Disposition": f'attachment; filename="{fallback}"; '
                                                     "filename*=UTF-8''" + quote(name)})
             elif p.startswith("/api/jobs/"):
                 job = jobs.get(p[len("/api/jobs/"):])
@@ -305,6 +471,10 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({"ok": True, "time": datetime.now().isoformat()})
             elif p == "/api/stats":
                 self._json(usage_mod.summary())
+            elif p == "/api/bundle":
+                q = parse_qs(urlparse(self.path).query)
+                self._json(api_bundle_items((q.get("company") or [""])[0],
+                                            q.get("title") or []))
             else:
                 self._json({"error": "not found"}, 404)
         except FileNotFoundError:
@@ -339,6 +509,7 @@ class Handler(BaseHTTPRequestHandler):
             "/api/generate": api_generate,
             "/api/export": api_export,
             "/api/prompt": api_prompt,
+            "/api/bundle": api_bundle,
         }
         try:
             if p.startswith("/api/jobs/"):

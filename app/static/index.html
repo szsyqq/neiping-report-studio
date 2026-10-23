@@ -148,6 +148,32 @@ select{width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 8px
 .btn-sm.solid:hover{background:#000}
 .btn-sm:disabled{color:#c2c7cf;border-color:var(--line2);cursor:not-allowed;background:#fff}
 
+/* 打包下载：按钮下挂一层勾选面板，白底、细线，不遮挡正文 */
+.pkgwrap{position:relative;display:inline-block}
+.pkgpanel{position:absolute;right:0;top:calc(100% + 8px);width:356px;background:#fff;
+  border:1px solid var(--line);border-radius:8px;box-shadow:0 14px 34px rgba(17,20,24,.12);
+  padding:13px 14px 11px;display:none;z-index:45;text-align:left;white-space:normal;cursor:default}
+.pkgpanel.show{display:block}
+.pkgpanel .pk-h{font-size:12.5px;font-weight:600;display:flex;justify-content:space-between;gap:8px}
+.pkgpanel .pk-h .x{border:0;background:transparent;color:#c9ced5;font-size:13px;padding:0 2px;line-height:1}
+.pkgpanel .pk-h .x:hover{color:var(--red)}
+.pkgpanel .pk-sub{color:var(--muted);font-size:11px;margin:2px 0 4px}
+.pkgpanel .pk-body{max-height:min(58vh,420px);overflow-y:auto;padding-right:4px;margin-right:-4px}
+.pkgpanel .pkgrp{font-size:11px;color:var(--muted);letter-spacing:.3px;margin:10px 0 2px;
+  display:flex;justify-content:space-between;gap:8px}
+.pkgpanel .pkgrp button{border:0;background:transparent;color:var(--muted);font-size:11px;padding:0}
+.pkgpanel .pkgrp button:hover{color:var(--ink)}
+.pkrow{display:grid;grid-template-columns:14px 1fr;gap:8px;align-items:start;
+  padding:5px 0;border-bottom:1px solid var(--line2);font-size:12px;cursor:pointer}
+.pkrow:last-child{border-bottom:0}
+.pkrow input{margin:3px 0 0;width:13px;height:13px;accent-color:var(--ink);flex:none}
+.pkrow .nm{display:block;line-height:1.5;word-break:break-all;color:var(--ink2)}
+.pkrow .meta{color:var(--muted);font-size:11px;display:block}
+.pkrow.none{color:var(--muted);font-size:11.5px;display:block;border:0;padding:2px 0 4px;cursor:default}
+.pk-foot{display:flex;align-items:center;gap:8px;margin-top:11px}
+.pk-foot .sum{flex:1;color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums}
+.pk-foot .btn-sm{flex:none}
+
 .doc{font-family:"Kaiti SC","KaiTi","STKaiti","Songti SC","SimSun",serif;
   font-size:15.5px;line-height:1.82;color:#1b1f24}
 .doc-head{display:flex;align-items:baseline;gap:8px;margin-bottom:2px}
@@ -767,6 +793,10 @@ function renderDraft(){
       <div class="acts">
         <button class="btn-sm" onclick="copyPrompt()">提示词</button>
         <button class="btn-sm solid" id="btnExport" onclick="exportDocx()">导出 Word</button>
+        <div class="pkgwrap">
+          <button class="btn-sm" id="btnPkg" onclick="toggleBundle(event)">打包下载</button>
+          <div class="pkgpanel" id="pkgPanel"></div>
+        </div>
       </div>
     </div>`;
 
@@ -816,6 +846,8 @@ function renderDraft(){
   $("#draftArea").innerHTML = h;
   $("#draftArea").style.display = "block";
   $("#empty").style.display = "none";
+  PKG.open = false; PKG.data = null; PKG.sel = {};
+  $("#pkgPanel").classList.remove("show");
 
   renderItems("pos", d.positive || []);
   renderItems("con", d.concern || []);
@@ -947,6 +979,7 @@ async function exportDocx(){
     toast("已导出 " + r.name);
     refreshUsage();
     btn.disabled = false;
+    if(PKG.open) loadBundle();  // 清单里补上刚落盘的这份
   }catch(e){
     setStep("export", { state: "error", detail: e.message });
     toast(e.message, true);
@@ -961,6 +994,161 @@ async function copyPrompt(){
     toast("提示词已复制");
   }catch(e){ toast(e.message, true); }
 }
+
+/* ---------------- 打包下载 ---------------- */
+const PKG = { open: false, data: null, sel: {}, busy: false, loading: false };
+
+function pkgCompany(){
+  const el = $("#d-company");
+  return (el ? el.value.trim() : "") || S.company || $("#company").value.trim();
+}
+
+async function toggleBundle(e){
+  if(e) e.stopPropagation();
+  if(PKG.open){ closeBundle(); return; }
+  PKG.open = true;
+  await loadBundle();
+}
+
+async function loadBundle(){
+  PKG.sel = {};
+  $("#pkgPanel").classList.add("show");
+  $("#pkgPanel").innerHTML = `<div class="pk-h">打包下载<span class="x" onclick="closeBundle()">×</span></div>
+    <div class="pk-sub">正在读取文件清单…</div>`;
+  try{
+    const q = new URLSearchParams();
+    q.set("company", pkgCompany());
+    (S.loaded || []).forEach(t => q.append("title", t));
+    const r = await (await fetch(apiUrl("/api/bundle?" + q.toString()))).json();
+    if(r.error) throw new Error(r.error);
+    PKG.data = r;
+    (r.docx || []).forEach((x, i) => { if(i === 0) PKG.sel["docx:" + x.name] = true; });
+    (r.materials || []).forEach(x => { PKG.sel["pdf:" + x.name] = true; });
+    renderBundle();
+  }catch(err){
+    $("#pkgPanel").innerHTML = `<div class="pk-h">打包下载<span class="x" onclick="closeBundle()">×</span></div>
+      <div class="pk-sub">${esc(err.message)}</div>`;
+  }
+}
+
+function closeBundle(){
+  PKG.open = false;
+  $("#pkgPanel").classList.remove("show");
+}
+
+function pkgRow(key, name, meta){
+  return `<label class="pkrow">
+    <input type="checkbox" data-key="${esc(key)}" ${PKG.sel[key] ? "checked" : ""} onchange="pkgToggle(this)"/>
+    <span><span class="nm">${esc(name)}</span>${meta ? `<span class="meta">${esc(meta)}</span>` : ""}</span>
+  </label>`;
+}
+
+function renderBundle(){
+  const d = PKG.data || {};
+  const docs = d.docx || [], mats = d.materials || [];
+  let b = "";
+
+  b += `<div class="pkgrp"><span>报告</span></div>`;
+  if(docs.length){
+    docs.forEach(x => { b += pkgRow("docx:" + x.name, x.name, `${fmtSize(x.size)} · ${x.mtime}`); });
+  }else if(S.draft){
+    PKG.sel["docx:@new"] = PKG.sel["docx:@new"] !== false;
+    b += pkgRow("docx:@new", "报告 Word（按当前内容现场排版）", "尚未导出，打包时自动生成");
+  }else{
+    b += `<div class="pkrow none">还没有报告，先生成草稿</div>`;
+  }
+
+  const pdfOn = mats.every(x => PKG.sel["pdf:" + x.name]);
+  b += `<div class="pkgrp"><span>原底稿（${mats.length} 份）</span>${mats.length > 1
+    ? `<button onclick="pkgAll('pdf:', ${!pdfOn})">${pdfOn ? "取消全选" : "全选"}</button>` : ""}</div>`;
+  if(mats.length){
+    mats.forEach(x => {
+      const meta = [x.pages ? x.pages + " 页" : "", fmtSize(x.size),
+                    x.source === "upload" ? "本地上传" : "财汇下载"].filter(Boolean).join(" · ");
+      b += pkgRow("pdf:" + x.name, x.title || x.name, meta);
+    });
+  }else{
+    b += `<div class="pkrow none">本次没有读取过 PDF</div>`;
+  }
+
+  b += `<div class="pkgrp"><span>附加</span></div>`;
+  PKG.sel["json:1"] = !!PKG.sel["json:1"];
+  b += pkgRow("json:1", "草稿数据.json", "正文与表格的结构化数据，便于下次接着改");
+
+  $("#pkgPanel").innerHTML = `<div class="pk-h">打包下载<span class="x" onclick="closeBundle()">×</span></div>
+    <div class="pk-sub">勾选要放进压缩包的文件</div>
+    <div class="pk-body">${b}</div>
+    <div class="pk-foot"><span class="sum" id="pkSum"></span>
+      <button class="btn-sm solid" id="pkGo" onclick="runBundle()">打包下载</button></div>`;
+  bundleSum();
+}
+
+function pkgAll(prefix, on){
+  Object.keys(PKG.sel).forEach(k => { if(k.indexOf(prefix) === 0) PKG.sel[k] = on; });
+  renderBundle();
+}
+
+function pkgToggle(el){
+  PKG.sel[el.dataset.key] = el.checked;
+  bundleSum();
+}
+
+function bundleSum(){
+  const d = PKG.data || {};
+  const keys = Object.keys(PKG.sel).filter(k => PKG.sel[k]);
+  let bytes = 0;
+  keys.forEach(k => {
+    const [kind, name] = [k.slice(0, k.indexOf(":")), k.slice(k.indexOf(":") + 1)];
+    const pool = kind === "docx" ? (d.docx || []) : kind === "pdf" ? (d.materials || []) : [];
+    const hit = pool.find(x => x.name === name);
+    if(hit) bytes += hit.size || 0;
+  });
+  const sum = $("#pkSum");
+  if(!sum) return;
+  sum.textContent = keys.length
+    ? `已选 ${keys.length} 项${bytes ? " · " + fmtSize(bytes) : ""}`
+    : "未选择文件";
+  const go = $("#pkGo");
+  if(go) go.disabled = !keys.length || PKG.busy;
+}
+
+async function runBundle(){
+  const keys = Object.keys(PKG.sel).filter(k => PKG.sel[k]);
+  if(!keys.length) return toast("请勾选要打包的文件", true);
+  const docxKey = keys.find(k => k.indexOf("docx:") === 0) || "";
+  const docxName = docxKey && docxKey !== "docx:@new" ? docxKey.slice(5) : "";
+  const body = {
+    company: pkgCompany(),
+    docx: docxName,
+    materials: keys.filter(k => k.indexOf("pdf:") === 0).map(k => k.slice(4)),
+    with_json: keys.indexOf("json:1") >= 0
+  };
+  if(!docxName && S.draft) body.draft = collectDraft();
+
+  PKG.busy = true;
+  const go = $("#pkGo");
+  if(go){ go.disabled = true; go.textContent = "打包中…"; }
+  try{
+    const r = await api("/api/bundle", body);
+    const a = document.createElement("a");
+    a.href = apiUrl(r.url);
+    a.download = r.name;
+    a.click();
+    closeBundle();
+    toast(`已打包 ${r.files.length} 个文件 · ${fmtSize(r.size)}`);
+  }catch(e){
+    toast(e.message, true);
+    PKG.busy = false;
+    if(go){ go.disabled = false; go.textContent = "打包下载"; }
+    bundleSum();
+  }
+}
+
+document.addEventListener("click", e => {
+  if(!PKG.open) return;
+  if(e.target.closest("#pkgPanel") || e.target.closest("#btnPkg")) return;
+  closeBundle();
+});
 
 loadModels();
 pingConn();
