@@ -53,6 +53,7 @@ def _summary(rec: dict) -> dict:
         "chars": ((d.get("validation") or {}).get("body_chars") or 0),
         "materials": [m.get("title", "") for m in (rec.get("materials") or [])],
         "docx": rec.get("docx", ""),
+        "mail": rec.get("mail") or {},
         "issues": len(((d.get("validation") or {}).get("issues")) or []),
     }
 
@@ -125,6 +126,24 @@ def attach_docx(rid: str, docx_name: str):
     rec = get(rid)
     if rec:
         rec["docx"] = docx_name
+        path = DIR / f"{rid}.json"
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(rec, ensure_ascii=False), encoding="utf-8")
+        tmp.replace(path)
+
+
+def attach_mail(rid: str, to: list[str], subject: str):
+    """发过邮件后记一笔，历史列表里能看到「已发送给谁」。"""
+    stamp = datetime.now().isoformat(timespec="seconds")
+    with LOCK:
+        items = _read_index()
+        hit = next((x for x in items if x.get("id") == rid), None)
+        if hit:
+            hit["mail"] = {"to": to, "subject": subject, "ts": stamp}
+            _write_index(items)
+    rec = get(rid)
+    if rec:
+        rec["mail"] = {"to": to, "subject": subject, "ts": stamp}
         path = DIR / f"{rid}.json"
         tmp = path.with_suffix(".tmp")
         tmp.write_text(json.dumps(rec, ensure_ascii=False), encoding="utf-8")

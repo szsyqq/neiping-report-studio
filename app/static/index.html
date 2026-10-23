@@ -194,6 +194,34 @@ select{width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 8px
 .pk-foot .sum{flex:1;color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums}
 .pk-foot .btn-sm{flex:none}
 
+/* ── 发送邮件面板 ───────────────────────────────────────────── */
+.mlpanel{position:absolute;right:0;top:calc(100% + 8px);width:392px;background:#fff;
+  border:1px solid var(--line);border-radius:8px;box-shadow:0 14px 34px rgba(17,20,24,.12);
+  padding:13px 14px 12px;display:none;z-index:46;text-align:left;white-space:normal;cursor:default}
+.mlpanel.show{display:block}
+.mlpanel .ml-h{font-size:12.5px;font-weight:600;display:flex;justify-content:space-between;gap:8px}
+.mlpanel .ml-h .x{border:0;background:transparent;color:#c9ced5;font-size:13px;padding:0 2px;line-height:1}
+.mlpanel .ml-h .x:hover{color:var(--red)}
+.mlpanel .ml-sub{color:var(--muted);font-size:11px;margin:2px 0 8px}
+.mlf{display:grid;grid-template-columns:44px 1fr;gap:6px 8px;align-items:center;margin-bottom:7px}
+.mlf label{font-size:11.5px;color:var(--muted);text-align:right}
+.mlf input,.mlf textarea{width:100%;font-family:inherit;font-size:12px;color:var(--ink);
+  border:1px solid var(--line);border-radius:4px;padding:4px 7px;outline:none;background:#fff}
+.mlf input:focus,.mlf textarea:focus{border-color:#cfd4dc}
+.mlf textarea{resize:vertical;min-height:52px;line-height:1.6}
+.mlf .full{grid-column:2}
+.mlatt{font-size:12px;border-top:1px solid var(--line2);padding-top:8px;margin-top:2px}
+.mlatt .r{display:flex;align-items:flex-start;gap:7px;padding:3px 0;cursor:pointer}
+.mlatt input{width:13px;height:13px;margin:2px 0 0;accent-color:var(--ink);flex:none}
+.mlatt .n{line-height:1.5;color:var(--ink2);word-break:break-all}
+.mlatt .n i{display:block;color:var(--muted);font-size:10.5px;font-style:normal}
+.ml-foot{display:flex;align-items:center;gap:8px;margin-top:10px}
+.ml-foot .st{flex:1;font-size:10.5px;color:var(--muted);line-height:1.4}
+.ml-foot .st.err{color:var(--red)}
+.ml-cfg{border-top:1px dashed var(--line);margin-top:9px;padding-top:9px}
+.ml-cfg .t{font-size:11px;color:var(--muted);margin-bottom:6px}
+.ml-cfg .hint{font-size:10.5px;color:var(--muted);line-height:1.6;margin-top:6px}
+
 .doc{font-family:"Kaiti SC","KaiTi","STKaiti","Songti SC","SimSun",serif;
   font-size:15.5px;line-height:1.82;color:#1b1f24}
 .doc-head{display:flex;align-items:baseline;gap:8px;margin-bottom:2px}
@@ -1055,6 +1083,10 @@ function renderDraft(){
         <button class="btn-sm" onclick="copyPrompt()">提示词</button>
         <button class="btn-sm solid" id="btnExport" onclick="exportDocx()">导出 Word</button>
         <div class="pkgwrap">
+          <button class="btn-sm" id="btnMail" onclick="toggleMail(event)">发送邮件</button>
+          <div class="mlpanel" id="mailPanel"></div>
+        </div>
+        <div class="pkgwrap">
           <button class="btn-sm" id="btnPkg" onclick="toggleBundle(event)">打包下载</button>
           <div class="pkgpanel" id="pkgPanel"></div>
         </div>
@@ -1268,6 +1300,181 @@ async function copyPrompt(){
   }catch(e){ toast(e.message, true); }
 }
 
+/* ---------------- 发送邮件 ---------------- */
+const MAIL = { open: false, cfg: null, busy: false, withPdf: false, docx: "" };
+
+function mailCompany(){
+  const el = $("#d-company");
+  return (el ? el.value.trim() : "") || S.company || $("#company").value.trim();
+}
+
+async function toggleMail(e){
+  if(e) e.stopPropagation();
+  if(MAIL.open){ closeMail(); return; }
+  MAIL.open = true;
+  $("#mailPanel").classList.add("show");
+  await loadMailPanel();
+}
+
+function closeMail(){
+  MAIL.open = false;
+  $("#mailPanel").classList.remove("show");
+}
+
+async function loadMailPanel(){
+  const panel = $("#mailPanel");
+  panel.innerHTML = `<div class="ml-h">发送邮件<span class="x" onclick="closeMail()">×</span></div>
+    <div class="ml-sub">正在读取发件配置…</div>`;
+  try{
+    MAIL.cfg = await (await fetch(apiUrl("/api/mail/config"))).json();
+  }catch(err){
+    MAIL.cfg = { ready: false, default_to: "" };
+  }
+  try{ await fetchFileList(); }catch(err){ /* 没有报告时也能发，附件现场排版 */ }
+  renderMailPanel();
+}
+
+function mailDocxOption(){
+  // 优先用已导出的最新一份；没有就现场排版
+  const docs = (PKG.data && PKG.data.docx) || [];
+  if(MAIL.docx) return { name: MAIL.docx, live: false };
+  if(docs.length) return { name: docs[0].name, live: false };
+  return { name: "", live: true };
+}
+
+function renderMailPanel(){
+  const cfg = MAIL.cfg || {};
+  const co = mailCompany() || (S.draft && S.draft.company_full_name) || "";
+  const d = mailDocxOption();
+  const pdfs = (PKG.data && PKG.data.materials) || [];
+  const to = (MAIL.to !== undefined ? MAIL.to : (cfg.default_to || ""));
+  const from = cfg.user || "";
+
+  let h = `<div class="ml-h">发送邮件<span class="x" onclick="closeMail()">×</span></div>
+    <div class="ml-sub">${cfg.ready
+      ? `发件人 ${esc(from)}${cfg.host ? " · " + esc(cfg.host) : ""}`
+      : "还没配置发件邮箱，先填下面的 SMTP 信息"}</div>
+    <div class="mlf">
+      <label>收件人</label>
+      <input id="mlTo" value="${esc(to)}" placeholder="多个邮箱用逗号分隔" spellcheck="false" />
+      <label>抄送</label>
+      <input id="mlCc" value="${esc(MAIL.cc || "")}" placeholder="可不填" spellcheck="false" />
+      <label>标题</label>
+      <input id="mlSubject" value="${esc(MAIL.subject !== undefined ? MAIL.subject : co)}" spellcheck="false" />
+      <label>正文</label>
+      <textarea id="mlBody" rows="3" placeholder="留空则自动生成一句说明">${esc(MAIL.body || "")}</textarea>
+    </div>
+    <div class="mlatt">
+      <label class="r"><input type="checkbox" checked disabled />
+        <span class="n">${d.live ? (esc(co) || "报告") + "内评简评报告.docx" : esc(d.name)}
+          <i>${d.live ? "尚未导出，发送时现场排版" : "报告正文"}</i></span></label>`;
+
+  if(pdfs.length){
+    h += `<label class="r"><input type="checkbox" id="mlPdf" ${MAIL.withPdf ? "checked" : ""}
+        onchange="MAIL.withPdf=this.checked" />
+      <span class="n">原底稿 ${pdfs.length} 份 PDF<i>${pdfs.map(x => fmtSize(x.size || 0)).join(" · ")}</i></span></label>`;
+  }
+
+  if(!cfg.ready){
+    h += `<div class="ml-cfg">
+      <div class="t">发件邮箱（只存本机 data/mail.json，不回传）</div>
+      <div class="mlf">
+        <label>服务器</label>
+        <input id="mlHost" placeholder="例如 smtp.qq.com" spellcheck="false" />
+        <label>端口</label>
+        <input id="mlPort" placeholder="465" value="465" spellcheck="false" />
+        <label>加密</label>
+        <select id="mlTls" style="font-size:12px;padding:4px 7px;border:1px solid var(--line);border-radius:4px">
+          <option value="ssl">SSL（465）</option>
+          <option value="starttls">STARTTLS（587）</option>
+          <option value="none">不加密（25）</option>
+        </select>
+        <label>账号</label>
+        <input id="mlUser" placeholder="完整邮箱地址" spellcheck="false" />
+        <label>授权码</label>
+        <input id="mlPass" type="password" placeholder="客户端授权码，不是登录密码" spellcheck="false" />
+      </div>
+      <div class="hint">企业邮箱一般要单独开通 SMTP 并生成「客户端授权码」。平安邮箱的提交端口常只在内网开放，外网需换一个可发信的邮箱。</div>
+    </div>`;
+  }else{
+    h += `<div class="ml-cfg"><div class="t">
+      <button class="btn-sm" onclick="resetMailCfg()" style="font-size:10.5px;padding:1px 6px">改发件配置</button>
+      </div></div>`;
+  }
+
+  h += `<div class="ml-foot">
+      <span class="st" id="mlSt">${cfg.ready ? "点右侧按钮即发送" : "填好配置后可直接发送"}</span>
+      <button class="btn-sm solid" id="mlGo" onclick="runMail()">${cfg.ready ? "发送" : "保存并发送"}</button>
+    </div>`;
+
+  $("#mailPanel").innerHTML = h;
+}
+
+function resetMailCfg(){
+  MAIL.cfg = Object.assign({}, MAIL.cfg, { ready: false });
+  renderMailPanel();
+}
+
+async function runMail(){
+  const go = $("#mlGo"), st = $("#mlSt");
+  const cfg = MAIL.cfg || {};
+  const payload = {
+    company: mailCompany(),
+    to: ($("#mlTo").value || "").trim(),
+    cc: ($("#mlCc").value || "").trim(),
+    subject: ($("#mlSubject").value || "").trim(),
+    body: $("#mlBody") ? $("#mlBody").value : "",
+    with_materials: !!($("#mlPdf") && $("#mlPdf").checked),
+    materials: ((PKG.data && PKG.data.materials) || []).map(x => x.name),
+    history_id: (S.draft && S.draft.history_id) || "",
+  };
+  if(!payload.to) return toast("请填收件人", true);
+  if(!payload.subject) return toast("请填邮件标题", true);
+  go.disabled = true;
+  const old = go.textContent;
+  go.textContent = "发送中…";
+  st.className = "st";
+  st.textContent = "正在连接邮件服务器…";
+  try{
+    if(!cfg.ready){
+      const saved = await api("/api/mail/config", {
+        save: true,
+        host: ($("#mlHost") || {}).value || "",
+        port: ($("#mlPort") || {}).value || "",
+        tls: ($("#mlTls") || {}).value || "ssl",
+        user: ($("#mlUser") || {}).value || "",
+        password: ($("#mlPass") || {}).value || "",
+      });
+      MAIL.cfg = saved;
+      if(!saved.ready) throw new Error("配置不完整：服务器、账号、授权码都要填");
+    }
+    // 没导出过就现场排版：把草稿带上，服务端会先出 docx 再发
+    if(!MAIL.docx && !((PKG.data && PKG.data.docx) || []).length && S.draft){
+      payload.draft = collectDraft();
+    }else{
+      payload.docx = MAIL.docx || (((PKG.data && PKG.data.docx) || [])[0] || {}).name || "";
+    }
+    const r = await api("/api/mail", payload);
+    st.textContent = `已发送 · ${r.attachments.length} 个附件 · ${fmtSize(r.size)}`;
+    toast(`已发送给 ${r.to.join("、")}`);
+    MAIL.to = payload.to; MAIL.subject = payload.subject; MAIL.body = payload.body;
+    refreshUsage();
+    setTimeout(() => { if(MAIL.open) closeMail(); }, 1200);
+  }catch(err){
+    st.className = "st err";
+    st.textContent = err.message;
+  }finally{
+    go.disabled = false;
+    go.textContent = old;
+  }
+}
+
+document.addEventListener("click", e => {
+  if(!MAIL.open) return;
+  if(e.target.closest("#mailPanel") || e.target.closest("#btnMail")) return;
+  closeMail();
+});
+
 /* ---------------- 打包下载 ---------------- */
 const PKG = { open: false, data: null, sel: {}, busy: false, loading: false };
 
@@ -1283,18 +1490,25 @@ async function toggleBundle(e){
   await loadBundle();
 }
 
+async function fetchFileList(force){
+  // 报告与底稿清单：打包和发邮件都要用，取一次存 PKG.data
+  if(PKG.data && !force) return PKG.data;
+  const q = new URLSearchParams();
+  q.set("company", pkgCompany());
+  (S.loaded || []).forEach(t => q.append("title", t));
+  const r = await (await fetch(apiUrl("/api/bundle?" + q.toString()))).json();
+  if(r.error) throw new Error(r.error);
+  PKG.data = r;
+  return r;
+}
+
 async function loadBundle(){
   PKG.sel = {};
   $("#pkgPanel").classList.add("show");
   $("#pkgPanel").innerHTML = `<div class="pk-h">打包下载<span class="x" onclick="closeBundle()">×</span></div>
     <div class="pk-sub">正在读取文件清单…</div>`;
   try{
-    const q = new URLSearchParams();
-    q.set("company", pkgCompany());
-    (S.loaded || []).forEach(t => q.append("title", t));
-    const r = await (await fetch(apiUrl("/api/bundle?" + q.toString()))).json();
-    if(r.error) throw new Error(r.error);
-    PKG.data = r;
+    const r = await fetchFileList(true);
     (r.docx || []).forEach((x, i) => { if(i === 0) PKG.sel["docx:" + x.name] = true; });
     (r.materials || []).forEach(x => { PKG.sel["pdf:" + x.name] = true; });
     renderBundle();

@@ -33,6 +33,7 @@ import generator  # noqa: E402
 import history  # noqa: E402
 import jobs  # noqa: E402
 import llm  # noqa: E402
+import mailer  # noqa: E402
 import pdf_text  # noqa: E402
 import usage as usage_mod  # noqa: E402
 from mcp_client import CaihuiClient, MCPError  # noqa: E402
@@ -201,6 +202,59 @@ def api_export(payload: dict) -> dict:
         history.attach_docx(rid, out.name)
     return {"path": str(out), "name": out.name, "url": "/download/" + quote(out.name),
             "cleaned": draft.get("_cleaned") or 0}
+
+
+def api_mail_config(payload: dict) -> dict:
+    """读或改发件配置。密码只进不出。"""
+    if payload.get("save"):
+        mailer.save_config(payload)
+    return mailer.describe()
+
+
+def api_mail(payload: dict) -> dict:
+    """把报告寄出去。标题默认企业全称，收件人默认 panyuping641@pingan.com.cn。"""
+    company = (payload.get("company") or "").strip()
+    draft = payload.get("draft") or {}
+    name = (draft.get("company_full_name") or company or "").strip()
+
+    docx_name = _base_name(payload.get("docx") or "")
+    docx_path = OUTPUT / docx_name if docx_name else None
+    if not (docx_path and docx_path.is_file()):
+        docx_path = None
+        if draft:
+            docx_path = write_docx(generator.polish_draft(draft), name or company)
+            usage_mod.record("export", company=company or docx_path.stem, note=docx_path.name)
+            rid = payload.get("history_id") or draft.get("history_id") or ""
+            if rid:
+                history.attach_docx(rid, docx_path.name)
+
+    files: list[Path] = []
+    if docx_path:
+        files.append(docx_path)
+    if payload.get("with_materials"):
+        for m in (payload.get("materials") or []):
+            base = _base_name(m)
+            for d in (DATA_DIR, UPLOAD_DIR):
+                p = d / base
+                if p.is_file():
+                    files.append(p)
+                    break
+    if not files:
+        raise ValueError("没有可发送的附件：先导出报告，或勾选原底稿")
+
+    subject = (payload.get("subject") or "").strip() or name or (docx_path.stem if docx_path else "内评简评报告")
+    body = payload.get("body") or ""
+    if not body.strip():
+        body = (f"{name or '受评主体'}的内评简评报告见附件，请查收。\n\n"
+                + "、".join(p.name for p in files) + "\n")
+
+    res = mailer.send(payload.get("to") or mailer.DEFAULT_TO, subject, body, files,
+                      cc=payload.get("cc") or "")
+    usage_mod.record("mail", company=name or company, note=f"{'、'.join(res['to'])}｜{res['subject'][:30]}")
+    rid = payload.get("history_id") or draft.get("history_id") or ""
+    if rid:
+        history.attach_mail(rid, res["to"], res["subject"])
+    return res
 
 
 def write_docx(draft: dict, company: str = "") -> Path:
@@ -530,6 +584,8 @@ class Handler(BaseHTTPRequestHandler):
                             "skipped": skipped, "checked_at": cache.get("ts") or "",
                             "reasons": {k: v.get("why") for k, v in
                                         (cache.get("results") or {}).items() if not v.get("ok")}})
+            elif p == "/api/mail/config":
+                self._json(mailer.describe())
             elif p == "/api/stats":
                 self._json(usage_mod.summary())
             elif p == "/api/history":
@@ -614,6 +670,8 @@ class Handler(BaseHTTPRequestHandler):
             "/api/bundle": api_bundle,
             "/api/history/list": api_history_list,
             "/api/history/delete": api_history_delete,
+            "/api/mail": api_mail,
+            "/api/mail/config": api_mail_config,
         }
         try:
             if p.startswith("/api/jobs/"):

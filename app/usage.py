@@ -25,6 +25,7 @@ KIND_LABEL = {
     "search": "检索公告",
     "fetch": "读取材料",
     "export": "导出报告",
+    "mail": "发送邮件",
 }
 
 
