@@ -454,6 +454,10 @@ def _walk_numbers(obj, out: set[str], depth: int = 0):
         v = float(obj)
         for txt in (f"{v:.2f}", f"{v:.1f}", f"{v:.0f}", f"{v:.4f}", f"{v:,.2f}"):
             out.add(txt.replace(",", ""))
+        # 正文里的负号会在提取数字时被去掉，负值要按绝对值一并入集，
+        # 否则「EBITDA 为 -2.11 亿元」会被误判为不可溯源
+        out.add(f"{abs(v):.2f}")
+        out.add(f"{abs(v):.1f}")
         return
     if isinstance(obj, dict):
         for k, v in obj.items():
