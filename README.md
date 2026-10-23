@@ -3,7 +3,7 @@
 把「外部材料（跟踪评级报告／募集说明书／年报）」变成「内部简评报告」的一套可复用资产：**通用模板 + 写作方法论 + 本地工作台**。工作台接财汇 MCP，输入企业名称即可自动取数、下材料、出草稿、导出 Word。
 
 **唯一入口（云端，自带后端）**：<https://neiping-report.app.workbuddy.host/?sharecode=2WWK44V4BB>
-口令见 `_cloud_pw.txt`（不入库）。GitHub Pages 已停用，见第六节。
+口令 `ce-shi`，存在 `_cloud_pw.txt`（不入库）。GitHub Pages 已停用，见第六节。
 
 ## 一、三件产出
 
@@ -27,15 +27,15 @@ PORT=8770 /Users/panyp/.workbuddy/binaries/python/envs/rating-flow/bin/python ap
 
 依赖：`python-docx`、`pymupdf`（已在 `rating-flow` 环境）。财汇 MCP 端点与密钥从 `~/.workbuddy/mcp.json` 读取，也可用 `CAIHUI_MCP_URL` / `CAIHUI_MCP_KEY` 覆盖；模型走 `~/.workbuddy/models.json`，不需要另填 API Key。
 
-**访问口令**：打开页面先要口令，没进来之前整页糊在毛玻璃后面（`backdrop-filter: blur(16px)` + 半透明白），点不动也提交不了。默认口令 `ceshi`，登录后页头「锁定」可退出。
+**访问口令**：打开页面先要口令，没进来之前整页糊在毛玻璃后面（`backdrop-filter: blur(16px)` + 半透明白），点不动也提交不了。默认口令 `ce-shi`，登录后页头「锁定」可退出。
 
-口令来源优先级：环境变量 `REPORT_PASSWORD` → `data/auth.json` 的 scrypt 哈希 → 默认 `ceshi`。想改就设环境变量（临时、不落盘）：
+口令来源优先级：环境变量 `REPORT_PASSWORD` → `data/auth.json` 的 scrypt 哈希 → 默认 `ce-shi`。想改就设环境变量（临时、不落盘）：
 
 ```bash
 REPORT_PASSWORD='你自己定的' PORT=8770 ... app/server.py
 ```
 
-`POST /api/password {"old":"ceshi","new":"新的"}` 会把新口令以 scrypt（n=2^14）写进 `data/auth.json`，并让所有旧会话失效；`data/` 在 `.gitignore` 里，不会进仓库。
+`POST /api/password {"old":"ce-shi","new":"新的"}` 会把新口令以 scrypt（n=2^14）写进 `data/auth.json`，并让所有旧会话失效；`data/` 在 `.gitignore` 里，不会进仓库。
 
 登录成功发一个 `secrets.token_urlsafe(32)`，服务端只存它的 SHA-256（`data/sessions.json`，30 天有效、最多 20 个会话），前端放 localStorage，之后每个请求带 `Authorization: Bearer`。**用 Bearer 而不用 Cookie**：GitHub Pages 上的页面调 127.0.0.1 属跨站请求，第三方 Cookie 会被浏览器拦掉（`SameSite=None` 还要求 Secure，本机 http 不满足），自定义头只要 CORS 放行就能带。下载是浏览器直接跳转、带不了头，所以 `?t=<token>` 也接受。
 
@@ -133,7 +133,7 @@ https://neiping-report.app.workbuddy.host/?sharecode=2WWK44V4BB
 
 ```bash
 python3 make_versions.py        # 改了 versions.json 才需要，重生成历史快照
-python3 make_cloud.py --keep-pw # 生成 _cloud/：程序 + 模板 + docs + versions + 启动脚本
+python3 make_cloud.py           # 生成 _cloud/：程序 + 模板 + docs + versions + 启动脚本
 ```
 
 然后用发布工具把 `_cloud/` 发上去（目录里 `start.sh` 含财汇与模型密钥，`_cloud/` 与 `_cloud_pw.txt` 都在 `.gitignore`）。

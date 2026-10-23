@@ -10,8 +10,9 @@
 访问口令另生成一个随机串，不用默认的 ceshi——云端是对外的。
 
 用法：
-    python3 make_cloud.py            # 重新生成 _cloud/
-    python3 make_cloud.py --keep-pw  # 保留上次生成的口令
+    python3 make_cloud.py                 # 重新生成 _cloud/，口令沿用上次的
+    python3 make_cloud.py --new-pw        # 重新生成一个随机口令（推荐，云端对外）
+    python3 make_cloud.py --password ce-shi   # 指定口令
 """
 
 from __future__ import annotations
@@ -67,7 +68,7 @@ def model() -> dict:
     raise SystemExit("models.json 里没有带 url/apiKey 的模型")
 
 
-def build(keep_pw: bool) -> None:
+def build(password: str | None = None, new_pw: bool = False) -> None:
     if OUT.exists():
         shutil.rmtree(OUT)
     (OUT / "app").mkdir(parents=True)
@@ -92,13 +93,20 @@ def build(keep_pw: bool) -> None:
         if src.is_dir():
             shutil.copytree(src, OUT / "site" / sub, dirs_exist_ok=True)
 
-    # 口令：默认沿用上次的，除非要求重新生成
+    # 口令优先级：命令行 --password > --new-pw 随机 > 上次生成的值 > 出厂默认
+    #
+    # 默认「沿用上次」而不是每次随机：口令是要发给使用者的，重发一次云端
+    # 就得把新口令重新告知一遍，忘了就登不进去。要换再显式 --new-pw / --password。
     pw_file = BASE / "_cloud_pw.txt"
-    if keep_pw and pw_file.exists():
+    if password:
+        pw = password
+    elif new_pw:
+        pw = secrets.token_urlsafe(9)
+    elif pw_file.exists():
         pw = pw_file.read_text(encoding="utf-8").strip()
     else:
-        pw = secrets.token_urlsafe(9)
-        pw_file.write_text(pw, encoding="utf-8")
+        pw = "ce-shi"
+    pw_file.write_text(pw, encoding="utf-8")
 
     murl, mkey = caihui()
     m = model()
@@ -145,8 +153,11 @@ def build(keep_pw: bool) -> None:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--keep-pw", action="store_true")
-    build(ap.parse_args().keep_pw)
+    ap.add_argument("--keep-pw", action="store_true", help="（旧参数，现为默认行为）沿用上次口令")
+    ap.add_argument("--new-pw", action="store_true", help="重新生成随机口令")
+    ap.add_argument("--password", help="指定口令，例如 --password ce-shi")
+    a = ap.parse_args()
+    build(password=(a.password or "").strip() or None, new_pw=a.new_pw)
 
 
 if __name__ == "__main__":

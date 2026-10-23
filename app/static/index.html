@@ -553,7 +553,7 @@ async function doLogin(){
     TOKEN = d.token;
     localStorage.setItem("nrToken", TOKEN);
     unlockUI();
-    if(d.default_password) toast("当前是默认口令 ceshi，建议改成自己的");
+    if(d.default_password) toast("当前仍是默认口令，建议在「设置」里改成自己的");
     bootData();
   }catch(e){
     $("#gateErr").textContent = (API_BASE && /Failed to fetch|NetworkError/i.test(e.message))
@@ -1543,7 +1543,7 @@ function renderSettings(){
 
   // 口令
   h += `<div class="setsec">
-    <div class="st">访问口令 ${badge(!pw.is_default, "已自定义", "仍是默认 ceshi")}</div>
+    <div class="st">访问口令 ${badge(!pw.is_default, "已自定义", "仍是默认口令")}</div>
     <div class="sd">别人打开这个网址要先输口令。改完所有旧登录立即失效。</div>
     <div class="setgrid">
       <label>当前口令</label>

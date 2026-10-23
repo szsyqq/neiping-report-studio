@@ -3,7 +3,7 @@
 口令来源，优先级从高到低：
     1. 环境变量 REPORT_PASSWORD（临时改口令、或不想落盘时用）
     2. data/auth.json 的 scrypt 哈希（改口令后写这里）
-    3. 默认 ceshi
+    3. 默认 ce-shi（首次上手用的，对外部署请改）
 
 登录成功后发一个自签 token（过期时间 + 随机串 + HMAC 签名），**服务端不存会话**，
 前端放 localStorage，之后每个请求带 `Authorization: Bearer <token>`。
@@ -29,7 +29,7 @@ BASE = Path(__file__).resolve().parent.parent
 DATA = BASE / "data"
 AUTH_JSON = DATA / "auth.json"
 
-DEFAULT_PASSWORD = "ceshi"
+DEFAULT_PASSWORD = "ce-shi"
 TOKEN_DAYS = 30
 # scrypt 参数：本机单次登录 ~50ms，够挡住批量试口令
 _SCRYPT = dict(n=2 ** 14, r=8, p=1, dklen=32)
@@ -158,7 +158,7 @@ def cookie(token: str, clear: bool = False) -> str:
 
 
 def is_default() -> bool:
-    """口令还是不是默认的 ceshi（是的话登录页给个提示，也知道自己没改过）。"""
+    """口令还是不是出厂默认值（是的话登录后给个提示，也知道自己没改过）。"""
     if env_password():
         return False
     return not bool((_read(AUTH_JSON) or {}).get("hash"))
