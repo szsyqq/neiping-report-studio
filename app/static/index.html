@@ -1394,7 +1394,8 @@ function renderMailPanel(){
         <label>授权码</label>
         <input id="mlPass" type="password" placeholder="客户端授权码，不是登录密码" spellcheck="false" />
       </div>
-      <div class="hint">企业邮箱一般要单独开通 SMTP 并生成「客户端授权码」。平安邮箱的提交端口常只在内网开放，外网需换一个可发信的邮箱。</div>
+      <div class="hint">这里发信走 SMTP，需要邮箱的「客户端授权码」（QQ 邮箱：设置→账号→生成授权码；服务器 smtp.qq.com、端口 465、SSL）。<br>
+        没配授权码也能发：在 WorkBuddy 对话里让我用 QQ 邮箱连接器代发——那条通道限额为单文件 1MB、合计 3MB，只够发报告本体，带不了原底稿。</div>
     </div>`;
   }else{
     h += `<div class="ml-cfg"><div class="t">
