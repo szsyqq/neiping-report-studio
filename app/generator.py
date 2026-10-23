@@ -322,6 +322,8 @@ SYSTEM_PROMPT = """你是信用评级机构的分析员，负责撰写内部「�
 16. 变化要算幅度并归因：收入、利润、毛利率、资产负债率、有息债务等关键指标，与上期相比变动超过 5% 的，写出变动幅度并说明成因（量、价、结构、并表范围、政府补助、会计口径调整），不要只并列两期数字让读者自己算。
 17. 措辞分级、不用极端词与宣传语：判断词只用很强／较强／一般／较弱、可控／充足／尚可／承压这类分级表述，不用「极强」「极弱」「恶劣」「极大」「严重恶化」；材料里的「荣获」「行业领先」「填补空白」「有力保障」「成效显著」等宣传语与美化表述一律不进正文，只写可核实的事实与风险。
 18. 正文每段至少锚定一个具体数据或明确事实（金额、比率、期限、数量、协议条款），不写通篇定性的空段；也不为凑数据引与判断无关的数字——引的每个数都要能用在一句判断上。
+19. 同一件事只说一遍。加粗汇总句是判断，正文不得把这句话换个说法再说一次；专题段只写它自己那件事的新证据，不复述债务段、资产段或业务段已经写过的数据与结论；同一条事实（如某科目余额、某协议条款）在全文只出现一次，后文需要引用时用「上述」带过或直接给结论，不重抄原句。
+20. 分部业务段是一整段：编号与板块名之后的全部内容在同一段里连续写完，不在段内换行、不分成若干小段、不加小标题。
 19. 两类专项按条件触发，不按行业标签触发。（1）收入主要来自政府结算（土地整理、代建、特许经营、购买服务）的，总述段交代「钱从谁来」时就要带上区域财力的实数——地区 GDP 与增速、一般公共预算收入、政府性债务余额或债务率，各一句、写明年份，并点明公司在这套结算体系里的层级与回款路径；不要只写「区域财力持续增长」这种不带数的判断，也不要把区域情况另起一段展开。（2）在建工程占非流动资产比重较高的，写清计划总投资、已累计投资、剩余投资，并与货币资金对照说明缺口。材料没有这些数据就整段不写，不许用「预计」「大致」补位。
 
 【写作风格】以跟踪评级报告正文为语体基准：段首归因（受……影响／受益于）、段中展开（具体来看／结构上／此外）、段末收口（整体来看，……）。判断词要分级（很强/较强/一般/较弱、可控/充足/尚可/承压）。不用「本期」「去年」「大幅」这类不可核实表述，也不用「可能」「大概」「或许」——判断要么有据，要么不写。行文里不出现「材料」「披露」「外部条件」这类词：它们是分析员的作业对象，不是报告的语言。
@@ -464,7 +466,8 @@ def clean_segment_body(name: str, body: str) -> str:
 # 交代来源与框架的串场话。评级报告的判断句里没有这些词，删掉后句子照样成立。
 _VIEW_WORDS = re.compile(
     r"材料|公开资料|公开信息|外部资料|本报告|本文|披露|载明|列示|详见|"
-    r"资料来源|可得资料|未获取|数据表显示|数据显示|报表显示")
+    r"资料来源|可得资料|未获取|数据表显示|数据显示|报表显示|"
+    r"未取数|未采集|数据缺失|缺数据|缺失数据|口径缺失|未纳入统计")
 # 「原材料」「新材料」是业务名，不是「材料未披露」的那个材料，先遮住再判
 _SAFE_WORDS = ("原材料", "材料采购", "材料成本", "材料供应", "材料费用", "材料费",
                "建筑材料", "新材料", "包装材料", "材料价格")
@@ -540,6 +543,8 @@ def polish_language(text: str) -> str:
     for sent in re.split(r"(?<=[。！？])", masked):
         if not sent.strip():
             continue
+        if _DANGLING.match(sent.strip()):
+            continue  # 「…形成约束。和公司土地整理…」这类粘连句，删掉
         if not _VIEW_WORDS.search(sent):
             kept_sents.append(sent)
             continue
@@ -555,13 +560,115 @@ def polish_language(text: str) -> str:
     return _unmask_terms(_tidy_punct("".join(kept_sents)), book)
 
 
+
+
+# 以「和/与/及」开头的句子，多半是模型把上一段末尾与下一段开头粘在一起留下的病句
+_DANGLING = re.compile(r"^\s*(?:和|与|及|以及|并且)(?=公司|该|上述|其|主体)")
+
+
 def _tidy_punct(s: str) -> str:
     s = re.sub(r"[，；、]{2,}", "，", s or "")
+    s = re.sub(r"([。！？])\1+", r"\1", s)      # 删句后常留下「。。」
     s = re.sub(r"^[，；、。\s]+", "", s)
     s = re.sub(r"[，、]\s*(?=[。！？])", "", s)
     s = re.sub(r"[，；、]+$", "", s)
     s = re.sub(r"\s+", " ", s)
     return s.strip()
+
+
+# ── 去重：同一件事只说一遍 ────────────────────────────────────────────────
+# 模型爱把加粗汇总句的判断在正文里再说一遍，读起来就是「这句怎么又来了」。
+# 判据是字面重复，不做语义判断：连续 14 个汉字相同才动手，改写的重复交给校验提示。
+_DEDUP_LOG: list[str] = []
+
+
+def _core_text(s: str) -> str:
+    return re.sub(r"[^\u4e00-\u9fa5A-Za-z0-9%]", "", s or "")
+
+
+def _common_run(a: str, b: str) -> int:
+    """最长公共连续片段长度。"""
+    if not a or not b:
+        return 0
+    from difflib import SequenceMatcher
+    m = SequenceMatcher(None, a, b, autojunk=False).find_longest_match(0, len(a), 0, len(b))
+    return m.size
+
+
+def _common_text(a: str, b: str) -> str:
+    if not a or not b:
+        return ""
+    from difflib import SequenceMatcher
+    m = SequenceMatcher(None, a, b, autojunk=False).find_longest_match(0, len(a), 0, len(b))
+    return a[m.a:m.a + m.size]
+
+
+_PERIOD_TOK = re.compile(
+    r"20\d{2}\s*年(?:\d{1,2}\s*月(?:末|初|底)?|度|末|初|上半年|下半年|第[一二三四]季度)?"
+    r"|\d{1,2}\s*月(?:末|初|底)?|\d{1,2}\s*[-—～]\s*\d{1,2}\s*月")
+
+# 各段共用的句式骨架。这些词一起出现是文风一致，不是内容重复，
+# 比对前先抹掉，留下的才是「这句话在别处已经说过」的实质部分。
+_BOILER = ("该板块收入分别为", "占营业收入的比重分别为", "占营业收入的比重为",
+           "占营业收入比重分别为", "较上年同期", "同期末", "截至", "分别为",
+           "同比", "主要系", "公司", "亿元", "万元", "个百分点")
+
+
+def _norm_periods(s: str) -> str:
+    """把期次与套话骨架换成占位符再比对。"""
+    t = _PERIOD_TOK.sub("@", s or "")
+    for w in _BOILER:
+        t = t.replace(w, "@")
+    return t
+
+
+def is_real_dup(a: str, b: str, min_len: int = 14, min_han: int = 9) -> bool:
+    """两段是否真的重复。
+
+    只看长度会把「2023年、2024年和2025年」「××收入分别为」「公司」这类期次与
+    句式骨架判成重复，误删本来不同的句子。所以先归一化，再要求公共片段里
+    至少有 min_han 个汉字——剩下的这些字才是「同一件事」。
+    """
+    block = _common_text(_norm_periods(a), _norm_periods(b))
+    if len(block) < min_len:
+        return False
+    return len(re.sub(r"[^\u4e00-\u9fa5]", "", block)) >= min_han
+
+
+def dedupe_sentences(text: str, seen: list[str] | None = None, min_len: int = 14) -> str:
+    """删掉与 seen（已出现过的句子）字面重复的句子，返回清理后的文本。
+
+    seen 会被就地追加，用于跨段去重：前一段说过的话，后一段不再重复。
+    """
+    sents = [s for s in re.split(r"(?<=[。！？])", text or "") if s.strip()]
+    if len(sents) < 2 and not seen:
+        return (text or "").strip()
+    seen = seen if seen is not None else []
+    kept: list[str] = []
+    for s in sents:
+        core = _core_text(s)
+        dup = len(core) >= 10 and any(is_real_dup(core, prev, min_len) for prev in seen)
+        if dup:
+            _DEDUP_LOG.append(s.strip()[:40])
+            continue
+        kept.append(s)
+        if len(core) >= 10:
+            seen.append(core)
+    return "".join(kept).strip()
+
+
+def dedupe_lead(lead: str, body: str) -> str:
+    """正文里若把加粗句又说了一遍，删掉那一句。"""
+    core = _core_text(lead)
+    if len(core) < 12 or not body:
+        return body
+    out = []
+    for s in re.split(r"(?<=[。！？])", body):
+        if s.strip() and is_real_dup(_core_text(s), core, 14):
+            _DEDUP_LOG.append(s.strip()[:40])
+            continue
+        out.append(s)
+    return "".join(out).strip()
 
 
 def segment_heading(i: int, name: str) -> str:
@@ -654,26 +761,95 @@ def _ensure_structure(draft: dict, facts: dict) -> dict:
     fin_table = build_financial_table(facts)
     if not _table_has_values(fin_table):
         fin_table = _clean_fin_table(c.get("financial_table")) or fin_table
+
+    # 按文档顺序过一遍：先清理语言，再删掉段内同一件事的重复句。
+    # 只做段内去重——跨段重复多是同一事实在不同语境的必要复述（业务段的风险点、
+    # 专题段的核心证据），机器判断不了该留哪一处，交给校验提示由人决定。
+    _DEDUP_LOG.clear()
+    out["basic_info"] = dedupe_sentences(out["basic_info"])
+
+    def para(p: dict | None, key: str = "body") -> dict:
+        p = p or {}
+        lead = _lead(p.get("lead"))
+        body = dedupe_lead(lead, polish_language(p.get(key) or ""))
+        return {"lead": lead, "body": dedupe_sentences(body)}
+
+    overview = para(ov)
+    segments = []
+    for s in (c.get("segments") or []):
+        if not str(s.get("body") or "").strip():
+            continue
+        nm = clean_segment_name(str(s.get("name") or ""))
+        b = polish_language(clean_segment_body(nm, str(s.get("body") or "")))
+        segments.append({"name": nm, "body": dedupe_sentences(b)})
+    asset = para(at)
+    debt = para(db)
+    topics = [para(t) for t in (c.get("special_topics") or []) if str(t.get("body") or "").strip()]
+
     out["commentary"] = {
-        "overview": {"lead": _lead(ov.get("lead")), "body": polish_language(ov.get("body") or "")},
+        "overview": overview,
         "segment_table": build_segment_table(facts) or _clean_llm_table(c.get("segment_table")),
-        "segments": [
-            {"name": clean_segment_name(str(s.get("name") or "")),
-             "body": polish_language(clean_segment_body(clean_segment_name(str(s.get("name") or "")),
-                                                        str(s.get("body") or "")))}
-            for s in (c.get("segments") or []) if str(s.get("body") or "").strip()
-        ],
-        "asset": {"lead": _lead(at.get("lead")), "body": polish_language(at.get("body") or "")},
+        "segments": segments,
+        "asset": asset,
         "financial_table": fin_table,
-        "debt": {"lead": _lead(db.get("lead")), "body": polish_language(db.get("body") or "")},
-        "special_topics": [
-            {"lead": _lead(t.get("lead")), "body": polish_language(t.get("body") or "")}
-            for t in (c.get("special_topics") or []) if str(t.get("body") or "").strip()
-        ],
+        "debt": debt,
+        "special_topics": [t for t in topics if t["body"]],
     }
     out["data_notes"] = draft.get("data_notes") or []
     out["sources"] = draft.get("sources") or []
+    if _DEDUP_LOG:
+        out["data_notes"] = list(out["data_notes"]) + [
+            f"已自动删去 {len(_DEDUP_LOG)} 处与上文重复的表述：" + "；".join(_DEDUP_LOG[:4])
+            + ("……" if len(_DEDUP_LOG) > 4 else "")]
     return out
+
+
+def polish_draft(draft: dict) -> dict:
+    """导出前的最后一道语言清理：只改文字，不动结构与表格。
+
+    页面上用户自己改过的段落也会从这里过一遍——把「材料未披露」「从外部条件看」
+    这类话说回来太容易，而导出才是最终形态，不能只保证模型那次干净。
+    """
+    d = dict(draft or {})
+    _DEDUP_LOG.clear()
+    changed = 0
+
+    def _pol(s: str) -> str:
+        nonlocal changed
+        out = polish_language(s)
+        if out != (s or "").strip():
+            changed += 1
+        return out
+
+    d["positive"] = [s for s in (_pol(x) for x in (d.get("positive") or [])) if s]
+    d["concern"] = [s for s in (_pol(x) for x in (d.get("concern") or [])) if s]
+    d["basic_info"] = dedupe_sentences(_pol(d.get("basic_info") or ""))
+
+    c = dict(d.get("commentary") or {})
+
+    def para(p):
+        p = dict(p or {})
+        lead = _lead(p.get("lead"))
+        return {"lead": lead, "body": dedupe_sentences(dedupe_lead(lead, _pol(p.get("body") or "")))}
+
+    for k in ("overview", "asset", "debt"):
+        if isinstance(c.get(k), dict):
+            c[k] = para(c[k])
+    if isinstance(c.get("segments"), list):
+        c["segments"] = [
+            {"name": s.get("name") or "",
+             "body": dedupe_sentences(_pol(s.get("body") or ""))}
+            for s in c["segments"] if isinstance(s, dict) and (s.get("body") or "").strip()]
+    if isinstance(c.get("special_topics"), list):
+        c["special_topics"] = [p for p in (para(t) for t in c["special_topics"]
+                                          if isinstance(t, dict)) if p["body"]]
+    d["commentary"] = c
+    n = changed + len(_DEDUP_LOG)
+    d["_cleaned"] = n
+    if _DEDUP_LOG:
+        d["data_notes"] = list(d.get("data_notes") or []) + [
+            f"导出前删去 {len(_DEDUP_LOG)} 处重复表述：" + "；".join(_DEDUP_LOG[:3])]
+    return d
 
 
 NUM_RE = re.compile(r"-?\d[\d,]*\.?\d*\s*(?:亿元|万元|%|个百分点|倍)")
@@ -882,7 +1058,33 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
         issues.append(f"正文仍有 {len(left)} 处交代资料来源的表述（程序未能自动改写），"
                       f"建议改为直接陈述或删去：{sample}")
 
-    # 7) 程度词与过短板块：程度词留给数据去说，板块段要有实质内容
+    # 7) 跨段重复：同一句话在别处已经说过。只提示不自动删——
+    # 业务段的风险点与专题段的核心证据常常是同一事实，机器分不清该留哪处。
+    named: list[tuple[str, str]] = [("基本情况", draft.get("basic_info") or "")]
+    named.append(("总述段", (c.get("overview") or {}).get("body") or ""))
+    for i, s in enumerate(c.get("segments") or [], 1):
+        named.append((f"{i}）{s.get('name') or '板块'}", s.get("body") or ""))
+    named.append(("资产段", (c.get("asset") or {}).get("body") or ""))
+    named.append(("债务段", (c.get("debt") or {}).get("body") or ""))
+    for i, t in enumerate(c.get("special_topics") or [], 1):
+        named.append((f"专题段{i}", t.get("body") or ""))
+    seen_sent: list[tuple[str, str]] = []
+    dup_hits: list[str] = []
+    for label, text in named:
+        for sent in re.split(r"(?<=[。！？])", text):
+            core = _core_text(sent)
+            if len(core) < 20:
+                continue
+            for prev_label, prev_core in seen_sent:
+                if is_real_dup(core, prev_core, 18, min_han=10):
+                    dup_hits.append(f"「{sent.strip()[:26]}…」在{prev_label}与{label}重复")
+                    break
+            else:
+                seen_sent.append((label, core))
+    if dup_hits:
+        issues.append("同一表述在两处出现，删一处即可：" + "；".join(dup_hits[:3]))
+
+    # 8) 程度词与过短板块：程度词留给数据去说，板块段要有实质内容
     vague = sorted({w for w in ("极大", "极强", "极弱", "恶劣", "严重恶化", "显著")
                     for t in texts if w in (t or "")})
     if vague:

@@ -234,14 +234,12 @@ select{width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 8px
 .doc-table th:first-child,.doc-table td:first-child{text-align:left}
 .doc-table tr>*:last-child{border-right:0}
 .doc-table tbody tr:last-child>*{border-bottom:0}
-.seg{margin-bottom:2px}
-.seg-head{display:flex;align-items:baseline;gap:2px;line-height:1.6}
-.seg-body{margin-top:-3px}
-.seg-head .nm{border:0;background:transparent;outline:none;font-family:inherit;font-size:inherit;
-  font-weight:inherit;padding:1px 2px;border-bottom:1px dashed transparent;width:auto}
-.seg-head .nm:hover{border-bottom-color:var(--line)}
-.seg-head .nm:focus{border-bottom-color:#cfd4dc}
-.seg-head .suffix{color:var(--ink)}
+.seg{margin-bottom:2px;position:relative}
+.seg-line{line-height:1.85;padding:1px 16px 1px 0;border-radius:4px;outline:none;
+  white-space:pre-wrap;word-break:break-word}
+.seg-line:hover{background:#fcfcfd}
+.seg-line:focus{background:#fff;box-shadow:0 0 0 1px #e6e9ee inset}
+.seg .tool{position:absolute;right:0;top:4px}
 .topic{margin-bottom:6px}
 .notes{margin:14px 0 0;padding:10px 12px;border:1px solid var(--line);border-radius:6px;
   background:#fcfcfd;font-family:-apple-system,"PingFang SC",sans-serif;font-size:12px;
@@ -899,6 +897,21 @@ function fitSegName(el){
   for(const ch of (el.value || "")) w += /[\u2e80-\u9fff\uff00-\uffef]/.test(ch) ? 2 : 1;
   el.style.width = Math.max(2, w + 1) + "ch";
 }
+/* 分部段是整段可编辑：粘贴一律转纯文本，编辑后顺手记住板块名 */
+document.addEventListener("input", e => {
+  const line = e.target && e.target.closest && e.target.closest(".seg-line");
+  if(!line) return;
+  const p = parseSeg(line.innerText || line.textContent || "", line.dataset.name);
+  if(p.name) line.dataset.name = p.name;
+});
+document.addEventListener("paste", e => {
+  const line = e.target && e.target.closest && e.target.closest(".seg-line");
+  if(!line) return;
+  e.preventDefault();
+  const txt = (e.clipboardData || window.clipboardData).getData("text/plain")
+    .replace(/\s*\n+\s*/g, "");
+  document.execCommand("insertText", false, txt);
+});
 function tableHtml(t){
   if(!t || !t.rows) return "";
   const head = t.periods ? ["项目", ...t.periods] : (t.header || []);
@@ -1016,36 +1029,47 @@ function renumber(){
   });
 }
 
+/* 分部段：编号、板块名、正文在同一段里，像 Word 那样整段编辑 */
+function segText(name, body){
+  const n = (name || "").trim();
+  return (n ? n + segSuffix(n) : "") + (body || "").trim();
+}
+function parseSeg(raw, lastName){
+  const t = (raw || "").replace(/\u00a0/g, " ").trim();
+  const m = t.match(/^\s*\d+\s*[）)．.]?\s*([\s\S]*)$/);
+  let rest = m ? m[1] : t;
+  const d = rest.match(/^([^，。；：\n]{1,24}?)((?:业务|板块|产品|服务|行业)?方面[，,、：:])\s*/);
+  if(d) return { name: d[1].trim(), body: rest.slice(d[0].length).trim() };
+  return { name: (lastName || "").trim(), body: rest.trim() };
+}
 function renderSegs(segs){
   $("#d-segs").innerHTML = segs.map(s => `<div class="seg">
-    <div class="seg-head">
-      <span class="num"></span>
-      <input class="nm seg-name" value="${esc(s.name)}" placeholder="板块名" spellcheck="false"
-        oninput="fitSegName(this);this.parentNode.querySelector('.suffix').textContent=segSuffix(this.value)"/>
-      <span class="suffix">${segSuffix(s.name)}</span>
-      <button class="tool" onclick="this.closest('.seg').remove();renumberSegs()">×</button>
-    </div>
-    <textarea class="ta seg-body" rows="5">${esc(s.body)}</textarea>
+    <div class="seg-line" contenteditable="plaintext-only" spellcheck="false"
+      data-name="${esc(s.name)}"></div>
+    <button class="tool" onclick="this.closest('.seg').remove();renumberSegs()">×</button>
   </div>`).join("");
-  renumberSegs();
+  [...document.querySelectorAll("#d-segs .seg")].forEach((el, i) => {
+    const s = segs[i] || {};
+    el.querySelector(".seg-line").textContent = `${i + 1}）${segText(s.name, s.body)}`;
+  });
 }
 function addSeg(){
   const div = document.createElement("div");
   div.className = "seg";
-  div.innerHTML = `<div class="seg-head"><span class="num"></span>
-    <input class="nm seg-name" placeholder="板块名" spellcheck="false"
-      oninput="fitSegName(this);this.parentNode.querySelector('.suffix').textContent=segSuffix(this.value)"/>
-    <span class="suffix">业务方面，</span>
-    <button class="tool" onclick="this.closest('.seg').remove();renumberSegs()">×</button></div>
-    <textarea class="ta seg-body" rows="5"></textarea>`;
+  div.innerHTML = `<div class="seg-line" contenteditable="plaintext-only" spellcheck="false"
+    data-name=""></div>
+    <button class="tool" onclick="this.closest('.seg').remove();renumberSegs()">×</button>`;
   $("#d-segs").appendChild(div);
   renumberSegs();
-  div.querySelector(".seg-name").focus();
+  const line = div.querySelector(".seg-line");
+  line.focus();
 }
 function renumberSegs(){
   [...document.querySelectorAll("#d-segs .seg")].forEach((el, i) => {
-    el.querySelector(".num").textContent = (i + 1) + "）";
-    fitSegName(el.querySelector(".seg-name"));
+    const line = el.querySelector(".seg-line");
+    if(document.activeElement === line) return;   // 正在编辑的不动，免得光标跳走
+    const t = (line.textContent || "").replace(/^\s*\d+\s*[）)．.]?\s*/, "");
+    line.textContent = `${i + 1}）${t}`;
   });
 }
 
@@ -1083,10 +1107,10 @@ function collectDraft(){
   d.concern = [...document.querySelectorAll(".it-con")].map(t => t.value.trim()).filter(Boolean);
   d.basic_info = $(".ta.basic").value.trim();
   d.commentary.overview = { lead: $(".ta.ov-lead").value.trim(), body: $(".ta.ov-body").value.trim() };
-  d.commentary.segments = [...document.querySelectorAll("#d-segs .seg")].map(s => ({
-    name: s.querySelector(".seg-name").value.trim(),
-    body: s.querySelector(".seg-body").value.trim()
-  })).filter(s => s.body);
+  d.commentary.segments = [...document.querySelectorAll("#d-segs .seg")].map(s => {
+    const line = s.querySelector(".seg-line");
+    return parseSeg(line.innerText || line.textContent || "", line.dataset.name);
+  }).filter(s => s.body);
   d.commentary.asset = { lead: $(".ta.as-lead").value.trim(), body: $(".ta.as-body").value.trim() };
   d.commentary.debt = { lead: $(".ta.db-lead").value.trim(), body: $(".ta.db-body").value.trim() };
   d.commentary.special_topics = [...document.querySelectorAll("#d-topics .topic")].map(t => ({
@@ -1109,7 +1133,7 @@ async function exportDocx(){
     a.href = apiUrl(r.url);
     a.download = r.name;
     a.click();
-    toast("已导出 " + r.name);
+    toast("已导出 " + r.name + (r.cleaned ? `（导出前清理 ${r.cleaned} 处重复或来源表述）` : ""));
     refreshUsage();
     btn.disabled = false;
     if(HIST.open) loadHistory();  // 记录里的「已导出」状态跟着更新

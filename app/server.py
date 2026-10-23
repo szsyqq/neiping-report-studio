@@ -190,14 +190,16 @@ def api_generate(payload: dict) -> dict:
 
 
 def api_export(payload: dict) -> dict:
-    draft = payload.get("draft") or {}
+    # 导出是最终形态：页面上改过的段落也要过一遍语言清理，别把「材料未披露」带进 Word
+    draft = generator.polish_draft(payload.get("draft") or {})
     out = write_docx(draft, payload.get("company") or "")
     name = (draft.get("company_full_name") or payload.get("company") or "").strip()
     usage_mod.record("export", company=name or out.stem, note=out.name)
     rid = payload.get("history_id") or draft.get("history_id") or ""
     if rid:
         history.attach_docx(rid, out.name)
-    return {"path": str(out), "name": out.name, "url": "/download/" + quote(out.name)}
+    return {"path": str(out), "name": out.name, "url": "/download/" + quote(out.name),
+            "cleaned": draft.get("_cleaned") or 0}
 
 
 def write_docx(draft: dict, company: str = "") -> Path:
@@ -315,7 +317,7 @@ def api_bundle(payload: dict) -> dict:
     if not (docx_path and docx_path.is_file()):
         docx_path = None
         if draft:
-            docx_path = write_docx(draft, company)
+            docx_path = write_docx(generator.polish_draft(draft), company)
             usage_mod.record("export", company=company or docx_path.stem, note=docx_path.name)
 
     pdfs = []
