@@ -207,7 +207,16 @@ def timeline_html(spec: dict) -> str:
 
 def main() -> None:
     spec = json.loads(SPEC.read_text(encoding="utf-8"))
-    vs = spec["versions"]
+    # 清单是手写的，难免插入重复项；按 id 去重，保留先出现的那条，
+    # 否则时间线会出现两行一样的版本、快照目录互相覆盖。
+    seen, uniq = set(), []
+    for v in spec["versions"]:
+        if v["id"] in seen:
+            print(f"  跳过重复版本 {v['id']}")
+            continue
+        seen.add(v["id"])
+        uniq.append(v)
+    spec["versions"] = vs = uniq
     latest = spec["current"]
     OUT.mkdir(parents=True, exist_ok=True)
 

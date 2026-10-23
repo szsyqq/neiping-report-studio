@@ -1,0 +1,2263 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>内评简评报告</title>
+<style>
+:root{
+  --ink:#111418; --ink2:#4b5563; --muted:#9aa1ac; --line:#e6e8eb; --line2:#f1f2f4;
+  --bg:#fff; --hover:#f7f8f9; --red:#c0392b; --amber:#9a6700;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-size:13.5px;line-height:1.7;
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  -webkit-font-smoothing:antialiased}
+button{font:inherit;cursor:pointer}
+input,textarea,select{font:inherit;color:inherit}
+
+header{height:52px;display:flex;align-items:center;gap:14px;padding:0 20px;
+  border-bottom:1px solid var(--line);background:#fff}
+header .brand{font-size:14px;font-weight:600;letter-spacing:.2px}
+header .spacer{flex:1}
+header a{color:var(--muted);text-decoration:none;font-size:12.5px;padding:4px 2px}
+header a:hover{color:var(--ink)}
+header .sep{width:1px;height:14px;background:var(--line)}
+
+/* 用量统计：平时只是一行数字，点开才展开明细 */
+.usage{border:1px solid var(--line);background:#fff;border-radius:999px;padding:2px 10px;
+  font-size:11.5px;color:var(--ink2);font-variant-numeric:tabular-nums;white-space:nowrap}
+.usage:hover{border-color:#c9ced6;background:var(--hover)}
+.upanel{position:fixed;top:58px;right:18px;width:302px;background:#fff;border:1px solid var(--line);
+  border-radius:8px;box-shadow:0 12px 30px rgba(17,20,24,.10);padding:14px 16px 12px;z-index:50;
+  display:none;font-size:12px}
+.upanel.show{display:block}
+.upanel .uh{font-size:12.5px;font-weight:600}
+.upanel .usub{color:var(--muted);font-size:11px;margin:2px 0 10px}
+.upanel .uk{display:flex;justify-content:space-between;gap:10px;padding:3px 0}
+.upanel .uk .k{color:var(--muted)}
+.upanel .uk b{font-weight:500;font-variant-numeric:tabular-nums;text-align:right}
+.upanel .div{height:1px;background:var(--line2);margin:9px 0}
+.upanel .um{color:var(--muted);font-size:11px;margin:9px 0 3px;letter-spacing:.3px}
+.upanel .ur{display:flex;justify-content:space-between;gap:8px;font-size:11.5px;padding:2px 0;color:var(--ink2)}
+.upanel .ur span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.upanel .ur .n{color:var(--muted);font-variant-numeric:tabular-nums;flex:none}
+.upanel .acts4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:6px 0 2px}
+.upanel .acts4 .c{text-align:center;border:1px solid var(--line2);border-radius:6px;padding:5px 0 4px}
+.upanel .acts4 .c b{display:block;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.4}
+.upanel .acts4 .c span{color:var(--muted);font-size:10.5px}
+
+/* 历史记录：与用量面板同一层，列每次生成，可直接打开或下载成品 */
+.hpanel{position:fixed;top:58px;right:18px;width:432px;max-height:74vh;overflow-y:auto;
+  background:#fff;border:1px solid var(--line);border-radius:8px;
+  box-shadow:0 12px 30px rgba(17,20,24,.10);padding:14px 16px 10px;z-index:50;
+  display:none;font-size:12px}
+.hpanel.show{display:block}
+.hpanel .hh{font-size:12.5px;font-weight:600;display:flex;justify-content:space-between;gap:8px}
+.hpanel .hh .x{border:0;background:transparent;color:#c9ced5;font-size:13px;padding:0 2px;line-height:1}
+.hpanel .hh .x:hover{color:var(--red)}
+.hpanel .hsub{color:var(--muted);font-size:11px;margin:2px 0 6px}
+.hrow{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;
+  padding:8px 0;border-bottom:1px solid var(--line2)}
+.hrow:last-child{border-bottom:0}
+.hrow .co{font-size:12.5px;line-height:1.5;word-break:break-all}
+.hrow .mt{color:var(--muted);font-size:11px;margin-top:2px;font-variant-numeric:tabular-nums}
+.hrow .acts2{display:flex;gap:6px;flex:none}
+.hrow .btn-sm{padding:4px 9px;font-size:11.5px}
+.hempty{color:var(--muted);font-size:11.5px;padding:16px 0 12px;line-height:1.7}
+
+.wrap{display:grid;grid-template-columns:318px 1fr;height:calc(100vh - 52px)}
+aside{border-right:1px solid var(--line);overflow-y:auto;padding:16px 18px 96px}
+main{overflow-y:auto;padding:26px 40px 90px}
+
+.block{padding-bottom:14px;margin-bottom:14px;border-bottom:1px solid var(--line2)}
+.block:last-child{border-bottom:0}
+#genBlock{position:sticky;bottom:0;background:#fff;border-top:1px solid var(--line);
+  padding:12px 0 6px;margin-top:auto}
+.row2{display:flex;gap:8px;margin-top:8px;align-items:center}
+.row2 select{flex:1;min-width:0}
+.row2 .btn{width:auto;flex:none;padding:8px 16px;white-space:nowrap}
+.block .title{font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.4px;margin-bottom:10px}
+
+.field{display:flex;gap:6px}
+.field input{flex:1;min-width:0;border:1px solid var(--line);border-radius:6px;padding:8px 10px;
+  background:#fff;outline:none;font-size:13px}
+.field input:focus{border-color:#c4c9d1}
+.field button{border:1px solid var(--ink);background:var(--ink);color:#fff;border-radius:6px;
+  padding:0 14px;font-size:13px;white-space:nowrap}
+.field button:hover{background:#000}
+.field button:disabled{background:#c9ccd1;border-color:#c9ccd1;cursor:not-allowed}
+
+/* 流程进度 */
+.steps{display:flex;flex-direction:column}
+.step{display:grid;grid-template-columns:18px 1fr;gap:10px;padding:6px 0}
+.step .dot{width:18px;height:18px;border-radius:50%;border:1px solid var(--line);
+  display:grid;place-items:center;font-size:10px;line-height:1;color:var(--muted);margin-top:1px}
+.step .label{font-size:13px;display:flex;justify-content:space-between;gap:8px}
+.step .pct{color:var(--muted);font-size:11.5px;font-variant-numeric:tabular-nums}
+.step .detail{font-size:11.5px;color:var(--muted);margin-top:3px;word-break:break-all}
+.step .bar{height:2px;background:var(--line2);border-radius:2px;overflow:hidden;margin-top:6px}
+.step .bar i{display:block;height:100%;background:var(--ink);width:0;transition:width .45s ease}
+.step.wait .label{color:#c2c7cf}
+.step.wait .dot{border-color:#eceef1;color:#cdd2d9}
+.step.run .dot{border-color:var(--ink);color:var(--ink)}
+.step.done .dot{background:var(--ink);border-color:var(--ink);color:#fff;font-size:11px}
+.step.done .label{color:var(--ink2)}
+.step.error .dot{border-color:var(--red);color:var(--red)}
+.step.error .label{color:var(--red)}
+.step.error .detail{color:var(--red)}
+
+/* 材料清单 */
+.mat{display:grid;grid-template-columns:14px 1fr;gap:8px;align-items:start;
+  padding:6px 0;border-bottom:1px solid var(--line2)}
+.mat:last-child{border-bottom:0}
+.mat input{margin:3px 0 0;width:13px;height:13px;accent-color:var(--ink);flex:none}
+.mat .t{min-width:0;font-size:12.5px;line-height:1.5}
+.mat .t .nm{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.mat .t .meta{color:var(--muted);font-size:11px;margin-top:2px}
+.mat .bar{display:block;height:2px;background:var(--line2);border-radius:2px;overflow:hidden;margin-top:5px}
+.mat .bar i{display:block;height:100%;background:var(--ink);transition:width .4s ease}
+.mat.done .meta{color:var(--ink2)}
+.mat.error .meta{color:var(--red)}
+.mat.wait{opacity:.5}
+.matwrap{margin-top:8px}
+.more{border:0;background:transparent;color:var(--muted);font-size:11.5px;padding:2px 0}
+.more:hover{color:var(--ink)}
+.grp{font-size:11.5px;color:var(--muted);margin:10px 0 2px}
+.grp:first-child{margin-top:0}
+
+/* 上传 */
+.up{display:flex;align-items:center;gap:8px;padding:9px 10px;margin-top:12px;
+  border:1px dashed #d8dce2;border-radius:6px;background:#fdfdfe;font-size:12.5px;color:var(--ink2)}
+.up.hot{border-color:var(--ink);background:#f7f8f9}
+.up .grow{flex:1;min-width:0}
+.up .hint{color:var(--muted);font-size:11px;display:block;margin-top:1px}
+.up button{border:1px solid var(--line);background:#fff;border-radius:5px;padding:4px 10px;font-size:12px}
+.up button:hover{border-color:#c4c9d1}
+.upfile{display:grid;grid-template-columns:14px 1fr 16px;gap:8px;align-items:start;
+  padding:6px 0;border-bottom:1px solid var(--line2);font-size:12.5px}
+.upfile .ico{color:var(--muted);font-size:11px;line-height:1.6;text-align:center}
+.upfile .t{min-width:0}
+.upfile .nm{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.upfile .meta{color:var(--muted);font-size:11px;margin-top:2px}
+.upfile .bar{display:block;height:2px;background:var(--line2);border-radius:2px;overflow:hidden;margin-top:5px}
+.upfile .bar i{display:block;height:100%;background:var(--ink);transition:width .3s ease}
+.upfile.done .meta{color:var(--ink2)}
+.upfile.error .meta{color:var(--red)}
+.upfile .x{border:0;background:transparent;color:#c9ced5;font-size:12px;padding:0;line-height:1.5}
+.upfile .x:hover{color:var(--red)}
+.btn{width:100%;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:6px;
+  padding:8px 12px;font-size:13px}
+.btn:hover{border-color:#c4c9d1;background:var(--hover)}
+.btn:disabled{color:#c2c7cf;border-color:var(--line2);background:#fff;cursor:not-allowed}
+.btn.primary{background:var(--ink);border-color:var(--ink);color:#fff}
+.btn.primary:hover{background:#000}
+.btn.primary:disabled{background:#c9ccd1;border-color:#c9ccd1;color:#fff}
+select{width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 8px;background:#fff;
+  font-size:12.5px;outline:none}
+
+/* 文档区 */
+.sheet{max-width:756px;margin:0 auto}
+.docbar{display:flex;align-items:flex-start;gap:12px;margin-bottom:18px}
+.docbar .grow{flex:1;min-width:0}
+.docbar .acts{display:flex;gap:8px;align-items:center;white-space:nowrap}
+.btn-sm{border:1px solid var(--line);background:#fff;border-radius:6px;padding:6px 12px;font-size:12.5px}
+.btn-sm:hover{border-color:#c4c9d1;background:var(--hover)}
+.btn-sm.solid{background:var(--ink);border-color:var(--ink);color:#fff}
+.btn-sm.solid:hover{background:#000}
+.btn-sm:disabled{color:#c2c7cf;border-color:var(--line2);cursor:not-allowed;background:#fff}
+
+/* 打包下载：按钮下挂一层勾选面板，白底、细线，不遮挡正文 */
+.pkgwrap{position:relative;display:inline-block}
+.pkgpanel{position:absolute;right:0;top:calc(100% + 8px);width:356px;background:#fff;
+  border:1px solid var(--line);border-radius:8px;box-shadow:0 14px 34px rgba(17,20,24,.12);
+  padding:13px 14px 11px;display:none;z-index:45;text-align:left;white-space:normal;cursor:default}
+.pkgpanel.show{display:block}
+.pkgpanel .pk-h{font-size:12.5px;font-weight:600;display:flex;justify-content:space-between;gap:8px}
+.pkgpanel .pk-h .x{border:0;background:transparent;color:#c9ced5;font-size:13px;padding:0 2px;line-height:1}
+.pkgpanel .pk-h .x:hover{color:var(--red)}
+.pkgpanel .pk-sub{color:var(--muted);font-size:11px;margin:2px 0 4px}
+.pkgpanel .pk-body{max-height:min(58vh,420px);overflow-y:auto;padding-right:4px;margin-right:-4px}
+.pkgpanel .pkgrp{font-size:11px;color:var(--muted);letter-spacing:.3px;margin:10px 0 2px;
+  display:flex;justify-content:space-between;gap:8px}
+.pkgpanel .pkgrp button{border:0;background:transparent;color:var(--muted);font-size:11px;padding:0}
+.pkgpanel .pkgrp button:hover{color:var(--ink)}
+.pkrow{display:grid;grid-template-columns:14px 1fr;gap:8px;align-items:start;
+  padding:5px 0;border-bottom:1px solid var(--line2);font-size:12px;cursor:pointer}
+.pkrow:last-child{border-bottom:0}
+.pkrow input{margin:3px 0 0;width:13px;height:13px;accent-color:var(--ink);flex:none}
+.pkrow .nm{display:block;line-height:1.5;word-break:break-all;color:var(--ink2)}
+.pkrow .meta{color:var(--muted);font-size:11px;display:block}
+.pkrow.none{color:var(--muted);font-size:11.5px;display:block;border:0;padding:2px 0 4px;cursor:default}
+.pk-foot{display:flex;align-items:center;gap:8px;margin-top:11px}
+.pk-foot .sum{flex:1;color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums}
+.pk-foot .btn-sm{flex:none}
+
+/* ── 发送邮件面板 ───────────────────────────────────────────── */
+.mlpanel{position:absolute;right:0;top:calc(100% + 8px);width:392px;background:#fff;
+  border:1px solid var(--line);border-radius:8px;box-shadow:0 14px 34px rgba(17,20,24,.12);
+  padding:13px 14px 12px;display:none;z-index:46;text-align:left;white-space:normal;cursor:default}
+.mlpanel.show{display:block}
+.mlpanel .ml-h{font-size:12.5px;font-weight:600;display:flex;justify-content:space-between;gap:8px}
+.mlpanel .ml-h .x{border:0;background:transparent;color:#c9ced5;font-size:13px;padding:0 2px;line-height:1}
+.mlpanel .ml-h .x:hover{color:var(--red)}
+.mlpanel .ml-sub{color:var(--muted);font-size:11px;margin:2px 0 8px}
+.mlf{display:grid;grid-template-columns:44px 1fr;gap:6px 8px;align-items:center;margin-bottom:7px}
+.mlf label{font-size:11.5px;color:var(--muted);text-align:right}
+.mlf input,.mlf textarea{width:100%;font-family:inherit;font-size:12px;color:var(--ink);
+  border:1px solid var(--line);border-radius:4px;padding:4px 7px;outline:none;background:#fff}
+.mlf input:focus,.mlf textarea:focus{border-color:#cfd4dc}
+.mlf textarea{resize:vertical;min-height:52px;line-height:1.6}
+.mlf .full{grid-column:2}
+.mlatt{font-size:12px;border-top:1px solid var(--line2);padding-top:8px;margin-top:2px}
+.mlatt .r{display:flex;align-items:flex-start;gap:7px;padding:3px 0;cursor:pointer}
+.mlatt input{width:13px;height:13px;margin:2px 0 0;accent-color:var(--ink);flex:none}
+.mlatt .n{line-height:1.5;color:var(--ink2);word-break:break-all}
+.mlatt .n i{display:block;color:var(--muted);font-size:10.5px;font-style:normal}
+.ml-foot{display:flex;align-items:center;gap:8px;margin-top:10px}
+.ml-foot .st{flex:1;font-size:10.5px;color:var(--muted);line-height:1.4}
+.ml-foot .st.err{color:var(--red)}
+.ml-cfg{border-top:1px dashed var(--line);margin-top:9px;padding-top:9px}
+.ml-cfg .t{font-size:11px;color:var(--muted);margin-bottom:6px}
+.ml-cfg .hint{font-size:10.5px;color:var(--muted);line-height:1.6;margin-top:6px}
+
+.doc{font-family:"Kaiti SC","KaiTi","STKaiti","Songti SC","SimSun",serif;
+  font-size:15.5px;line-height:1.82;color:#1b1f24}
+.doc-head{display:flex;align-items:baseline;gap:8px;margin-bottom:2px}
+.doc-head input{border:0;background:transparent;outline:none;font-family:inherit;font-weight:700}
+.in-company{flex:1;min-width:0;font-size:16.5px;padding:1px 2px}
+.in-code{width:64px;font-size:16.5px;padding:1px 2px;border-bottom:1px solid var(--line)!important;
+  text-align:center;font-weight:400!important}
+/* ── 版式：块间一个空行，块内不留 ───────────────────────────────
+   --pgap 就是「一个空行」的高度（等于正文字号）。所有块间距都取这一个值，
+   所以「各板块空行多少」不再是各处手调的 8/12/22/26，只有一处。
+   工具条上的「空行」开关只是把它切成 0，页面与导出 Word 一起吃这个开关。 */
+.doc{--pgap:1.05em}
+.doc.tight{--pgap:0px}
+.doc .blk+.blk{margin-top:var(--pgap)}
+.doc .blk>*+*{margin-top:0}
+.doc-h{font-weight:700;font-size:15.5px;margin:0}
+.doc-h+.items,.doc-h+textarea{margin-top:2px}
+/* 楷体本身没有第二档字重，font-weight:700 在浏览器里几乎看不出粗细，
+   和导出 Word 的加粗对不上。用四向文字阴影补一点笔画厚度，只加在正文楷体区。 */
+.doc .doc-h,.doc .ta.lead{
+  -webkit-text-stroke:.3px currentColor;
+  text-shadow:.42px 0 0 currentColor,-.42px 0 0 currentColor,0 .42px 0 currentColor,0 -.42px 0 currentColor}
+
+.ta{display:block;width:100%;border:1px solid transparent;border-radius:4px;background:transparent;
+  padding:1px 4px;margin:0 -4px;line-height:inherit;font-family:inherit;font-size:inherit;
+  resize:none;overflow:hidden;outline:none;color:inherit;text-indent:0}
+.ta:hover{border-color:var(--line2);background:#fcfcfd}
+.ta:focus{border-color:#cfd4dc;background:#fff}
+.ta.lead{font-weight:700}
+.items{display:flex;flex-direction:column}
+.item{display:flex;gap:2px;align-items:flex-start}
+.item .num{white-space:nowrap;padding-top:1px}
+.item .ta{flex:1;min-width:0}
+.pool{margin:6px 0 0}
+.pool-t{font-size:11px;color:var(--muted);margin-bottom:4px}
+.chip{display:block;width:100%;text-align:left;font-family:inherit;font-size:11.5px;
+  color:var(--ink2);background:#fbfcfd;border:1px solid var(--line2);border-radius:4px;
+  padding:3px 8px;margin:3px 0;cursor:pointer;line-height:1.55;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.chip:hover{background:#f4f7fc;border-color:#d6ddea;color:var(--ink)}
+.tool{border:0;background:transparent;color:#c2c7cf;font-size:12px;padding:0 3px;line-height:1.9;
+  opacity:0;transition:opacity .15s}
+.item:hover .tool,.seg:hover .tool,.topic:hover .tool{opacity:1}
+.tool:hover{color:var(--red)}
+.add{border:0;background:transparent;color:var(--muted);font-size:12px;padding:2px 4px}
+.add:hover{color:var(--ink)}
+.unit{text-align:right;color:var(--ink2);font-size:13.5px;margin:6px 0 2px}
+.doc-table{width:100%;border-collapse:collapse;font-size:13.5px;
+  border-top:1.5px solid #111;border-bottom:1.5px solid #111;margin-bottom:4px}
+.doc-table th,.doc-table td{padding:3px 8px;border-right:.5px solid #c9ccd1;
+  border-bottom:.5px solid #c9ccd1;font-weight:400;text-align:right;vertical-align:middle}
+.doc-table th{font-weight:700;text-align:center}
+.doc-table th:first-child,.doc-table td:first-child{text-align:left}
+.doc-table tr>*:last-child{border-right:0}
+.doc-table tbody tr:last-child>*{border-bottom:0}
+.seg{position:relative}
+.seg+.seg{margin-top:var(--pgap)}
+.seg-line{line-height:1.85;padding:1px 16px 1px 0;border-radius:4px;outline:none;
+  white-space:pre-wrap;word-break:break-word}
+.seg-line:hover{background:#fcfcfd}
+.seg-line:focus{background:#fff;box-shadow:0 0 0 1px #e6e9ee inset}
+.seg .tool{position:absolute;right:0;top:4px}
+.topic+.topic{margin-top:var(--pgap)}
+.tp-add{position:relative;display:inline-block}
+.tpmenu{position:absolute;left:0;top:calc(100% + 4px);min-width:176px;background:#fff;
+  border:1px solid var(--line);border-radius:7px;box-shadow:0 10px 26px rgba(17,20,24,.12);
+  padding:4px;display:none;z-index:30}
+.tpmenu.show{display:block}
+.tpmenu button{display:block;width:100%;text-align:left;border:0;background:transparent;
+  font-family:inherit;font-size:12px;color:var(--ink2);padding:6px 9px;border-radius:5px;cursor:pointer}
+.tpmenu button:hover{background:var(--hover);color:var(--ink)}
+.notes{margin:14px 0 0;padding:10px 12px;border:1px solid var(--line);border-radius:6px;
+  background:#fcfcfd;font-family:-apple-system,"PingFang SC",sans-serif;font-size:12px;
+  line-height:1.7;color:var(--ink2)}
+.notes .h{font-weight:600;color:var(--ink);margin-bottom:4px}
+.notes ul{margin:0;padding-left:16px}
+.notes li{margin:2px 0}
+.notes li.bad{color:var(--red)}
+.empty{color:#c2c7cf;font-size:13px;text-align:center;padding:120px 0;
+  font-family:-apple-system,"PingFang SC",sans-serif}
+
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(8px);
+  background:#111418;color:#fff;font-size:12.5px;padding:8px 16px;border-radius:6px;
+  opacity:0;pointer-events:none;transition:.2s;max-width:80vw}
+
+/* ── 口令闸门：没进来之前，整页糊在毛玻璃后面 ───────────────────── */
+#gate{position:fixed;inset:0;z-index:80;display:none;align-items:center;justify-content:center;
+  background:rgba(255,255,255,.5);
+  -webkit-backdrop-filter:blur(16px) saturate(.8);backdrop-filter:blur(16px) saturate(.8)}
+#gate.show{display:flex}
+
+/* ── 设置（模型 API / 邮件 SMTP / 财汇 / 口令，统一一处） ─────────── */
+#setMask{position:fixed;inset:0;z-index:70;display:none;background:rgba(17,20,24,.28);
+  -webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)}
+#setMask.show{display:flex;align-items:center;justify-content:center}
+.setbox{width:560px;max-height:82vh;overflow:auto;background:#fff;border-radius:10px;
+  box-shadow:0 20px 60px rgba(17,20,24,.20);padding:0;text-align:left}
+.setbox .sh{display:flex;align-items:center;gap:8px;padding:16px 20px 12px;
+  border-bottom:1px solid var(--line);position:sticky;top:0;background:#fff;z-index:2}
+.setbox .sh b{font-size:14px}
+.setbox .sh .x{margin-left:auto;border:0;background:transparent;color:#b9bfc8;font-size:16px;
+  cursor:pointer;line-height:1;padding:2px 4px}
+.setbox .sh .x:hover{color:var(--red)}
+.sets{padding:6px 20px 20px}
+.setsec{border-bottom:1px solid var(--line2);padding:14px 0}
+.setsec:last-child{border-bottom:0}
+.setsec .st{font-size:12.5px;font-weight:600;margin-bottom:2px;display:flex;align-items:center;gap:6px}
+.setsec .sd{font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:8px}
+.setsec .badge{font-size:10px;font-weight:400;padding:1px 6px;border-radius:9px;
+  border:1px solid var(--line);color:var(--muted);background:#fafbfc}
+.setsec .badge.ok{color:#2e7d32;border-color:#c8e6c9;background:#f1f8f1}
+.setsec .badge.warn{color:#9a6700;border-color:#f0e0b8;background:#fffbf0}
+.setgrid{display:grid;grid-template-columns:66px 1fr;gap:7px 10px;align-items:center}
+.setgrid label{font-size:11.5px;color:var(--muted);text-align:right}
+.setgrid input,.setgrid select{width:100%;font-family:inherit;font-size:12.5px;color:var(--ink);
+  border:1px solid var(--line);border-radius:5px;padding:5px 8px;outline:none;background:#fff}
+.setgrid input:focus,.setgrid select:focus{border-color:#cfd4dc}
+.setgrid .wide{grid-column:1 / -1}
+.setact{display:flex;align-items:center;gap:8px;margin-top:9px}
+.setact .msg{flex:1;font-size:11px;color:var(--muted)}
+.setact .msg.err{color:var(--red)}
+.setact .msg.ok{color:#2e7d32}
+
+/* ── 版本历史（每次改动一份可运行的快照） ───────────────────────── */
+#verMask{position:fixed;inset:0;z-index:71;display:none;background:rgba(17,20,24,.28);
+  -webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)}
+#verMask.show{display:flex;align-items:center;justify-content:center}
+.verbox{width:640px;max-height:82vh;overflow:auto;background:#fff;border-radius:10px;
+  box-shadow:0 20px 60px rgba(17,20,24,.20);text-align:left}
+.verbox .vh{display:flex;align-items:center;gap:8px;padding:15px 20px 12px;
+  border-bottom:1px solid var(--line);position:sticky;top:0;background:#fff;z-index:2}
+.verbox .vh b{font-size:14px}
+.verbox .vh .n{font-size:11.5px;color:var(--muted)}
+.verbox .vh .x{margin-left:auto;border:0;background:transparent;color:#b9bfc8;
+  font-size:16px;cursor:pointer;line-height:1;padding:2px 4px}
+.verbox .vh .x:hover{color:var(--red)}
+.vlist{position:relative;padding:4px 20px 16px}
+.vlist::before{content:"";position:absolute;left:24px;top:10px;bottom:18px;width:1px;background:var(--line)}
+.vi{position:relative;padding:12px 0 11px 22px;border-bottom:1px solid var(--line2)}
+.vi:last-child{border-bottom:0}
+.vi::before{content:"";position:absolute;left:1px;top:17px;width:7px;height:7px;border-radius:50%;
+  background:#fff;border:1.5px solid #c3c9d2}
+.vi.cur::before{background:#16191d;border-color:#16191d}
+.vi .meta{display:flex;align-items:baseline;gap:8px;font-size:11px;color:var(--muted)}
+.vi .meta .lab{font-weight:600;color:var(--ink2);letter-spacing:.03em}
+.vi .meta .now{color:#2e7d32}
+.vi h3{margin:2px 0 3px;font-size:13.5px;font-weight:600;line-height:1.5}
+.vi .sum{font-size:12px;color:var(--ink2);margin:0 0 5px;line-height:1.65}
+.vi details summary{cursor:pointer;font-size:11.5px;color:#2f5fd0;list-style:none;outline:none;
+  display:inline-block}
+.vi details summary::-webkit-details-marker{display:none}
+.vi details summary::before{content:"▸ ";color:var(--muted)}
+.vi details[open] summary::before{content:"▾ "}
+.vi ul{margin:5px 0 0;padding-left:16px}
+.vi li{font-size:12px;color:var(--ink2);margin:3px 0;line-height:1.68}
+.vi .note{font-size:11px;color:#8a6d1f;background:#fffbf0;border:1px solid #f0e0b8;
+  border-radius:4px;padding:4px 8px;margin-top:6px;line-height:1.6}
+.vi .go{display:inline-block;margin-top:7px;font-size:11.5px;color:#2f5fd0;text-decoration:none;
+  border:1px solid #d6ddea;border-radius:4px;padding:2px 9px;background:#fbfcfe}
+.vi .go:hover{background:#f1f5fd;border-color:#bccbe6}
+body.locked{overflow:hidden}
+body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
+.gcard{width:330px;padding:26px 24px 20px;background:#fff;border:1px solid var(--line);
+  border-radius:10px;box-shadow:0 12px 40px rgba(17,20,24,.10),0 2px 8px rgba(17,20,24,.04);
+  text-align:center}
+.gcard .gt{font-size:15px;font-weight:700;letter-spacing:.5px}
+.gcard .gs{font-size:11.5px;color:var(--muted);margin:6px 0 16px;line-height:1.6}
+.gcard input{width:100%;height:34px;padding:0 10px;font-size:13.5px;font-family:inherit;
+  border:1px solid var(--line);border-radius:5px;outline:none;text-align:center;
+  letter-spacing:2px;background:#fff}
+.gcard input:focus{border-color:#cfd4dc;box-shadow:0 0 0 3px rgba(17,20,24,.04)}
+.gcard button{width:100%;height:34px;margin-top:10px;border:0;border-radius:5px;
+  background:#111418;color:#fff;font-size:13px;font-family:inherit;cursor:pointer}
+.gcard button:hover{background:#000}
+.gcard button:disabled{background:#c2c7cf;cursor:not-allowed}
+.gcard .gerr{min-height:16px;margin-top:8px;font-size:11.5px;color:var(--red)}
+.gcard .ghint{margin-top:12px;font-size:11px;color:var(--muted);line-height:1.6}#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#toast.err{background:var(--red)}
+#conn{display:none;padding:8px 20px;font-size:12.5px;color:var(--amber);background:#fffbf0;
+  border-bottom:1px solid #f3e6c8}
+#conn.show{display:block}
+#conn code{background:#f6f0e2;padding:1px 5px;border-radius:3px;font-size:11.5px}
+@media(max-width:980px){
+  .wrap{grid-template-columns:1fr;height:auto}
+  aside{border-right:0;border-bottom:1px solid var(--line)}
+  main{padding:20px 18px 80px}
+}
+
+#fabNav{display:none;position:fixed;right:12px;bottom:calc(16px + env(safe-area-inset-bottom,0px));
+  z-index:55;flex-direction:column;gap:8px}
+#fabNav.show{display:flex}
+#fabNav button{border:1px solid var(--line);background:#fff;color:var(--ink2);
+  border-radius:999px;padding:8px 14px;font-size:12px;
+  box-shadow:0 6px 18px rgba(17,20,24,.12)}
+
+/* ── 手机（≤640px）────────────────────────────────────────────────
+   四条原则：
+   1. 不再让两栏各自滚动——手机上只有一条滚动轴，否则手指一动就滚错层；
+   2. 悬浮面板一律改成底部抽屉（bottom sheet），因为顶栏会折成两行、锚点算不准；
+   3. 输入框全部 16px，低于这个值 iOS 会在聚焦时自动放大页面，且退不回去；
+   4. 触屏没有 hover，删除按钮不能靠悬停才显形。 */
+@media(max-width:640px){
+  html{-webkit-text-size-adjust:100%}
+
+  /* 顶栏：一条横向滑动的动作带。
+     折行会吃掉 88px（390 宽）到 126px（320 宽），手机上这相当于少看半屏正文；
+     给它一条横向滚动轴，高度就固定在 52px。 */
+  header{height:52px;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;gap:8px;
+    padding:0 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  header::-webkit-scrollbar{display:none}
+  header .brand{font-size:14.5px;flex:none}
+  header .spacer{display:none}
+  header .sep{display:none}
+  header>*{flex:none}
+  header::after{content:"";flex:none;width:2px}
+  header a{font-size:12px;padding:6px 4px;min-height:32px;display:inline-flex;align-items:center}
+  .usage{padding:5px 11px;font-size:12px;min-height:32px}
+
+  /* 单栏单滚动 */
+  .wrap{display:block;height:auto}
+  aside{overflow:visible;padding:14px 14px 8px;border-bottom:1px solid var(--line)}
+  main{overflow:visible;padding:14px 14px calc(80px + env(safe-area-inset-bottom,0px))}
+
+  /* 生成区吸在底部，正文再长也能随手点；离开流程区后自动失效 */
+  #genBlock{padding:10px 0 8px;box-shadow:0 -6px 14px rgba(17,20,24,.05)}
+
+  /* 底部抽屉：用量、历史、打包、发信、设置、版本 */
+  .upanel,.hpanel{position:fixed;left:10px;right:10px;width:auto;top:auto;bottom:10px;
+    max-height:72vh;overflow-y:auto;z-index:60}
+  .pkgpanel,.mlpanel{position:fixed;left:10px;right:10px;width:auto;top:auto;
+    bottom:calc(10px + env(safe-area-inset-bottom,0px));max-height:76vh;overflow-y:auto;
+    overscroll-behavior:contain;z-index:60}
+  .pkgpanel .pk-body{max-height:none;overflow:visible}
+  /* 发送 / 打包的确认按钮同样粘在抽屉底部：抽屉是内部滚动的，
+     按钮原本在流末尾，手机上得先滚到底才看得见。 */
+  .ml-foot,.pk-foot{position:sticky;bottom:0;z-index:3;margin-top:10px;
+    padding:8px 0 calc(8px + env(safe-area-inset-bottom,0px) * 0);
+    background:linear-gradient(to bottom,rgba(255,255,255,0),#fff 26%)}
+  .ml-foot .st{font-size:11px}
+  .ml-foot .btn-sm,.pk-foot .btn-sm{padding:9px 14px;font-size:13px}
+  .setbox,.verbox{width:calc(100% - 20px);max-height:88vh;
+    overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+  .setgrid{grid-template-columns:1fr;gap:4px}
+  .setgrid label{text-align:left;font-size:11px;margin-top:4px}
+  .setgrid .wide{grid-column:1}
+
+  /* 保存按钮必须自己粘在面板底部。
+     四个分区合计约 1500px，而手机面板只有 88vh 高——按钮原本落在第 935px，
+     屏幕根本到不了那里；手指滑的是背后的页面，面板内部不动，看着就是「点不到保存」。
+     sticky bottom 让它停留在所属分区的可视底部，滚到哪一段就能存哪一段。 */
+  .setsec{padding-bottom:6px}
+  .setact{position:sticky;bottom:0;z-index:3;margin:8px -4px 0;
+    padding:8px 4px calc(8px + env(safe-area-inset-bottom,0px) * 0);
+    background:linear-gradient(to bottom,rgba(255,255,255,0),#fff 26%);
+    align-items:center}
+  .setact .msg{font-size:11.5px}
+  .setact .btn-sm{flex:none;padding:9px 14px;font-size:13px}
+  /* 说明文字占高度，手机上折成三行就够，剩下的要留给字段 */
+  .setsec .sd{font-size:11px;line-height:1.55;margin-bottom:6px}
+  .gcard{width:calc(100% - 40px);padding:22px 18px 18px}
+  /* 登录框同样要 16px：iOS 在聚焦时会为 <16px 的输入框自动放大整页 */
+  .gcard input{font-size:16px;padding:10px 12px}
+  .gcard button{min-height:42px}
+  #toast{max-width:92vw;bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+
+  /* 字号：正文与输入框都提到 16px，既好读也避开 iOS 自动缩放 */
+  .doc{font-size:16px;line-height:1.9}
+  .field input,#company,select,.setgrid input,.mlpanel input,.mlpanel textarea{font-size:16px}
+  .ta{font-size:16px}
+
+  /* 工具条：按钮换行，不再挤成一条 */
+  .docbar{flex-direction:column;gap:10px;margin-bottom:14px}
+  .docbar .acts{flex-wrap:wrap;white-space:normal;gap:6px}
+  .doc-head{flex-wrap:wrap;row-gap:2px}
+  .in-code{width:86px!important}
+
+  /* 表格：整表横向滑动，单元格不折行，否则「-10.66%」会被拆成两行看错 */
+  .tscroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -14px;padding:0 14px}
+  .doc-table{min-width:100%;width:auto}
+  .doc-table th,.doc-table td{white-space:nowrap;padding:4px 10px;font-size:14px}
+  .doc-table th:first-child,.doc-table td:first-child{position:sticky;left:0;background:#fff;z-index:1}
+
+  /* 触屏没有 hover：删除按钮与候选条常显，且加大点击区 */
+  .item .tool,.seg .tool,.topic .tool{opacity:1;font-size:15px;
+    min-width:32px;min-height:32px;display:inline-flex;align-items:center;justify-content:center}
+  .seg .tool{top:0}
+  .chip{padding:8px 10px;font-size:12.5px;white-space:normal;line-height:1.5}
+  .add{padding:8px 4px;font-size:13px}
+  .pkgpanel .pkrow,.mlpanel .mlatt label.r{min-height:34px}
+  /* 勾选框 13px 在手机上按不准 */
+  input[type=checkbox]{width:18px;height:18px}
+  .mat,.upfile,.pkrow,.mlatt label.r{align-items:center}
+
+  /* 专题菜单贴右边，免得被屏幕切掉 */
+  .tpmenu{left:auto;right:0}
+
+  /* 手机上给两个跳转键：长报告里很难再滚回顶部的流程区。
+     显隐由 syncFab() 按「正文是否进入视野」控制，不在这里常显。 */
+}
+
+
+</style>
+</head>
+<body class="locked">
+
+<style id="vbar-css">
+/* 用文档流而不是 fixed：旧版页面自带 sticky header，fixed 会把它们压住 32px。
+   横幅跟着滚走也无妨——用户是从「版本」面板点进来的，本来就知道自己在看旧版。 */
+#vbar{position:relative;z-index:9;display:flex;align-items:center;
+  gap:10px;padding:0 14px;height:32px;background:#1b1f24;color:#e8ebef;
+  font:12px/32px -apple-system,"PingFang SC","Helvetica Neue",Arial,sans-serif;
+  box-shadow:0 1px 0 rgba(255,255,255,.06);box-sizing:border-box}
+#vbar .tag{flex:none;font-weight:600;font-size:11px;letter-spacing:.02em;
+  color:#111418;background:#e8ebef;border-radius:3px;padding:1px 6px;line-height:17px}
+#vbar .tt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#c8ced6}
+#vbar .tt b{color:#fff;font-weight:600}
+#vbar .st{flex:none;color:#8b939d;font-size:11px}
+#vbar .st.ok{color:#7fd0a2}
+#vbar .st.bad{color:#f0a6a6}
+#vbar a{flex:none;color:#cfe2ff;text-decoration:none;font-size:11.5px;
+  border:1px solid rgba(255,255,255,.22);border-radius:4px;padding:0 8px;line-height:20px;height:20px}
+#vbar a:hover{background:rgba(255,255,255,.10)}
+</style>
+
+<div id="vbar">
+  <span class="tag">v18 · 10-23 21:54</span>
+  <span class="tt"><b>手机上的保存按不到，其实是被滚出屏幕了</b>　设置面板的保存按钮在手机上一律粘在底部；QQ 邮箱配置写进云端，不用再每次手填。</span>
+  <span class="st" id="vstat">正在连接…</span>
+  <a href="../">全部版本</a>
+  <a href="../../">回到最新版</a>
+</div>
+
+<script id="vbar-js">
+(function () {
+  var stat = document.getElementById("vstat");
+  var tok = "";
+  try { tok = localStorage.getItem("nrToken") || ""; } catch (e) {}
+  try {
+    var q = new URLSearchParams(location.search);
+    if (q.get("t")) { tok = q.get("t"); localStorage.setItem("nrToken", tok); }
+  } catch (e) {}
+
+  function setStat(text, cls) { if (stat) { stat.textContent = text; stat.className = "st " + (cls || ""); } }
+
+  // 旧版页面没有登录概念：补一层请求头，让它们能用当前服务的数据接口。
+  if (tok && window.fetch) {
+    var raw = window.fetch;
+    window.fetch = function (u, o) {
+      o = o || {};
+      try {
+        var h = new Headers(o.headers || {});
+        if (!h.has("Authorization")) h.set("Authorization", "Bearer " + tok);
+        o.headers = h;
+      } catch (e) {}
+      return raw.call(window, u, o).then(function (r) {
+        if (r.status === 401) setStat("登录已失效", "bad");
+        return r;
+      });
+    };
+    var xo = XMLHttpRequest.prototype.open,
+        xs = XMLHttpRequest.prototype.send,
+        xh = XMLHttpRequest.prototype.setRequestHeader;
+    XMLHttpRequest.prototype.open = function () { this.__vbody = 1; return xo.apply(this, arguments); };
+    XMLHttpRequest.prototype.setRequestHeader = function (k) {
+      if (String(k).toLowerCase() === "authorization") this.__vauth = 1;
+      return xh.apply(this, arguments);
+    };
+    XMLHttpRequest.prototype.send = function () {
+      if (!this.__vauth) { try { xh.call(this, "Authorization", "Bearer " + tok); } catch (e) {} }
+      return xs.apply(this, arguments);
+    };
+  }
+
+  // 探活要校验内容：网关爱用 200 + 错误页，只看状态码会误判。
+  if (window.fetch) {
+    fetch("/api/health", { cache: "no-store" })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d || !d.ok) throw new Error("bad");
+        setStat(tok ? "数据接口已连接" : "已连接，未登录", tok ? "ok" : "");
+      })
+      .catch(function () { setStat("连不上服务 · 需配合本机或云端服务运行", "bad"); });
+  }
+})();
+</script>
+
+<div id="gate" class="show">
+  <div class="gcard">
+    <div class="gt">内评简评报告</div>
+    <div class="gs">请输入访问口令</div>
+    <input id="gatePw" type="password" autocomplete="current-password" placeholder="口令"
+      onkeydown="if(event.key==='Enter')doLogin()" />
+    <button id="gateGo" onclick="doLogin()">进入</button>
+    <div class="gerr" id="gateErr"></div>
+    <div class="ghint" id="gateHint"></div>
+  </div>
+</div>
+<div id="setMask"><div class="setbox" id="setBox"></div></div>
+<div id="verMask"><div class="verbox" id="verBox"></div></div>
+<div id="fabNav">
+  <button id="fabFlow" onclick="jumpTo('flow')" title="回到上方：检索、读材料、生成">↑ 流程</button>
+  <button id="fabDoc" onclick="jumpTo('doc')" title="跳到正文">正文 ↓</button>
+</div>
+<div id="conn"></div>
+<header>
+  <div class="brand">内评简评报告</div>
+  <div class="spacer"></div>
+  <button class="usage" id="usageBtn" onclick="toggleUsage(event)" title="点击查看调用明细">累计 0 次 · 财汇 0 点</button>
+  <span class="sep"></span>
+  <button class="usage" id="histBtn" onclick="toggleHistory(event)" title="查看生成过的报告">历史</button>
+  <span class="sep"></span>
+  <button class="usage" id="verBtn" onclick="openVersions()" title="版本历史：每次改了什么都留了一份当时的页面">版本</button>
+  <span class="sep"></span>
+  <button class="usage" id="setBtn" onclick="openSettings()" title="模型 API、邮件 SMTP、财汇、口令">设置</button>
+  <span class="sep"></span>
+  <button class="usage" id="lockBtn" onclick="logout()" title="退出，重新需要口令">锁定</button>
+  <span class="sep"></span>
+  <a href="docs/template-v1.1.html" target="_blank">模板</a>
+  <span class="sep"></span>
+  <a href="docs/method-v1.1.html" target="_blank">方法论</a>
+</header>
+
+<div class="wrap">
+<aside>
+  <div class="block">
+    <div class="title">主体</div>
+    <div class="field">
+      <input id="company" placeholder="企业全称" autocomplete="off" />
+      <button id="btnSearch" onclick="doSearch()">检索</button>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="title">进度</div>
+    <div class="steps" id="steps"></div>
+  </div>
+
+  <div class="block" id="matBlock">
+    <div class="title">资料清单</div>
+
+    <div class="up" id="upBox">
+      <input type="file" id="files" accept="application/pdf,.pdf" multiple hidden onchange="onPick(this)"/>
+      <span class="grow">上传 PDF<span class="hint">评级报告 / 募集说明书，也可拖进来</span></span>
+      <button onclick="document.getElementById('files').click()">选择</button>
+    </div>
+    <div id="upList"></div>
+
+    <div class="matwrap" id="matList"><div style="font-size:12px;color:var(--muted);padding-top:8px">检索后显示评级报告与募集说明书</div></div>
+  </div>
+
+  <div id="genBlock">
+    <button class="btn" id="btnFetch" onclick="doFetch()">读取选中材料</button>
+    <div class="row2">
+      <select id="model"></select>
+      <button class="btn primary" id="btnGen" onclick="doGenerate()">生成草稿</button>
+    </div>
+  </div>
+</aside>
+
+<main>
+  <div id="empty" class="empty">检索公告或上传 PDF 后生成草稿</div>
+  <div id="draftArea" style="display:none"></div>
+</main>
+</div>
+
+<div id="toast"></div>
+<div class="upanel" id="usagePanel"></div>
+<div class="hpanel" id="histPanel"></div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const S = { company: "", facts: null, uploads: [], mstate: {}, loaded: [], draft: null, stats: null };
+
+/* 后端在哪：三种情况都要能自己认出来
+   1. 页面由后端自己发（本机 127.0.0.1 或云端域名）→ 同源，空串
+   2. 页面在 GitHub Pages 这类静态站 → 要连本机 127.0.0.1:8770（可用 localStorage.apiBase 改）
+   3. 用户在页面上手填过地址 → 以填的为准
+   靠「同源能不能打通」来判断，比按域名硬编码稳——换域名、换部署方式都不用改代码。 */
+let API_BASE = (() => {
+  const custom = (localStorage.getItem("apiBase") || "").trim();
+  if (custom) return custom.replace(/\/+$/, "");
+  return (location.protocol === "file:") ? "" : "";
+})();
+const apiUrl = (p) => API_BASE + p;
+
+async function probeBase(base){
+  try{
+    const r = await fetch((base || "") + "/api/health", { cache: "no-store" });
+    if(!r.ok) return false;
+    // 分享链接的网关在缺 sharecode 时会回一个 200 的 HTML 提示页，
+    // 只看状态码会误判成「后端在」。必须确认回的是 JSON 且 ok:true。
+    const d = await r.json().catch(() => null);
+    return !!(d && d.ok);
+  }catch(e){ return false; }
+}
+
+async function resolveApiBase(){
+  if((localStorage.getItem("apiBase") || "").trim()) return;   // 用户手填的优先
+  if(await probeBase(API_BASE)) return;                        // 同源即可
+  if(!API_BASE && await probeBase("")){
+    API_BASE = "";                        // 静态站 → 回落本机
+  }
+}
+
+/* ── 访问口令 ──────────────────────────────────────────────────
+   服务端每个接口都要 token；token 放 localStorage，随请求头带过去。
+   下载走浏览器直接跳转（a[href]），带不了头，改用 ?t= 传。 */
+let TOKEN = localStorage.getItem("nrToken") || "";
+const authHead = () => TOKEN ? { Authorization: "Bearer " + TOKEN } : {};
+const dlUrl = (p) => apiUrl(p) + (TOKEN ? (p.includes("?") ? "&" : "?") + "t=" + encodeURIComponent(TOKEN) : "");
+
+const _fetch = window.fetch.bind(window);
+window.fetch = (u, o) => {
+  const opt = Object.assign({}, o || {});
+  opt.headers = Object.assign({}, (o && o.headers) || {}, authHead());
+  return _fetch(u, opt).then(r => {
+    if(r.status === 401) lockUI("登录已过期，请重新输入口令");
+    return r;
+  });
+};
+
+function lockUI(msg){
+  document.body.classList.add("locked");
+  $("#gate").classList.add("show");
+  $("#gateErr").textContent = msg || "";
+  setTimeout(() => { const el = $("#gatePw"); if(el) el.focus(); }, 60);
+}
+function unlockUI(){
+  document.body.classList.remove("locked");
+  $("#gate").classList.remove("show");
+  $("#gateErr").textContent = "";
+  const el = $("#gatePw"); if(el) el.value = "";
+}
+async function doLogin(){
+  const pw = ($("#gatePw").value || "").trim();
+  const btn = $("#gateGo");
+  if(!pw){ $("#gateErr").textContent = "请输入口令"; return; }
+  btn.disabled = true; $("#gateErr").textContent = "";
+  try{
+    const r = await _fetch(apiUrl("/api/login"), {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: pw }) });
+    const d = await r.json().catch(() => ({}));
+    if(!r.ok || !d.token) throw new Error(d.error || "口令不对");
+    TOKEN = d.token;
+    localStorage.setItem("nrToken", TOKEN);
+    unlockUI();
+    if(d.default_password) toast("当前仍是默认口令，建议在「设置」里改成自己的");
+    bootData();
+  }catch(e){
+    $("#gateErr").textContent = (API_BASE && /Failed to fetch|NetworkError/i.test(e.message))
+      ? "连不上本机服务，先运行 app/server.py"
+      : (e.message || "登录失败");
+  }finally{ btn.disabled = false; }
+}
+async function logout(){
+  try{ await api("/api/logout", {}); }catch(e){}
+  TOKEN = ""; localStorage.removeItem("nrToken");
+  lockUI("已退出");
+}
+async function gateBoot(){
+  // 页面本身是静态的，先定后端地址，再问服务端这个 token 还作不作数。
+  // 注意别在登录页上提示默认口令——那是给所有人看的。
+  await resolveApiBase();
+  try{
+    const r = await _fetch(apiUrl("/api/session"), { headers: authHead() });
+    const d = await r.json().catch(() => ({}));
+    if(d.authed){ unlockUI(); bootData(); return; }
+  }catch(e){
+    $("#gateErr").textContent = API_BASE ? "连不上本机服务，先运行 app/server.py" : "";
+  }
+  lockUI("");
+}
+
+const STEPS = [
+  { key: "search", label: "检索主体" },
+  { key: "materials", label: "读取材料" },
+  { key: "generate", label: "生成草稿" },
+  { key: "export", label: "导出报告" },
+];
+const ST = {};
+STEPS.forEach(s => ST[s.key] = { state: "wait", pct: 0, detail: "" });
+
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+
+function paintSteps(){
+  $("#steps").innerHTML = STEPS.map((s,i) => {
+    const st = ST[s.key];
+    const mark = st.state === "done" ? "✓" : (st.state === "error" ? "!" : (i + 1));
+    const bar = st.state === "run"
+      ? `<div class="bar"><i style="width:${Math.max(2, st.pct)}%"></i></div>` : "";
+    const pct = st.state === "run" ? `<span class="pct">${st.pct}%</span>` : "";
+    const det = st.detail ? `<div class="detail">${esc(st.detail)}</div>` : "";
+    return `<div class="step ${st.state}">
+      <div class="dot">${mark}</div>
+      <div><div class="label"><span>${s.label}</span>${pct}</div>${bar}${det}</div>
+    </div>`;
+  }).join("");
+}
+function setStep(key, patch){ Object.assign(ST[key], patch); paintSteps(); }
+function resetStepsFrom(key){
+  const i = STEPS.findIndex(s => s.key === key);
+  STEPS.slice(i).forEach(s => ST[s.key] = { state: "wait", pct: 0, detail: "" });
+  paintSteps();
+}
+paintSteps();
+
+let toastTimer = null;
+function toast(msg, isErr){
+  const el = $("#toast");
+  el.textContent = msg;
+  el.className = "show" + (isErr ? " err" : "");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.className = ""; }, isErr ? 8000 : 4000);
+}
+
+async function api(path, body){
+  const r = await fetch(apiUrl(path), { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body || {}) });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok || data.error) throw new Error(data.error || ("HTTP " + r.status));
+  return data;
+}
+
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+async function runJob(kind, body, onTick){
+  const { job } = await api("/api/jobs/" + kind, body);
+  for(;;){
+    await sleep(600);
+    const r = await fetch(apiUrl("/api/jobs/" + job));
+    const j = await r.json().catch(() => ({}));
+    if(!r.ok) throw new Error(j.error || "任务状态读取失败");
+    if(onTick) onTick(j);
+    if(j.state === "done") return j;
+    if(j.state === "error") throw new Error(j.error || "任务失败");
+  }
+}
+
+async function pingConn(){
+  if(!API_BASE) return;
+  try{
+    const r = await fetch(apiUrl("/api/health"), { mode: "cors" });
+    if(!r.ok) throw new Error();
+  }catch(e){
+    const el = $("#conn");
+    el.className = "show";
+    el.innerHTML = `未连上本机服务。取数与生成需要本机运行后端：<code>python app/server.py</code>
+      <a href="" style="color:inherit;margin-left:8px">改用本机地址打开</a>`;
+  }
+}
+
+async function loadModels(){
+  try{
+    const d = await (await fetch(apiUrl("/api/models"))).json();
+    if(!(d.models || []).length){
+      $("#model").innerHTML = `<option>没有可用模型</option>`;
+      return;
+    }
+    let h = d.models.map(m =>
+      `<option value="${esc(m.id)}" ${m.id === d.default ? "selected" : ""}>${esc(m.name)}</option>`).join("");
+    if(d.skipped) h += `<option disabled>另有 ${d.skipped} 个模型未通过验证</option>`;
+    $("#model").innerHTML = h;
+    const why = Object.entries(d.reasons || {});
+    $("#model").title = why.length
+      ? "未通过验证：\n" + why.map(([k, v]) => `${k} — ${v}`).join("\n")
+      : "";
+  }catch(e){
+    $("#model").innerHTML = `<option>未连接服务</option>`;
+  }
+}
+
+/* ---------------- 用量统计 ---------------- */
+let statsOpen = false;
+
+function fmtNum(n){ return (n || 0).toLocaleString("en-US"); }
+function fmtTok(n){
+  n = n || 0;
+  if(n >= 1e8) return (n / 1e8).toFixed(2) + " 亿";
+  if(n >= 1e4) return (n / 1e4).toFixed(1) + " 万";
+  return fmtNum(n);
+}
+function fmtSec(s){
+  s = Math.round(s || 0);
+  if(s >= 3600) return (s / 3600).toFixed(1) + " 小时";
+  return s >= 60 ? (s / 60).toFixed(1) + " 分" : s + " 秒";
+}
+
+async function refreshUsage(){
+  try{
+    const s = await (await fetch(apiUrl("/api/stats"))).json();
+    S.stats = s;
+    const t = s.total || {}, mcp = s.mcp || {};
+    $("#usageBtn").textContent = `累计 ${t.calls || 0} 次 · 财汇 ${mcp.total || 0} 点`;
+    $("#usageBtn").title = `累计生成 ${t.calls || 0} 次、${fmtNum(t.total_tokens)} token；财汇接口调用 ${mcp.total || 0} 次；点击看明细`;
+    if(statsOpen) renderUsage();
+  }catch(e){ /* 没连上服务时不打扰 */ }
+}
+
+const KIND_CN = { search: "检索", fetch: "读取", generate: "生成", export: "导出" };
+
+function fmtTs(s){
+  s = String(s || "");
+  return s.length >= 16 ? s.slice(5, 16).replace("T", " ") : s;
+}
+
+function renderUsage(){
+  const s = S.stats || {};
+  const t = s.total || {}, d = s.today || {}, k = s.kinds || {};
+  const mcp = s.mcp || {}, acts = s.actions || {};
+  const est = t.estimated ? `<span style="color:var(--amber)">· 含估算</span>` : "";
+  const per = t.calls ? `${fmtTok(Math.round(t.total_tokens / t.calls))} · ${fmtSec(t.seconds / t.calls)}` : "—";
+  const hit = t.prompt_tokens ? Math.round((t.cached_tokens || 0) / t.prompt_tokens * 100) + "%" : "—";
+  let h = `<div class="uh">调用统计</div>
+    <div class="usub">${s.since ? "自 " + esc(String(s.since).slice(0, 10)) + " 起累计 " + est : "还没有记录"}</div>
+    <div class="uk"><span class="k">今日</span><b>${d.calls || 0} 次生成 · 财汇 ${mcp.today || 0} 点</b></div>
+    <div class="uk"><span class="k">累计</span><b>${t.calls || 0} 次生成 · 财汇 ${mcp.total || 0} 点</b></div>
+    <div class="uk"><span class="k">今日 token</span><b>${fmtTok(d.total_tokens)}</b></div>
+    <div class="uk"><span class="k">累计 token</span><b>${fmtTok(t.total_tokens)}</b></div>
+    <div class="div"></div>
+    <div class="uk"><span class="k">输入 / 输出</span><b>${fmtTok(t.prompt_tokens)} / ${fmtTok(t.completion_tokens)}</b></div>
+    <div class="uk"><span class="k">单次平均</span><b>${per}</b></div>
+    <div class="uk"><span class="k">输入缓存命中</span><b>${hit}</b></div>
+    <div class="um">动作次数（累计 ${(k.search || 0) + (k.fetch || 0) + (k.generate || 0) + (k.export || 0)} 次）</div>
+    <div class="acts4">
+      <div class="c"><b>${k.search || 0}</b><span>检索</span></div>
+      <div class="c"><b>${k.fetch || 0}</b><span>读取</span></div>
+      <div class="c"><b>${k.generate || 0}</b><span>生成</span></div>
+      <div class="c"><b>${k.export || 0}</b><span>导出</span></div>
+    </div>`;
+
+  const tl = (s.timeline || []).slice(0, 8);
+  if(tl.length){
+    h += `<div class="um">最近调用</div>` + tl.map(x => {
+      const right = x.kind === "generate"
+        ? `${fmtTok(x.total_tokens)} token`
+        : (x.mcp_calls ? `财汇 ${x.mcp_calls} 点` : "—");
+      return `<div class="ur"><span>${esc(fmtTs(x.ts))} ${esc(KIND_CN[x.kind] || x.kind)} · ${esc(String(x.company || "未命名").slice(0, 10))}</span>
+        <span class="n">${esc(right)}</span></div>`;
+    }).join("");
+  }
+  if((s.by_model || []).length > 1){
+    h += `<div class="um">按模型</div>` + s.by_model.map(x =>
+      `<div class="ur"><span>${esc(x.model)}</span><span class="n">${x.calls} 次 · ${fmtTok(x.total_tokens)}</span></div>`).join("");
+  }
+  $("#usagePanel").innerHTML = h;
+}
+
+function toggleUsage(e){
+  if(e) e.stopPropagation();
+  statsOpen = !statsOpen;
+  $("#usagePanel").classList.toggle("show", statsOpen);
+  if(statsOpen) renderUsage();
+}
+
+document.addEventListener("click", e => {
+  if(statsOpen){
+    if(!e.target.closest("#usagePanel") && !e.target.closest("#usageBtn")){
+      statsOpen = false;
+      $("#usagePanel").classList.remove("show");
+    }
+  }
+  if(HIST.open){
+    if(!e.target.closest("#histPanel") && !e.target.closest("#histBtn")) closeHistory();
+  }
+});
+
+/* ---------------- 生成历史 ---------------- */
+const HIST = { open: false, items: [] };
+
+async function toggleHistory(e){
+  if(e) e.stopPropagation();
+  if(HIST.open){ closeHistory(); return; }
+  HIST.open = true;
+  $("#histPanel").classList.add("show");
+  $("#histPanel").innerHTML = `<div class="hh">历史记录<span class="x" onclick="closeHistory()">×</span></div>
+    <div class="hsub">读取中…</div>`;
+  await loadHistory();
+}
+
+function closeHistory(){
+  HIST.open = false;
+  $("#histPanel").classList.remove("show");
+}
+
+async function loadHistory(){
+  try{
+    const r = await (await fetch(apiUrl("/api/history"))).json();
+    if(r.error) throw new Error(r.error);
+    HIST.items = r.items || [];
+    renderHistory();
+  }catch(err){
+    $("#histPanel").innerHTML = `<div class="hh">历史记录<span class="x" onclick="closeHistory()">×</span></div>
+      <div class="hsub">${esc(err.message)}</div>`;
+  }
+}
+
+function renderHistory(){
+  const head = `<div class="hh">历史记录<span class="x" onclick="closeHistory()">×</span></div>
+    <div class="hsub">每次生成自动留一份草稿，可打开继续改或直接下 Word</div>`;
+  if(!HIST.items.length){
+    $("#histPanel").innerHTML = head + `<div class="hempty">还没有记录。生成一份草稿后，
+      它的正文、用的材料与 token 都会留在这里。</div>`;
+    return;
+  }
+  $("#histPanel").innerHTML = head + HIST.items.map(x => {
+    const meta = [fmtTs(x.ts), x.tokens ? fmtTok(x.tokens) + " token" : "",
+                  (x.materials || []).length + " 份材料",
+                  x.issues ? `待核对 ${x.issues} 项` : "",
+                  x.docx ? "已导出" : ""].filter(Boolean).join(" · ");
+    return `<div class="hrow">
+      <div class="hmain">
+        <div class="co">${esc(x.company || "未命名")}</div>
+        <div class="mt">${esc(meta)}</div>
+      </div>
+      <div class="acts2">
+        <button class="btn-sm" onclick="restoreHistory('${esc(x.id)}')">打开</button>
+        ${x.docx ? `<button class="btn-sm" onclick="histDocx('${encodeURIComponent(x.docx)}')">Word</button>` : ""}
+      </div>
+    </div>`;
+  }).join("");
+}
+
+async function restoreHistory(id){
+  try{
+    const rec = await (await fetch(apiUrl("/api/history/" + encodeURIComponent(id)))).json();
+    if(rec.error) throw new Error(rec.error);
+    S.draft = rec.draft;
+    S.draft.history_id = rec.id;  // 再导出时回填到同一条记录
+    S.company = rec.company || "";
+    S.loaded = (rec.materials || []).map(m => m.title).filter(Boolean);
+    if(S.company) $("#company").value = S.company;
+    renderDraft();
+    syncButtons();
+    setStep("generate", { state: "done", pct: 100, detail: "已恢复 " + fmtTs(rec.ts) + " 的记录" });
+    setStep("export", { state: "wait", pct: 0, detail: "可继续编辑后导出" });
+    closeHistory();
+    toast("已打开 " + (rec.company || "历史记录"));
+  }catch(e){ toast(e.message, true); }
+}
+
+function histDocx(encoded){
+  const a = document.createElement("a");
+  a.href = dlUrl("/download/" + encoded);
+  a.download = decodeURIComponent(encoded);
+  a.click();
+}
+
+/* ---------------- 检索 ---------------- */
+async function doSearch(){
+  const company = $("#company").value.trim();
+  if(!company) return toast("请输入企业全称", true);
+  $("#btnSearch").disabled = true;
+  resetStepsFrom("search");
+  setStep("search", { state: "run", pct: 0, detail: "检索公告库" });
+  try{
+    const j = await runJob("search", { company }, j => {
+      setStep("search", { state: "run", pct: j.pct, detail: j.detail || j.stage });
+    });
+    S.company = company;
+    S.facts = j.result.facts;
+    S.keepChecked = null;
+    S.expand = {};
+    const calls = j.result.mcp_calls || 0;
+    setStep("search", { state: "done", pct: 100,
+      detail: calls ? `清单已取 · 财汇 ${calls} 点` : "清单已取" });
+    renderMaterials(S.facts);
+    const kinds = ["跟踪评级报告", "募集说明书"];
+    const n = kinds.reduce((a, k) => a + ((S.facts.materials || {})[k] || []).length, 0);
+    setStep("materials", { state: "wait", pct: 0,
+      detail: n ? `${n} 份待读取` : "未检索到，可上传 PDF" });
+    toast(n ? `检索到 ${n} 份材料${calls ? " · 财汇 " + calls + " 点" : ""}`
+            : "未检索到公告，可在下方上传 PDF");
+  }catch(e){
+    setStep("search", { state: "error", detail: e.message });
+    toast(e.message, true);
+  }finally{
+    $("#btnSearch").disabled = false;
+  }
+}
+
+/* ---------------- 材料 ---------------- */
+const MAT_ORDER = ["跟踪评级报告", "募集说明书"];
+const busy = { fetch: false, gen: false };
+S.expand = {};
+
+function toggleGrp(k){
+  S.keepChecked = new Set([...document.querySelectorAll(".mchk:checked")].map(c => c.dataset.title));
+  S.expand[k] = !S.expand[k];
+  renderMaterials(S.facts);
+}
+
+function syncButtons(){
+  const has = document.querySelectorAll("#matList .mchk").length > 0;
+  $("#btnFetch").disabled = busy.fetch || !has;
+  $("#btnGen").disabled = busy.gen || !S.loaded.length;
+}
+
+function setMS(title, patch){
+  S.mstate[title] = Object.assign(S.mstate[title] || { state: "wait", pct: 0, detail: "" }, patch);
+}
+
+function renderMaterials(f){
+  const ms = (f && f.materials) || {};
+  let html = "";
+  for(const k of MAT_ORDER){
+    const arr = ms[k] || [];
+    const open = !!S.expand[k];
+    const show = open ? arr : arr.slice(0, 2);
+    html += `<div class="grp">${esc(k)}${arr.length ? "（" + arr.length + "）" : ""}</div>`;
+    if(!arr.length){
+      html += `<div style="font-size:12px;color:var(--muted);padding:2px 0 4px">未检索到</div>`;
+      continue;
+    }
+    show.forEach((m, i) => {
+      setMS(m.title, S.mstate[m.title] || { state: "wait", pct: 0, detail: m.date || "" });
+      html += `<label class="mat">
+        <input type="checkbox" class="mchk" data-url="${esc(m.url)}" data-title="${esc(m.title)}" ${(S.keepChecked ? S.keepChecked.has(m.title) : i === 0) ? "checked" : ""}/>
+        <span class="t"><span class="nm">${esc(m.title)}</span>
+        <span class="meta">${esc(m.date || "")}</span></span>
+      </label>`;
+    });
+    if(arr.length > 2){
+      html += `<button class="more" onclick="toggleGrp('${esc(k)}')">${open ? "收起" : `显示全部 ${arr.length} 条`}</button>`;
+    }
+  }
+  $("#matList").innerHTML = html;
+  paintMatStates();
+  syncButtons();
+}
+
+function paintMatStates(){
+  document.querySelectorAll("#matList .mat").forEach(el => {
+    const cb = el.querySelector(".mchk");
+    const st = S.mstate[cb.dataset.title];
+    if(!st) return;
+    el.classList.toggle("wait", st.state === "wait" || st.state === "saved");
+    el.classList.toggle("done", st.state === "done");
+    el.classList.toggle("error", st.state === "error");
+    let bar = el.querySelector(".bar");
+    if(st.state === "run"){
+      if(!bar){ bar = document.createElement("span"); bar.className = "bar"; bar.innerHTML = "<i></i>";
+        el.querySelector(".t").appendChild(bar); }
+      bar.querySelector("i").style.width = Math.max(3, st.pct) + "%";
+    }else if(bar){ bar.remove(); }
+    let meta = el.querySelector(".meta");
+    if(st.detail) meta.textContent = st.detail;
+  });
+}
+
+async function doFetch(){
+  const picks = [...document.querySelectorAll(".mchk:checked")].map(el => ({ url: el.dataset.url, title: el.dataset.title }));
+  if(!picks.length) return toast("请先勾选材料，或上传 PDF", true);
+  busy.fetch = true; syncButtons();
+  document.querySelectorAll(".mchk").forEach(c => c.disabled = true);
+  picks.forEach(p => setMS(p.title, { state: "wait", pct: 0, detail: "等待" }));
+  paintMatStates();
+  setStep("materials", { state: "run", pct: 0, detail: `0/${picks.length} 份` });
+  try{
+    const j = await runJob("fetch", { company: S.company || $("#company").value.trim(), materials: picks }, j => {
+      setStep("materials", { state: "run", pct: j.pct, detail: j.detail || "" });
+      if(j.items) onItems(j.items);
+    });
+    onItems(j.result.items || []);
+    S.loaded = [...new Set([...S.loaded, ...(j.result.loaded || [])])];
+    markMaterialsDone(picks.length);
+  }catch(e){
+    setStep("materials", { state: "error", detail: e.message });
+    toast(e.message, true);
+  }finally{
+    busy.fetch = false; syncButtons();
+    document.querySelectorAll(".mchk").forEach(c => c.disabled = false);
+  }
+}
+
+function onItems(items){
+  items.forEach(it => setMS(it.title, { state: it.state, pct: it.pct, detail: it.detail }));
+  paintMatStates();
+  renderUploads();
+}
+
+function markMaterialsDone(n){
+  const ok = S.loaded.length;
+  setStep("materials", { state: ok ? "done" : "error", pct: 100,
+    detail: ok ? `${ok} 份就绪` : "没有可用材料" });
+  if(ok){
+    setStep("generate", { state: "wait", pct: 0, detail: "" });
+    $("#empty").textContent = "材料已就绪，点左侧生成草稿";
+  }
+  syncButtons();
+  refreshUsage();
+}
+
+/* ---------------- 上传 ---------------- */
+function fmtSize(n){
+  if(n > 1048576) return (n / 1048576).toFixed(1) + " MB";
+  return Math.max(1, Math.round(n / 1024)) + " KB";
+}
+
+async function onPick(input){
+  const files = [...(input.files || [])];
+  input.value = "";
+  if(files.length) await uploadAll(files);
+}
+
+async function uploadAll(files){
+  for(const f of files){
+    if(!/\.pdf$/i.test(f.name)){ toast("只支持 PDF：" + f.name, true); continue; }
+    const u = { title: f.name.replace(/\.pdf$/i, ""), size: f.size, state: "run", pct: 0, detail: "上传中" };
+    S.uploads.push(u);
+    renderUploads();
+    const r = await uploadOne(f, u);
+    if(!r) continue;
+    u.title = r.title; u.path = r.path; u.state = "wait"; u.pct = 0; u.detail = "待读取";
+    setMS(u.title, { state: "run", pct: 0, detail: "待读取" });
+    renderUploads();
+  }
+  const ready = S.uploads.filter(u => u.path && u.state !== "error");
+  const pending = ready.filter(u => S.mstate[u.title] && S.mstate[u.title].state !== "done");
+  if(pending.length) await parseUploads(pending);
+}
+
+function uploadOne(file, u){
+  return new Promise(resolve => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", apiUrl("/api/upload?name=" + encodeURIComponent(file.name)));
+    xhr.setRequestHeader("Content-Type", "application/pdf");
+    if(TOKEN) xhr.setRequestHeader("Authorization", "Bearer " + TOKEN);
+    xhr.upload.onprogress = e => {
+      if(!e.lengthComputable) return;
+      u.pct = Math.round(e.loaded / e.total * 100);
+      u.detail = "上传 " + u.pct + "%";
+      renderUploads();
+    };
+    xhr.onload = () => {
+      try{
+        const r = JSON.parse(xhr.responseText || "{}");
+        if(r.error) throw new Error(r.error);
+        resolve(r);
+      }catch(e){
+        u.state = "error"; u.detail = e.message; renderUploads(); resolve(null);
+      }
+    };
+    xhr.onerror = () => { u.state = "error"; u.detail = "上传失败，检查本机服务"; renderUploads(); resolve(null); };
+    xhr.send(file);
+  });
+}
+
+async function parseUploads(list){
+  const picks = list.map(u => ({ path: u.path, title: u.title }));
+  busy.fetch = true; syncButtons();
+  setStep("materials", { state: "run", pct: 0, detail: `解析 0/${picks.length} 份` });
+  try{
+    const j = await runJob("fetch", { company: S.company || $("#company").value.trim(), materials: picks }, j => {
+      setStep("materials", { state: "run", pct: j.pct, detail: j.detail || "" });
+      if(j.items) onItems(j.items);
+    });
+    onItems(j.result.items || []);
+    S.loaded = [...new Set([...S.loaded, ...(j.result.loaded || [])])];
+    markMaterialsDone(picks.length);
+  }catch(e){
+    setStep("materials", { state: "error", detail: e.message });
+    toast(e.message, true);
+  }finally{
+    busy.fetch = false; syncButtons();
+  }
+}
+
+function renderUploads(){
+  $("#upList").innerHTML = S.uploads.map((u, i) => {
+    const st = S.mstate[u.title] || {};
+    const state = u.state === "error" ? "error" : (st.state || u.state);
+    const pct = state === "done" ? 100 : Math.max(u.pct || 0, st.pct || 0);
+    const detail = u.state === "error" ? u.detail : (st.detail || u.detail || "");
+    const bar = (state === "run" || state === "upload")
+      ? `<span class="bar"><i style="width:${Math.max(3, pct)}%"></i></span>` : "";
+    return `<div class="upfile ${state === "done" ? "done" : ""} ${state === "error" ? "error" : ""}">
+      <span class="ico">${state === "done" ? "✓" : (state === "error" ? "!" : "·")}</span>
+      <span class="t"><span class="nm">${esc(u.title)}</span>
+      <span class="meta">${esc(fmtSize(u.size))}${detail ? " · " + esc(detail) : ""}</span>${bar}</span>
+      <button class="x" title="移除" onclick="dropUpload(${i})">×</button>
+    </div>`;
+  }).join("");
+}
+
+function dropUpload(i){
+  const u = S.uploads[i];
+  if(!u) return;
+  S.uploads.splice(i, 1);
+  delete S.mstate[u.title];
+  renderUploads();
+}
+
+const upBox = $("#upBox");
+["dragenter", "dragover"].forEach(ev => upBox.addEventListener(ev, e => {
+  e.preventDefault(); upBox.classList.add("hot");
+}));
+["dragleave", "drop"].forEach(ev => upBox.addEventListener(ev, e => {
+  e.preventDefault(); upBox.classList.remove("hot");
+}));
+upBox.addEventListener("drop", e => {
+  const files = [...(e.dataTransfer.files || [])];
+  if(files.length) uploadAll(files);
+});
+/* 手机上顶栏与流程区会滚出屏幕，留两个跳转键。
+   只在窄屏出现（CSS 控制），且正文没生成时不显示「正文」。 */
+function isPhone(){ return window.matchMedia("(max-width: 640px)").matches; }
+function jumpTo(where){
+  const el = where === "doc" ? document.querySelector(".sheet") : document.querySelector("aside");
+  if(el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+function syncFab(){
+  const fab = $("#fabNav");
+  if(!fab) return;
+  const hasDoc = !!S.draft;
+  $("#fabDoc").style.display = hasDoc ? "" : "none";
+  if(!isPhone() || !hasDoc){ fab.classList.remove("show"); return; }
+  // 只在正文进入视野时浮出来：生成区吸在底部，常显会把它压住
+  const mainEl = document.querySelector("main");
+  const inDoc = mainEl ? mainEl.getBoundingClientRect().top < window.innerHeight * 0.8 : false;
+  fab.classList.toggle("show", inDoc);
+}
+window.addEventListener("scroll", () => syncFab(), { passive: true });
+window.addEventListener("resize", () => syncFab());
+
+/* ---------------- 生成 ---------------- */
+async function doGenerate(){
+  if(!S.loaded.length) return toast("请先读取材料，或上传 PDF", true);
+  busy.gen = true; syncButtons();
+  setStep("generate", { state: "run", pct: 0, detail: "准备提示词" });
+  try{
+    const j = await runJob("generate", { company: S.company || $("#company").value.trim(), model: $("#model").value }, j => {
+      setStep("generate", { state: "run", pct: j.pct, detail: j.detail || j.stage });
+    });
+    S.draft = j.result.draft;
+    setStep("generate", { state: "done", pct: 100, detail: "草稿已生成" });
+    setStep("export", { state: "wait", pct: 0, detail: "可编辑后导出" });
+    renderDraft();
+    const u = S.draft.usage || {};
+    toast(u.total_tokens ? `草稿已生成 · 本次 ${fmtTok(u.total_tokens)} token` : "草稿已生成，可直接修改");
+    syncFab();
+    if(isPhone()) setTimeout(() => jumpTo("doc"), 120);   // 手机上流程区很长，不滚一下看不到结果
+    refreshUsage();
+    if(HIST.open) loadHistory();
+  }catch(e){
+    setStep("generate", { state: "error", detail: e.message });
+    toast(e.message, true);
+  }finally{
+    busy.gen = false; syncButtons();
+  }
+}
+
+/* ---------------- 草稿 ---------------- */
+function ta(cls, val){
+  // rows 只作为最小高度，一律给 1，真实高度由 autoGrow 按内容算。
+  // 给 2 的话，一行的短句也会占两行，看起来就是「加粗句后面多了一个空行」。
+  return `<textarea class="ta ${cls}" rows="1">${esc(val || "")}</textarea>`;
+}
+function segSuffix(name){
+  const n = (name || "").trim();
+  if(!n) return "业务方面，";
+  return /(业务|板块|产品|服务|行业)$/.test(n) ? "方面，" : "业务方面，";
+}
+function fitSegName(el){
+  let w = 0;
+  for(const ch of (el.value || "")) w += /[\u2e80-\u9fff\uff00-\uffef]/.test(ch) ? 2 : 1;
+  el.style.width = Math.max(2, w + 1) + "ch";
+}
+/* 分部段是整段可编辑：粘贴一律转纯文本，编辑后顺手记住板块名 */
+document.addEventListener("input", e => {
+  const line = e.target && e.target.closest && e.target.closest(".seg-line");
+  if(!line) return;
+  const p = parseSeg(line.innerText || line.textContent || "", line.dataset.name);
+  if(p.name) line.dataset.name = p.name;
+});
+document.addEventListener("paste", e => {
+  const line = e.target && e.target.closest && e.target.closest(".seg-line");
+  if(!line) return;
+  e.preventDefault();
+  const txt = (e.clipboardData || window.clipboardData).getData("text/plain")
+    .replace(/\s*\n+\s*/g, "");
+  document.execCommand("insertText", false, txt);
+});
+function tableHtml(t){
+  if(!t || !t.rows) return "";
+  const head = t.periods ? ["项目", ...t.periods] : (t.header || []);
+  let h = `<div class="unit">${esc(t.unit_line || "单位：亿元")}</div><div class="tscroll"><table class="doc-table"><thead><tr>` +
+    head.map(x => `<th>${esc(x)}</th>`).join("") + `</tr></thead><tbody>`;
+  for(const r of t.rows) h += `<tr>` + r.map(c => `<td>${esc(c)}</td>`).join("") + `</tr>`;
+  return h + `</tbody></table></div>`;
+}
+
+function renderDraft(){
+  const d = S.draft, c = d.commentary || {}, v = d.validation || {};
+  const gapOn = !(d.layout && d.layout.para_gap === false);
+  let h = `<div class="sheet">
+    <div class="docbar">
+      <div class="grow">
+        <div class="doc-head">
+          <input class="in-company" id="d-company" value="${esc(d.company_full_name)}" spellcheck="false"/>
+          <span style="font-weight:700">主体：【</span>
+          <input class="in-code" id="d-code" value="${esc(d.internal_rating_code)}" placeholder="—" spellcheck="false"/>
+          <span style="font-weight:700">】</span>
+        </div>
+        <div style="font-size:11.5px;color:var(--muted);margin-top:2px">
+          正文 ${v.body_chars || 0} 字 · 财务表 ${((c.financial_table || {}).rows || []).length} 行${(c.financial_table || {}).from_materials ? "（取自材料原文）" : ""}${d.usage && d.usage.total_tokens ? ` · 本次 ${fmtTok(d.usage.total_tokens)} token` : ""}
+        </div>
+      </div>
+      <div class="acts">
+        <button class="btn-sm" id="btnGap" onclick="toggleParaGap()"
+          title="段与段之间是否空一行（加粗句与它的正文始终连着）">${gapOn ? "段落空行：有" : "段落空行：无"}</button>
+        <button class="btn-sm" onclick="copyPrompt()">提示词</button>
+        <button class="btn-sm solid" id="btnExport" onclick="exportDocx()">导出 Word</button>
+        <div class="pkgwrap">
+          <button class="btn-sm" id="btnMail" onclick="toggleMail(event)">发送邮件</button>
+          <div class="mlpanel" id="mailPanel"></div>
+        </div>
+        <div class="pkgwrap">
+          <button class="btn-sm" id="btnPkg" onclick="toggleBundle(event)">打包下载</button>
+          <div class="pkgpanel" id="pkgPanel"></div>
+        </div>
+      </div>
+    </div>`;
+
+  if((v.issues || []).length){
+    h += `<div class="notes"><div class="h">待核对 ${v.issues.length} 项</div><ul>` +
+      v.issues.map(x => `<li class="${/不足|为空|未找到同值/.test(x) ? "bad" : ""}">${esc(x).replace(/\n/g, "<br>")}</li>`).join("") +
+      `</ul></div>`;
+  }
+
+  // 版式：一块一个 .blk。块与块之间恰好一个空行，块内（加粗句 + 它的正文）不留空。
+  // 空行值只由 CSS 变量 --pgap 决定，页面与导出的 Word 用同一个开关（正文工具条「空行」）。
+  h += `<div class="doc${gapOn ? "" : " tight"}">
+    <div class="blk">
+      <div class="doc-h first">正面：</div>
+      <div class="items" id="d-pos"></div>
+      <button class="add" onclick="addItem('pos')">+ 条目</button>
+      <div class="pool" id="p-pos"></div>
+    </div>
+    <div class="blk">
+      <div class="doc-h">关注：</div>
+      <div class="items" id="d-con"></div>
+      <button class="add" onclick="addItem('con')">+ 条目</button>
+      <div class="pool" id="p-con"></div>
+    </div>
+    <div class="blk">
+      <div class="doc-h first">1、基本情况</div>
+      ${ta("basic", d.basic_info)}
+    </div>
+    <div class="blk">
+      <div class="doc-h first">2、点评</div>
+      ${ta("ov-lead lead", c.overview && c.overview.lead)}
+      ${ta("ov-body", c.overview && c.overview.body)}`;
+
+  if(c.segment_table && c.segment_table.rows) h += tableHtml(c.segment_table);
+
+  h += `</div>
+    <div class="blk">
+      <div id="d-segs"></div>
+      <button class="add" onclick="addSeg()">+ 板块</button>
+    </div>
+    <div class="blk">
+      ${ta("as-lead lead", c.asset && c.asset.lead)}
+      ${ta("as-body", c.asset && c.asset.body)}`;
+
+  if(c.financial_table && c.financial_table.rows){
+    h += `<div style="text-align:center;font-weight:700">${esc(c.financial_table.caption || "公司主要财务数据和财务指标（合并口径）")}</div>`;
+    h += tableHtml(c.financial_table);
+  }
+  h += `</div>
+    <div class="blk">
+      ${ta("db-lead lead", c.debt && c.debt.lead)}
+      ${ta("db-body", c.debt && c.debt.body)}
+    </div>
+    <div class="blk">
+      <div id="d-topics"></div>
+      <div class="tp-add">
+        <button class="add" onclick="topicMenu()">+ 专题段（可选）</button>
+        <div class="tpmenu" id="topicMenu">
+          ${TOPIC_PRESETS.map(p => `<button onclick="addTopicPreset('${p.key}')">${esc(p.label)}</button>`).join("")}
+        </div>
+      </div>
+    </div>
+  </div></div>`;
+
+  $("#draftArea").innerHTML = h;
+  $("#draftArea").style.display = "block";
+  $("#empty").style.display = "none";
+  PKG.open = false; PKG.data = null; PKG.sel = {};
+  $("#pkgPanel").classList.remove("show");
+
+  renderItems("pos", d.positive || []);
+  renderItems("con", d.concern || []);
+  renderPool("pos", d.positive_pool || []);
+  renderPool("con", d.concern_pool || []);
+  renderSegs(c.segments || []);
+  renderTopics(c.special_topics || []);
+  autoGrowAll();
+  syncFab();
+}
+
+function toggleParaGap(){
+  // 先把页面上的改动收进草稿，再切开关重画，否则改了半天的段会被覆盖
+  S.draft = collectDraft();
+  S.draft.layout = S.draft.layout || {};
+  S.draft.layout.para_gap = S.draft.layout.para_gap === false;   // 取反
+  renderDraft();
+  toast(S.draft.layout.para_gap ? "段与段之间空一行" : "段落紧排，不留空行");
+}
+
+/* 候选观点：正文倒抽出来的判断句，点一条就加进上面的列表，加过的不再出现。
+   定了稿但没被选中过的条目（模型给回池里的）也可以再挑回来。 */
+function renderPool(kind, pool){
+  const box = $("#" + (kind === "pos" ? "p-pos" : "p-con"));
+  if(!box) return;
+  const cur = [...document.querySelectorAll(kind === "pos" ? ".it-pos" : ".it-con")].map(t => t.value.trim());
+  const rest = (pool || []).filter(t => t && !cur.includes(t));
+  if(!rest.length){ box.innerHTML = ""; return; }
+  box.innerHTML = `<div class="pool-t">候选观点 ${rest.length} 条，点一条加进上面</div>` +
+    rest.map((t, i) => `<button class="chip" title="${esc(t)}" onclick="usePool('${kind}',${i})">${esc(t.slice(0, 42))}${t.length > 42 ? "…" : ""}</button>`).join("");
+  box.dataset.pool = JSON.stringify(rest);
+}
+
+function usePool(kind, i){
+  const box = $("#" + (kind === "pos" ? "p-pos" : "p-con"));
+  const rest = JSON.parse(box.dataset.pool || "[]");
+  const text = rest[i];
+  if(!text) return;
+  addItem(kind, text);                       // 加进列表
+  rest.splice(i, 1);                         // 从候选里拿掉
+  renderPool(kind, rest);
+  renumber();
+}
+
+function renderItems(kind, items){
+  const box = $("#" + (kind === "pos" ? "d-pos" : "d-con"));
+  box.innerHTML = items.map((t, i) => `<div class="item">
+    <span class="num">${i + 1}）</span>
+    <textarea class="ta it-${kind}" rows="1">${esc(t)}</textarea>
+    <button class="tool" onclick="this.parentNode.remove();renumber()">×</button>
+  </div>`).join("");
+}
+function addItem(kind, text){
+  const box = $("#" + (kind === "pos" ? "d-pos" : "d-con"));
+  const div = document.createElement("div");
+  div.className = "item";
+  div.innerHTML = `<span class="num"></span><textarea class="ta it-${kind}" rows="1">${esc(text || "")}</textarea>
+    <button class="tool" onclick="this.parentNode.remove();renumber()">×</button>`;
+  box.appendChild(div);
+  renumber();
+  div.querySelector("textarea").focus();
+  autoGrow(div.querySelector("textarea"));
+}
+function renumber(){
+  ["#d-pos", "#d-con"].forEach(sel => {
+    [...$(sel).querySelectorAll(".item")].forEach((el, i) => {
+      el.querySelector(".num").textContent = (i + 1) + "）";
+    });
+  });
+}
+
+/* 分部段：编号、板块名、正文在同一段里，像 Word 那样整段编辑 */
+function segText(name, body){
+  const n = (name || "").trim();
+  return (n ? n + segSuffix(n) : "") + (body || "").trim();
+}
+function parseSeg(raw, lastName){
+  const t = (raw || "").replace(/\u00a0/g, " ").trim();
+  const m = t.match(/^\s*\d+\s*[）)．.]?\s*([\s\S]*)$/);
+  let rest = m ? m[1] : t;
+  const d = rest.match(/^([^，。；：\n]{1,24}?)((?:业务|板块|产品|服务|行业)?方面[，,、：:])\s*/);
+  if(d) return { name: d[1].trim(), body: rest.slice(d[0].length).trim() };
+  return { name: (lastName || "").trim(), body: rest.trim() };
+}
+function renderSegs(segs){
+  $("#d-segs").innerHTML = segs.map(s => `<div class="seg">
+    <div class="seg-line" contenteditable="plaintext-only" spellcheck="false"
+      data-name="${esc(s.name)}"></div>
+    <button class="tool" onclick="this.closest('.seg').remove();renumberSegs()">×</button>
+  </div>`).join("");
+  [...document.querySelectorAll("#d-segs .seg")].forEach((el, i) => {
+    const s = segs[i] || {};
+    el.querySelector(".seg-line").textContent = `${i + 1}）${segText(s.name, s.body)}`;
+  });
+}
+function addSeg(){
+  const div = document.createElement("div");
+  div.className = "seg";
+  div.innerHTML = `<div class="seg-line" contenteditable="plaintext-only" spellcheck="false"
+    data-name=""></div>
+    <button class="tool" onclick="this.closest('.seg').remove();renumberSegs()">×</button>`;
+  $("#d-segs").appendChild(div);
+  renumberSegs();
+  const line = div.querySelector(".seg-line");
+  line.focus();
+}
+function renumberSegs(){
+  [...document.querySelectorAll("#d-segs .seg")].forEach((el, i) => {
+    const line = el.querySelector(".seg-line");
+    if(document.activeElement === line) return;   // 正在编辑的不动，免得光标跳走
+    const t = (line.textContent || "").replace(/^\s*\d+\s*[）)．.]?\s*/, "");
+    line.textContent = `${i + 1}）${t}`;
+  });
+}
+
+function renderTopics(ts){
+  $("#d-topics").innerHTML = ts.map(t => `<div class="topic">
+    <textarea class="ta topic-lead lead" rows="1" placeholder="加粗总起句：先给判断">${esc(t.lead)}</textarea>
+    <textarea class="ta topic-body" rows="1" placeholder="正文">${esc(t.body)}</textarea>
+    <button class="tool" onclick="this.parentNode.remove()">× 删除本段</button>
+  </div>`).join("");
+}
+function addTopic(lead, body){
+  const div = document.createElement("div");
+  div.className = "topic";
+  div.innerHTML = `<textarea class="ta topic-lead lead" rows="1" placeholder="加粗总起句：先给判断">${esc(lead || "")}</textarea>
+    <textarea class="ta topic-body" rows="1" placeholder="正文">${esc(body || "")}</textarea>
+    <button class="tool" onclick="this.parentNode.remove()">× 删除本段</button>`;
+  $("#d-topics").appendChild(div);
+  const boxes = div.querySelectorAll("textarea");
+  boxes.forEach(autoGrow);
+  (body ? boxes[1] : boxes[0]).focus();
+}
+
+/* 专题段预设：用户自己决定要不要、要几条。都不点就没有这一段。 */
+const TOPIC_PRESETS = [
+  { key: "contingent", label: "或有事项",
+    lead: "公司对外担保与未决诉讼规模可控，但担保对象集中于区域内国企，存在代偿的尾部风险。",
+    body: "截至最新期末，公司对外担保余额＿亿元，占净资产的＿%；被担保对象主要为区域内国有企业，互保特征明显。同期无重大未决诉讼。需关注被担保方偿付能力变化带来的代偿风险。" },
+  { key: "capex", label: "在建工程与资本支出",
+    lead: "公司在建项目投资规模较大，后续资本支出压力集中于未来两年，资金来源依赖再融资。",
+    body: "截至最新期末，公司在建工程＿亿元，计划总投资＿亿元，已累计投资＿亿元，剩余投资＿亿元；同期货币资金＿亿元，无法完全覆盖剩余投资，需依靠经营性回款与新增融资补足。" },
+  { key: "subsidy", label: "政府补助依赖",
+    lead: "公司利润对政府补助依赖度较高，剔除补助后经营性盈利薄弱。",
+    body: "报告期内公司其他收益中的政府补助分别为＿亿元，同期净利润分别为＿亿元，补助规模接近或超过净利润；若补助退坡，利润将明显承压。" },
+  { key: "restricted", label: "受限资产",
+    lead: "公司受限资产占有一定比重，对资产变现能力形成约束。",
+    body: "截至最新期末，公司受限资产账面价值＿亿元，占总资产的＿%，主要为用于借款抵押的土地与房产；扣除受限部分后，可自由处置的资产规模有限。" },
+  { key: "custom", label: "空白一段", lead: "", body: "" },
+];
+
+function topicMenu(){
+  const m = $("#topicMenu");
+  if(!m) return;
+  m.classList.toggle("show");
+}
+function addTopicPreset(key){
+  const p = TOPIC_PRESETS.find(x => x.key === key) || { lead: "", body: "" };
+  addTopic(p.lead, p.body);
+  TOAST_TOPIC = key;
+  const m = $("#topicMenu");
+  if(m) m.classList.remove("show");
+  toast(key === "custom" ? "已加一段空白专题" : `已加「${p.label}」，把＿处换成材料里的数字`);
+}
+let TOAST_TOPIC = "";
+
+function autoGrow(el){
+  el.style.height = "auto";
+  el.style.height = (el.scrollHeight + 2) + "px";
+}
+function autoGrowAll(){ document.querySelectorAll("textarea.ta").forEach(autoGrow); }
+document.addEventListener("input", e => {
+  if(e.target && e.target.classList && e.target.classList.contains("ta")) autoGrow(e.target);
+});
+
+function collectDraft(){
+  const d = JSON.parse(JSON.stringify(S.draft));
+  d.company_full_name = $("#d-company").value.trim();
+  d.internal_rating_code = $("#d-code").value.trim();
+  d.positive = [...document.querySelectorAll(".it-pos")].map(t => t.value.trim()).filter(Boolean);
+  d.concern = [...document.querySelectorAll(".it-con")].map(t => t.value.trim()).filter(Boolean);
+  d.basic_info = $(".ta.basic").value.trim();
+  d.commentary.overview = { lead: $(".ta.ov-lead").value.trim(), body: $(".ta.ov-body").value.trim() };
+  d.commentary.segments = [...document.querySelectorAll("#d-segs .seg")].map(s => {
+    const line = s.querySelector(".seg-line");
+    return parseSeg(line.innerText || line.textContent || "", line.dataset.name);
+  }).filter(s => s.body);
+  d.commentary.asset = { lead: $(".ta.as-lead").value.trim(), body: $(".ta.as-body").value.trim() };
+  d.commentary.debt = { lead: $(".ta.db-lead").value.trim(), body: $(".ta.db-body").value.trim() };
+  d.commentary.special_topics = [...document.querySelectorAll("#d-topics .topic")].map(t => ({
+    lead: t.querySelector(".topic-lead").value.trim(),
+    body: t.querySelector(".topic-body").value.trim()
+  })).filter(t => t.body);
+  return d;
+}
+
+async function exportDocx(){
+  try{
+    const d = collectDraft();
+    if(!d.company_full_name) return toast("请填企业全称", true);
+    const btn = $("#btnExport");
+    btn.disabled = true;
+    setStep("export", { state: "run", pct: 60, detail: "排版中" });
+    const r = await api("/api/export", { draft: d, company: S.company });
+    setStep("export", { state: "done", pct: 100, detail: r.name });
+    const a = document.createElement("a");
+    a.href = dlUrl(r.url);
+    a.download = r.name;
+    a.click();
+    toast("已导出 " + r.name + (r.cleaned ? `（导出前清理 ${r.cleaned} 处重复或来源表述）` : ""));
+    refreshUsage();
+    btn.disabled = false;
+    if(HIST.open) loadHistory();  // 记录里的「已导出」状态跟着更新
+    if(PKG.open) loadBundle();  // 清单里补上刚落盘的这份
+  }catch(e){
+    setStep("export", { state: "error", detail: e.message });
+    toast(e.message, true);
+    const btn = $("#btnExport"); if(btn) btn.disabled = false;
+  }
+}
+
+async function copyPrompt(){
+  try{
+    const r = await api("/api/prompt", { company: S.company });
+    await navigator.clipboard.writeText(`【系统提示】\n${r.system}\n\n【用户提示】\n${r.prompt}`);
+    toast("提示词已复制");
+  }catch(e){ toast(e.message, true); }
+}
+
+/* ---------------- 设置中心 ---------------- */
+const SET = { open: false, data: null };
+
+async function openSettings(){
+  SET.open = true;
+  $("#setMask").classList.add("show");
+  $("#setBox").innerHTML = `<div class="sh"><b>设置</b><button class="x" onclick="closeSettings()">×</button></div>
+    <div class="sets"><div class="sd">正在读取配置…</div></div>`;
+  await reloadSettings();
+}
+
+function closeSettings(){
+  SET.open = false;
+  $("#setMask").classList.remove("show");
+}
+
+async function reloadSettings(){
+  try{
+    SET.data = await (await fetch(apiUrl("/api/settings"))).json();
+  }catch(e){
+    SET.data = null;
+  }
+  renderSettings();
+}
+
+function badge(ok, okText, badText){
+  return `<span class="badge ${ok ? "ok" : "warn"}">${esc(ok ? okText : badText)}</span>`;
+}
+
+function renderSettings(){
+  const d = SET.data || {};
+  const pw = d.password || {}, llm = d.llm || {}, mail = d.mail || {}, ch = d.caihui || {};
+
+  let h = `<div class="sh"><b>设置</b><button class="x" onclick="closeSettings()">×</button></div><div class="sets">`;
+
+  // 模型 API
+  h += `<div class="setsec">
+    <div class="st">模型 API ${badge(llm.ready, "已配置", "未配置")}
+      ${llm.source ? `<span class="badge">${llm.source === "env" ? "来自环境变量" : llm.source === "workbuddy" ? "用 WorkBuddy 已配模型" : "页面填写"}</span>` : ""}</div>
+    <div class="sd">生成报告用的模型。默认沿用 WorkBuddy 已配的模型；想换别的就填任意 OpenAI 兼容端点，
+      存本机 <code>data/llm.json</code>（改完会自动测连通）。环境变量 <code>LLM_BASE_URL/LLM_API_KEY/LLM_MODEL</code> 优先级最高。</div>
+    <div class="setgrid">
+      <label>接口地址</label>
+      <input id="stLlmUrl" value="${esc(llm.url || "")}" placeholder="https://api.deepseek.com/chat/completions" spellcheck="false"/>
+      <label>模型名</label>
+      <input id="stLlmModel" value="${esc(llm.model || "")}" placeholder="deepseek-v4-flash" spellcheck="false"/>
+      <label>API Key</label>
+      <input id="stLlmKey" type="password" placeholder="${llm.has_key ? "已保存，留空表示不改" : "sk-..."}" spellcheck="false"/>
+    </div>
+    <div class="setact"><span class="msg" id="msgLlm">${llm.models && llm.models.length ? "可用：" + esc(llm.models.join("、")) : ""}</span>
+      <button class="btn-sm solid" onclick="saveSettings('llm')">保存并测连通</button></div>
+  </div>`;
+
+  // 邮件 SMTP
+  h += `<div class="setsec">
+    <div class="st">发件邮箱（SMTP） ${badge(mail.ready, "已配置", "未配置")}</div>
+    <div class="sd">「发送邮件」用的发件通道。需要邮箱的<b>客户端授权码</b>，不是登录密码。
+      QQ 邮箱：设置→账号→开启 SMTP→生成授权码；服务器 <code>smtp.qq.com</code>、端口 465、SSL。</div>
+    <div class="setgrid">
+      <label>服务器</label>
+      <input id="stMailHost" value="${esc(mail.host || "")}" placeholder="smtp.qq.com" spellcheck="false"/>
+      <label>端口</label>
+      <input id="stMailPort" value="${esc(mail.port || "")}" placeholder="465" spellcheck="false"/>
+      <label>加密</label>
+      <select id="stMailTls">
+        <option value="ssl" ${mail.tls === "ssl" ? "selected" : ""}>SSL（465）</option>
+        <option value="starttls" ${mail.tls === "starttls" ? "selected" : ""}>STARTTLS（587）</option>
+        <option value="none" ${mail.tls === "none" ? "selected" : ""}>不加密（25，内网）</option>
+      </select>
+      <label>账号</label>
+      <input id="stMailUser" value="${esc(mail.user || "")}" placeholder="你@qq.com" spellcheck="false"/>
+      <label>授权码</label>
+      <input id="stMailPass" type="password" placeholder="${mail.has_password ? "已保存，留空表示不改" : "16 位授权码"}" spellcheck="false"/>
+    </div>
+    <div class="setact"><span class="msg" id="msgMail">默认收件人 ${esc(mail.default_to || "")}</span>
+      <button class="btn-sm solid" onclick="saveSettings('mail')">保存</button></div>
+  </div>`;
+
+  // 财汇
+  h += `<div class="setsec">
+    <div class="st">财汇 MCP ${badge(ch.ready, "已连接", "未配置")}
+      ${ch.source ? `<span class="badge">${ch.source === "env" ? "来自环境变量" : ch.source === "workbuddy" ? "读本机 mcp.json" : "页面填写"}</span>` : ""}</div>
+    <div class="sd">检索公告、下载评级报告与募集说明书用。留空则读本机 <code>~/.workbuddy/mcp.json</code>。</div>
+    <div class="setgrid">
+      <label>地址</label>
+      <input id="stChUrl" value="${esc(ch.url || "")}" placeholder="https://mcp.finchina.com/..." spellcheck="false"/>
+      <label>API Key</label>
+      <input id="stChKey" type="password" placeholder="${ch.has_key ? "已保存，留空表示不改" : "ak_..."}" spellcheck="false"/>
+    </div>
+    <div class="setact"><span class="msg" id="msgCh"></span>
+      <button class="btn-sm solid" onclick="saveSettings('caihui')">保存</button></div>
+  </div>`;
+
+  // 口令
+  h += `<div class="setsec">
+    <div class="st">访问口令 ${badge(!pw.is_default, "已自定义", "仍是默认口令")}</div>
+    <div class="sd">别人打开这个网址要先输口令。改完所有旧登录立即失效。</div>
+    <div class="setgrid">
+      <label>当前口令</label>
+      <input id="stPwOld" type="password" placeholder="现在用的口令" spellcheck="false"/>
+      <label>新口令</label>
+      <input id="stPwNew" type="password" placeholder="至少 4 位" spellcheck="false"/>
+    </div>
+    <div class="setact"><span class="msg" id="msgPw"></span>
+      <button class="btn-sm solid" onclick="saveSettings('password')">改口令</button></div>
+  </div>`;
+
+  h += `</div>`;
+  $("#setBox").innerHTML = h;
+}
+
+function _val(id){ const el = $("#"+id); return el ? el.value.trim() : ""; }
+
+async function saveSettings(section){
+  const msgId = { llm: "msgLlm", mail: "msgMail", caihui: "msgCh", password: "msgPw" }[section];
+  const msg = msgId ? $("#"+msgId) : null;
+  const say = (t, kind) => { if(msg){ msg.className = "msg" + (kind ? " " + kind : ""); msg.textContent = t; } };
+  const body = { section };
+  if(section === "llm"){ body.url = _val("stLlmUrl"); body.model = _val("stLlmModel"); body.apiKey = _val("stLlmKey"); }
+  if(section === "caihui"){ body.url = _val("stChUrl"); body.key = _val("stChKey"); }
+  if(section === "mail"){ body.host = _val("stMailHost"); body.port = _val("stMailPort");
+    body.tls = _val("stMailTls"); body.user = _val("stMailUser"); body.password = _val("stMailPass"); }
+  if(section === "password"){ body.old = _val("stPwOld"); body.new = _val("stPwNew"); }
+  say("保存中…");
+  try{
+    const r = await api("/api/settings", body);
+    if(section === "password" && r.token){
+      TOKEN = r.token;
+      localStorage.setItem("nrToken", TOKEN);
+    }
+    SET.data = r.settings || SET.data;
+    renderSettings();
+    const m2 = $("#" + msgId);
+    if(m2){ m2.className = "msg ok"; m2.textContent = section === "password" ? "已改口令，旧登录已失效" : "已保存"; }
+    if(section === "llm" || section === "mail"){
+      loadModels();
+      MAIL.cfg = null;
+      if(MAIL.open) loadMailPanel();
+    }
+    toast("设置已保存");
+  }catch(e){
+    say(e.message || "保存失败", "err");
+  }
+}
+
+/* ---------------- 版本历史 ---------------- */
+const VER = { data: null };
+
+async function openVersions(){
+  $("#verMask").classList.add("show");
+  $("#verBox").innerHTML = `<div class="vh"><b>版本历史</b><span class="n">读取中…</span>
+    <button class="x" onclick="closeVersions()">×</button></div>`;
+  try{
+    VER.data = await (await fetch(apiUrl("/api/versions"))).json();
+  }catch(e){
+    $("#verBox").innerHTML = `<div class="vh"><b>版本历史</b><span class="n">读不到版本清单</span>
+      <button class="x" onclick="closeVersions()">×</button></div>
+      <div class="vlist"><div class="vi"><p class="sum">${esc(e.message || "服务未响应")}</p></div></div>`;
+    return;
+  }
+  renderVersions();
+}
+
+function closeVersions(){ $("#verMask").classList.remove("show"); }
+
+function renderVersions(){
+  const d = VER.data || {};
+  const vs = d.versions || [];
+  const cur = d.current;
+  const tk = (typeof TOKEN === "string" && TOKEN) ? TOKEN : "";
+  let h = `<div class="vh"><b>版本历史</b>
+      <span class="n">共 ${vs.length} 个版本 · 点开是当时的页面，能直接用</span>
+      <a href="versions/" target="_blank" style="font-size:11.5px;color:#2f5fd0;text-decoration:none;margin-left:2px">独立页 ↗</a>
+      <button class="x" onclick="closeVersions()">×</button></div><div class="vlist">`;
+  vs.forEach(v => {
+    const isCur = v.id === cur;
+    const items = (v.items || []).map(i => `<li>${esc(i)}</li>`).join("");
+    h += `<div class="vi ${isCur ? "cur" : ""}">
+      <div class="meta"><span class="lab">${esc(v.label)}</span><span>${esc(v.at)}</span>
+        ${isCur ? `<span class="now">当前</span>` : ""}</div>
+      <h3>${esc(v.title)}</h3>
+      <p class="sum">${esc(v.summary)}</p>
+      <details><summary>改了 ${(v.items || []).length} 处</summary><ul>${items}</ul>
+        ${v.note ? `<div class="note">${esc(v.note)}</div>` : ""}</details>
+      <a class="go" href="versions/${encodeURIComponent(v.id)}/${tk ? "?t=" + encodeURIComponent(tk) : ""}"
+         target="_blank" rel="noopener">打开这个版本 ↗</a>
+    </div>`;
+  });
+  h += `</div>`;
+  $("#verBox").innerHTML = h;
+}
+
+$("#verMask").addEventListener("click", e => { if(e.target.id === "verMask") closeVersions(); });
+
+$("#setMask").addEventListener("click", e => { if(e.target.id === "setMask") closeSettings(); });
+document.addEventListener("keydown", e => {
+  if(e.key !== "Escape") return;
+  if(SET.open) closeSettings();
+  if($("#verMask").classList.contains("show")) closeVersions();
+});
+
+/* ---------------- 发送邮件 ---------------- */
+const MAIL = { open: false, cfg: null, busy: false, withPdf: false, docx: "" };
+
+function mailCompany(){
+  const el = $("#d-company");
+  return (el ? el.value.trim() : "") || S.company || $("#company").value.trim();
+}
+
+async function toggleMail(e){
+  if(e) e.stopPropagation();
+  if(MAIL.open){ closeMail(); return; }
+  MAIL.open = true;
+  $("#mailPanel").classList.add("show");
+  await loadMailPanel();
+}
+
+function closeMail(){
+  MAIL.open = false;
+  $("#mailPanel").classList.remove("show");
+}
+
+async function loadMailPanel(){
+  const panel = $("#mailPanel");
+  panel.innerHTML = `<div class="ml-h">发送邮件<span class="x" onclick="closeMail()">×</span></div>
+    <div class="ml-sub">正在读取发件配置…</div>`;
+  try{
+    MAIL.cfg = await (await fetch(apiUrl("/api/mail/config"))).json();
+  }catch(err){
+    MAIL.cfg = { ready: false, default_to: "" };
+  }
+  try{ await fetchFileList(); }catch(err){ /* 没有报告时也能发，附件现场排版 */ }
+  renderMailPanel();
+}
+
+function mailDocxOption(){
+  // 优先用已导出的最新一份；没有就现场排版
+  const docs = (PKG.data && PKG.data.docx) || [];
+  if(MAIL.docx) return { name: MAIL.docx, live: false };
+  if(docs.length) return { name: docs[0].name, live: false };
+  return { name: "", live: true };
+}
+
+function renderMailPanel(){
+  const cfg = MAIL.cfg || {};
+  const co = mailCompany() || (S.draft && S.draft.company_full_name) || "";
+  const d = mailDocxOption();
+  const pdfs = (PKG.data && PKG.data.materials) || [];
+  const to = (MAIL.to !== undefined ? MAIL.to : (cfg.default_to || ""));
+  const from = cfg.user || "";
+
+  let h = `<div class="ml-h">发送邮件<span class="x" onclick="closeMail()">×</span></div>
+    <div class="ml-sub">${cfg.ready
+      ? `发件人 ${esc(from)}${cfg.host ? " · " + esc(cfg.host) : ""}`
+      : "还没配置发件邮箱，先填下面的 SMTP 信息"}</div>
+    <div class="mlf">
+      <label>收件人</label>
+      <input id="mlTo" value="${esc(to)}" placeholder="多个邮箱用逗号分隔" spellcheck="false" />
+      <label>抄送</label>
+      <input id="mlCc" value="${esc(MAIL.cc || "")}" placeholder="可不填" spellcheck="false" />
+      <label>标题</label>
+      <input id="mlSubject" value="${esc(MAIL.subject !== undefined ? MAIL.subject : co)}" spellcheck="false" />
+      <label>正文</label>
+      <textarea id="mlBody" rows="3" placeholder="留空则自动生成一句说明">${esc(MAIL.body || "")}</textarea>
+    </div>
+    <div class="mlatt">
+      <label class="r"><input type="checkbox" checked disabled />
+        <span class="n">${d.live ? (esc(co) || "报告") + "内评简评报告.docx" : esc(d.name)}
+          <i>${d.live ? "尚未导出，发送时现场排版" : "报告正文"}</i></span></label>`;
+
+  if(pdfs.length){
+    h += `<label class="r"><input type="checkbox" id="mlPdf" ${MAIL.withPdf ? "checked" : ""}
+        onchange="MAIL.withPdf=this.checked" />
+      <span class="n">原底稿 ${pdfs.length} 份 PDF<i>${pdfs.map(x => fmtSize(x.size || 0)).join(" · ")}</i></span></label>`;
+  }
+  h += `</div>`;   // 必须闭合 .mlatt：不闭合的话下面的 SMTP 表单会被 .mlatt input{width:13px} 命中，框缩成 16px 点不到
+
+  if(!cfg.ready){
+    h += `<div class="ml-cfg">
+      <div class="hint">还没配发件邮箱。发件服务器与授权码在「设置」里统一填写，填完这里就能发。</div>
+      <div style="margin-top:7px"><button class="btn-sm" onclick="closeMail();openSettings()">去设置里配发件邮箱</button></div>
+    </div>`;
+  }
+
+  h += `<div class="ml-foot">
+      <span class="st" id="mlSt">${cfg.ready ? `将由 ${esc(cfg.user || "已配置邮箱")} 发出` : "先在设置里配发件邮箱"}</span>
+      <button class="btn-sm solid" id="mlGo" onclick="runMail()" ${cfg.ready ? "" : "disabled"}>发送</button>
+    </div>`;
+
+  $("#mailPanel").innerHTML = h;
+}
+
+async function runMail(){
+  const go = $("#mlGo"), st = $("#mlSt");
+  const cfg = MAIL.cfg || {};
+  const payload = {
+    company: mailCompany(),
+    to: ($("#mlTo").value || "").trim(),
+    cc: ($("#mlCc").value || "").trim(),
+    subject: ($("#mlSubject").value || "").trim(),
+    body: $("#mlBody") ? $("#mlBody").value : "",
+    with_materials: !!($("#mlPdf") && $("#mlPdf").checked),
+    materials: ((PKG.data && PKG.data.materials) || []).map(x => x.name),
+    history_id: (S.draft && S.draft.history_id) || "",
+  };
+  if(!payload.to) return toast("请填收件人", true);
+  if(!payload.subject) return toast("请填邮件标题", true);
+  go.disabled = true;
+  const old = go.textContent;
+  go.textContent = "发送中…";
+  st.className = "st";
+  st.textContent = "正在连接邮件服务器…";
+  try{
+    if(!cfg.ready) throw new Error("还没配发件邮箱：点「设置」填 SMTP 服务器与授权码");
+    // 没导出过就现场排版：把草稿带上，服务端会先出 docx 再发
+    if(!MAIL.docx && !((PKG.data && PKG.data.docx) || []).length && S.draft){
+      payload.draft = collectDraft();
+    }else{
+      payload.docx = MAIL.docx || (((PKG.data && PKG.data.docx) || [])[0] || {}).name || "";
+    }
+    const r = await api("/api/mail", payload);
+    st.textContent = `已发送 · ${r.attachments.length} 个附件 · ${fmtSize(r.size)}`;
+    toast(`已发送给 ${r.to.join("、")}`);
+    MAIL.to = payload.to; MAIL.subject = payload.subject; MAIL.body = payload.body;
+    refreshUsage();
+    setTimeout(() => { if(MAIL.open) closeMail(); }, 1200);
+  }catch(err){
+    st.className = "st err";
+    st.textContent = err.message;
+  }finally{
+    go.disabled = false;
+    go.textContent = old;
+  }
+}
+
+document.addEventListener("click", e => {
+  const m = $("#topicMenu");
+  if(m && m.classList.contains("show") && !e.target.closest(".tp-add")) m.classList.remove("show");
+  if(!MAIL.open) return;
+  if(e.target.closest("#mailPanel") || e.target.closest("#btnMail")) return;
+  closeMail();
+});
+
+/* ---------------- 打包下载 ---------------- */
+const PKG = { open: false, data: null, sel: {}, busy: false, loading: false };
+
+function pkgCompany(){
+  const el = $("#d-company");
+  return (el ? el.value.trim() : "") || S.company || $("#company").value.trim();
+}
+
+async function toggleBundle(e){
+  if(e) e.stopPropagation();
+  if(PKG.open){ closeBundle(); return; }
+  PKG.open = true;
+  await loadBundle();
+}
+
+async function fetchFileList(force){
+  // 报告与底稿清单：打包和发邮件都要用，取一次存 PKG.data
+  if(PKG.data && !force) return PKG.data;
+  const q = new URLSearchParams();
+  q.set("company", pkgCompany());
+  (S.loaded || []).forEach(t => q.append("title", t));
+  const r = await (await fetch(apiUrl("/api/bundle?" + q.toString()))).json();
+  if(r.error) throw new Error(r.error);
+  PKG.data = r;
+  return r;
+}
+
+async function loadBundle(){
+  PKG.sel = {};
+  $("#pkgPanel").classList.add("show");
+  $("#pkgPanel").innerHTML = `<div class="pk-h">打包下载<span class="x" onclick="closeBundle()">×</span></div>
+    <div class="pk-sub">正在读取文件清单…</div>`;
+  try{
+    const r = await fetchFileList(true);
+    (r.docx || []).forEach((x, i) => { if(i === 0) PKG.sel["docx:" + x.name] = true; });
+    (r.materials || []).forEach(x => { PKG.sel["pdf:" + x.name] = true; });
+    renderBundle();
+  }catch(err){
+    $("#pkgPanel").innerHTML = `<div class="pk-h">打包下载<span class="x" onclick="closeBundle()">×</span></div>
+      <div class="pk-sub">${esc(err.message)}</div>`;
+  }
+}
+
+function closeBundle(){
+  PKG.open = false;
+  $("#pkgPanel").classList.remove("show");
+}
+
+function pkgRow(key, name, meta){
+  return `<label class="pkrow">
+    <input type="checkbox" data-key="${esc(key)}" ${PKG.sel[key] ? "checked" : ""} onchange="pkgToggle(this)"/>
+    <span><span class="nm">${esc(name)}</span>${meta ? `<span class="meta">${esc(meta)}</span>` : ""}</span>
+  </label>`;
+}
+
+function renderBundle(){
+  const d = PKG.data || {};
+  const docs = d.docx || [], mats = d.materials || [];
+  let b = "";
+
+  b += `<div class="pkgrp"><span>报告</span></div>`;
+  if(docs.length){
+    docs.forEach(x => { b += pkgRow("docx:" + x.name, x.name, `${fmtSize(x.size)} · ${x.mtime}`); });
+  }else if(S.draft){
+    PKG.sel["docx:@new"] = PKG.sel["docx:@new"] !== false;
+    b += pkgRow("docx:@new", "报告 Word（按当前内容现场排版）", "尚未导出，打包时自动生成");
+  }else{
+    b += `<div class="pkrow none">还没有报告，先生成草稿</div>`;
+  }
+
+  const pdfOn = mats.every(x => PKG.sel["pdf:" + x.name]);
+  b += `<div class="pkgrp"><span>原底稿（${mats.length} 份）</span>${mats.length > 1
+    ? `<button onclick="pkgAll('pdf:', ${!pdfOn})">${pdfOn ? "取消全选" : "全选"}</button>` : ""}</div>`;
+  if(mats.length){
+    mats.forEach(x => {
+      const meta = [x.pages ? x.pages + " 页" : "", fmtSize(x.size),
+                    x.source === "upload" ? "本地上传" : "财汇下载"].filter(Boolean).join(" · ");
+      b += pkgRow("pdf:" + x.name, x.title || x.name, meta);
+    });
+  }else{
+    b += `<div class="pkrow none">本次没有读取过 PDF</div>`;
+  }
+
+  b += `<div class="pkgrp"><span>附加</span></div>`;
+  PKG.sel["json:1"] = !!PKG.sel["json:1"];
+  b += pkgRow("json:1", "草稿数据.json", "正文与表格的结构化数据，便于下次接着改");
+
+  $("#pkgPanel").innerHTML = `<div class="pk-h">打包下载<span class="x" onclick="closeBundle()">×</span></div>
+    <div class="pk-sub">勾选要放进压缩包的文件</div>
+    <div class="pk-body">${b}</div>
+    <div class="pk-foot"><span class="sum" id="pkSum"></span>
+      <button class="btn-sm solid" id="pkGo" onclick="runBundle()">打包下载</button></div>`;
+  bundleSum();
+}
+
+function pkgAll(prefix, on){
+  Object.keys(PKG.sel).forEach(k => { if(k.indexOf(prefix) === 0) PKG.sel[k] = on; });
+  renderBundle();
+}
+
+function pkgToggle(el){
+  PKG.sel[el.dataset.key] = el.checked;
+  bundleSum();
+}
+
+function bundleSum(){
+  const d = PKG.data || {};
+  const keys = Object.keys(PKG.sel).filter(k => PKG.sel[k]);
+  let bytes = 0;
+  keys.forEach(k => {
+    const [kind, name] = [k.slice(0, k.indexOf(":")), k.slice(k.indexOf(":") + 1)];
+    const pool = kind === "docx" ? (d.docx || []) : kind === "pdf" ? (d.materials || []) : [];
+    const hit = pool.find(x => x.name === name);
+    if(hit) bytes += hit.size || 0;
+  });
+  const sum = $("#pkSum");
+  if(!sum) return;
+  sum.textContent = keys.length
+    ? `已选 ${keys.length} 项${bytes ? " · " + fmtSize(bytes) : ""}`
+    : "未选择文件";
+  const go = $("#pkGo");
+  if(go) go.disabled = !keys.length || PKG.busy;
+}
+
+async function runBundle(){
+  const keys = Object.keys(PKG.sel).filter(k => PKG.sel[k]);
+  if(!keys.length) return toast("请勾选要打包的文件", true);
+  const docxKey = keys.find(k => k.indexOf("docx:") === 0) || "";
+  const docxName = docxKey && docxKey !== "docx:@new" ? docxKey.slice(5) : "";
+  const body = {
+    company: pkgCompany(),
+    docx: docxName,
+    materials: keys.filter(k => k.indexOf("pdf:") === 0).map(k => k.slice(4)),
+    with_json: keys.indexOf("json:1") >= 0
+  };
+  if(!docxName && S.draft) body.draft = collectDraft();
+
+  PKG.busy = true;
+  const go = $("#pkGo");
+  if(go){ go.disabled = true; go.textContent = "打包中…"; }
+  try{
+    const r = await api("/api/bundle", body);
+    const a = document.createElement("a");
+    a.href = dlUrl(r.url);
+    a.download = r.name;
+    a.click();
+    closeBundle();
+    toast(`已打包 ${r.files.length} 个文件 · ${fmtSize(r.size)}`);
+  }catch(e){
+    toast(e.message, true);
+    PKG.busy = false;
+    if(go){ go.disabled = false; go.textContent = "打包下载"; }
+    bundleSum();
+  }
+}
+
+document.addEventListener("click", e => {
+  if(!PKG.open) return;
+  if(e.target.closest("#pkgPanel") || e.target.closest("#btnPkg")) return;
+  closeBundle();
+});
+
+// 口令校验通过后才去拉数据：没进来之前不发任何要 token 的请求
+let booted = false;
+function bootData(){
+  if(booted) return;
+  booted = true;
+  loadModels();
+  pingConn();
+  refreshUsage();
+  syncButtons();  // 初始状态：无材料时两个动作都灰着
+}
+gateBoot();
+$("#company").addEventListener("keydown", e => { if(e.key === "Enter") doSearch(); });
+</script>
+</body>
+</html>
