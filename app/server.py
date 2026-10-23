@@ -26,6 +26,7 @@ from urllib.parse import parse_qs, quote, unquote, urlparse
 BASE = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import auth as auth_mod  # noqa: E402
 import docx_writer  # noqa: E402
 import facts as facts_mod  # noqa: E402
 import generator  # noqa: E402
@@ -438,7 +439,7 @@ class Handler(BaseHTTPRequestHandler):
         # 允许 GitHub Pages 上的入口页跨域连本机服务；服务只监听 127.0.0.1，
         # 外部网络到不了，放开 Origin 不会扩大暴露面。
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         for k, v in (extra or {}).items():
             self.send_header(k, v)
@@ -455,6 +456,24 @@ class Handler(BaseHTTPRequestHandler):
 
     def _json(self, data: dict, code: int = 200):
         self._send(code, json.dumps(data, ensure_ascii=False).encode(), "application/json; charset=utf-8")
+
+    # ── 口令闸门 ────────────────────────────────────────────────────
+    def _token(self) -> str:
+        """从 Authorization 头取 token；下载走浏览器直连，允许用 ?t= 传。"""
+        auth = self.headers.get("Authorization") or ""
+        if auth.lower().startswith("bearer "):
+            return auth[7:].strip()
+        q = parse_qs(urlparse(self.path).query)
+        return (q.get("t") or [""])[0].strip()
+
+    def _authed(self) -> bool:
+        try:
+            return auth_mod.valid(self._token())
+        except OSError:
+            return False
+
+    def _need_login(self):
+        self._json({"error": "未登录或登录已过期，请重新输入口令", "need_login": True}, 401)
 
     def _file(self, path: Path):
         if not path.exists() or not path.is_file():
@@ -476,6 +495,14 @@ class Handler(BaseHTTPRequestHandler):
             elif p.startswith("/docs/"):
                 # 模板与方法论的浏览页，与 GitHub Pages 上的同一份文件
                 self._file(BASE / "site" / "docs" / p[len("/docs/"):])
+            elif p == "/api/session":
+                self._json({"authed": self._authed(),
+                            "default_password": auth_mod.is_default()})
+            elif p == "/api/health":
+                self._json({"ok": True, "time": datetime.now().isoformat()})
+            elif not self._authed():
+                # 口令闸门之后的一切：下载、历史、统计、任务状态……
+                self._need_login()
             elif p.startswith("/download/"):
                 name = _base_name(p[len("/download/"):])
                 fp = OUTPUT / name
@@ -503,8 +530,6 @@ class Handler(BaseHTTPRequestHandler):
                             "skipped": skipped, "checked_at": cache.get("ts") or "",
                             "reasons": {k: v.get("why") for k, v in
                                         (cache.get("results") or {}).items() if not v.get("ok")}})
-            elif p == "/api/health":
-                self._json({"ok": True, "time": datetime.now().isoformat()})
             elif p == "/api/stats":
                 self._json(usage_mod.summary())
             elif p == "/api/history":
@@ -529,6 +554,9 @@ class Handler(BaseHTTPRequestHandler):
 
         # 上传走裸字节（前端用 XHR 传，能显示上传百分比），不走 multipart
         if p == "/api/upload":
+            if not self._authed():
+                self._need_login()
+                return
             try:
                 name = (parse_qs(parsed.query).get("name") or ["上传材料.pdf"])[0]
                 data = self.rfile.read(length) if length else b""
@@ -543,6 +571,40 @@ class Handler(BaseHTTPRequestHandler):
         except json.JSONDecodeError:
             self._json({"error": "请求体不是合法 JSON"}, 400)
             return
+
+        # 登录/登出不需要已有 token
+        if p == "/api/login":
+            if not auth_mod.check(payload.get("password") or ""):
+                self._json({"error": "口令不对"}, 401)
+                return
+            sess = auth_mod.issue()
+            self._json({"ok": True, **sess, "default_password": auth_mod.is_default()})
+            return
+        if p == "/api/logout":
+            auth_mod.revoke(self._token())
+            self._json({"ok": True})
+            return
+        if p == "/api/password":
+            if not self._authed():
+                self._need_login()
+                return
+            old, new = payload.get("old") or "", payload.get("new") or ""
+            if not auth_mod.check(old):
+                self._json({"error": "原口令不对"}, 400)
+                return
+            try:
+                auth_mod.set_password(new)
+            except ValueError as e:
+                self._json({"error": str(e)}, 400)
+                return
+            sess = auth_mod.issue()   # 改完直接换发新 token，免得自己也被踢下线
+            self._json({"ok": True, **sess})
+            return
+
+        if not self._authed():
+            self._need_login()
+            return
+
         routes = {
             "/api/search": api_search,
             "/api/fetch": api_fetch,

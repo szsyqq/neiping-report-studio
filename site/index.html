@@ -254,7 +254,29 @@ select{width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 8px
 #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(8px);
   background:#111418;color:#fff;font-size:12.5px;padding:8px 16px;border-radius:6px;
   opacity:0;pointer-events:none;transition:.2s;max-width:80vw}
-#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── 口令闸门：没进来之前，整页糊在毛玻璃后面 ───────────────────── */
+#gate{position:fixed;inset:0;z-index:80;display:none;align-items:center;justify-content:center;
+  background:rgba(255,255,255,.5);
+  -webkit-backdrop-filter:blur(16px) saturate(.8);backdrop-filter:blur(16px) saturate(.8)}
+#gate.show{display:flex}
+body.locked{overflow:hidden}
+body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
+.gcard{width:330px;padding:26px 24px 20px;background:#fff;border:1px solid var(--line);
+  border-radius:10px;box-shadow:0 12px 40px rgba(17,20,24,.10),0 2px 8px rgba(17,20,24,.04);
+  text-align:center}
+.gcard .gt{font-size:15px;font-weight:700;letter-spacing:.5px}
+.gcard .gs{font-size:11.5px;color:var(--muted);margin:6px 0 16px;line-height:1.6}
+.gcard input{width:100%;height:34px;padding:0 10px;font-size:13.5px;font-family:inherit;
+  border:1px solid var(--line);border-radius:5px;outline:none;text-align:center;
+  letter-spacing:2px;background:#fff}
+.gcard input:focus{border-color:#cfd4dc;box-shadow:0 0 0 3px rgba(17,20,24,.04)}
+.gcard button{width:100%;height:34px;margin-top:10px;border:0;border-radius:5px;
+  background:#111418;color:#fff;font-size:13px;font-family:inherit;cursor:pointer}
+.gcard button:hover{background:#000}
+.gcard button:disabled{background:#c2c7cf;cursor:not-allowed}
+.gcard .gerr{min-height:16px;margin-top:8px;font-size:11.5px;color:var(--red)}
+.gcard .ghint{margin-top:12px;font-size:11px;color:var(--muted);line-height:1.6}#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 #toast.err{background:var(--red)}
 #conn{display:none;padding:8px 20px;font-size:12.5px;color:var(--amber);background:#fffbf0;
   border-bottom:1px solid #f3e6c8}
@@ -267,7 +289,18 @@ select{width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 8px
 }
 </style>
 </head>
-<body>
+<body class="locked">
+<div id="gate" class="show">
+  <div class="gcard">
+    <div class="gt">内评简评报告</div>
+    <div class="gs">请输入访问口令</div>
+    <input id="gatePw" type="password" autocomplete="current-password" placeholder="口令"
+      onkeydown="if(event.key==='Enter')doLogin()" />
+    <button id="gateGo" onclick="doLogin()">进入</button>
+    <div class="gerr" id="gateErr"></div>
+    <div class="ghint" id="gateHint"></div>
+  </div>
+</div>
 <div id="conn"></div>
 <header>
   <div class="brand">内评简评报告</div>
@@ -275,6 +308,8 @@ select{width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 8px
   <button class="usage" id="usageBtn" onclick="toggleUsage(event)" title="点击查看调用明细">累计 0 次 · 财汇 0 点</button>
   <span class="sep"></span>
   <button class="usage" id="histBtn" onclick="toggleHistory(event)" title="查看生成过的报告">历史</button>
+  <span class="sep"></span>
+  <button class="usage" id="lockBtn" onclick="logout()" title="退出，重新需要口令">锁定</button>
   <span class="sep"></span>
   <a href="docs/template-v1.1.html" target="_blank">模板</a>
   <span class="sep"></span>
@@ -338,6 +373,75 @@ const API_BASE = (() => {
   return (localStorage.getItem("apiBase") || "http://127.0.0.1:8770").replace(/\/+$/, "");
 })();
 const apiUrl = (p) => API_BASE + p;
+
+/* ── 访问口令 ──────────────────────────────────────────────────
+   服务端每个接口都要 token；token 放 localStorage，随请求头带过去。
+   下载走浏览器直接跳转（a[href]），带不了头，改用 ?t= 传。 */
+let TOKEN = localStorage.getItem("nrToken") || "";
+const authHead = () => TOKEN ? { Authorization: "Bearer " + TOKEN } : {};
+const dlUrl = (p) => apiUrl(p) + (TOKEN ? (p.includes("?") ? "&" : "?") + "t=" + encodeURIComponent(TOKEN) : "");
+
+const _fetch = window.fetch.bind(window);
+window.fetch = (u, o) => {
+  const opt = Object.assign({}, o || {});
+  opt.headers = Object.assign({}, (o && o.headers) || {}, authHead());
+  return _fetch(u, opt).then(r => {
+    if(r.status === 401) lockUI("登录已过期，请重新输入口令");
+    return r;
+  });
+};
+
+function lockUI(msg){
+  document.body.classList.add("locked");
+  $("#gate").classList.add("show");
+  $("#gateErr").textContent = msg || "";
+  setTimeout(() => { const el = $("#gatePw"); if(el) el.focus(); }, 60);
+}
+function unlockUI(){
+  document.body.classList.remove("locked");
+  $("#gate").classList.remove("show");
+  $("#gateErr").textContent = "";
+  const el = $("#gatePw"); if(el) el.value = "";
+}
+async function doLogin(){
+  const pw = ($("#gatePw").value || "").trim();
+  const btn = $("#gateGo");
+  if(!pw){ $("#gateErr").textContent = "请输入口令"; return; }
+  btn.disabled = true; $("#gateErr").textContent = "";
+  try{
+    const r = await _fetch(apiUrl("/api/login"), {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: pw }) });
+    const d = await r.json().catch(() => ({}));
+    if(!r.ok || !d.token) throw new Error(d.error || "口令不对");
+    TOKEN = d.token;
+    localStorage.setItem("nrToken", TOKEN);
+    unlockUI();
+    if(d.default_password) toast("当前是默认口令 ceshi，建议改成自己的");
+    bootData();
+  }catch(e){
+    $("#gateErr").textContent = (API_BASE && /Failed to fetch|NetworkError/i.test(e.message))
+      ? "连不上本机服务，先运行 app/server.py"
+      : (e.message || "登录失败");
+  }finally{ btn.disabled = false; }
+}
+async function logout(){
+  try{ await api("/api/logout", {}); }catch(e){}
+  TOKEN = ""; localStorage.removeItem("nrToken");
+  lockUI("已退出");
+}
+async function gateBoot(){
+  // 页面本身是静态的，先问服务端这个 token 还作不作数。
+  // 注意别在登录页上提示默认口令——那是给所有人看的。
+  try{
+    const r = await _fetch(apiUrl("/api/session"), { headers: authHead() });
+    const d = await r.json().catch(() => ({}));
+    if(d.authed){ unlockUI(); bootData(); return; }
+  }catch(e){
+    $("#gateErr").textContent = API_BASE ? "连不上本机服务，先运行 app/server.py" : "";
+  }
+  lockUI("");
+}
 
 const STEPS = [
   { key: "search", label: "检索主体" },
@@ -608,7 +712,7 @@ async function restoreHistory(id){
 
 function histDocx(encoded){
   const a = document.createElement("a");
-  a.href = apiUrl("/download/" + encoded);
+  a.href = dlUrl("/download/" + encoded);
   a.download = decodeURIComponent(encoded);
   a.click();
 }
@@ -792,6 +896,7 @@ function uploadOne(file, u){
     const xhr = new XMLHttpRequest();
     xhr.open("POST", apiUrl("/api/upload?name=" + encodeURIComponent(file.name)));
     xhr.setRequestHeader("Content-Type", "application/pdf");
+    if(TOKEN) xhr.setRequestHeader("Authorization", "Bearer " + TOKEN);
     xhr.upload.onprogress = e => {
       if(!e.lengthComputable) return;
       u.pct = Math.round(e.loaded / e.total * 100);
@@ -1140,7 +1245,7 @@ async function exportDocx(){
     const r = await api("/api/export", { draft: d, company: S.company });
     setStep("export", { state: "done", pct: 100, detail: r.name });
     const a = document.createElement("a");
-    a.href = apiUrl(r.url);
+    a.href = dlUrl(r.url);
     a.download = r.name;
     a.click();
     toast("已导出 " + r.name + (r.cleaned ? `（导出前清理 ${r.cleaned} 处重复或来源表述）` : ""));
@@ -1299,7 +1404,7 @@ async function runBundle(){
   try{
     const r = await api("/api/bundle", body);
     const a = document.createElement("a");
-    a.href = apiUrl(r.url);
+    a.href = dlUrl(r.url);
     a.download = r.name;
     a.click();
     closeBundle();
@@ -1318,10 +1423,17 @@ document.addEventListener("click", e => {
   closeBundle();
 });
 
-loadModels();
-pingConn();
-refreshUsage();
-syncButtons();  // 初始状态：无材料时两个动作都灰着
+// 口令校验通过后才去拉数据：没进来之前不发任何要 token 的请求
+let booted = false;
+function bootData(){
+  if(booted) return;
+  booted = true;
+  loadModels();
+  pingConn();
+  refreshUsage();
+  syncButtons();  // 初始状态：无材料时两个动作都灰着
+}
+gateBoot();
 $("#company").addEventListener("keydown", e => { if(e.key === "Enter") doSearch(); });
 </script>
 </body>

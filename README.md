@@ -26,6 +26,18 @@ PORT=8770 /Users/panyp/.workbuddy/binaries/python/envs/rating-flow/bin/python ap
 
 依赖：`python-docx`、`pymupdf`（已在 `rating-flow` 环境）。财汇 MCP 端点与密钥从 `~/.workbuddy/mcp.json` 读取，也可用 `CAIHUI_MCP_URL` / `CAIHUI_MCP_KEY` 覆盖；模型走 `~/.workbuddy/models.json`，不需要另填 API Key。
 
+**访问口令**：打开页面先要口令，没进来之前整页糊在毛玻璃后面（`backdrop-filter: blur(16px)` + 半透明白），点不动也提交不了。默认口令 `ceshi`，登录后页头「锁定」可退出。
+
+口令来源优先级：环境变量 `REPORT_PASSWORD` → `data/auth.json` 的 scrypt 哈希 → 默认 `ceshi`。想改就设环境变量（临时、不落盘）：
+
+```bash
+REPORT_PASSWORD='你自己定的' PORT=8770 ... app/server.py
+```
+
+`POST /api/password {"old":"ceshi","new":"新的"}` 会把新口令以 scrypt（n=2^14）写进 `data/auth.json`，并让所有旧会话失效；`data/` 在 `.gitignore` 里，不会进仓库。
+
+登录成功发一个 `secrets.token_urlsafe(32)`，服务端只存它的 SHA-256（`data/sessions.json`，30 天有效、最多 20 个会话），前端放 localStorage，之后每个请求带 `Authorization: Bearer`。**用 Bearer 而不用 Cookie**：GitHub Pages 上的页面调 127.0.0.1 属跨站请求，第三方 Cookie 会被浏览器拦掉（`SameSite=None` 还要求 Secure，本机 http 不满足），自定义头只要 CORS 放行就能带。下载是浏览器直接跳转、带不了头，所以 `?t=<token>` 也接受。
+
 ## 三、工作台怎么用
 
 页面只有一件事：把四步走完。左侧是主体输入、四步进度与资料清单，右侧是报告纸面，改完就导出。
