@@ -10,3 +10,5 @@ nohup.out
 # 云端瘦身副本（含密钥）
 _cloud/
 _cloud_pw.txt
+data/llm.json
+data/caihui.json

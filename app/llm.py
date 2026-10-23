@@ -25,6 +25,23 @@ MODELS_JSON = Path.home() / ".workbuddy" / "models.json"
 _ENV_MODEL = ("LLM_BASE_URL", "LLM_API_KEY", "LLM_MODEL")
 
 
+def _file_model() -> dict | None:
+    """页面「设置」里填的自定义模型（data/llm.json）。本机与云端都能用这条。"""
+    f = Path(__file__).resolve().parent.parent / "data" / "llm.json"
+    if not f.exists():
+        return None
+    try:
+        d = json.loads(f.read_text(encoding="utf-8")) or {}
+    except (json.JSONDecodeError, OSError):
+        return None
+    if not (d.get("url") and d.get("apiKey") and d.get("model")):
+        return None
+    return {"id": d["model"], "name": d["model"], "vendor": "custom",
+            "url": d["url"], "apiKey": d["apiKey"],
+            "maxInputTokens": int(d.get("maxInput") or 131072),
+            "maxOutputTokens": int(d.get("maxOutput") or 8192)}
+
+
 def _env_model() -> dict | None:
     url, key, mid = (os.environ.get(k, "").strip() for k in _ENV_MODEL)
     if not (url and key and mid):
@@ -88,6 +105,18 @@ def list_models() -> list[dict]:
     if env:
         return [{"id": env["id"], "name": env["name"], "vendor": env["vendor"],
                  "context": env["maxInputTokens"]}]
+    fm = _file_model()
+    if fm:
+        # 页面填的模型排在最前，其余照旧列出（能用的）
+        rest = []
+        if MODELS_JSON.exists():
+            for m in json.loads(MODELS_JSON.read_text(encoding="utf-8")):
+                if m.get("url") and m.get("apiKey") and m.get("id") != fm["id"]:
+                    rest.append({"id": m["id"], "name": m.get("name") or m["id"],
+                                 "vendor": m.get("vendor") or "",
+                                 "context": m.get("maxInputTokens")})
+        return [{"id": fm["id"], "name": fm["name"], "vendor": fm["vendor"],
+                 "context": fm["maxInputTokens"]}] + rest
     if not MODELS_JSON.exists():
         return []
     data = json.loads(MODELS_JSON.read_text(encoding="utf-8"))
@@ -189,6 +218,11 @@ def usable_models() -> tuple[list[dict], int]:
 
 
 def pick_default(models: list[dict]) -> str | None:
+    fm = _file_model()
+    if fm:
+        for m in models:
+            if m["id"] == fm["id"]:
+                return fm["id"]
     for p in PREFERRED:
         for m in models:
             if p in m["id"].lower():
@@ -200,6 +234,9 @@ def _get_model(model_id: str) -> dict:
     env = _env_model()
     if env and model_id == env["id"]:
         return env
+    fm = _file_model()
+    if fm and model_id == fm["id"]:
+        return fm
     if not MODELS_JSON.exists():
         raise RuntimeError("未找到模型配置：本地需要 ~/.workbuddy/models.json，"
                            "云端需要 LLM_BASE_URL / LLM_API_KEY / LLM_MODEL")

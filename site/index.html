@@ -268,7 +268,15 @@ select{width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 8px
 .seg-line:hover{background:#fcfcfd}
 .seg-line:focus{background:#fff;box-shadow:0 0 0 1px #e6e9ee inset}
 .seg .tool{position:absolute;right:0;top:4px}
-.topic{margin-bottom:6px}
+.topic{margin-bottom:8px}
+.tp-add{position:relative;display:inline-block}
+.tpmenu{position:absolute;left:0;top:calc(100% + 4px);min-width:176px;background:#fff;
+  border:1px solid var(--line);border-radius:7px;box-shadow:0 10px 26px rgba(17,20,24,.12);
+  padding:4px;display:none;z-index:30}
+.tpmenu.show{display:block}
+.tpmenu button{display:block;width:100%;text-align:left;border:0;background:transparent;
+  font-family:inherit;font-size:12px;color:var(--ink2);padding:6px 9px;border-radius:5px;cursor:pointer}
+.tpmenu button:hover{background:var(--hover);color:var(--ink)}
 .notes{margin:14px 0 0;padding:10px 12px;border:1px solid var(--line);border-radius:6px;
   background:#fcfcfd;font-family:-apple-system,"PingFang SC",sans-serif;font-size:12px;
   line-height:1.7;color:var(--ink2)}
@@ -288,6 +296,38 @@ select{width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 8px
   background:rgba(255,255,255,.5);
   -webkit-backdrop-filter:blur(16px) saturate(.8);backdrop-filter:blur(16px) saturate(.8)}
 #gate.show{display:flex}
+
+/* ── 设置（模型 API / 邮件 SMTP / 财汇 / 口令，统一一处） ─────────── */
+#setMask{position:fixed;inset:0;z-index:70;display:none;background:rgba(17,20,24,.28);
+  -webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)}
+#setMask.show{display:flex;align-items:center;justify-content:center}
+.setbox{width:560px;max-height:82vh;overflow:auto;background:#fff;border-radius:10px;
+  box-shadow:0 20px 60px rgba(17,20,24,.20);padding:0;text-align:left}
+.setbox .sh{display:flex;align-items:center;gap:8px;padding:16px 20px 12px;
+  border-bottom:1px solid var(--line);position:sticky;top:0;background:#fff;z-index:2}
+.setbox .sh b{font-size:14px}
+.setbox .sh .x{margin-left:auto;border:0;background:transparent;color:#b9bfc8;font-size:16px;
+  cursor:pointer;line-height:1;padding:2px 4px}
+.setbox .sh .x:hover{color:var(--red)}
+.sets{padding:6px 20px 20px}
+.setsec{border-bottom:1px solid var(--line2);padding:14px 0}
+.setsec:last-child{border-bottom:0}
+.setsec .st{font-size:12.5px;font-weight:600;margin-bottom:2px;display:flex;align-items:center;gap:6px}
+.setsec .sd{font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:8px}
+.setsec .badge{font-size:10px;font-weight:400;padding:1px 6px;border-radius:9px;
+  border:1px solid var(--line);color:var(--muted);background:#fafbfc}
+.setsec .badge.ok{color:#2e7d32;border-color:#c8e6c9;background:#f1f8f1}
+.setsec .badge.warn{color:#9a6700;border-color:#f0e0b8;background:#fffbf0}
+.setgrid{display:grid;grid-template-columns:66px 1fr;gap:7px 10px;align-items:center}
+.setgrid label{font-size:11.5px;color:var(--muted);text-align:right}
+.setgrid input,.setgrid select{width:100%;font-family:inherit;font-size:12.5px;color:var(--ink);
+  border:1px solid var(--line);border-radius:5px;padding:5px 8px;outline:none;background:#fff}
+.setgrid input:focus,.setgrid select:focus{border-color:#cfd4dc}
+.setgrid .wide{grid-column:1 / -1}
+.setact{display:flex;align-items:center;gap:8px;margin-top:9px}
+.setact .msg{flex:1;font-size:11px;color:var(--muted)}
+.setact .msg.err{color:var(--red)}
+.setact .msg.ok{color:#2e7d32}
 body.locked{overflow:hidden}
 body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
 .gcard{width:330px;padding:26px 24px 20px;background:#fff;border:1px solid var(--line);
@@ -329,6 +369,7 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
     <div class="ghint" id="gateHint"></div>
   </div>
 </div>
+<div id="setMask"><div class="setbox" id="setBox"></div></div>
 <div id="conn"></div>
 <header>
   <div class="brand">内评简评报告</div>
@@ -336,6 +377,8 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
   <button class="usage" id="usageBtn" onclick="toggleUsage(event)" title="点击查看调用明细">累计 0 次 · 财汇 0 点</button>
   <span class="sep"></span>
   <button class="usage" id="histBtn" onclick="toggleHistory(event)" title="查看生成过的报告">历史</button>
+  <span class="sep"></span>
+  <button class="usage" id="setBtn" onclick="openSettings()" title="模型 API、邮件 SMTP、财汇、口令">设置</button>
   <span class="sep"></span>
   <button class="usage" id="lockBtn" onclick="logout()" title="退出，重新需要口令">锁定</button>
   <span class="sep"></span>
@@ -1120,7 +1163,7 @@ function renderDraft(){
 
   if((v.issues || []).length){
     h += `<div class="notes"><div class="h">待核对 ${v.issues.length} 项</div><ul>` +
-      v.issues.map(x => `<li class="${/不足|为空|未找到同值/.test(x) ? "bad" : ""}">${esc(x)}</li>`).join("") +
+      v.issues.map(x => `<li class="${/不足|为空|未找到同值/.test(x) ? "bad" : ""}">${esc(x).replace(/\n/g, "<br>")}</li>`).join("") +
       `</ul></div>`;
   }
 
@@ -1158,7 +1201,12 @@ function renderDraft(){
     ${ta("db-lead lead", c.debt && c.debt.lead, 2)}
     ${ta("db-body", c.debt && c.debt.body, 7)}
     <div id="d-topics"></div>
-    <button class="add" onclick="addTopic()">+ 专题段</button>
+    <div class="tp-add">
+      <button class="add" onclick="topicMenu()">+ 专题段（可选）</button>
+      <div class="tpmenu" id="topicMenu">
+        ${TOPIC_PRESETS.map(p => `<button onclick="addTopicPreset('${p.key}')">${esc(p.label)}</button>`).join("")}
+      </div>
+    </div>
   </div></div>`;
 
   $("#draftArea").innerHTML = h;
@@ -1247,20 +1295,54 @@ function renumberSegs(){
 
 function renderTopics(ts){
   $("#d-topics").innerHTML = ts.map(t => `<div class="topic">
-    <textarea class="ta topic-lead" rows="2">${esc(t.lead)}</textarea>
-    <textarea class="ta topic-body" rows="5">${esc(t.body)}</textarea>
+    <textarea class="ta topic-lead lead" rows="2" placeholder="加粗总起句：先给判断">${esc(t.lead)}</textarea>
+    <textarea class="ta topic-body" rows="5" placeholder="正文">${esc(t.body)}</textarea>
     <button class="tool" onclick="this.parentNode.remove()">× 删除本段</button>
   </div>`).join("");
 }
-function addTopic(){
+function addTopic(lead, body){
   const div = document.createElement("div");
   div.className = "topic";
-  div.innerHTML = `<textarea class="ta topic-lead" rows="2" placeholder="加粗判断句"></textarea>
-    <textarea class="ta topic-body" rows="5" placeholder="正文"></textarea>
+  div.innerHTML = `<textarea class="ta topic-lead lead" rows="2" placeholder="加粗总起句：先给判断">${esc(lead || "")}</textarea>
+    <textarea class="ta topic-body" rows="5" placeholder="正文">${esc(body || "")}</textarea>
     <button class="tool" onclick="this.parentNode.remove()">× 删除本段</button>`;
   $("#d-topics").appendChild(div);
-  div.querySelector("textarea").focus();
+  const boxes = div.querySelectorAll("textarea");
+  boxes.forEach(autoGrow);
+  (body ? boxes[1] : boxes[0]).focus();
 }
+
+/* 专题段预设：用户自己决定要不要、要几条。都不点就没有这一段。 */
+const TOPIC_PRESETS = [
+  { key: "contingent", label: "或有事项",
+    lead: "公司对外担保与未决诉讼规模可控，但担保对象集中于区域内国企，存在代偿的尾部风险。",
+    body: "截至最新期末，公司对外担保余额＿亿元，占净资产的＿%；被担保对象主要为区域内国有企业，互保特征明显。同期无重大未决诉讼。需关注被担保方偿付能力变化带来的代偿风险。" },
+  { key: "capex", label: "在建工程与资本支出",
+    lead: "公司在建项目投资规模较大，后续资本支出压力集中于未来两年，资金来源依赖再融资。",
+    body: "截至最新期末，公司在建工程＿亿元，计划总投资＿亿元，已累计投资＿亿元，剩余投资＿亿元；同期货币资金＿亿元，无法完全覆盖剩余投资，需依靠经营性回款与新增融资补足。" },
+  { key: "subsidy", label: "政府补助依赖",
+    lead: "公司利润对政府补助依赖度较高，剔除补助后经营性盈利薄弱。",
+    body: "报告期内公司其他收益中的政府补助分别为＿亿元，同期净利润分别为＿亿元，补助规模接近或超过净利润；若补助退坡，利润将明显承压。" },
+  { key: "restricted", label: "受限资产",
+    lead: "公司受限资产占有一定比重，对资产变现能力形成约束。",
+    body: "截至最新期末，公司受限资产账面价值＿亿元，占总资产的＿%，主要为用于借款抵押的土地与房产；扣除受限部分后，可自由处置的资产规模有限。" },
+  { key: "custom", label: "空白一段", lead: "", body: "" },
+];
+
+function topicMenu(){
+  const m = $("#topicMenu");
+  if(!m) return;
+  m.classList.toggle("show");
+}
+function addTopicPreset(key){
+  const p = TOPIC_PRESETS.find(x => x.key === key) || { lead: "", body: "" };
+  addTopic(p.lead, p.body);
+  TOAST_TOPIC = key;
+  const m = $("#topicMenu");
+  if(m) m.classList.remove("show");
+  toast(key === "custom" ? "已加一段空白专题" : `已加「${p.label}」，把＿处换成材料里的数字`);
+}
+let TOAST_TOPIC = "";
 
 function autoGrow(el){
   el.style.height = "auto";
@@ -1324,6 +1406,154 @@ async function copyPrompt(){
     toast("提示词已复制");
   }catch(e){ toast(e.message, true); }
 }
+
+/* ---------------- 设置中心 ---------------- */
+const SET = { open: false, data: null };
+
+async function openSettings(){
+  SET.open = true;
+  $("#setMask").classList.add("show");
+  $("#setBox").innerHTML = `<div class="sh"><b>设置</b><button class="x" onclick="closeSettings()">×</button></div>
+    <div class="sets"><div class="sd">正在读取配置…</div></div>`;
+  await reloadSettings();
+}
+
+function closeSettings(){
+  SET.open = false;
+  $("#setMask").classList.remove("show");
+}
+
+async function reloadSettings(){
+  try{
+    SET.data = await (await fetch(apiUrl("/api/settings"))).json();
+  }catch(e){
+    SET.data = null;
+  }
+  renderSettings();
+}
+
+function badge(ok, okText, badText){
+  return `<span class="badge ${ok ? "ok" : "warn"}">${esc(ok ? okText : badText)}</span>`;
+}
+
+function renderSettings(){
+  const d = SET.data || {};
+  const pw = d.password || {}, llm = d.llm || {}, mail = d.mail || {}, ch = d.caihui || {};
+
+  let h = `<div class="sh"><b>设置</b><button class="x" onclick="closeSettings()">×</button></div><div class="sets">`;
+
+  // 模型 API
+  h += `<div class="setsec">
+    <div class="st">模型 API ${badge(llm.ready, "已配置", "未配置")}
+      ${llm.source ? `<span class="badge">${llm.source === "env" ? "来自环境变量" : llm.source === "workbuddy" ? "用 WorkBuddy 已配模型" : "页面填写"}</span>` : ""}</div>
+    <div class="sd">生成报告用的模型。默认沿用 WorkBuddy 已配的模型；想换别的就填任意 OpenAI 兼容端点，
+      存本机 <code>data/llm.json</code>（改完会自动测连通）。环境变量 <code>LLM_BASE_URL/LLM_API_KEY/LLM_MODEL</code> 优先级最高。</div>
+    <div class="setgrid">
+      <label>接口地址</label>
+      <input id="stLlmUrl" value="${esc(llm.url || "")}" placeholder="https://api.deepseek.com/chat/completions" spellcheck="false"/>
+      <label>模型名</label>
+      <input id="stLlmModel" value="${esc(llm.model || "")}" placeholder="deepseek-v4-flash" spellcheck="false"/>
+      <label>API Key</label>
+      <input id="stLlmKey" type="password" placeholder="${llm.has_key ? "已保存，留空表示不改" : "sk-..."}" spellcheck="false"/>
+    </div>
+    <div class="setact"><span class="msg" id="msgLlm">${llm.models && llm.models.length ? "可用：" + esc(llm.models.join("、")) : ""}</span>
+      <button class="btn-sm solid" onclick="saveSettings('llm')">保存并测连通</button></div>
+  </div>`;
+
+  // 邮件 SMTP
+  h += `<div class="setsec">
+    <div class="st">发件邮箱（SMTP） ${badge(mail.ready, "已配置", "未配置")}</div>
+    <div class="sd">「发送邮件」用的发件通道。需要邮箱的<b>客户端授权码</b>，不是登录密码。
+      QQ 邮箱：设置→账号→开启 SMTP→生成授权码；服务器 <code>smtp.qq.com</code>、端口 465、SSL。</div>
+    <div class="setgrid">
+      <label>服务器</label>
+      <input id="stMailHost" value="${esc(mail.host || "")}" placeholder="smtp.qq.com" spellcheck="false"/>
+      <label>端口</label>
+      <input id="stMailPort" value="${esc(mail.port || "")}" placeholder="465" spellcheck="false"/>
+      <label>加密</label>
+      <select id="stMailTls">
+        <option value="ssl" ${mail.tls === "ssl" ? "selected" : ""}>SSL（465）</option>
+        <option value="starttls" ${mail.tls === "starttls" ? "selected" : ""}>STARTTLS（587）</option>
+        <option value="none" ${mail.tls === "none" ? "selected" : ""}>不加密（25，内网）</option>
+      </select>
+      <label>账号</label>
+      <input id="stMailUser" value="${esc(mail.user || "")}" placeholder="你@qq.com" spellcheck="false"/>
+      <label>授权码</label>
+      <input id="stMailPass" type="password" placeholder="${mail.has_password ? "已保存，留空表示不改" : "16 位授权码"}" spellcheck="false"/>
+    </div>
+    <div class="setact"><span class="msg" id="msgMail">默认收件人 ${esc(mail.default_to || "")}</span>
+      <button class="btn-sm solid" onclick="saveSettings('mail')">保存</button></div>
+  </div>`;
+
+  // 财汇
+  h += `<div class="setsec">
+    <div class="st">财汇 MCP ${badge(ch.ready, "已连接", "未配置")}
+      ${ch.source ? `<span class="badge">${ch.source === "env" ? "来自环境变量" : ch.source === "workbuddy" ? "读本机 mcp.json" : "页面填写"}</span>` : ""}</div>
+    <div class="sd">检索公告、下载评级报告与募集说明书用。留空则读本机 <code>~/.workbuddy/mcp.json</code>。</div>
+    <div class="setgrid">
+      <label>地址</label>
+      <input id="stChUrl" value="${esc(ch.url || "")}" placeholder="https://mcp.finchina.com/..." spellcheck="false"/>
+      <label>API Key</label>
+      <input id="stChKey" type="password" placeholder="${ch.has_key ? "已保存，留空表示不改" : "ak_..."}" spellcheck="false"/>
+    </div>
+    <div class="setact"><span class="msg" id="msgCh"></span>
+      <button class="btn-sm solid" onclick="saveSettings('caihui')">保存</button></div>
+  </div>`;
+
+  // 口令
+  h += `<div class="setsec">
+    <div class="st">访问口令 ${badge(!pw.is_default, "已自定义", "仍是默认 ceshi")}</div>
+    <div class="sd">别人打开这个网址要先输口令。改完所有旧登录立即失效。</div>
+    <div class="setgrid">
+      <label>当前口令</label>
+      <input id="stPwOld" type="password" placeholder="现在用的口令" spellcheck="false"/>
+      <label>新口令</label>
+      <input id="stPwNew" type="password" placeholder="至少 4 位" spellcheck="false"/>
+    </div>
+    <div class="setact"><span class="msg" id="msgPw"></span>
+      <button class="btn-sm solid" onclick="saveSettings('password')">改口令</button></div>
+  </div>`;
+
+  h += `</div>`;
+  $("#setBox").innerHTML = h;
+}
+
+function _val(id){ const el = $("#"+id); return el ? el.value.trim() : ""; }
+
+async function saveSettings(section){
+  const msgId = { llm: "msgLlm", mail: "msgMail", caihui: "msgCh", password: "msgPw" }[section];
+  const msg = msgId ? $("#"+msgId) : null;
+  const say = (t, kind) => { if(msg){ msg.className = "msg" + (kind ? " " + kind : ""); msg.textContent = t; } };
+  const body = { section };
+  if(section === "llm"){ body.url = _val("stLlmUrl"); body.model = _val("stLlmModel"); body.apiKey = _val("stLlmKey"); }
+  if(section === "caihui"){ body.url = _val("stChUrl"); body.key = _val("stChKey"); }
+  if(section === "mail"){ body.host = _val("stMailHost"); body.port = _val("stMailPort");
+    body.tls = _val("stMailTls"); body.user = _val("stMailUser"); body.password = _val("stMailPass"); }
+  if(section === "password"){ body.old = _val("stPwOld"); body.new = _val("stPwNew"); }
+  say("保存中…");
+  try{
+    const r = await api("/api/settings", body);
+    if(section === "password" && r.token){
+      TOKEN = r.token;
+      localStorage.setItem("nrToken", TOKEN);
+    }
+    SET.data = r.settings || SET.data;
+    renderSettings();
+    const m2 = $("#" + msgId);
+    if(m2){ m2.className = "msg ok"; m2.textContent = section === "password" ? "已改口令，旧登录已失效" : "已保存"; }
+    if(section === "llm" || section === "mail"){
+      loadModels();
+      MAIL.cfg = null;
+      if(MAIL.open) loadMailPanel();
+    }
+    toast("设置已保存");
+  }catch(e){
+    say(e.message || "保存失败", "err");
+  }
+}
+
+$("#setMask").addEventListener("click", e => { if(e.target.id === "setMask") closeSettings(); });
+document.addEventListener("keydown", e => { if(e.key === "Escape" && SET.open) closeSettings(); });
 
 /* ---------------- 发送邮件 ---------------- */
 const MAIL = { open: false, cfg: null, busy: false, withPdf: false, docx: "" };
@@ -1399,46 +1629,21 @@ function renderMailPanel(){
         onchange="MAIL.withPdf=this.checked" />
       <span class="n">原底稿 ${pdfs.length} 份 PDF<i>${pdfs.map(x => fmtSize(x.size || 0)).join(" · ")}</i></span></label>`;
   }
+  h += `</div>`;   // 必须闭合 .mlatt：不闭合的话下面的 SMTP 表单会被 .mlatt input{width:13px} 命中，框缩成 16px 点不到
 
   if(!cfg.ready){
     h += `<div class="ml-cfg">
-      <div class="t">发件邮箱（只存本机 data/mail.json，不回传）</div>
-      <div class="mlf">
-        <label>服务器</label>
-        <input id="mlHost" placeholder="例如 smtp.qq.com" spellcheck="false" />
-        <label>端口</label>
-        <input id="mlPort" placeholder="465" value="465" spellcheck="false" />
-        <label>加密</label>
-        <select id="mlTls" style="font-size:12px;padding:4px 7px;border:1px solid var(--line);border-radius:4px">
-          <option value="ssl">SSL（465）</option>
-          <option value="starttls">STARTTLS（587）</option>
-          <option value="none">不加密（25）</option>
-        </select>
-        <label>账号</label>
-        <input id="mlUser" placeholder="完整邮箱地址" spellcheck="false" />
-        <label>授权码</label>
-        <input id="mlPass" type="password" placeholder="客户端授权码，不是登录密码" spellcheck="false" />
-      </div>
-      <div class="hint">这里发信走 SMTP，需要邮箱的「客户端授权码」（QQ 邮箱：设置→账号→生成授权码；服务器 smtp.qq.com、端口 465、SSL）。<br>
-        没配授权码也能发：在 WorkBuddy 对话里让我用 QQ 邮箱连接器代发——那条通道限额为单文件 1MB、合计 3MB，只够发报告本体，带不了原底稿。</div>
+      <div class="hint">还没配发件邮箱。发件服务器与授权码在「设置」里统一填写，填完这里就能发。</div>
+      <div style="margin-top:7px"><button class="btn-sm" onclick="closeMail();openSettings()">去设置里配发件邮箱</button></div>
     </div>`;
-  }else{
-    h += `<div class="ml-cfg"><div class="t">
-      <button class="btn-sm" onclick="resetMailCfg()" style="font-size:10.5px;padding:1px 6px">改发件配置</button>
-      </div></div>`;
   }
 
   h += `<div class="ml-foot">
-      <span class="st" id="mlSt">${cfg.ready ? "点右侧按钮即发送" : "填好配置后可直接发送"}</span>
-      <button class="btn-sm solid" id="mlGo" onclick="runMail()">${cfg.ready ? "发送" : "保存并发送"}</button>
+      <span class="st" id="mlSt">${cfg.ready ? `将由 ${esc(cfg.user || "已配置邮箱")} 发出` : "先在设置里配发件邮箱"}</span>
+      <button class="btn-sm solid" id="mlGo" onclick="runMail()" ${cfg.ready ? "" : "disabled"}>发送</button>
     </div>`;
 
   $("#mailPanel").innerHTML = h;
-}
-
-function resetMailCfg(){
-  MAIL.cfg = Object.assign({}, MAIL.cfg, { ready: false });
-  renderMailPanel();
 }
 
 async function runMail(){
@@ -1462,18 +1667,7 @@ async function runMail(){
   st.className = "st";
   st.textContent = "正在连接邮件服务器…";
   try{
-    if(!cfg.ready){
-      const saved = await api("/api/mail/config", {
-        save: true,
-        host: ($("#mlHost") || {}).value || "",
-        port: ($("#mlPort") || {}).value || "",
-        tls: ($("#mlTls") || {}).value || "ssl",
-        user: ($("#mlUser") || {}).value || "",
-        password: ($("#mlPass") || {}).value || "",
-      });
-      MAIL.cfg = saved;
-      if(!saved.ready) throw new Error("配置不完整：服务器、账号、授权码都要填");
-    }
+    if(!cfg.ready) throw new Error("还没配发件邮箱：点「设置」填 SMTP 服务器与授权码");
     // 没导出过就现场排版：把草稿带上，服务端会先出 docx 再发
     if(!MAIL.docx && !((PKG.data && PKG.data.docx) || []).length && S.draft){
       payload.draft = collectDraft();
@@ -1496,6 +1690,8 @@ async function runMail(){
 }
 
 document.addEventListener("click", e => {
+  const m = $("#topicMenu");
+  if(m && m.classList.contains("show") && !e.target.closest(".tp-add")) m.classList.remove("show");
   if(!MAIL.open) return;
   if(e.target.closest("#mailPanel") || e.target.closest("#btnMail")) return;
   closeMail();

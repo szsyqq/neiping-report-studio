@@ -34,6 +34,7 @@ import history  # noqa: E402
 import jobs  # noqa: E402
 import llm  # noqa: E402
 import mailer  # noqa: E402
+import settings_store  # noqa: E402
 import pdf_text  # noqa: E402
 import usage as usage_mod  # noqa: E402
 from mcp_client import CaihuiClient, MCPError  # noqa: E402
@@ -202,6 +203,28 @@ def api_export(payload: dict) -> dict:
         history.attach_docx(rid, out.name)
     return {"path": str(out), "name": out.name, "url": "/download/" + quote(out.name),
             "cleaned": draft.get("_cleaned") or 0}
+
+
+def api_settings(payload: dict) -> dict:
+    """设置中心：一次读写四类配置。密码类字段只进不出。"""
+    sec = (payload.get("section") or "").strip()
+    if sec == "llm":
+        settings_store.save_llm(payload)
+        llm.check_all()          # 改完立刻探活，下拉马上反映
+    elif sec == "caihui":
+        settings_store.save_caihui(payload)
+    elif sec == "mail":
+        mailer.save_config(payload)
+    elif sec == "password":
+        old, new = payload.get("old") or "", payload.get("new") or ""
+        if not auth_mod.check(old):
+            raise ValueError("原口令不对")
+        try:
+            auth_mod.set_password(new)
+        except ValueError as e:
+            raise ValueError(str(e)) from None
+        return {"ok": True, **auth_mod.issue(), "settings": settings_store.overview()}
+    return {"ok": True, "settings": settings_store.overview()}
 
 
 def api_mail_config(payload: dict) -> dict:
@@ -597,6 +620,8 @@ class Handler(BaseHTTPRequestHandler):
                             "skipped": skipped, "checked_at": cache.get("ts") or "",
                             "reasons": {k: v.get("why") for k, v in
                                         (cache.get("results") or {}).items() if not v.get("ok")}})
+            elif p == "/api/settings":
+                self._json(settings_store.overview())
             elif p == "/api/mail/config":
                 self._json(mailer.describe())
             elif p == "/api/stats":
@@ -686,6 +711,7 @@ class Handler(BaseHTTPRequestHandler):
             "/api/history/delete": api_history_delete,
             "/api/mail": api_mail,
             "/api/mail/config": api_mail_config,
+            "/api/settings": api_settings,
         }
         try:
             if p.startswith("/api/jobs/"):

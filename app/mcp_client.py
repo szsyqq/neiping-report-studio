@@ -27,6 +27,15 @@ def _load_endpoint() -> tuple[str, str]:
     key = os.environ.get("CAIHUI_MCP_KEY")
     if url and key:
         return url, key
+    # 页面「设置」里填的（data/caihui.json），本机与云端都适用
+    f = Path(__file__).resolve().parent.parent / "data" / "caihui.json"
+    if f.exists():
+        try:
+            d = json.loads(f.read_text(encoding="utf-8")) or {}
+        except (json.JSONDecodeError, OSError):
+            d = {}
+        if d.get("url") and d.get("key"):
+            return d["url"], d["key"]
     if MCP_CONFIG.exists():
         cfg = json.loads(MCP_CONFIG.read_text(encoding="utf-8"))
         servers = cfg.get("mcpServers") or {}

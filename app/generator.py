@@ -312,7 +312,7 @@ SYSTEM_PROMPT = """你是信用评级机构的分析员，负责撰写内部「�
 6. 不得照抄评级机构的结论句作为自己的判断；可复算的要用自己的口径重述。不得出现「中诚信国际认为」「评级时应注意到」这类元话语。
 7. 业务分部段六拍：业务模式与产出能力 → 报告期的产出量 → 价格或费率与收入 → 成本结构与毛利率变动原因 → 项目或订单储备 → 该板块风险点。产出量的计量单位按业务性质选（取该公司连续披露、可跨期比较、且与收入同向的那一个量），不同板块不必统一；找不到就跳过这一拍，不拿无关指标充数。单个板块的正文至少三句：做的是什么、当期经营数据、风险点，各占一句以上；收入占比不足 5% 的板块并成一段「其他业务」写，不要为凑板块数量把一句话拆成一段。
 8. 资产段的前五大科目必须按最新期次的实际金额降序排列（不是沿用旧名单换数字），写清每个科目「是什么」，并交代其质量——能否变现、是否已质押、账龄或回收对象。
-9. 债务段按固定顺序展开：负债总额与资产负债率 → 全部债务及长短债结构与占比 → 有息债务的融资构成 → 利息保障与经营获现 → 非受限货币资金对短债覆盖 → 授信与未使用额度 → 或有事项。
+9. 债务段按固定顺序展开：负债总额与资产负债率 → 全部债务及长短债结构与占比 → 有息债务的融资构成 → 利息保障与经营获现 → 非受限货币资金对短债覆盖 → 授信与未使用额度。或有事项不进债务段——它由用户在页面上自行决定是否单列一段（见规则 21），债务段里不写「或有事项方面，……」。
 10. 全文用合并口径。总债务（含政府专项债等）与有息债务是两个口径，混用时必须说明差额来源。
 11. 期次只能照抄台账『期次写法』里的字面写法：时点用「X年末／X年6月末／X年9月末」，区间用「X年／X年1-6月／X年1-9月」。资产类、负债类、债务类数据用时点写法，收入、利润、现金流用区间写法。台账写「中报」的，时点就是「X年6月末」，绝不允许写成 9 月末或 1-9 月。
 12. 不按行业套路写作。写外部条件时问三件事：钱从谁那里来、量由什么决定、价由谁定；三问的答案决定引什么数据。不要因为主体名称或行业标签就推断它应该有什么业务、什么风险——只写材料里有据、且该主体确实存在的事实。找不到某项惯常指标（例如某类产出量），就跳过，不用相近指标替代。
@@ -324,6 +324,7 @@ SYSTEM_PROMPT = """你是信用评级机构的分析员，负责撰写内部「�
 18. 正文每段至少锚定一个具体数据或明确事实（金额、比率、期限、数量、协议条款），不写通篇定性的空段；也不为凑数据引与判断无关的数字——引的每个数都要能用在一句判断上。
 19. 同一件事只说一遍。加粗汇总句是判断，正文不得把这句话换个说法再说一次；专题段只写它自己那件事的新证据，不复述债务段、资产段或业务段已经写过的数据与结论；同一条事实（如某科目余额、某协议条款）在全文只出现一次，后文需要引用时用「上述」带过或直接给结论，不重抄原句。
 20. 分部业务段是一整段：编号与板块名之后的全部内容在同一段里连续写完，不在段内换行、不分成若干小段、不加小标题。
+21. 专题段（special_topics）默认输出空数组。只有材料里存在「非报不可」的重大事项（大额对外担保且被担保方已出现风险、重大未决诉讼、股东出资未到位、在建项目投资缺口远超货币资金）才写，且最多一条。写的时候必须带一句独立的加粗判断句作 lead（先说结论，不带数字），body 再摆数据；不要用「或有事项方面，」这种引子开头。用户在页面上可自行增删专题段，你不必为了完整而补。
 19. 两类专项按条件触发，不按行业标签触发。（1）收入主要来自政府结算（土地整理、代建、特许经营、购买服务）的，总述段交代「钱从谁来」时就要带上区域财力的实数——地区 GDP 与增速、一般公共预算收入、政府性债务余额或债务率，各一句、写明年份，并点明公司在这套结算体系里的层级与回款路径；不要只写「区域财力持续增长」这种不带数的判断，也不要把区域情况另起一段展开。（2）在建工程占非流动资产比重较高的，写清计划总投资、已累计投资、剩余投资，并与货币资金对照说明缺口。材料没有这些数据就整段不写，不许用「预计」「大致」补位。
 
 【写作风格】以跟踪评级报告正文为语体基准：段首归因（受……影响／受益于）、段中展开（具体来看／结构上／此外）、段末收口（整体来看，……）。判断词要分级（很强/较强/一般/较弱、可控/充足/尚可/承压）。不用「本期」「去年」「大幅」这类不可核实表述，也不用「可能」「大概」「或许」——判断要么有据，要么不写。行文里不出现「材料」「披露」「外部条件」这类词：它们是分析员的作业对象，不是报告的语言。
@@ -387,7 +388,7 @@ def build_user_prompt(facts: dict, materials: list[dict]) -> str:
     "financial_table": {"unit_line": "单位：亿元", "periods": ["2023年", "2024年", "2025年"], "rows": [["资产总额", "0.00", "0.00", "0.00"], ["负债总额", "0.00", "0.00", "0.00"]]},
     "asset": {"lead": "加粗汇总句（不带数字）", "body": "资产段正文"},
     "debt": {"lead": "加粗汇总句（不带数字）", "body": "债务段正文"},
-    "special_topics": [{"lead": "加粗判断句", "body": "专题正文"}]
+    "special_topics": []
   },
   "data_notes": ["口径差异或不确定处，逐条说明"],
   "sources": [{"claim": "文中的关键判断或数字", "where": "材料名+页码/章节"}]
@@ -405,7 +406,7 @@ def build_user_prompt(facts: dict, materials: list[dict]) -> str:
 【输出 JSON 结构】
 {schema}
 
-注意：若【事实台账】已有「财务指标」，财务指标表由程序按台账生成，你不需要输出 financial_table；若台账没有财务指标，你必须从【材料原文】的「主要财务数据」表整理 financial_table——期次取最近三期（前两年 + 最新一期，按时间正序排列，最新一期放最后），期次写法照抄材料表头，行项按规模→结构→盈利→获现→债务→偿债排列，金额统一亿元、两位小数，数字与材料逐一对应，材料没有的行不要编。若台账无主营构成数据，请从评级报告正文补出 segment_table（金额按亿元、两位小数，占比两位小数，缺毛利率则该列留空字符串），否则 segment_table 输出 null。你只需保证正文里的数字与材料一致，且能被台账或材料原文支撑。segments 的 name 用该公司自己披露的板块名称，不要带「业务方面」四个字，也不带编号；板块数量按收入结构决定，不要为了凑段数拆分或合并材料里没有的板块。"""
+注意：若【事实台账】已有「财务指标」，财务指标表由程序按台账生成，你不需要输出 financial_table；若台账没有财务指标，你必须从【材料原文】的「主要财务数据」表整理 financial_table——期次取最近三期（前两年 + 最新一期，按时间正序排列，最新一期放最后），期次写法照抄材料表头，行项按规模→结构→盈利→获现→债务→偿债排列，金额统一亿元、两位小数，数字与材料逐一对应，材料没有的行不要编。若台账无主营构成数据，请从评级报告正文补出 segment_table（金额按亿元、两位小数，占比两位小数，缺毛利率则该列留空字符串），否则 segment_table 输出 null。你只需保证正文里的数字与材料一致，且能被台账或材料原文支撑。segments 的 name 用该公司自己披露的板块名称，不要带「业务方面」四个字，也不带编号；板块数量按收入结构决定，不要为了凑段数拆分或合并材料里没有的板块。special_topics 默认给空数组（用户在前端按需加段）；确有重大事项才写一条，且必须自带加粗判断句作 lead。"""
 
 
 def _clean_llm_table(t: Any) -> dict | None:
@@ -890,6 +891,62 @@ def _walk_numbers(obj, out: set[str], depth: int = 0):
             out.add(m.group(0))
 
 
+
+# 指标类型猜测：只做「读到数字后面的名词」这一层，不追求准确，
+# 目的是让用户知道该去核哪一行，而不是把 14.76% 当成孤立符号。
+_KIND_RULES = (
+    ("占比", ("占", "比重", "比例", "占比")),
+    ("增速", ("增长", "下降", "同比", "环比", "增幅", "降幅")),
+    ("结构", ("其中", "结构", "短期", "长期", "流动")),
+    ("差额", ("增加", "减少", "变动", "较", "差额", "增量")),
+    ("规模", ("余额", "总额", "合计", "规模", "金额")),
+    ("比率", ("率", "倍数", "覆盖")),
+)
+
+
+def _guess_kind(sent: str, num: str) -> str:
+    """猜这个数字是什么指标。先看单位，再看上下文，别把「95.78亿元」说成占比。"""
+    i = (sent or "").find(num)
+    if i < 0:
+        return ""
+    ctx = sent[max(0, i - 14): i + len(num) + 14]
+    if "个百分点" in num:
+        return "变动幅度"
+    if "%" in num:
+        if any(w in ctx for w in ("增长", "下降", "同比", "上升", "回落", "增幅", "降幅")):
+            return "增速"
+        if any(w in ctx for w in ("占", "比重", "比例")):
+            return "占比"
+        if any(w in ctx for w in ("率", "倍", "覆盖")):
+            return "比率"
+        return "比例/增速"
+    if "倍" in num:
+        return "倍数/覆盖率"
+    if any(u in num for u in ("亿元", "万元", "元")):
+        if any(w in ctx for w in ("增加", "减少", "变动", "较上", "差额", "增量", "多")):
+            return "差额"
+        if any(w in ctx for w in ("余额", "总额", "合计", "规模")):
+            return "规模"
+        return "金额"
+    return ""
+
+
+def _cite(sent: str, num: str, width: int = 34) -> str:
+    """取数字所在的一小段原文，前后各留点上下文，方便在页面上直接搜到。"""
+    s = (sent or "").strip()
+    i = s.find(num)
+    if i < 0:
+        return s[:width * 2]
+    left = max(0, i - width)
+    right = min(len(s), i + len(num) + width)
+    out = s[left:right]
+    if left > 0:
+        out = "…" + out
+    if right < len(s):
+        out = out + "…"
+    return out
+
+
 def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
     """数字溯源校验 + 摘要层数据扫描 + 结构检查。"""
     issues: list[str] = []
@@ -957,14 +1014,18 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
                 issues.append(f"{label}{i}）含数据 {nums}，摘要层应为纯定性")
 
     # 2) 正文数字溯源
-    texts = [draft.get("basic_info", "")]
+    # 带段落标签收集，出问题时要能指出「在哪个段、哪句话、大概是哪个指标」——
+    # 只报一串数字（14.76%、0.41亿元）等于让用户自己去全文搜，等于没提。
+    labeled: list[tuple[str, str]] = [("基本情况", draft.get("basic_info", ""))]
     c = draft.get("commentary") or {}
-    for k in ("overview", "asset", "debt"):
-        texts += [(c.get(k) or {}).get("lead", ""), (c.get(k) or {}).get("body", "")]
-    for s in c.get("segments") or []:
-        texts.append(s.get("body", ""))
-    for t in c.get("special_topics") or []:
-        texts += [t.get("lead", ""), t.get("body", "")]
+    for k, name in (("overview", "总述段"), ("asset", "资产段"), ("debt", "债务段")):
+        block = c.get(k) or {}
+        labeled.append((name, (block.get("body") or "")))
+    for i, seg in enumerate(c.get("segments") or [], 1):
+        labeled.append((f"{i}）{seg.get('name') or '板块'}", seg.get("body", "")))
+    for i, t in enumerate(c.get("special_topics") or [], 1):
+        labeled.append((f"专题段{i}", t.get("body", "")))
+    texts = [t for _n, t in labeled]
     seg_tbl = c.get("segment_table")
     if seg_tbl:
         for r in seg_tbl.get("rows") or []:
@@ -982,23 +1043,40 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
                 except ValueError:
                     pass
 
-    unsourced, derived = [], []
-    for t in texts:
-        for n in collect_numbers(t):
-            digits = re.sub(r"[^\d.]", "", n)
-            try:
-                v = float(digits)
-            except ValueError:
-                continue
-            if digits in corpus_nums or f"{v:.2f}" in corpus_nums or f"{v:.1f}" in corpus_nums:
-                continue
-            (derived if (digits in declared or f"{v:.2f}" in declared) else unsourced).append(n)
+    unsourced: list[dict] = []
+    derived: list[dict] = []
+    seen_num: set[str] = set()
+    for label, text in labeled:
+        for sent in re.split(r"(?<=[。！？])", text or ""):
+            for n in collect_numbers(sent):
+                digits = re.sub(r"[^\d.]", "", n)
+                try:
+                    v = float(digits)
+                except ValueError:
+                    continue
+                if digits in corpus_nums or f"{v:.2f}" in corpus_nums or f"{v:.1f}" in corpus_nums:
+                    continue
+                key = f"{label}|{n}"
+                if key in seen_num:
+                    continue
+                seen_num.add(key)
+                hit = {"num": n, "where": label, "sent": _cite(sent, n),
+                       "kind": _guess_kind(sent, n)}
+                (derived if (digits in declared or f"{v:.2f}" in declared) else unsourced).append(hit)
+
     if unsourced:
-        uniq = list(dict.fromkeys(unsourced))
-        issues.append("以下数字在台账与材料原文中找不到直接出处（多为正文自行计算的占比、增速或差额），请复核算式：" + "、".join(uniq[:20]))
+        lines = [f"以下 {len(unsourced)} 个数字在材料原文里找不到直接出处，多为正文自算的占比、增速或差额，请复核算式："]
+        for h in unsourced[:12]:
+            kind = f"（疑似{h['kind']}）" if h["kind"] else ""
+            lines.append(f"· {h['num']}{kind} —— {h['where']}：「{h['sent']}」")
+        if len(unsourced) > 12:
+            lines.append(f"……另有 {len(unsourced) - 12} 处")
+        issues.append("\n".join(lines))
     if derived:
-        uniq = list(dict.fromkeys(derived))
-        issues.append("以下数字 data_notes 已声明为推算值，核对注释是否写清口径：" + "、".join(uniq[:20]))
+        lines = [f"以下 {len(derived)} 个数字 data_notes 已声明为推算值，核对注释是否写清口径："]
+        for h in derived[:8]:
+            lines.append(f"· {h['num']} —— {h['where']}：「{h['sent']}」")
+        issues.append("\n".join(lines))
 
     # 3) 期次写法校验：防止把「中报」写成「9月末／1-9月」
     def _norm_period(s: str) -> str:
