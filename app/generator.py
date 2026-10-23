@@ -558,6 +558,8 @@ def _ensure_structure(draft: dict, facts: dict) -> dict:
 
 
 NUM_RE = re.compile(r"-?\d[\d,]*\.?\d*\s*(?:亿元|万元|%|个百分点|倍)")
+# 裸数字（表格里没有单位），用于把材料表格数据收进溯源对照集
+BARE_NUM_RE = re.compile(r"\d[\d,]*(?:\.\d+)?")
 
 
 def collect_numbers(text: str) -> list[str]:
@@ -612,10 +614,31 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
                 try:
                     v = float(digits)
                     corpus_nums.add(f"{v:.2f}")
+                    # 材料里的表多按万元计，正文按亿元写；换算后的口径也要认，
+                    # 否则「561.57 亿元」会被判成找不到出处。
+                    if v >= 10000:
+                        corpus_nums.add(f"{v / 10000:.2f}")
                 except ValueError:
                     pass
 
     add_nums(corpus)
+    # 材料里的表格数字是裸数（5,615,729.72），不带单位，NUM_RE 抓不到。
+    # 单扫一遍：带千分位或小数的照收，并给出万元→亿元的换算值；
+    # 纯整数只收大额（页码、年份这类不进集合，免得校验被凑巧命中）。
+    for mat in materials:
+        for m in BARE_NUM_RE.finditer(mat.get("text") or ""):
+            raw = m.group(0)
+            clean = raw.replace(",", "")
+            try:
+                v = float(clean)
+            except ValueError:
+                continue
+            if "," not in raw and "." not in raw and v < 10000:
+                continue
+            corpus_nums.add(clean)
+            corpus_nums.add(f"{v:.2f}")
+            if v >= 10000:
+                corpus_nums.add(f"{v / 10000:.2f}")
     # 材料里的表格数字常常不带单位（如「19.40」），按裸数值一并入集，
     # 否则正文引用的表格数据会被大面积误判为不可溯源。
     for mat in materials:
@@ -705,7 +728,25 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
             if abs(a - l - e) > 0.05:
                 issues.append(f"{per} 财务表中资产总额与负债加权益相差 {a - l - e:+.2f} 亿元，需回台账核对该期字段")
 
-    # 5) 结构检查
+    # 5) 「未披露」与材料对不上：材料里有该年度报表，正文却整列写未披露
+    miss_cols = []
+    for i, per in enumerate(ft.get("periods") or []):
+        vals = [str(r[i]) for r in (ft.get("rows") or []) if len(r) > i]
+        if sum(1 for v in vals if "未披露" in v or not v.strip()) >= 2:
+            miss_cols.append((i, per))
+    if miss_cols:
+        blob = "\n".join(m.get("text") or "" for m in materials)
+        has_stmt = any(a in blob for a in ("资产总计", "资产合计", "资产总额"))
+        hard = [per for _i, per in miss_cols
+                if re.sub(r"[^\d]", "", per)[:4] in blob and has_stmt]
+        if hard:
+            issues.append("财务表 " + "、".join(hard) + " 整列写「未披露」，但材料原文含该年度报表"
+                          "（资产总计/资产总额），多半是摘录漏页或漏读，需回材料核对")
+        else:
+            issues.append("财务表 " + "、".join(per for _i, per in miss_cols)
+                          + " 有整列空缺，确认材料确实未披露该期次")
+
+    # 6) 结构检查
     if len(draft.get("positive") or []) < 3:
         issues.append("正面不足 3 条")
     if len(draft.get("concern") or []) < 3:

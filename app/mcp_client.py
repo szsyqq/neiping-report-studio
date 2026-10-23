@@ -49,6 +49,10 @@ class CaihuiClient:
             self.url, self.key = _load_endpoint()
         self.timeout = timeout
         self._seq = 0
+        # 计费口径：每调用一次二级工具算一次点数（导航/元数据工具不计），
+        # 让上层能如实记下「取一次清单花了几点」。
+        self.calls = 0
+        self.call_log: list[dict] = []
 
     def _rpc(self, method: str, params: dict) -> dict:
         self._seq += 1
@@ -98,6 +102,10 @@ class CaihuiClient:
 
     def execute(self, subtool: str, args: dict[str, Any]) -> dict:
         """调用二级子工具，返回 {status, data} 结构。"""
+        self.calls += 1
+        self.call_log.append({"tool": subtool, "at": time.strftime("%H:%M:%S"),
+                              "args": {k: v for k, v in args.items() if k in
+                                       ("target_company", "title_keywords", "limit")}})
         out = self.call_tool("execute_tool", {"tool_name": subtool, "arguments": args})
         if "status" in out:
             code = (out["status"] or {}).get("code")

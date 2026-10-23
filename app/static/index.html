@@ -41,11 +41,31 @@ header .sep{width:1px;height:14px;background:var(--line)}
 .upanel .div{height:1px;background:var(--line2);margin:9px 0}
 .upanel .um{color:var(--muted);font-size:11px;margin:9px 0 3px;letter-spacing:.3px}
 .upanel .ur{display:flex;justify-content:space-between;gap:8px;font-size:11.5px;padding:2px 0;color:var(--ink2)}
+.upanel .ur span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .upanel .ur .n{color:var(--muted);font-variant-numeric:tabular-nums;flex:none}
 .upanel .acts4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:6px 0 2px}
 .upanel .acts4 .c{text-align:center;border:1px solid var(--line2);border-radius:6px;padding:5px 0 4px}
 .upanel .acts4 .c b{display:block;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.4}
 .upanel .acts4 .c span{color:var(--muted);font-size:10.5px}
+
+/* 历史记录：与用量面板同一层，列每次生成，可直接打开或下载成品 */
+.hpanel{position:fixed;top:58px;right:18px;width:432px;max-height:74vh;overflow-y:auto;
+  background:#fff;border:1px solid var(--line);border-radius:8px;
+  box-shadow:0 12px 30px rgba(17,20,24,.10);padding:14px 16px 10px;z-index:50;
+  display:none;font-size:12px}
+.hpanel.show{display:block}
+.hpanel .hh{font-size:12.5px;font-weight:600;display:flex;justify-content:space-between;gap:8px}
+.hpanel .hh .x{border:0;background:transparent;color:#c9ced5;font-size:13px;padding:0 2px;line-height:1}
+.hpanel .hh .x:hover{color:var(--red)}
+.hpanel .hsub{color:var(--muted);font-size:11px;margin:2px 0 6px}
+.hrow{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;
+  padding:8px 0;border-bottom:1px solid var(--line2)}
+.hrow:last-child{border-bottom:0}
+.hrow .co{font-size:12.5px;line-height:1.5;word-break:break-all}
+.hrow .mt{color:var(--muted);font-size:11px;margin-top:2px;font-variant-numeric:tabular-nums}
+.hrow .acts2{display:flex;gap:6px;flex:none}
+.hrow .btn-sm{padding:4px 9px;font-size:11.5px}
+.hempty{color:var(--muted);font-size:11.5px;padding:16px 0 12px;line-height:1.7}
 
 .wrap{display:grid;grid-template-columns:318px 1fr;height:calc(100vh - 52px)}
 aside{border-right:1px solid var(--line);overflow-y:auto;padding:16px 18px 96px}
@@ -183,6 +203,12 @@ select{width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 8px
   text-align:center;font-weight:400!important}
 .doc-h{font-weight:700;font-size:15.5px;margin:26px 0 2px}
 .doc-h.first{margin-top:22px}
+/* 楷体本身没有第二档字重，font-weight:700 在浏览器里几乎看不出粗细，
+   和导出 Word 的加粗对不上。用四向文字阴影补一点笔画厚度，只加在正文楷体区。 */
+.doc .doc-h,.doc .ta.lead{
+  -webkit-text-stroke:.3px currentColor;
+  text-shadow:.42px 0 0 currentColor,-.42px 0 0 currentColor,0 .42px 0 currentColor,0 -.42px 0 currentColor}
+
 .ta{display:block;width:100%;border:1px solid transparent;border-radius:4px;background:transparent;
   padding:1px 4px;margin:0 -4px;line-height:inherit;font-family:inherit;font-size:inherit;
   resize:none;overflow:hidden;outline:none;color:inherit;text-indent:0}
@@ -248,7 +274,9 @@ select{width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 8px
 <header>
   <div class="brand">内评简评报告</div>
   <div class="spacer"></div>
-  <button class="usage" id="usageBtn" onclick="toggleUsage(event)" title="点击查看用量明细">本月 0 次 · 0 token</button>
+  <button class="usage" id="usageBtn" onclick="toggleUsage(event)" title="点击查看调用明细">累计 0 次 · 财汇 0 点</button>
+  <span class="sep"></span>
+  <button class="usage" id="histBtn" onclick="toggleHistory(event)" title="查看生成过的报告">历史</button>
   <span class="sep"></span>
   <a href="docs/template-v1.1.html" target="_blank">模板</a>
   <span class="sep"></span>
@@ -300,6 +328,7 @@ select{width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 8px
 
 <div id="toast"></div>
 <div class="upanel" id="usagePanel"></div>
+<div class="hpanel" id="histPanel"></div>
 
 <script>
 const $ = (s) => document.querySelector(s);
@@ -420,29 +449,38 @@ async function refreshUsage(){
   try{
     const s = await (await fetch(apiUrl("/api/stats"))).json();
     S.stats = s;
-    const m = s.month || {};
-    $("#usageBtn").textContent = `本月 ${m.calls || 0} 次 · ${fmtTok(m.total_tokens)} token`;
-    $("#usageBtn").title = `本月 ${m.calls || 0} 次生成，共 ${fmtNum(m.total_tokens)} token；点击查看明细`;
+    const t = s.total || {}, mcp = s.mcp || {};
+    $("#usageBtn").textContent = `累计 ${t.calls || 0} 次 · 财汇 ${mcp.total || 0} 点`;
+    $("#usageBtn").title = `累计生成 ${t.calls || 0} 次、${fmtNum(t.total_tokens)} token；财汇接口调用 ${mcp.total || 0} 次；点击看明细`;
     if(statsOpen) renderUsage();
   }catch(e){ /* 没连上服务时不打扰 */ }
 }
 
+const KIND_CN = { search: "检索", fetch: "读取", generate: "生成", export: "导出" };
+
+function fmtTs(s){
+  s = String(s || "");
+  return s.length >= 16 ? s.slice(5, 16).replace("T", " ") : s;
+}
+
 function renderUsage(){
   const s = S.stats || {};
-  const m = s.month || {}, t = s.total || {}, d = s.today || {}, k = s.kinds || {};
-  const est = m.estimated ? `<span style="color:var(--amber)">· 含估算</span>` : "";
-  const per = m.calls ? `${fmtTok(Math.round(m.total_tokens / m.calls))} · ${fmtSec(m.seconds / m.calls)}` : "—";
-  const hit = m.prompt_tokens ? Math.round((m.cached_tokens || 0) / m.prompt_tokens * 100) + "%" : "—";
-  let h = `<div class="uh">用量统计</div>
+  const t = s.total || {}, d = s.today || {}, k = s.kinds || {};
+  const mcp = s.mcp || {}, acts = s.actions || {};
+  const est = t.estimated ? `<span style="color:var(--amber)">· 含估算</span>` : "";
+  const per = t.calls ? `${fmtTok(Math.round(t.total_tokens / t.calls))} · ${fmtSec(t.seconds / t.calls)}` : "—";
+  const hit = t.prompt_tokens ? Math.round((t.cached_tokens || 0) / t.prompt_tokens * 100) + "%" : "—";
+  let h = `<div class="uh">调用统计</div>
     <div class="usub">${s.since ? "自 " + esc(String(s.since).slice(0, 10)) + " 起累计 " + est : "还没有记录"}</div>
-    <div class="uk"><span class="k">今日</span><b>${d.calls || 0} 次 · ${fmtTok(d.total_tokens)}</b></div>
-    <div class="uk"><span class="k">本月</span><b>${m.calls || 0} 次 · ${fmtTok(m.total_tokens)}</b></div>
-    <div class="uk"><span class="k">累计</span><b>${t.calls || 0} 次 · ${fmtTok(t.total_tokens)}</b></div>
+    <div class="uk"><span class="k">今日</span><b>${d.calls || 0} 次生成 · 财汇 ${mcp.today || 0} 点</b></div>
+    <div class="uk"><span class="k">累计</span><b>${t.calls || 0} 次生成 · 财汇 ${mcp.total || 0} 点</b></div>
+    <div class="uk"><span class="k">今日 token</span><b>${fmtTok(d.total_tokens)}</b></div>
+    <div class="uk"><span class="k">累计 token</span><b>${fmtTok(t.total_tokens)}</b></div>
     <div class="div"></div>
-    <div class="uk"><span class="k">本月输入 / 输出</span><b>${fmtTok(m.prompt_tokens)} / ${fmtTok(m.completion_tokens)}</b></div>
+    <div class="uk"><span class="k">输入 / 输出</span><b>${fmtTok(t.prompt_tokens)} / ${fmtTok(t.completion_tokens)}</b></div>
     <div class="uk"><span class="k">单次平均</span><b>${per}</b></div>
     <div class="uk"><span class="k">输入缓存命中</span><b>${hit}</b></div>
-    <div class="um">动作次数（累计）</div>
+    <div class="um">动作次数（累计 ${(k.search || 0) + (k.fetch || 0) + (k.generate || 0) + (k.export || 0)} 次）</div>
     <div class="acts4">
       <div class="c"><b>${k.search || 0}</b><span>检索</span></div>
       <div class="c"><b>${k.fetch || 0}</b><span>读取</span></div>
@@ -450,14 +488,19 @@ function renderUsage(){
       <div class="c"><b>${k.export || 0}</b><span>导出</span></div>
     </div>`;
 
-  if((s.by_model || []).length){
+  const tl = (s.timeline || []).slice(0, 8);
+  if(tl.length){
+    h += `<div class="um">最近调用</div>` + tl.map(x => {
+      const right = x.kind === "generate"
+        ? `${fmtTok(x.total_tokens)} token`
+        : (x.mcp_calls ? `财汇 ${x.mcp_calls} 点` : "—");
+      return `<div class="ur"><span>${esc(fmtTs(x.ts))} ${esc(KIND_CN[x.kind] || x.kind)} · ${esc(String(x.company || "未命名").slice(0, 10))}</span>
+        <span class="n">${esc(right)}</span></div>`;
+    }).join("");
+  }
+  if((s.by_model || []).length > 1){
     h += `<div class="um">按模型</div>` + s.by_model.map(x =>
       `<div class="ur"><span>${esc(x.model)}</span><span class="n">${x.calls} 次 · ${fmtTok(x.total_tokens)}</span></div>`).join("");
-  }
-  if((s.recent || []).length){
-    h += `<div class="um">最近生成</div>` + s.recent.slice(0, 5).map(x =>
-      `<div class="ur"><span>${esc(String(x.company || "未命名").slice(0, 16))}</span>
-        <span class="n">${fmtTok(x.total_tokens)} · ${fmtSec(x.seconds)}</span></div>`).join("");
   }
   $("#usagePanel").innerHTML = h;
 }
@@ -470,11 +513,97 @@ function toggleUsage(e){
 }
 
 document.addEventListener("click", e => {
-  if(!statsOpen) return;
-  if(e.target.closest("#usagePanel") || e.target.closest("#usageBtn")) return;
-  statsOpen = false;
-  $("#usagePanel").classList.remove("show");
+  if(statsOpen){
+    if(!e.target.closest("#usagePanel") && !e.target.closest("#usageBtn")){
+      statsOpen = false;
+      $("#usagePanel").classList.remove("show");
+    }
+  }
+  if(HIST.open){
+    if(!e.target.closest("#histPanel") && !e.target.closest("#histBtn")) closeHistory();
+  }
 });
+
+/* ---------------- 生成历史 ---------------- */
+const HIST = { open: false, items: [] };
+
+async function toggleHistory(e){
+  if(e) e.stopPropagation();
+  if(HIST.open){ closeHistory(); return; }
+  HIST.open = true;
+  $("#histPanel").classList.add("show");
+  $("#histPanel").innerHTML = `<div class="hh">历史记录<span class="x" onclick="closeHistory()">×</span></div>
+    <div class="hsub">读取中…</div>`;
+  await loadHistory();
+}
+
+function closeHistory(){
+  HIST.open = false;
+  $("#histPanel").classList.remove("show");
+}
+
+async function loadHistory(){
+  try{
+    const r = await (await fetch(apiUrl("/api/history"))).json();
+    if(r.error) throw new Error(r.error);
+    HIST.items = r.items || [];
+    renderHistory();
+  }catch(err){
+    $("#histPanel").innerHTML = `<div class="hh">历史记录<span class="x" onclick="closeHistory()">×</span></div>
+      <div class="hsub">${esc(err.message)}</div>`;
+  }
+}
+
+function renderHistory(){
+  const head = `<div class="hh">历史记录<span class="x" onclick="closeHistory()">×</span></div>
+    <div class="hsub">每次生成自动留一份草稿，可打开继续改或直接下 Word</div>`;
+  if(!HIST.items.length){
+    $("#histPanel").innerHTML = head + `<div class="hempty">还没有记录。生成一份草稿后，
+      它的正文、用的材料与 token 都会留在这里。</div>`;
+    return;
+  }
+  $("#histPanel").innerHTML = head + HIST.items.map(x => {
+    const meta = [fmtTs(x.ts), x.tokens ? fmtTok(x.tokens) + " token" : "",
+                  (x.materials || []).length + " 份材料",
+                  x.issues ? `待核对 ${x.issues} 项` : "",
+                  x.docx ? "已导出" : ""].filter(Boolean).join(" · ");
+    return `<div class="hrow">
+      <div class="hmain">
+        <div class="co">${esc(x.company || "未命名")}</div>
+        <div class="mt">${esc(meta)}</div>
+      </div>
+      <div class="acts2">
+        <button class="btn-sm" onclick="restoreHistory('${esc(x.id)}')">打开</button>
+        ${x.docx ? `<button class="btn-sm" onclick="histDocx('${encodeURIComponent(x.docx)}')">Word</button>` : ""}
+      </div>
+    </div>`;
+  }).join("");
+}
+
+async function restoreHistory(id){
+  try{
+    const rec = await (await fetch(apiUrl("/api/history/" + encodeURIComponent(id)))).json();
+    if(rec.error) throw new Error(rec.error);
+    S.draft = rec.draft;
+    S.draft.history_id = rec.id;  // 再导出时回填到同一条记录
+    S.company = rec.company || "";
+    S.loaded = (rec.materials || []).map(m => m.title).filter(Boolean);
+    if(S.company) $("#company").value = S.company;
+    renderDraft();
+    syncButtons();
+    setStep("generate", { state: "done", pct: 100, detail: "已恢复 " + fmtTs(rec.ts) + " 的记录" });
+    setStep("export", { state: "wait", pct: 0, detail: "可继续编辑后导出" });
+    closeHistory();
+    toast("已打开 " + (rec.company || "历史记录"));
+  }catch(e){ toast(e.message, true); }
+}
+
+function histDocx(encoded){
+  const a = document.createElement("a");
+  a.href = apiUrl("/download/" + encoded);
+  a.download = decodeURIComponent(encoded);
+  a.click();
+}
 
 /* ---------------- 检索 ---------------- */
 async function doSearch(){
@@ -491,13 +620,16 @@ async function doSearch(){
     S.facts = j.result.facts;
     S.keepChecked = null;
     S.expand = {};
-    setStep("search", { state: "done", pct: 100, detail: "清单已取" });
+    const calls = j.result.mcp_calls || 0;
+    setStep("search", { state: "done", pct: 100,
+      detail: calls ? `清单已取 · 财汇 ${calls} 点` : "清单已取" });
     renderMaterials(S.facts);
     const kinds = ["跟踪评级报告", "募集说明书"];
     const n = kinds.reduce((a, k) => a + ((S.facts.materials || {})[k] || []).length, 0);
     setStep("materials", { state: "wait", pct: 0,
       detail: n ? `${n} 份待读取` : "未检索到，可上传 PDF" });
-    toast(n ? `检索到 ${n} 份材料` : "未检索到公告，可在下方上传 PDF");
+    toast(n ? `检索到 ${n} 份材料${calls ? " · 财汇 " + calls + " 点" : ""}`
+            : "未检索到公告，可在下方上传 PDF");
   }catch(e){
     setStep("search", { state: "error", detail: e.message });
     toast(e.message, true);
@@ -744,6 +876,7 @@ async function doGenerate(){
     const u = S.draft.usage || {};
     toast(u.total_tokens ? `草稿已生成 · 本次 ${fmtTok(u.total_tokens)} token` : "草稿已生成，可直接修改");
     refreshUsage();
+    if(HIST.open) loadHistory();
   }catch(e){
     setStep("generate", { state: "error", detail: e.message });
     toast(e.message, true);
@@ -979,6 +1112,7 @@ async function exportDocx(){
     toast("已导出 " + r.name);
     refreshUsage();
     btn.disabled = false;
+    if(HIST.open) loadHistory();  // 记录里的「已导出」状态跟着更新
     if(PKG.open) loadBundle();  // 清单里补上刚落盘的这份
   }catch(e){
     setStep("export", { state: "error", detail: e.message });

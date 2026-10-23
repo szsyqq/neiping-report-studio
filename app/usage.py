@@ -43,8 +43,8 @@ def _load() -> dict:
 def record(kind: str, *, company: str = "", model: str = "", prompt_tokens: int = 0,
            completion_tokens: int = 0, total_tokens: int = 0, cached_tokens: int = 0,
            seconds: float = 0.0, chars: int = 0, ok: bool = True,
-           estimated: bool = False, note: str = "") -> dict:
-    """记一行。token 三项只在 generate 时有值。"""
+           estimated: bool = False, note: str = "", mcp_calls: int = 0) -> dict:
+    """记一行。token 三项只在 generate 时有值；mcp_calls 是本次消耗的财汇点数。"""
     total = int(total_tokens or (prompt_tokens + completion_tokens))
     ev = {
         "ts": datetime.now().isoformat(timespec="seconds"),
@@ -60,6 +60,7 @@ def record(kind: str, *, company: str = "", model: str = "", prompt_tokens: int 
         "ok": bool(ok),
         "estimated": bool(estimated),
         "note": (note or "")[:160],
+        "mcp_calls": int(mcp_calls or 0),
     }
     with LOCK:
         data = _load()
@@ -90,10 +91,17 @@ def _bucket(events: list[dict]) -> dict:
 def summary() -> dict:
     events = _load().get("events") or []
     now = datetime.now()
-    today_key, month_key = now.strftime("%Y-%m-%d"), now.strftime("%Y-%m")
+    today_key = now.strftime("%Y-%m-%d")
 
     def within(prefix: str) -> list[dict]:
         return [e for e in events if str(e.get("ts", "")).startswith(prefix)]
+
+    def mcp_sum(rows: list[dict]) -> int:
+        return sum(int(e.get("mcp_calls") or 0) for e in rows)
+
+    def act_sum(rows: list[dict]) -> int:
+        """动作次数：检索、读取、生成、导出各有一次就算一次，不含模型重试。"""
+        return len([e for e in rows if e.get("kind") != "generate"])
 
     months = sorted({str(e.get("ts", ""))[:7] for e in events if e.get("ts")})
     kinds = {k: 0 for k in KIND_LABEL}
@@ -111,19 +119,26 @@ def summary() -> dict:
         row["total_tokens"] += e["total_tokens"]
         row["seconds"] = round(row["seconds"] + e["seconds"], 1)
 
-    recent = [
-        {"ts": e["ts"], "kind": e["kind"], "company": e["company"], "model": e["model"],
-         "total_tokens": e["total_tokens"], "seconds": e["seconds"], "ok": e["ok"]}
-        for e in reversed(events) if e["kind"] == "generate"
-    ][:8]
+    today = within(today_key)
+
+    # 时间线：所有动作都列，用户要看的是「这一次点了几下、花了多少 token」
+    timeline = [
+        {"ts": e["ts"], "kind": e["kind"], "company": e.get("company", ""),
+         "model": e.get("model", ""), "mcp_calls": int(e.get("mcp_calls") or 0),
+         "total_tokens": e["total_tokens"], "seconds": e["seconds"],
+         "ok": e.get("ok", True), "note": e.get("note", "")}
+        for e in reversed(events)
+    ][:40]
 
     return {
-        "today": _bucket(within(today_key)),
-        "month": _bucket(within(month_key)),
+        "today": _bucket(today),
         "total": _bucket(events),
+        "mcp": {"today": mcp_sum(today), "total": mcp_sum(events)},
+        "actions": {"today": act_sum(today), "total": act_sum(events)},
         "kinds": kinds,
         "by_model": sorted(by_model.values(), key=lambda x: -x["total_tokens"]),
-        "recent": recent,
+        "timeline": timeline,
+        "recent": [t for t in timeline if t["kind"] == "generate"][:8],
         "months": months[-6:],
         "since": events[0]["ts"] if events else "",
     }

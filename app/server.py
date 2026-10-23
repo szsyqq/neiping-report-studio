@@ -29,6 +29,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import docx_writer  # noqa: E402
 import facts as facts_mod  # noqa: E402
 import generator  # noqa: E402
+import history  # noqa: E402
 import jobs  # noqa: E402
 import llm  # noqa: E402
 import pdf_text  # noqa: E402
@@ -64,14 +65,17 @@ def _key(company: str) -> str:
 
 def do_search(company: str, progress=None) -> dict:
     client = _client()
-    facts = facts_mod.collect_materials(client, company, progress=progress)
+    stats: dict = {}
+    facts = facts_mod.collect_materials(client, company, progress=progress, stats=stats)
     with LOCK:
         st = STATE.setdefault(_key(company), {"facts": {}, "materials": []})
         st["facts"] = facts
     n = sum(len(v) for v in (facts.get("materials") or {}).values())
-    usage_mod.record("search", company=company, chars=n,
-                     note=f"公告 {n} 条")
-    return {"company": company, "facts": facts}
+    calls = int(stats.get("calls") or 0)
+    usage_mod.record("search", company=company, chars=n, mcp_calls=calls,
+                     note=f"公告 {n} 条 · 财汇 {calls} 次")
+    return {"company": company, "facts": facts, "mcp_calls": calls,
+            "queries": stats.get("queries") or []}
 
 
 def _budget_for(title: str, remaining: int) -> int:
@@ -135,6 +139,10 @@ def do_generate(company: str, model: str | None, progress=None) -> dict:
         raise ValueError("请先拉取材料，或上传评级报告/募集说明书 PDF")
     draft = generator.generate(facts or facts_mod.empty_facts(company), materials,
                                model_id=model, progress=progress)
+    # 落一条历史：draft 全文 + 用了哪几份材料，之后可回看、接着改、重新导出
+    rid = history.save(draft, materials, model=(draft.get("usage") or {}).get("model", ""),
+                       seconds=(draft.get("usage") or {}).get("seconds", 0))
+    draft["history_id"] = rid
     with LOCK:
         STATE.setdefault(_key(company), {})["draft"] = draft
     return {"draft": draft}
@@ -186,6 +194,9 @@ def api_export(payload: dict) -> dict:
     out = write_docx(draft, payload.get("company") or "")
     name = (draft.get("company_full_name") or payload.get("company") or "").strip()
     usage_mod.record("export", company=name or out.stem, note=out.name)
+    rid = payload.get("history_id") or draft.get("history_id") or ""
+    if rid:
+        history.attach_docx(rid, out.name)
     return {"path": str(out), "name": out.name, "url": "/download/" + quote(out.name)}
 
 
@@ -355,6 +366,22 @@ def _prune_zips(prefix: str, keep: int = 3):
             pass
 
 
+def api_history_list(payload: dict | None = None) -> dict:
+    return {"items": history.list_records(int((payload or {}).get("limit") or 60))}
+
+
+def api_history_get(rid: str) -> dict:
+    rec = history.get(rid)
+    if not rec:
+        raise ValueError("记录不存在")
+    return rec
+
+
+def api_history_delete(payload: dict) -> dict:
+    ok = history.remove(payload.get("id") or "")
+    return {"ok": ok}
+
+
 def api_prompt(payload: dict) -> dict:
     company = (payload.get("company") or "").strip()
     with LOCK:
@@ -471,6 +498,10 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({"ok": True, "time": datetime.now().isoformat()})
             elif p == "/api/stats":
                 self._json(usage_mod.summary())
+            elif p == "/api/history":
+                self._json(api_history_list())
+            elif p.startswith("/api/history/"):
+                self._json(api_history_get(p[len("/api/history/"):]))
             elif p == "/api/bundle":
                 q = parse_qs(urlparse(self.path).query)
                 self._json(api_bundle_items((q.get("company") or [""])[0],
@@ -510,6 +541,8 @@ class Handler(BaseHTTPRequestHandler):
             "/api/export": api_export,
             "/api/prompt": api_prompt,
             "/api/bundle": api_bundle,
+            "/api/history/list": api_history_list,
+            "/api/history/delete": api_history_delete,
         }
         try:
             if p.startswith("/api/jobs/"):
