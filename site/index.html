@@ -25,6 +25,28 @@ header a{color:var(--muted);text-decoration:none;font-size:12.5px;padding:4px 2p
 header a:hover{color:var(--ink)}
 header .sep{width:1px;height:14px;background:var(--line)}
 
+/* 用量统计：平时只是一行数字，点开才展开明细 */
+.usage{border:1px solid var(--line);background:#fff;border-radius:999px;padding:2px 10px;
+  font-size:11.5px;color:var(--ink2);font-variant-numeric:tabular-nums;white-space:nowrap}
+.usage:hover{border-color:#c9ced6;background:var(--hover)}
+.upanel{position:fixed;top:58px;right:18px;width:302px;background:#fff;border:1px solid var(--line);
+  border-radius:8px;box-shadow:0 12px 30px rgba(17,20,24,.10);padding:14px 16px 12px;z-index:50;
+  display:none;font-size:12px}
+.upanel.show{display:block}
+.upanel .uh{font-size:12.5px;font-weight:600}
+.upanel .usub{color:var(--muted);font-size:11px;margin:2px 0 10px}
+.upanel .uk{display:flex;justify-content:space-between;gap:10px;padding:3px 0}
+.upanel .uk .k{color:var(--muted)}
+.upanel .uk b{font-weight:500;font-variant-numeric:tabular-nums;text-align:right}
+.upanel .div{height:1px;background:var(--line2);margin:9px 0}
+.upanel .um{color:var(--muted);font-size:11px;margin:9px 0 3px;letter-spacing:.3px}
+.upanel .ur{display:flex;justify-content:space-between;gap:8px;font-size:11.5px;padding:2px 0;color:var(--ink2)}
+.upanel .ur .n{color:var(--muted);font-variant-numeric:tabular-nums;flex:none}
+.upanel .acts4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:6px 0 2px}
+.upanel .acts4 .c{text-align:center;border:1px solid var(--line2);border-radius:6px;padding:5px 0 4px}
+.upanel .acts4 .c b{display:block;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.4}
+.upanel .acts4 .c span{color:var(--muted);font-size:10.5px}
+
 .wrap{display:grid;grid-template-columns:318px 1fr;height:calc(100vh - 52px)}
 aside{border-right:1px solid var(--line);overflow-y:auto;padding:16px 18px 96px}
 main{overflow-y:auto;padding:26px 40px 90px}
@@ -200,6 +222,8 @@ select{width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 8px
 <header>
   <div class="brand">内评简评报告</div>
   <div class="spacer"></div>
+  <button class="usage" id="usageBtn" onclick="toggleUsage(event)" title="点击查看用量明细">本月 0 次 · 0 token</button>
+  <span class="sep"></span>
   <a href="docs/template-v1.1.html" target="_blank">模板</a>
   <span class="sep"></span>
   <a href="docs/method-v1.1.html" target="_blank">方法论</a>
@@ -249,10 +273,11 @@ select{width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 8px
 </div>
 
 <div id="toast"></div>
+<div class="upanel" id="usagePanel"></div>
 
 <script>
 const $ = (s) => document.querySelector(s);
-const S = { company: "", facts: null, uploads: [], mstate: {}, loaded: [], draft: null };
+const S = { company: "", facts: null, uploads: [], mstate: {}, loaded: [], draft: null, stats: null };
 
 const API_BASE = (() => {
   const h = location.hostname;
@@ -348,6 +373,82 @@ async function loadModels(){
     $("#model").innerHTML = `<option>未连接服务</option>`;
   }
 }
+
+/* ---------------- 用量统计 ---------------- */
+let statsOpen = false;
+
+function fmtNum(n){ return (n || 0).toLocaleString("en-US"); }
+function fmtTok(n){
+  n = n || 0;
+  if(n >= 1e8) return (n / 1e8).toFixed(2) + " 亿";
+  if(n >= 1e4) return (n / 1e4).toFixed(1) + " 万";
+  return fmtNum(n);
+}
+function fmtSec(s){
+  s = Math.round(s || 0);
+  if(s >= 3600) return (s / 3600).toFixed(1) + " 小时";
+  return s >= 60 ? (s / 60).toFixed(1) + " 分" : s + " 秒";
+}
+
+async function refreshUsage(){
+  try{
+    const s = await (await fetch(apiUrl("/api/stats"))).json();
+    S.stats = s;
+    const m = s.month || {};
+    $("#usageBtn").textContent = `本月 ${m.calls || 0} 次 · ${fmtTok(m.total_tokens)} token`;
+    $("#usageBtn").title = `本月 ${m.calls || 0} 次生成，共 ${fmtNum(m.total_tokens)} token；点击查看明细`;
+    if(statsOpen) renderUsage();
+  }catch(e){ /* 没连上服务时不打扰 */ }
+}
+
+function renderUsage(){
+  const s = S.stats || {};
+  const m = s.month || {}, t = s.total || {}, d = s.today || {}, k = s.kinds || {};
+  const est = m.estimated ? `<span style="color:var(--amber)">· 含估算</span>` : "";
+  const per = m.calls ? `${fmtTok(Math.round(m.total_tokens / m.calls))} · ${fmtSec(m.seconds / m.calls)}` : "—";
+  const hit = m.prompt_tokens ? Math.round((m.cached_tokens || 0) / m.prompt_tokens * 100) + "%" : "—";
+  let h = `<div class="uh">用量统计</div>
+    <div class="usub">${s.since ? "自 " + esc(String(s.since).slice(0, 10)) + " 起累计 " + est : "还没有记录"}</div>
+    <div class="uk"><span class="k">今日</span><b>${d.calls || 0} 次 · ${fmtTok(d.total_tokens)}</b></div>
+    <div class="uk"><span class="k">本月</span><b>${m.calls || 0} 次 · ${fmtTok(m.total_tokens)}</b></div>
+    <div class="uk"><span class="k">累计</span><b>${t.calls || 0} 次 · ${fmtTok(t.total_tokens)}</b></div>
+    <div class="div"></div>
+    <div class="uk"><span class="k">本月输入 / 输出</span><b>${fmtTok(m.prompt_tokens)} / ${fmtTok(m.completion_tokens)}</b></div>
+    <div class="uk"><span class="k">单次平均</span><b>${per}</b></div>
+    <div class="uk"><span class="k">输入缓存命中</span><b>${hit}</b></div>
+    <div class="um">动作次数（累计）</div>
+    <div class="acts4">
+      <div class="c"><b>${k.search || 0}</b><span>检索</span></div>
+      <div class="c"><b>${k.fetch || 0}</b><span>读取</span></div>
+      <div class="c"><b>${k.generate || 0}</b><span>生成</span></div>
+      <div class="c"><b>${k.export || 0}</b><span>导出</span></div>
+    </div>`;
+
+  if((s.by_model || []).length){
+    h += `<div class="um">按模型</div>` + s.by_model.map(x =>
+      `<div class="ur"><span>${esc(x.model)}</span><span class="n">${x.calls} 次 · ${fmtTok(x.total_tokens)}</span></div>`).join("");
+  }
+  if((s.recent || []).length){
+    h += `<div class="um">最近生成</div>` + s.recent.slice(0, 5).map(x =>
+      `<div class="ur"><span>${esc(String(x.company || "未命名").slice(0, 16))}</span>
+        <span class="n">${fmtTok(x.total_tokens)} · ${fmtSec(x.seconds)}</span></div>`).join("");
+  }
+  $("#usagePanel").innerHTML = h;
+}
+
+function toggleUsage(e){
+  if(e) e.stopPropagation();
+  statsOpen = !statsOpen;
+  $("#usagePanel").classList.toggle("show", statsOpen);
+  if(statsOpen) renderUsage();
+}
+
+document.addEventListener("click", e => {
+  if(!statsOpen) return;
+  if(e.target.closest("#usagePanel") || e.target.closest("#usageBtn")) return;
+  statsOpen = false;
+  $("#usagePanel").classList.remove("show");
+});
 
 /* ---------------- 检索 ---------------- */
 async function doSearch(){
@@ -488,6 +589,7 @@ function markMaterialsDone(n){
     $("#empty").textContent = "材料已就绪，点左侧生成草稿";
   }
   syncButtons();
+  refreshUsage();
 }
 
 /* ---------------- 上传 ---------------- */
@@ -613,7 +715,9 @@ async function doGenerate(){
     setStep("generate", { state: "done", pct: 100, detail: "草稿已生成" });
     setStep("export", { state: "wait", pct: 0, detail: "可编辑后导出" });
     renderDraft();
-    toast("草稿已生成，可直接修改");
+    const u = S.draft.usage || {};
+    toast(u.total_tokens ? `草稿已生成 · 本次 ${fmtTok(u.total_tokens)} token` : "草稿已生成，可直接修改");
+    refreshUsage();
   }catch(e){
     setStep("generate", { state: "error", detail: e.message });
     toast(e.message, true);
@@ -657,7 +761,7 @@ function renderDraft(){
           <span style="font-weight:700">】</span>
         </div>
         <div style="font-size:11.5px;color:var(--muted);margin-top:2px">
-          正文 ${v.body_chars || 0} 字 · 财务表 ${((c.financial_table || {}).rows || []).length} 行${(c.financial_table || {}).from_materials ? "（取自材料原文）" : ""}
+          正文 ${v.body_chars || 0} 字 · 财务表 ${((c.financial_table || {}).rows || []).length} 行${(c.financial_table || {}).from_materials ? "（取自材料原文）" : ""}${d.usage && d.usage.total_tokens ? ` · 本次 ${fmtTok(d.usage.total_tokens)} token` : ""}
         </div>
       </div>
       <div class="acts">
@@ -841,6 +945,7 @@ async function exportDocx(){
     a.download = r.name;
     a.click();
     toast("已导出 " + r.name);
+    refreshUsage();
     btn.disabled = false;
   }catch(e){
     setStep("export", { state: "error", detail: e.message });
@@ -859,6 +964,7 @@ async function copyPrompt(){
 
 loadModels();
 pingConn();
+refreshUsage();
 syncButtons();  // 初始状态：无材料时两个动作都灰着
 $("#company").addEventListener("keydown", e => { if(e.key === "Enter") doSearch(); });
 </script>

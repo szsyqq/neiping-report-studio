@@ -31,6 +31,7 @@ import generator  # noqa: E402
 import jobs  # noqa: E402
 import llm  # noqa: E402
 import pdf_text  # noqa: E402
+import usage as usage_mod  # noqa: E402
 from mcp_client import CaihuiClient, MCPError  # noqa: E402
 
 STATIC = Path(__file__).resolve().parent / "static"
@@ -65,6 +66,9 @@ def do_search(company: str, progress=None) -> dict:
     with LOCK:
         st = STATE.setdefault(_key(company), {"facts": {}, "materials": []})
         st["facts"] = facts
+    n = sum(len(v) for v in (facts.get("materials") or {}).values())
+    usage_mod.record("search", company=company, chars=n,
+                     note=f"公告 {n} 条")
     return {"company": company, "facts": facts}
 
 
@@ -111,6 +115,10 @@ def do_fetch(company: str, picks: list[dict], budget: int = 0, progress=None) ->
         titles = {m.get("title") for m in loaded}
         st["materials"] = [x for x in st["materials"] if x.get("title") not in titles] \
             + [x for x in loaded if x.get("text")]
+    usage_mod.record("fetch", company=company or "本地材料",
+                     chars=sum(m["chars"] for m in loaded),
+                     note=f"{len(loaded)}/{len(picks)} 份 · "
+                          f"{sum(m['pages'] for m in loaded)} 页")
     return {"materials": [{k: v for k, v in m.items() if k != "text"} for m in loaded],
             "loaded": [m.get("title") for m in loaded if m.get("text")],
             "items": items}
@@ -182,6 +190,7 @@ def api_export(payload: dict) -> dict:
         out = OUTPUT / f"{company}内评简评报告 {stamp}-{n}.docx"
         n += 1
     docx_writer.render_report(draft, out)
+    usage_mod.record("export", company=company, note=out.name)
     return {"path": str(out), "name": out.name, "url": "/download/" + quote(out.name)}
 
 
@@ -294,6 +303,8 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({"models": models, "default": llm.pick_default(models)})
             elif p == "/api/health":
                 self._json({"ok": True, "time": datetime.now().isoformat()})
+            elif p == "/api/stats":
+                self._json(usage_mod.summary())
             else:
                 self._json({"error": "not found"}, 404)
         except FileNotFoundError:

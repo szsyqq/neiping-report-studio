@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 import llm
+import usage as usage_mod
 
 BASE = Path(__file__).resolve().parent.parent
 TEMPLATE_JSON = BASE / "01_模板" / "内评简评报告通用模板_v1.1.json"
@@ -748,11 +749,27 @@ def generate(facts: dict, materials: list[dict], model_id: str | None = None,
 
     th = threading.Thread(target=tick, daemon=True)
     th.start()
+    t0 = time.time()
+    used: dict = {}
     try:
         raw = llm.chat(messages, model_id=model_id, temperature=0.3, max_tokens=12000,
-                       timeout=900, thinking=False)
+                       timeout=900, thinking=False, usage_out=used)
+    except Exception as e:
+        # 失败也记：token 可能已经消耗（超时、空返回），不记会让统计偏低
+        usage_mod.record("generate", company=facts.get("company", {}).get("name") or "",
+                         model=used.get("model") or (model_id or ""),
+                         prompt_tokens=used.get("prompt_tokens", 0),
+                         completion_tokens=used.get("completion_tokens", 0),
+                         total_tokens=used.get("total_tokens", 0),
+                         cached_tokens=used.get("cached_tokens", 0),
+                         seconds=time.time() - t0, chars=chars, ok=False,
+                         estimated=bool(used.get("estimated")),
+                         note=f"失败：{e}"[:150])
+        raise
     finally:
         stop.set()
+
+    secs = time.time() - t0
 
     _p(progress, 90, "解析结构", "检查 JSON 与字段完整性")
     draft = llm.parse_json(raw)
@@ -761,4 +778,27 @@ def generate(facts: dict, materials: list[dict], model_id: str | None = None,
     draft = _ensure_structure(draft, facts)
     _p(progress, 96, "校验", "数字溯源、期次写法、财务表自洽")
     draft["validation"] = validate(draft, facts, materials)
+
+    # 记一行用量：主体名取草稿里的全称，便于回看「哪家花了多少」
+    usage_mod.record("generate",
+              company=(draft.get("company_full_name")
+                       or facts.get("company", {}).get("name") or ""),
+              model=used.get("model") or (model_id or ""),
+              prompt_tokens=used.get("prompt_tokens", 0),
+              completion_tokens=used.get("completion_tokens", 0),
+              total_tokens=used.get("total_tokens", 0),
+              cached_tokens=used.get("cached_tokens", 0),
+              seconds=secs, chars=len(raw), ok=True,
+              estimated=bool(used.get("estimated")),
+              note=f"{len(materials)} 份材料 · 正文 {draft['validation'].get('body_chars', 0)} 字")
+    draft["usage"] = {
+        "model": used.get("model") or (model_id or ""),
+        "prompt_tokens": used.get("prompt_tokens", 0),
+        "completion_tokens": used.get("completion_tokens", 0),
+        "total_tokens": used.get("total_tokens", 0),
+        "cached_tokens": used.get("cached_tokens", 0),
+        "calls": used.get("calls", 0),
+        "seconds": round(secs, 1),
+        "estimated": bool(used.get("estimated")),
+    }
     return draft

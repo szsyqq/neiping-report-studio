@@ -41,6 +41,10 @@ PORT=8770 /Users/panyp/.workbuddy/binaries/python/envs/rating-flow/bin/python ap
 
 对应接口：`POST /api/jobs/{search|fetch|generate}` 起任务并拿到 `job_id`，`GET /api/jobs/<id>` 读进度（含逐份材料的明细）；`POST /api/upload?name=文件名` 收 PDF；`/api/export` 仍是同步接口（排版只需秒级）。
 
+**用量统计**：页头右上角一行「本月 N 次 · X token」，点开是明细——今日／本月／累计的次数与 token、本月输入输出拆分、单次平均耗时、输入缓存命中率、检索／读取／生成／导出四类动作的累计次数、按模型分布、最近几次生成。数字全部来自模型返回的 `usage`（端点不回时才按字符估算并标「含估算」），每次生成页面上也会写「本次 X token」。
+
+统计落在 `data/usage.json`（已在 `.gitignore` 里），不是内存计数——服务是后台进程，被系统回收后内存清零，统计随重启归零就没用了。写入用临时文件替换，进程中途被杀也不会留下半个 JSON。`GET /api/stats` 返回同一份汇总。
+
 ## 四、分工原则（为什么不容易出错）
 
 - **数字要有出处**：有台账时，业务构成表与财务指标表由程序按台账生成；没有台账（只检索公告或纯上传）时，财务表由模型从材料原文的「主要财务数据」表整理，程序负责补千分位、限三期、查自洽（资产 = 负债 + 权益），并在页面上标注「取自材料原文」。
@@ -89,9 +93,9 @@ git add -A && git commit -m "update" && git push
 03_示例/    样例报告与中间 JSON
 app/        server.py（HTTP 服务）jobs.py（长任务进度）docx_writer.py（排版）
             facts.py（公告检索与清单）generator.py（生成与校验）
-            mcp_client.py（财汇）pdf_text.py（PDF 解析）llm.py（模型）
+            mcp_client.py（财汇）pdf_text.py（PDF 解析）llm.py（模型）usage.py（用量统计）
 site/       GitHub Pages 站点（index.html + docs/）
-data/       下载的原始 PDF；uploads/ 存上传件
+data/       下载的原始 PDF；uploads/ 存上传件；usage.json 是用量统计（不入库）
 output/     导出的 docx 与草稿 JSON
 _scratch/   e2e.py 端到端自检（python _scratch/e2e.py）、md2html.py 文档构建
 ```
