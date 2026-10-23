@@ -1,7 +1,22 @@
 {
   "note": "版本清单。每条对应一次提交，snapshot 由 make_versions.py 从 git 取出该提交的 app/static/index.html 生成到 site/versions/<id>/。改这里之后重跑 make_versions.py 即可。",
-  "current": "1023-1757",
+  "current": "1023-1830",
   "versions": [
+    {
+      "id": "1023-1830",
+      "tag": "017bec0",
+      "at": "2026-10-23 18:30",
+      "label": "v16",
+      "title": "口令统一成 ce-shi",
+      "summary": "本机与云端用同一个口令 ce-shi；界面上不再写死口令字面量。",
+      "items": [
+        "默认口令 ceshi → ce-shi，本机重启即生效，云端已重新发布。",
+        "旧 token 自动失效：签名密钥由口令派生，换口令等于全体踢下线，不用另做撤销。",
+        "登录后的提示与设置里的徽标改成「仍是默认口令」，不再把口令字面量印在页面上。",
+        "make_cloud.py 默认沿用上次口令，要换用 --new-pw 或 --password 指定，免得每次发布都要重新告知一遍。"
+      ],
+      "note": "界面与 v15 几乎一致，只有口令与两处文案变了。"
+    },
     {
       "id": "1023-1757",
       "tag": "f1cc77a",

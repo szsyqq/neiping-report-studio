@@ -43,12 +43,20 @@ body{margin:0;background:#fff;color:var(--ink);
 </head>
 <body>
 <div class="wrap">
-  <div class="top"><h1>版本历史</h1><span class="n">共 15 个版本</span></div>
+  <div class="top"><h1>版本历史</h1><span class="n">共 16 个版本</span></div>
   <p class="lede">每次改动都留了一份当时的页面，点开能直接用——不是截图，是那时的界面接现在的数据接口。
     想回最新版去 <a href="../../">工作台</a>。</p>
   <div class="timeline"><div class="v cur">
-  <div class="hd"><span class="lab">v15</span><span class="at">2026-10-23 17:57</span>
+  <div class="hd"><span class="lab">v16</span><span class="at">2026-10-23 18:30</span>
     <span class="cur-tag">当前</span></div>
+  <h2>口令统一成 ce-shi</h2>
+  <p class="sum">本机与云端用同一个口令 ce-shi；界面上不再写死口令字面量。</p>
+  <ul><li>默认口令 ceshi → ce-shi，本机重启即生效，云端已重新发布。</li><li>旧 token 自动失效：签名密钥由口令派生，换口令等于全体踢下线，不用另做撤销。</li><li>登录后的提示与设置里的徽标改成「仍是默认口令」，不再把口令字面量印在页面上。</li><li>make_cloud.py 默认沿用上次口令，要换用 --new-pw 或 --password 指定，免得每次发布都要重新告知一遍。</li></ul>
+  <div class="note">界面与 v15 几乎一致，只有口令与两处文案变了。</div>
+  <a class="open" href="./1023-1830/">打开这个版本 →</a>
+</div><div class="v">
+  <div class="hd"><span class="lab">v15</span><span class="at">2026-10-23 17:57</span>
+    </div>
   <h2>每次改动的页面都留了一份</h2>
   <p class="sum">页头多了「版本」：14 个历史版本，点开是当时的界面接现在的数据接口，能真的检索、生成、导出。</p>
   <ul><li>页头「版本」打开时间线：每条写标题、一句话和 2–5 项具体改动，当前版标出来，改动可折叠。</li><li>每个版本一份可运行的快照：从 git 取出那天的页面，抹掉写死的本机地址、补上登录态，放在 /v/<id>/ 下。</li><li>顶部横幅说明这是哪一版、接口通不通，右边是「全部版本」与「回到最新版」。</li><li>以后加一版：改 versions.json 里的一条，跑一次 make_versions.py。</li></ul>
