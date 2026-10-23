@@ -324,7 +324,8 @@ SYSTEM_PROMPT = """你是信用评级机构的分析员，负责撰写内部「�
 18. 正文每段至少锚定一个具体数据或明确事实（金额、比率、期限、数量、协议条款），不写通篇定性的空段；也不为凑数据引与判断无关的数字——引的每个数都要能用在一句判断上。
 19. 同一件事只说一遍。加粗汇总句是判断，正文不得把这句话换个说法再说一次；专题段只写它自己那件事的新证据，不复述债务段、资产段或业务段已经写过的数据与结论；同一条事实（如某科目余额、某协议条款）在全文只出现一次，后文需要引用时用「上述」带过或直接给结论，不重抄原句。
 20. 分部业务段是一整段：编号与板块名之后的全部内容在同一段里连续写完，不在段内换行、不分成若干小段、不加小标题。
-21. 专题段（special_topics）默认输出空数组。只有材料里存在「非报不可」的重大事项（大额对外担保且被担保方已出现风险、重大未决诉讼、股东出资未到位、在建项目投资缺口远超货币资金）才写，且最多一条。写的时候必须带一句独立的加粗判断句作 lead（先说结论，不带数字），body 再摆数据；不要用「或有事项方面，」这种引子开头。用户在页面上可自行增删专题段，你不必为了完整而补。
+21. 摘要从正文倒抽，不从材料正推。写完正文后再回头逐段读，把「能独立成立、且对偿债有含义」的判断句圈出来当候选池：先圈 10-14 条进 positive_pool / concern_pool（每条 25-45 字、纯定性、不带数字、不写「公司」开头以外的修饰），再从中按分量排序挑 3-5 条进 positive / concern。定稿的条目必须同时出现在候选池里。候选池里不要放正文没说过的话——它只是正文的抽提，不是第二遍分析。
+22. 专题段（special_topics）默认输出空数组。只有材料里存在「非报不可」的重大事项（大额对外担保且被担保方已出现风险、重大未决诉讼、股东出资未到位、在建项目投资缺口远超货币资金）才写，且最多一条。写的时候必须带一句独立的加粗判断句作 lead（先说结论，不带数字），body 再摆数据；不要用「或有事项方面，」这种引子开头。用户在页面上可自行增删专题段，你不必为了完整而补。
 19. 两类专项按条件触发，不按行业标签触发。（1）收入主要来自政府结算（土地整理、代建、特许经营、购买服务）的，总述段交代「钱从谁来」时就要带上区域财力的实数——地区 GDP 与增速、一般公共预算收入、政府性债务余额或债务率，各一句、写明年份，并点明公司在这套结算体系里的层级与回款路径；不要只写「区域财力持续增长」这种不带数的判断，也不要把区域情况另起一段展开。（2）在建工程占非流动资产比重较高的，写清计划总投资、已累计投资、剩余投资，并与货币资金对照说明缺口。材料没有这些数据就整段不写，不许用「预计」「大致」补位。
 
 【写作风格】以跟踪评级报告正文为语体基准：段首归因（受……影响／受益于）、段中展开（具体来看／结构上／此外）、段末收口（整体来看，……）。判断词要分级（很强/较强/一般/较弱、可控/充足/尚可/承压）。不用「本期」「去年」「大幅」这类不可核实表述，也不用「可能」「大概」「或许」——判断要么有据，要么不写。行文里不出现「材料」「披露」「外部条件」这类词：它们是分析员的作业对象，不是报告的语言。
@@ -378,8 +379,10 @@ def build_user_prompt(facts: dict, materials: list[dict]) -> str:
                             for m in materials if m.get("text"))
     schema = """{
   "company_full_name": "工商全称",
-  "positive": ["...", "...", "..."],
-  "concern": ["...", "...", "..."],
+  "positive": ["定稿的正面观点，3-5 条", "..."],
+  "concern": ["定稿的关注观点，3-5 条", "..."],
+  "positive_pool": ["候选：从正文回抽、够格但没进定稿的正面判断，5-8 条"],
+  "concern_pool": ["候选：从正文回抽、够格但没进定稿的关注判断，5-8 条"],
   "basic_info": "150-300字，一段：成立与前身→主营与功能定位（含靠什么收钱）→注册资本/实收资本/股东及比例/实控人→报告期股权变动→增资、上市、外部评级、并表子公司",
   "commentary": {
     "overview": {"lead": "加粗汇总句（不带数字）", "body": "总述段正文：先交代钱的来源、量的决定、价的制定，再写经营与盈利主线数据与收入构成概览，收口引出业务构成表"},
@@ -753,6 +756,20 @@ def _ensure_structure(draft: dict, facts: dict) -> dict:
     out["traits"] = describe_traits(facts)
     out["positive"] = [s for s in (polish_language(x) for x in (draft.get("positive") or [])) if s][:5]
     out["concern"] = [s for s in (polish_language(x) for x in (draft.get("concern") or [])) if s][:5]
+    # 候选池：定稿条目也算候选，去重后一起给前端挑
+    for key in ("positive", "concern"):
+        picked = out[key]
+        seen: list[str] = [x for x in picked]
+        pool: list[str] = []
+        for raw in (draft.get(key + "_pool") or []):
+            t = polish_language(str(raw))
+            if len(t) < 12:
+                continue
+            if any(is_real_dup(t, x, 12, min_han=8) for x in seen):
+                continue
+            seen.append(t)
+            pool.append(t)
+        out[key + "_pool"] = pool[:8]
     out["basic_info"] = polish_language((draft.get("basic_info") or "").strip())
 
     c = draft.get("commentary") or {}
@@ -824,6 +841,9 @@ def polish_draft(draft: dict) -> dict:
 
     d["positive"] = [s for s in (_pol(x) for x in (d.get("positive") or [])) if s]
     d["concern"] = [s for s in (_pol(x) for x in (d.get("concern") or [])) if s]
+    for key in ("positive_pool", "concern_pool"):
+        if isinstance(d.get(key), list):
+            d[key] = [s for s in (_pol(x) for x in d[key]) if s]
     d["basic_info"] = dedupe_sentences(_pol(d.get("basic_info") or ""))
 
     c = dict(d.get("commentary") or {})

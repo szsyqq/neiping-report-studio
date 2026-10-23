@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>内评简评报告</title>
 <style>
 :root{
@@ -229,8 +229,16 @@ select{width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 8px
 .in-company{flex:1;min-width:0;font-size:16.5px;padding:1px 2px}
 .in-code{width:64px;font-size:16.5px;padding:1px 2px;border-bottom:1px solid var(--line)!important;
   text-align:center;font-weight:400!important}
-.doc-h{font-weight:700;font-size:15.5px;margin:26px 0 2px}
-.doc-h.first{margin-top:22px}
+/* ── 版式：块间一个空行，块内不留 ───────────────────────────────
+   --pgap 就是「一个空行」的高度（等于正文字号）。所有块间距都取这一个值，
+   所以「各板块空行多少」不再是各处手调的 8/12/22/26，只有一处。
+   工具条上的「空行」开关只是把它切成 0，页面与导出 Word 一起吃这个开关。 */
+.doc{--pgap:1.05em}
+.doc.tight{--pgap:0px}
+.doc .blk+.blk{margin-top:var(--pgap)}
+.doc .blk>*+*{margin-top:0}
+.doc-h{font-weight:700;font-size:15.5px;margin:0}
+.doc-h+.items,.doc-h+textarea{margin-top:2px}
 /* 楷体本身没有第二档字重，font-weight:700 在浏览器里几乎看不出粗细，
    和导出 Word 的加粗对不上。用四向文字阴影补一点笔画厚度，只加在正文楷体区。 */
 .doc .doc-h,.doc .ta.lead{
@@ -247,6 +255,13 @@ select{width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 8px
 .item{display:flex;gap:2px;align-items:flex-start}
 .item .num{white-space:nowrap;padding-top:1px}
 .item .ta{flex:1;min-width:0}
+.pool{margin:6px 0 0}
+.pool-t{font-size:11px;color:var(--muted);margin-bottom:4px}
+.chip{display:block;width:100%;text-align:left;font-family:inherit;font-size:11.5px;
+  color:var(--ink2);background:#fbfcfd;border:1px solid var(--line2);border-radius:4px;
+  padding:3px 8px;margin:3px 0;cursor:pointer;line-height:1.55;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.chip:hover{background:#f4f7fc;border-color:#d6ddea;color:var(--ink)}
 .tool{border:0;background:transparent;color:#c2c7cf;font-size:12px;padding:0 3px;line-height:1.9;
   opacity:0;transition:opacity .15s}
 .item:hover .tool,.seg:hover .tool,.topic:hover .tool{opacity:1}
@@ -262,13 +277,14 @@ select{width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 8px
 .doc-table th:first-child,.doc-table td:first-child{text-align:left}
 .doc-table tr>*:last-child{border-right:0}
 .doc-table tbody tr:last-child>*{border-bottom:0}
-.seg{margin-bottom:2px;position:relative}
+.seg{position:relative}
+.seg+.seg{margin-top:var(--pgap)}
 .seg-line{line-height:1.85;padding:1px 16px 1px 0;border-radius:4px;outline:none;
   white-space:pre-wrap;word-break:break-word}
 .seg-line:hover{background:#fcfcfd}
 .seg-line:focus{background:#fff;box-shadow:0 0 0 1px #e6e9ee inset}
 .seg .tool{position:absolute;right:0;top:4px}
-.topic{margin-bottom:8px}
+.topic+.topic{margin-top:var(--pgap)}
 .tp-add{position:relative;display:inline-block}
 .tpmenu{position:absolute;left:0;top:calc(100% + 4px);min-width:176px;background:#fff;
   border:1px solid var(--line);border-radius:7px;box-shadow:0 10px 26px rgba(17,20,24,.12);
@@ -393,6 +409,97 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
   aside{border-right:0;border-bottom:1px solid var(--line)}
   main{padding:20px 18px 80px}
 }
+
+#fabNav{display:none;position:fixed;right:12px;bottom:calc(16px + env(safe-area-inset-bottom,0px));
+  z-index:55;flex-direction:column;gap:8px}
+#fabNav.show{display:flex}
+#fabNav button{border:1px solid var(--line);background:#fff;color:var(--ink2);
+  border-radius:999px;padding:8px 14px;font-size:12px;
+  box-shadow:0 6px 18px rgba(17,20,24,.12)}
+
+/* ── 手机（≤640px）────────────────────────────────────────────────
+   四条原则：
+   1. 不再让两栏各自滚动——手机上只有一条滚动轴，否则手指一动就滚错层；
+   2. 悬浮面板一律改成底部抽屉（bottom sheet），因为顶栏会折成两行、锚点算不准；
+   3. 输入框全部 16px，低于这个值 iOS 会在聚焦时自动放大页面，且退不回去；
+   4. 触屏没有 hover，删除按钮不能靠悬停才显形。 */
+@media(max-width:640px){
+  html{-webkit-text-size-adjust:100%}
+
+  /* 顶栏：一条横向滑动的动作带。
+     折行会吃掉 88px（390 宽）到 126px（320 宽），手机上这相当于少看半屏正文；
+     给它一条横向滚动轴，高度就固定在 52px。 */
+  header{height:52px;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;gap:8px;
+    padding:0 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  header::-webkit-scrollbar{display:none}
+  header .brand{font-size:14.5px;flex:none}
+  header .spacer{display:none}
+  header .sep{display:none}
+  header>*{flex:none}
+  header::after{content:"";flex:none;width:2px}
+  header a{font-size:12px;padding:6px 4px;min-height:32px;display:inline-flex;align-items:center}
+  .usage{padding:5px 11px;font-size:12px;min-height:32px}
+
+  /* 单栏单滚动 */
+  .wrap{display:block;height:auto}
+  aside{overflow:visible;padding:14px 14px 8px;border-bottom:1px solid var(--line)}
+  main{overflow:visible;padding:14px 14px calc(80px + env(safe-area-inset-bottom,0px))}
+
+  /* 生成区吸在底部，正文再长也能随手点；离开流程区后自动失效 */
+  #genBlock{padding:10px 0 8px;box-shadow:0 -6px 14px rgba(17,20,24,.05)}
+
+  /* 底部抽屉：用量、历史、打包、发信、设置、版本 */
+  .upanel,.hpanel{position:fixed;left:10px;right:10px;width:auto;top:auto;bottom:10px;
+    max-height:72vh;overflow-y:auto;z-index:60}
+  .pkgpanel,.mlpanel{position:fixed;left:10px;right:10px;width:auto;top:auto;
+    bottom:calc(10px + env(safe-area-inset-bottom,0px));max-height:76vh;overflow-y:auto;z-index:60}
+  .pkgpanel .pk-body{max-height:none;overflow:visible}
+  .setbox,.verbox{width:calc(100% - 20px);max-height:88vh}
+  .setgrid{grid-template-columns:1fr;gap:4px}
+  .setgrid label{text-align:left;font-size:11px;margin-top:4px}
+  .setgrid .wide{grid-column:1}
+  .gcard{width:calc(100% - 40px);padding:22px 18px 18px}
+  /* 登录框同样要 16px：iOS 在聚焦时会为 <16px 的输入框自动放大整页 */
+  .gcard input{font-size:16px;padding:10px 12px}
+  .gcard button{min-height:42px}
+  #toast{max-width:92vw;bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+
+  /* 字号：正文与输入框都提到 16px，既好读也避开 iOS 自动缩放 */
+  .doc{font-size:16px;line-height:1.9}
+  .field input,#company,select,.setgrid input,.mlpanel input,.mlpanel textarea{font-size:16px}
+  .ta{font-size:16px}
+
+  /* 工具条：按钮换行，不再挤成一条 */
+  .docbar{flex-direction:column;gap:10px;margin-bottom:14px}
+  .docbar .acts{flex-wrap:wrap;white-space:normal;gap:6px}
+  .doc-head{flex-wrap:wrap;row-gap:2px}
+  .in-code{width:86px!important}
+
+  /* 表格：整表横向滑动，单元格不折行，否则「-10.66%」会被拆成两行看错 */
+  .tscroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -14px;padding:0 14px}
+  .doc-table{min-width:100%;width:auto}
+  .doc-table th,.doc-table td{white-space:nowrap;padding:4px 10px;font-size:14px}
+  .doc-table th:first-child,.doc-table td:first-child{position:sticky;left:0;background:#fff;z-index:1}
+
+  /* 触屏没有 hover：删除按钮与候选条常显，且加大点击区 */
+  .item .tool,.seg .tool,.topic .tool{opacity:1;font-size:15px;
+    min-width:32px;min-height:32px;display:inline-flex;align-items:center;justify-content:center}
+  .seg .tool{top:0}
+  .chip{padding:8px 10px;font-size:12.5px;white-space:normal;line-height:1.5}
+  .add{padding:8px 4px;font-size:13px}
+  .pkgpanel .pkrow,.mlpanel .mlatt label.r{min-height:34px}
+  /* 勾选框 13px 在手机上按不准 */
+  input[type=checkbox]{width:18px;height:18px}
+  .mat,.upfile,.pkrow,.mlatt label.r{align-items:center}
+
+  /* 专题菜单贴右边，免得被屏幕切掉 */
+  .tpmenu{left:auto;right:0}
+
+  /* 手机上给两个跳转键：长报告里很难再滚回顶部的流程区。
+     显隐由 syncFab() 按「正文是否进入视野」控制，不在这里常显。 */
+}
+
+
 </style>
 </head>
 <body class="locked">
@@ -409,6 +516,10 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
 </div>
 <div id="setMask"><div class="setbox" id="setBox"></div></div>
 <div id="verMask"><div class="verbox" id="verBox"></div></div>
+<div id="fabNav">
+  <button id="fabFlow" onclick="jumpTo('flow')" title="回到上方：检索、读材料、生成">↑ 流程</button>
+  <button id="fabDoc" onclick="jumpTo('doc')" title="跳到正文">正文 ↓</button>
+</div>
 <div id="conn"></div>
 <header>
   <div class="brand">内评简评报告</div>
@@ -1110,6 +1221,27 @@ upBox.addEventListener("drop", e => {
   const files = [...(e.dataTransfer.files || [])];
   if(files.length) uploadAll(files);
 });
+/* 手机上顶栏与流程区会滚出屏幕，留两个跳转键。
+   只在窄屏出现（CSS 控制），且正文没生成时不显示「正文」。 */
+function isPhone(){ return window.matchMedia("(max-width: 640px)").matches; }
+function jumpTo(where){
+  const el = where === "doc" ? document.querySelector(".sheet") : document.querySelector("aside");
+  if(el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+function syncFab(){
+  const fab = $("#fabNav");
+  if(!fab) return;
+  const hasDoc = !!S.draft;
+  $("#fabDoc").style.display = hasDoc ? "" : "none";
+  if(!isPhone() || !hasDoc){ fab.classList.remove("show"); return; }
+  // 只在正文进入视野时浮出来：生成区吸在底部，常显会把它压住
+  const mainEl = document.querySelector("main");
+  const inDoc = mainEl ? mainEl.getBoundingClientRect().top < window.innerHeight * 0.8 : false;
+  fab.classList.toggle("show", inDoc);
+}
+window.addEventListener("scroll", () => syncFab(), { passive: true });
+window.addEventListener("resize", () => syncFab());
+
 /* ---------------- 生成 ---------------- */
 async function doGenerate(){
   if(!S.loaded.length) return toast("请先读取材料，或上传 PDF", true);
@@ -1125,6 +1257,8 @@ async function doGenerate(){
     renderDraft();
     const u = S.draft.usage || {};
     toast(u.total_tokens ? `草稿已生成 · 本次 ${fmtTok(u.total_tokens)} token` : "草稿已生成，可直接修改");
+    syncFab();
+    if(isPhone()) setTimeout(() => jumpTo("doc"), 120);   // 手机上流程区很长，不滚一下看不到结果
     refreshUsage();
     if(HIST.open) loadHistory();
   }catch(e){
@@ -1136,8 +1270,10 @@ async function doGenerate(){
 }
 
 /* ---------------- 草稿 ---------------- */
-function ta(cls, val, rows){
-  return `<textarea class="ta ${cls}" rows="${rows || 3}">${esc(val || "")}</textarea>`;
+function ta(cls, val){
+  // rows 只作为最小高度，一律给 1，真实高度由 autoGrow 按内容算。
+  // 给 2 的话，一行的短句也会占两行，看起来就是「加粗句后面多了一个空行」。
+  return `<textarea class="ta ${cls}" rows="1">${esc(val || "")}</textarea>`;
 }
 function segSuffix(name){
   const n = (name || "").trim();
@@ -1167,14 +1303,15 @@ document.addEventListener("paste", e => {
 function tableHtml(t){
   if(!t || !t.rows) return "";
   const head = t.periods ? ["项目", ...t.periods] : (t.header || []);
-  let h = `<div class="unit">${esc(t.unit_line || "单位：亿元")}</div><table class="doc-table"><thead><tr>` +
+  let h = `<div class="unit">${esc(t.unit_line || "单位：亿元")}</div><div class="tscroll"><table class="doc-table"><thead><tr>` +
     head.map(x => `<th>${esc(x)}</th>`).join("") + `</tr></thead><tbody>`;
   for(const r of t.rows) h += `<tr>` + r.map(c => `<td>${esc(c)}</td>`).join("") + `</tr>`;
-  return h + `</tbody></table>`;
+  return h + `</tbody></table></div>`;
 }
 
 function renderDraft(){
   const d = S.draft, c = d.commentary || {}, v = d.validation || {};
+  const gapOn = !(d.layout && d.layout.para_gap === false);
   let h = `<div class="sheet">
     <div class="docbar">
       <div class="grow">
@@ -1189,6 +1326,8 @@ function renderDraft(){
         </div>
       </div>
       <div class="acts">
+        <button class="btn-sm" id="btnGap" onclick="toggleParaGap()"
+          title="段与段之间是否空一行（加粗句与它的正文始终连着）">${gapOn ? "段落空行：有" : "段落空行：无"}</button>
         <button class="btn-sm" onclick="copyPrompt()">提示词</button>
         <button class="btn-sm solid" id="btnExport" onclick="exportDocx()">导出 Word</button>
         <div class="pkgwrap">
@@ -1208,44 +1347,57 @@ function renderDraft(){
       `</ul></div>`;
   }
 
-  h += `<div class="doc">
-    <div class="doc-h first">正面：</div>
-    <div class="items" id="d-pos"></div>
-    <button class="add" onclick="addItem('pos')">+ 条目</button>
-
-    <div class="doc-h">关注：</div>
-    <div class="items" id="d-con"></div>
-    <button class="add" onclick="addItem('con')">+ 条目</button>
-
-    <div class="doc-h">1、基本情况</div>
-    ${ta("basic", d.basic_info, 5)}
-
-    <div class="doc-h">2、点评</div>
-    ${ta("ov-lead lead", c.overview && c.overview.lead, 2)}
-    ${ta("ov-body", c.overview && c.overview.body, 7)}`;
+  // 版式：一块一个 .blk。块与块之间恰好一个空行，块内（加粗句 + 它的正文）不留空。
+  // 空行值只由 CSS 变量 --pgap 决定，页面与导出的 Word 用同一个开关（正文工具条「空行」）。
+  h += `<div class="doc${gapOn ? "" : " tight"}">
+    <div class="blk">
+      <div class="doc-h first">正面：</div>
+      <div class="items" id="d-pos"></div>
+      <button class="add" onclick="addItem('pos')">+ 条目</button>
+      <div class="pool" id="p-pos"></div>
+    </div>
+    <div class="blk">
+      <div class="doc-h">关注：</div>
+      <div class="items" id="d-con"></div>
+      <button class="add" onclick="addItem('con')">+ 条目</button>
+      <div class="pool" id="p-con"></div>
+    </div>
+    <div class="blk">
+      <div class="doc-h first">1、基本情况</div>
+      ${ta("basic", d.basic_info)}
+    </div>
+    <div class="blk">
+      <div class="doc-h first">2、点评</div>
+      ${ta("ov-lead lead", c.overview && c.overview.lead)}
+      ${ta("ov-body", c.overview && c.overview.body)}`;
 
   if(c.segment_table && c.segment_table.rows) h += tableHtml(c.segment_table);
 
-  h += `<div id="d-segs"></div>
-    <button class="add" onclick="addSeg()">+ 板块</button>
-
-    <div style="height:12px"></div>
-    ${ta("as-lead lead", c.asset && c.asset.lead, 2)}
-    ${ta("as-body", c.asset && c.asset.body, 6)}`;
+  h += `</div>
+    <div class="blk">
+      <div id="d-segs"></div>
+      <button class="add" onclick="addSeg()">+ 板块</button>
+    </div>
+    <div class="blk">
+      ${ta("as-lead lead", c.asset && c.asset.lead)}
+      ${ta("as-body", c.asset && c.asset.body)}`;
 
   if(c.financial_table && c.financial_table.rows){
-    h += `<div style="text-align:center;font-weight:700;margin:22px 0 0">${esc(c.financial_table.caption || "公司主要财务数据和财务指标（合并口径）")}</div>`;
+    h += `<div style="text-align:center;font-weight:700">${esc(c.financial_table.caption || "公司主要财务数据和财务指标（合并口径）")}</div>`;
     h += tableHtml(c.financial_table);
   }
-
-  h += `<div style="height:12px"></div>
-    ${ta("db-lead lead", c.debt && c.debt.lead, 2)}
-    ${ta("db-body", c.debt && c.debt.body, 7)}
-    <div id="d-topics"></div>
-    <div class="tp-add">
-      <button class="add" onclick="topicMenu()">+ 专题段（可选）</button>
-      <div class="tpmenu" id="topicMenu">
-        ${TOPIC_PRESETS.map(p => `<button onclick="addTopicPreset('${p.key}')">${esc(p.label)}</button>`).join("")}
+  h += `</div>
+    <div class="blk">
+      ${ta("db-lead lead", c.debt && c.debt.lead)}
+      ${ta("db-body", c.debt && c.debt.body)}
+    </div>
+    <div class="blk">
+      <div id="d-topics"></div>
+      <div class="tp-add">
+        <button class="add" onclick="topicMenu()">+ 专题段（可选）</button>
+        <div class="tpmenu" id="topicMenu">
+          ${TOPIC_PRESETS.map(p => `<button onclick="addTopicPreset('${p.key}')">${esc(p.label)}</button>`).join("")}
+        </div>
       </div>
     </div>
   </div></div>`;
@@ -1258,24 +1410,60 @@ function renderDraft(){
 
   renderItems("pos", d.positive || []);
   renderItems("con", d.concern || []);
+  renderPool("pos", d.positive_pool || []);
+  renderPool("con", d.concern_pool || []);
   renderSegs(c.segments || []);
   renderTopics(c.special_topics || []);
   autoGrowAll();
+  syncFab();
+}
+
+function toggleParaGap(){
+  // 先把页面上的改动收进草稿，再切开关重画，否则改了半天的段会被覆盖
+  S.draft = collectDraft();
+  S.draft.layout = S.draft.layout || {};
+  S.draft.layout.para_gap = S.draft.layout.para_gap === false;   // 取反
+  renderDraft();
+  toast(S.draft.layout.para_gap ? "段与段之间空一行" : "段落紧排，不留空行");
+}
+
+/* 候选观点：正文倒抽出来的判断句，点一条就加进上面的列表，加过的不再出现。
+   定了稿但没被选中过的条目（模型给回池里的）也可以再挑回来。 */
+function renderPool(kind, pool){
+  const box = $("#" + (kind === "pos" ? "p-pos" : "p-con"));
+  if(!box) return;
+  const cur = [...document.querySelectorAll(kind === "pos" ? ".it-pos" : ".it-con")].map(t => t.value.trim());
+  const rest = (pool || []).filter(t => t && !cur.includes(t));
+  if(!rest.length){ box.innerHTML = ""; return; }
+  box.innerHTML = `<div class="pool-t">候选观点 ${rest.length} 条，点一条加进上面</div>` +
+    rest.map((t, i) => `<button class="chip" title="${esc(t)}" onclick="usePool('${kind}',${i})">${esc(t.slice(0, 42))}${t.length > 42 ? "…" : ""}</button>`).join("");
+  box.dataset.pool = JSON.stringify(rest);
+}
+
+function usePool(kind, i){
+  const box = $("#" + (kind === "pos" ? "p-pos" : "p-con"));
+  const rest = JSON.parse(box.dataset.pool || "[]");
+  const text = rest[i];
+  if(!text) return;
+  addItem(kind, text);                       // 加进列表
+  rest.splice(i, 1);                         // 从候选里拿掉
+  renderPool(kind, rest);
+  renumber();
 }
 
 function renderItems(kind, items){
   const box = $("#" + (kind === "pos" ? "d-pos" : "d-con"));
   box.innerHTML = items.map((t, i) => `<div class="item">
     <span class="num">${i + 1}）</span>
-    <textarea class="ta it-${kind}" rows="2">${esc(t)}</textarea>
+    <textarea class="ta it-${kind}" rows="1">${esc(t)}</textarea>
     <button class="tool" onclick="this.parentNode.remove();renumber()">×</button>
   </div>`).join("");
 }
-function addItem(kind){
+function addItem(kind, text){
   const box = $("#" + (kind === "pos" ? "d-pos" : "d-con"));
   const div = document.createElement("div");
   div.className = "item";
-  div.innerHTML = `<span class="num"></span><textarea class="ta it-${kind}" rows="2"></textarea>
+  div.innerHTML = `<span class="num"></span><textarea class="ta it-${kind}" rows="1">${esc(text || "")}</textarea>
     <button class="tool" onclick="this.parentNode.remove();renumber()">×</button>`;
   box.appendChild(div);
   renumber();
@@ -1336,16 +1524,16 @@ function renumberSegs(){
 
 function renderTopics(ts){
   $("#d-topics").innerHTML = ts.map(t => `<div class="topic">
-    <textarea class="ta topic-lead lead" rows="2" placeholder="加粗总起句：先给判断">${esc(t.lead)}</textarea>
-    <textarea class="ta topic-body" rows="5" placeholder="正文">${esc(t.body)}</textarea>
+    <textarea class="ta topic-lead lead" rows="1" placeholder="加粗总起句：先给判断">${esc(t.lead)}</textarea>
+    <textarea class="ta topic-body" rows="1" placeholder="正文">${esc(t.body)}</textarea>
     <button class="tool" onclick="this.parentNode.remove()">× 删除本段</button>
   </div>`).join("");
 }
 function addTopic(lead, body){
   const div = document.createElement("div");
   div.className = "topic";
-  div.innerHTML = `<textarea class="ta topic-lead lead" rows="2" placeholder="加粗总起句：先给判断">${esc(lead || "")}</textarea>
-    <textarea class="ta topic-body" rows="5" placeholder="正文">${esc(body || "")}</textarea>
+  div.innerHTML = `<textarea class="ta topic-lead lead" rows="1" placeholder="加粗总起句：先给判断">${esc(lead || "")}</textarea>
+    <textarea class="ta topic-body" rows="1" placeholder="正文">${esc(body || "")}</textarea>
     <button class="tool" onclick="this.parentNode.remove()">× 删除本段</button>`;
   $("#d-topics").appendChild(div);
   const boxes = div.querySelectorAll("textarea");

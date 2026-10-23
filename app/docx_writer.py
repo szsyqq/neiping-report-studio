@@ -250,24 +250,35 @@ def render_report(data: dict[str, Any], out_path: str | Path) -> Path:
     normal.font.size = Pt(FONT_SIZE_PT)
     normal.element.rPr.rFonts.set(qn("w:eastAsia"), FONT_CN)
 
+    # ── 版式：块与块之间一个空行，块内（加粗句 + 它的正文）不留空 ──
+    #
+    # 空行的位置只有一处定义，就是这里的 _gap()：每写完一个「块」调一次。
+    # 段内不留空，是因为加粗总起句和它的正文本来就在同一个段落里（_add_lead_para），
+    # 一旦在两者之间插空段，读起来就像话没说完就断了。
+    gap_on = (data.get("layout") or {}).get("para_gap") is not False
+
+    def _gap():
+        if gap_on:
+            _add_blank(doc)
+
     company = data.get("company_full_name", "")
     code = (data.get("internal_rating_code") or "").strip()
     _add_para(doc, f"{company}  主体：【{code or '待填'}】", bold=True, align=WD_ALIGN_PARAGRAPH.LEFT)
-    _add_blank(doc)
+    _gap()
 
     _add_para(doc, "正面：", bold=True)
     for i, item in enumerate(data.get("positive") or [], 1):
         _add_para(doc, f"{i}）{_end_period(item)}")
-    _add_blank(doc)
+    _gap()
 
     _add_para(doc, "关注：", bold=True)
     for i, item in enumerate(data.get("concern") or [], 1):
         _add_para(doc, f"{i}）{_end_period(item)}")
-    _add_blank(doc)
+    _gap()
 
     _add_para(doc, "1、基本情况", bold=True, align=WD_ALIGN_PARAGRAPH.LEFT)
     _add_para(doc, data.get("basic_info", ""))
-    _add_blank(doc)
+    _gap()
 
     _add_para(doc, "2、点评", bold=True, align=WD_ALIGN_PARAGRAPH.LEFT)
     c = data.get("commentary") or {}
@@ -278,6 +289,9 @@ def render_report(data: dict[str, Any], out_path: str | Path) -> Path:
 
     seg = c.get("segment_table")
     if seg:
+        # 总述段与业务构成表是两个块，中间要有空行（原来这里漏了，
+        # 表就顶在总述段的最后一行上）
+        _gap()
         _add_table(
             doc,
             seg.get("header") or ["业务板块", "营业收入", "收入占比", "毛利率"],
@@ -286,7 +300,7 @@ def render_report(data: dict[str, Any], out_path: str | Path) -> Path:
             col_widths_cm=seg.get("col_widths_cm") or [4.91, 3.91, 3.1, 3.1],
             bold_rows=[len(seg.get("rows") or []) - 1] if seg.get("last_row_bold", True) else [],
         )
-    _add_blank(doc)
+    _gap()
 
     from generator import segment_heading  # 与网页预览、校验共用同一套编号口径
 
@@ -294,13 +308,14 @@ def render_report(data: dict[str, Any], out_path: str | Path) -> Path:
         name = s.get("name", "")
         body = s.get("body") or s.get("text") or ""
         _add_para(doc, f"{segment_heading(i, name)}{body}")
-    if c.get("segments"):
-        _add_blank(doc)
+        _gap()          # 一个板块就是一段，段与段之间同样一个空行
+    if not c.get("segments"):
+        pass
 
     at = c.get("asset") or {}
     if at:
         _add_lead_para(doc, at.get("lead", ""), at.get("body", ""))
-        _add_blank(doc)
+        _gap()
 
     ft = c.get("financial_table")
     if ft:
@@ -314,12 +329,12 @@ def render_report(data: dict[str, Any], out_path: str | Path) -> Path:
             unit_line=ft.get("unit_line", "单位：亿元"),
             col_widths_cm=ft.get("col_widths_cm") or _fin_col_widths(len(ft.get("periods") or [])),
         )
-        _add_blank(doc)
+        _gap()
 
     db = c.get("debt") or {}
     if db:
         _add_lead_para(doc, db.get("lead", ""), db.get("body", ""))
-        _add_blank(doc)
+        _gap()
 
     topics = c.get("special_topics") or []
     for t in topics:
@@ -327,7 +342,12 @@ def render_report(data: dict[str, Any], out_path: str | Path) -> Path:
             _add_para(doc, t)
         else:
             _add_lead_para(doc, t.get("lead", ""), t.get("body", ""))
-        _add_blank(doc)
+        _gap()
+
+    # 结尾多余的空段去掉：Word 末尾挂一个空行，页数会多出一页空白
+    while doc.paragraphs and not doc.paragraphs[-1].text.strip() and not doc.paragraphs[-1].runs:
+        p = doc.paragraphs[-1]._p
+        p.getparent().remove(p)
 
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
