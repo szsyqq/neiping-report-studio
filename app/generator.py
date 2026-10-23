@@ -197,12 +197,18 @@ def build_financial_table(facts: dict) -> dict:
     """按模板的三层规则选行：必选 + 条件触发（按占比阈值）+ 主体专属。
 
     选行只看「字段是否可得、占比是否够大」，不看行业名称。
+    台账没有财务数据（只检索公告、或纯本地上传材料）时返回空壳，
+    由调用方改用模型从材料原文整理的表。
     """
     tpl = _load_template()
     layers = tpl.get("indicator_layers") or {}
     fin = facts.get("financials") or {}
-    periods = list(fin.get("periods") or [])[:4]
+    periods = list(fin.get("periods") or [])[:3]
     data = fin.get("data") or {}
+    empty = {"caption": "公司主要财务数据和财务指标（合并口径）",
+             "unit_line": "单位：亿元", "periods": [], "rows": []}
+    if not periods or not data:
+        return empty
     labels = [period_label(p) for p in periods]
     probe = _probe_period(periods, data)
 
@@ -329,22 +335,34 @@ def build_user_prompt(facts: dict, materials: list[dict]) -> str:
         },
         "external_condition_questions": tpl["design_principle"]["external_condition_questions"],
     }
-    fact_view = {
+    has_fin = bool((facts.get("financials") or {}).get("periods"))
+    fact_view: dict[str, Any] = {
         "企业": facts.get("company", {}).get("name"),
-        "工商指标": facts.get("company", {}).get("indicators"),
-        "实际控制人": (facts.get("equity") or {}).get("controller"),
-        "直接股东": (facts.get("equity") or {}).get("shareholders"),
-        "主体评级历史": (facts.get("ratings") or [])[:5],
-        "存量债券": (facts.get("bonds") or [])[:8],
         "结构特征（由台账算出，用来决定写什么；不要据此贴行业标签）": describe_traits(facts),
-        "财务指标（亿元/%，程序已换算）": facts.get("financials", {}).get("data"),
-        "期次写法（正文严格照此书写，不得改写）": period_labels(facts),
-        "主营构成（原始，单位万元）": (facts.get("composition") or [])[:12],
-        "口径提示": [
+    }
+    for label, val in (
+        ("工商指标", facts.get("company", {}).get("indicators")),
+        ("实际控制人", (facts.get("equity") or {}).get("controller")),
+        ("直接股东", (facts.get("equity") or {}).get("shareholders")),
+        ("主体评级历史", (facts.get("ratings") or [])[:5]),
+        ("存量债券", (facts.get("bonds") or [])[:8]),
+        ("财务指标（亿元/%，程序已换算）", (facts.get("financials") or {}).get("data")),
+        ("期次写法（正文严格照此书写，不得改写）", period_labels(facts)),
+        ("主营构成（原始，单位万元）", (facts.get("composition") or [])[:12]),
+    ):
+        if val:
+            fact_view[label] = val
+    if has_fin:
+        fact_view["口径提示"] = [
             "台账中的『短期债务/长期债务/有息债务』为有息债务口径，可能与评级报告的『全部债务』不同，引用时须注明口径。",
             "财汇结构化数据与评级报告原文不一致时，正文以【材料原文】为准，并在 data_notes 里记下差异。",
-        ],
-    }
+        ]
+    else:
+        fact_view["口径提示"] = [
+            "本次未取结构化台账：工商信息、股权、财务数据、主营构成一律以【材料原文】为准，材料没写的就写「未披露」，不得推算。",
+            "期次写法照材料原文的表述，同一张表内的期次必须与材料表的表头一致。",
+            "财务指标表需要你按【材料原文】的「主要财务数据」表整理输出，数字与材料逐一对应。",
+        ]
     mat_block = "\n\n".join(f"===== {m['title']}（{m.get('date','')}）=====\n{m['text']}"
                             for m in materials if m.get("text"))
     schema = """{
@@ -356,6 +374,7 @@ def build_user_prompt(facts: dict, materials: list[dict]) -> str:
     "overview": {"lead": "加粗汇总句（不带数字）", "body": "总述段正文：三问展开外部条件→经营与盈利主线数据→收入构成概览→引出业务构成表"},
     "segments": [{"name": "该主体披露的板块名，照材料写，不改写不带编号", "body": "承接『1）××业务方面，』之后的正文"}],
     "segment_table": {"unit_line": "单位：亿元", "header": ["业务板块", "营业收入", "收入占比", "毛利率"], "rows": [["板块名", "0.00", "0.00%", ""], ["营业总收入", "0.00", "100.00%", ""]]},
+    "financial_table": {"unit_line": "单位：亿元", "periods": ["2023年", "2024年", "2025年"], "rows": [["资产总额", "0.00", "0.00", "0.00"], ["负债总额", "0.00", "0.00", "0.00"]]},
     "asset": {"lead": "加粗汇总句（不带数字）", "body": "资产段正文"},
     "debt": {"lead": "加粗汇总句（不带数字）", "body": "债务段正文"},
     "special_topics": [{"lead": "加粗判断句", "body": "专题正文"}]
@@ -376,7 +395,7 @@ def build_user_prompt(facts: dict, materials: list[dict]) -> str:
 【输出 JSON 结构】
 {schema}
 
-注意：财务指标表由程序按台账生成，你不需要输出；若台账无主营构成数据，请从评级报告正文补出 segment_table（金额按亿元、两位小数，占比两位小数，缺毛利率则该列留空字符串），否则 segment_table 输出 null。你只需保证正文里的数字与材料一致，且能被台账或材料原文支撑。segments 的 name 用该公司自己披露的板块名称，不要带「业务方面」四个字，也不带编号；板块数量按收入结构决定，不要为了凑段数拆分或合并材料里没有的板块。"""
+注意：若【事实台账】已有「财务指标」，财务指标表由程序按台账生成，你不需要输出 financial_table；若台账没有财务指标，你必须从【材料原文】的「主要财务数据」表整理 financial_table——期次取最近三期（前两年 + 最新一期，按时间正序排列，最新一期放最后），期次写法照抄材料表头，行项按规模→结构→盈利→获现→债务→偿债排列，金额统一亿元、两位小数，数字与材料逐一对应，材料没有的行不要编。若台账无主营构成数据，请从评级报告正文补出 segment_table（金额按亿元、两位小数，占比两位小数，缺毛利率则该列留空字符串），否则 segment_table 输出 null。你只需保证正文里的数字与材料一致，且能被台账或材料原文支撑。segments 的 name 用该公司自己披露的板块名称，不要带「业务方面」四个字，也不带编号；板块数量按收入结构决定，不要为了凑段数拆分或合并材料里没有的板块。"""
 
 
 def _clean_llm_table(t: Any) -> dict | None:
@@ -446,6 +465,58 @@ def _p(progress, pct: int, stage: str, detail: str = ""):
         progress(pct, stage, detail)
 
 
+_NUM_CELL_RE = re.compile(r"^-?\d+(?:\.\d+)?$")
+
+
+def _thousands(s: str) -> str:
+    """纯数字补千分位：4887.89 → 4,887.89；带 %、倍、-- 的原样返回。"""
+    if not _NUM_CELL_RE.match(s or ""):
+        return s
+    neg = s.startswith("-")
+    body = s[1:] if neg else s
+    head, _, tail = body.partition(".")
+    head = f"{int(head):,}"
+    return ("-" if neg else "") + head + ("." + tail if tail else "")
+
+
+def _table_has_values(t: dict) -> bool:
+    for r in (t or {}).get("rows") or []:
+        if any(str(c).strip() not in ("", "--") for c in r[1:]):
+            return True
+    return False
+
+
+def _clean_fin_table(t: Any) -> dict | None:
+    """清洗模型从材料原文整理的财务表（台账无数据时使用）。"""
+    if not isinstance(t, dict):
+        return None
+    periods = [str(p).strip() for p in (t.get("periods") or []) if str(p).strip()]
+    if len(periods) < 2:
+        return None
+    take = min(3, len(periods))  # 最新一期 + 近两年，与参考件一致
+    rows = []
+    for r in (t.get("rows") or [])[:24]:
+        if not isinstance(r, (list, tuple)) or not r:
+            continue
+        cells = [str(c).strip() if c is not None else "" for c in list(r)]
+        if len(cells) < len(periods) + 1 or not cells[0]:
+            continue
+        cells = [cells[0]] + [_thousands(c) for c in cells[len(cells) - take:]]
+        if all(c in ("", "--") for c in cells[1:]):
+            continue
+        rows.append(cells)
+    periods = periods[-take:]
+    if len(rows) < 4:
+        return None
+    return {
+        "caption": t.get("caption") or "公司主要财务数据和财务指标（合并口径）",
+        "unit_line": t.get("unit_line") or "单位：亿元",
+        "periods": periods,
+        "rows": rows,
+        "from_materials": True,
+    }
+
+
 def _ensure_structure(draft: dict, facts: dict) -> dict:
     """补齐缺省字段，并把程序生成的表格塞进去。"""
     out: dict[str, Any] = {}
@@ -460,6 +531,9 @@ def _ensure_structure(draft: dict, facts: dict) -> dict:
     ov = c.get("overview") or {}
     at = c.get("asset") or {}
     db = c.get("debt") or {}
+    fin_table = build_financial_table(facts)
+    if not _table_has_values(fin_table):
+        fin_table = _clean_fin_table(c.get("financial_table")) or fin_table
     out["commentary"] = {
         "overview": {"lead": (ov.get("lead") or "").strip(), "body": (ov.get("body") or "").strip()},
         "segment_table": build_segment_table(facts) or _clean_llm_table(c.get("segment_table")),
@@ -470,7 +544,7 @@ def _ensure_structure(draft: dict, facts: dict) -> dict:
             for s in (c.get("segments") or []) if str(s.get("body") or "").strip()
         ],
         "asset": {"lead": (at.get("lead") or "").strip(), "body": (at.get("body") or "").strip()},
-        "financial_table": build_financial_table(facts),
+        "financial_table": fin_table,
         "debt": {"lead": (db.get("lead") or "").strip(), "body": (db.get("body") or "").strip()},
         "special_topics": [
             {"lead": str(t.get("lead") or "").strip(), "body": str(t.get("body") or "").strip()}
@@ -638,7 +712,7 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
     if not (c.get("overview") or {}).get("lead"):
         issues.append("总述段缺加粗汇总句")
     if not (c.get("financial_table") or {}).get("rows"):
-        issues.append("财务指标表为空（台账缺财务数据）")
+        issues.append("财务指标表为空（台账与材料里都没找到可用的财务数据）")
 
     body_len = sum(len(t) for t in texts)
     if body_len < 2000:

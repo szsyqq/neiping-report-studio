@@ -120,7 +120,22 @@ def excerpt(pages: list[str], budget: int = 45000, title: str = "") -> str:
     return f"《{title}》摘录（原{len(pages)}页，保留{len(keep)}页）\n{body}"
 
 
-def load_material(url: str, title: str, budget: int = 45000, progress=None) -> dict:
+def load_file(pdf_path: str | Path, title: str, budget: int = 32000, progress=None) -> dict:
+    """抽取一份已在本地（下载或上传）的 PDF。"""
+    def rep(frac, label):
+        if progress:
+            progress(max(0.0, min(1.0, frac)), label)
+
+    rep(0.05, "解析 PDF")
+    pages = extract_pages(pdf_path, on_progress=lambda f, lab: rep(0.05 + 0.85 * f, "解析 " + lab))
+    rep(0.94, "生成摘录")
+    text = excerpt(pages, budget=budget, title=title)
+    rep(1.0, "完成")
+    return {"title": title, "path": str(pdf_path), "pages": len(pages),
+            "chars": len(text), "text": text}
+
+
+def load_material(url: str, title: str, budget: int = 32000, progress=None) -> dict:
     """下载并抽取一份材料，返回 {title, path, chars, text}。
 
     progress(frac, label)：frac 是这一份材料的完成度（0-1），供前端显示逐份进度。
@@ -131,9 +146,5 @@ def load_material(url: str, title: str, budget: int = 45000, progress=None) -> d
 
     rep(0.02, "开始下载")
     pdf = download(url, title, on_progress=lambda f, lab: rep(0.05 + 0.45 * f, "下载 " + lab))
-    rep(0.55, "解析 PDF")
-    pages = extract_pages(pdf, on_progress=lambda f, lab: rep(0.55 + 0.35 * f, "解析 " + lab))
-    rep(0.94, "生成摘录")
-    text = excerpt(pages, budget=budget, title=title)
-    rep(1.0, "完成")
-    return {"title": title, "path": str(pdf), "pages": len(pages), "chars": len(text), "text": text}
+    return load_file(pdf, title, budget=budget,
+                     progress=lambda f, lab: rep(0.5 + 0.5 * f, lab))

@@ -10,6 +10,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import mimetypes
 import re
@@ -19,7 +20,7 @@ import traceback
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import quote, unquote, urlparse
+from urllib.parse import parse_qs, quote, unquote, urlparse
 
 BASE = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -35,6 +36,13 @@ from mcp_client import CaihuiClient, MCPError  # noqa: E402
 STATIC = Path(__file__).resolve().parent / "static"
 OUTPUT = BASE / "output"
 OUTPUT.mkdir(parents=True, exist_ok=True)
+UPLOAD_DIR = BASE / "data" / "uploads"
+
+# 单份材料的摘录上限与本次生成的总上限（字符）。评级报告正文约 2.5 万字符，
+# 募集说明书只取与主体相关的前半部；两份合计控制在 6 万字符内，
+# 相当于把一次生成送入模型的材料量压到 4 万 token 上下。
+BUDGET_TOTAL = 62000
+BUDGET_BY_KIND = {"跟踪评级报告": 32000, "募集说明书": 26000}
 
 STATE: dict[str, dict] = {}
 LOCK = threading.Lock()
@@ -44,46 +52,62 @@ def _client() -> CaihuiClient:
     return CaihuiClient()
 
 
+def _key(company: str) -> str:
+    """本地只上传、不检索时也要能生成，用一个固定键挂材料。"""
+    return company.strip() or "__local__"
+
+
 # ---------------------------------------------------------------- 业务动作
 
 def do_search(company: str, progress=None) -> dict:
     client = _client()
-    facts = facts_mod.build_facts(client, company, progress=progress)
-    if progress:
-        progress(97, "整理台账", "汇总工商、股权、评级、债券与财务")
+    facts = facts_mod.collect_materials(client, company, progress=progress)
     with LOCK:
-        STATE[company] = {"facts": facts, "materials": []}
-    return {"company": facts.get("company", {}).get("name") or company, "facts": facts}
+        st = STATE.setdefault(_key(company), {"facts": {}, "materials": []})
+        st["facts"] = facts
+    return {"company": company, "facts": facts}
 
 
-def do_fetch(company: str, picks: list[dict], budget: int = 45000, progress=None) -> dict:
+def _budget_for(title: str, remaining: int) -> int:
+    want = next((v for k, v in BUDGET_BY_KIND.items() if k in (title or "")), 30000)
+    return max(6000, min(want, remaining))
+
+
+def do_fetch(company: str, picks: list[dict], budget: int = 0, progress=None) -> dict:
     n = max(len(picks), 1)
     items = [{"title": m.get("title") or "", "state": "wait", "pct": 0, "detail": "等待"} for m in picks]
-    loaded = []
+    loaded: list[dict] = []
+    left = budget or BUDGET_TOTAL
     for i, m in enumerate(picks):
         title = m.get("title") or "material"
-        items[i].update(state="run", detail="准备下载")
+        items[i].update(state="run", detail="准备读取")
 
         def cb(frac, label, i=i):
             items[i].update(state="run", pct=int(frac * 100), detail=label)
             if progress:
-                progress((i + frac) / n * 100, "拉取材料",
+                progress((i + frac) / n * 100, "读取材料",
                          f"第 {i + 1}/{n} 份 · {label}", items=items)
 
         try:
-            item = pdf_text.load_material(m["url"], title, budget=budget, progress=cb)
+            one = _budget_for(title, left)
+            if m.get("path"):  # 本地上传
+                item = pdf_text.load_file(m["path"], title, budget=one, progress=cb)
+            else:
+                item = pdf_text.load_material(m["url"], title, budget=one, progress=cb)
+            left = max(6000, left - item["chars"])
             item["date"] = m.get("date", "")
+            item["source"] = m.get("source", "upload" if m.get("path") else "caihui")
             loaded.append(item)
             items[i].update(state="done", pct=100, pages=item["pages"], chars=item["chars"],
                             detail=f"{item['pages']} 页 · 摘录 {item['chars']} 字")
         except Exception as e:  # 单份失败不影响其余
             items[i].update(state="error", detail=str(e)[:120])
         if progress:
-            progress((i + 1) / n * 100, "拉取材料",
+            progress((i + 1) / n * 100, "读取材料",
                      f"已完成 {i + 1}/{n} 份", items=items)
 
     with LOCK:
-        st = STATE.setdefault(company, {"facts": {}, "materials": []})
+        st = STATE.setdefault(_key(company), {"facts": {}, "materials": []})
         titles = {m.get("title") for m in loaded}
         st["materials"] = [x for x in st["materials"] if x.get("title") not in titles] \
             + [x for x in loaded if x.get("text")]
@@ -94,16 +118,15 @@ def do_fetch(company: str, picks: list[dict], budget: int = 45000, progress=None
 
 def do_generate(company: str, model: str | None, progress=None) -> dict:
     with LOCK:
-        st = STATE.get(company) or {}
+        st = STATE.get(_key(company)) or {}
         facts = st.get("facts") or {}
         materials = st.get("materials") or []
-    if not facts:
-        raise ValueError("请先检索企业")
     if not materials:
-        raise ValueError("请先拉取材料（至少一份评级报告）")
-    draft = generator.generate(facts, materials, model_id=model, progress=progress)
+        raise ValueError("请先拉取材料，或上传评级报告/募集说明书 PDF")
+    draft = generator.generate(facts or facts_mod.empty_facts(company), materials,
+                               model_id=model, progress=progress)
     with LOCK:
-        STATE.setdefault(company, {})["draft"] = draft
+        STATE.setdefault(_key(company), {})["draft"] = draft
     return {"draft": draft}
 
 
@@ -121,11 +144,26 @@ def api_fetch(payload: dict) -> dict:
     picks = payload.get("materials") or []
     if not picks:
         with LOCK:
-            facts = (STATE.get(company) or {}).get("facts")
+            facts = (STATE.get(_key(company)) or {}).get("facts")
         if not facts:
-            raise ValueError("请先检索企业")
+            raise ValueError("请先检索企业，或上传 PDF")
         picks = facts_mod.pick_materials(facts)
-    return do_fetch(company, picks, int(payload.get("budget") or 45000))
+    return do_fetch(company, picks, int(payload.get("budget") or 0))
+
+
+def save_upload(name: str, data: bytes) -> dict:
+    """把上传的 PDF 落到 data/uploads/，等下一步统一解析。"""
+    if len(data) < 1200:
+        raise ValueError("文件太小，不像是 PDF")
+    if not data[:5].startswith(b"%PDF"):
+        raise ValueError("只接受 PDF 文件")
+    title = facts_mod.title_key(name) or "上传材料"
+    safe = re.sub(r"[^\w\u4e00-\u9fa5.\-]+", "_", title)[:80] or "upload"
+    digest = hashlib.sha256(data).hexdigest()[:12]
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    path = UPLOAD_DIR / f"{safe}_{digest}.pdf"
+    path.write_bytes(data)
+    return {"path": str(path), "title": title, "size": len(data), "name": path.name}
 
 
 def api_generate(payload: dict) -> dict:
@@ -150,14 +188,14 @@ def api_export(payload: dict) -> dict:
 def api_prompt(payload: dict) -> dict:
     company = (payload.get("company") or "").strip()
     with LOCK:
-        st = STATE.get(company) or {}
+        st = STATE.get(_key(company)) or {}
         facts = st.get("facts") or {}
         materials = st.get("materials") or []
-    if not facts:
-        raise ValueError("请先检索企业")
-    prompt = generator.build_user_prompt(facts, materials)
+    if not materials:
+        raise ValueError("请先拉取材料，或上传 PDF")
+    prompt = generator.build_user_prompt(facts or facts_mod.empty_facts(company), materials)
     return {"prompt": prompt, "system": generator.SYSTEM_PROMPT,
-            "traits": generator.describe_traits(facts)}
+            "traits": generator.describe_traits(facts or {})}
 
 
 def api_job(kind: str, payload: dict) -> dict:
@@ -170,15 +208,13 @@ def api_job(kind: str, payload: dict) -> dict:
     elif kind == "fetch":
         company = (payload.get("company") or "").strip()
         picks = payload.get("materials") or []
-        if not company:
-            raise ValueError("请先检索企业")
         if not picks:
             with LOCK:
-                facts = (STATE.get(company) or {}).get("facts")
+                facts = (STATE.get(_key(company)) or {}).get("facts")
             if not facts:
-                raise ValueError("请先检索企业")
+                raise ValueError("请先检索企业，或上传 PDF")
             picks = facts_mod.pick_materials(facts)
-        budget = int(payload.get("budget") or 45000)
+        budget = int(payload.get("budget") or 0)
         job = jobs.submit("fetch", lambda p: do_fetch(company, picks, budget, p))
     elif kind == "generate":
         company = (payload.get("company") or "").strip()
@@ -266,8 +302,20 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"error": str(e), "trace": traceback.format_exc()[-800:]}, 500)
 
     def do_POST(self):
-        p = unquote(urlparse(self.path).path)
+        parsed = urlparse(self.path)
+        p = unquote(parsed.path)
         length = int(self.headers.get("Content-Length") or 0)
+
+        # 上传走裸字节（前端用 XHR 传，能显示上传百分比），不走 multipart
+        if p == "/api/upload":
+            try:
+                name = (parse_qs(parsed.query).get("name") or ["上传材料.pdf"])[0]
+                data = self.rfile.read(length) if length else b""
+                self._json(save_upload(name, data))
+            except (ValueError, OSError) as e:
+                self._json({"error": str(e)}, 400)
+            return
+
         raw = self.rfile.read(length).decode("utf-8") if length else "{}"
         try:
             payload = json.loads(raw or "{}")

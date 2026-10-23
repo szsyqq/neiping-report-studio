@@ -166,17 +166,20 @@ def _tbl_width(tblPr, cm: float):
     el.set(qn("w:w"), str(int(round(cm * 567))))
 
 
-def _row_props(row):
+def _row_props(row, header: bool = False):
     trPr = row._tr.get_or_add_trPr()
     if trPr.find(qn("w:cantSplit")) is None:
         trPr.append(OxmlElement("w:cantSplit"))
+    if header and trPr.find(qn("w:tblHeader")) is None:
+        trPr.append(OxmlElement("w:tblHeader"))
     row.height = Pt(ROW_HEIGHT_TWIPS / 20.0)
     row.height_rule = WD_ROW_HEIGHT_RULE.AT_LEAST
 
 
 def _add_table(doc, header, rows, unit_line=None, col_widths_cm=None, bold_rows=()):
     if unit_line:
-        _add_para(doc, unit_line, align=WD_ALIGN_PARAGRAPH.RIGHT, indent=False)
+        up = _add_para(doc, unit_line, align=WD_ALIGN_PARAGRAPH.RIGHT, indent=False)
+        up.paragraph_format.keep_with_next = True  # 单位行不单独留在页尾
     ncols = len(header) if header else max(len(r) for r in rows)
     table = doc.add_table(rows=0, cols=ncols)
     table.style = "Table Grid"
@@ -211,8 +214,8 @@ def _add_table(doc, header, rows, unit_line=None, col_widths_cm=None, bold_rows=
 
     for i, w in enumerate(widths):
         table.columns[i].width = Cm(w)
-    for row in table.rows:
-        _row_props(row)
+    for idx, row in enumerate(table.rows):
+        _row_props(row, header=(idx == 0 and bool(header)))
         for i, w in enumerate(widths):
             if i < len(row.cells):
                 row.cells[i].width = Cm(w)
@@ -220,11 +223,18 @@ def _add_table(doc, header, rows, unit_line=None, col_widths_cm=None, bold_rows=
 
 
 def _fin_col_widths(n_periods: int) -> list[float]:
-    """财务表按列数分配版心宽度：项目列宽、期次列等分。"""
+    """财务表列宽照参考件：项目列 6.61，最新期 3.61（「2026年3月末」一行放得下），
+    更早的整年列 2.4；超过 4 列时整体压缩，保证不出版心。"""
     n = max(n_periods + 1, 2)
-    first = 6.61 if n <= 4 else 5.2
-    rest = max(TEXT_WIDTH_CM - first, 4.0) / (n - 1)
-    return [first] + [round(rest, 2)] * (n - 1)
+    if n == 2:
+        return [6.61, 7.5]
+    if n == 3:
+        return [6.61, 3.9, 3.9]
+    if n == 4:
+        return [6.61, 3.61, 2.4, 2.4]
+    widths = [5.6, 3.4] + [2.0] * (n - 2)
+    total = sum(widths)
+    return [round(w * TEXT_WIDTH_CM / total, 2) for w in widths]
 
 
 def render_report(data: dict[str, Any], out_path: str | Path) -> Path:
@@ -294,8 +304,9 @@ def render_report(data: dict[str, Any], out_path: str | Path) -> Path:
 
     ft = c.get("financial_table")
     if ft:
-        _add_para(doc, ft.get("caption", "公司主要财务数据和财务指标（合并口径）"),
-                  bold=True, align=WD_ALIGN_PARAGRAPH.CENTER)
+        cap = _add_para(doc, ft.get("caption", "公司主要财务数据和财务指标（合并口径）"),
+                        bold=True, align=WD_ALIGN_PARAGRAPH.CENTER)
+        cap.paragraph_format.keep_with_next = True  # 表题与表格同页
         _add_table(
             doc,
             ["项目"] + list(ft.get("periods") or []),
