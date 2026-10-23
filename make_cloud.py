@@ -30,6 +30,8 @@ OUT = BASE / "_cloud"
 HOME = Path.home()
 MCP_JSON = HOME / ".workbuddy" / "mcp.json"
 MODELS_JSON = HOME / ".workbuddy" / "models.json"
+MAIL_JSON = BASE / "data" / "mail.json"     # gitignore，含 SMTP 授权码
+MAIL_JSON = BASE / "data" / "mail.json"     # gitignore，含 SMTP 授权码
 
 CAIHUI_NAMES = ("caihui_mcp", "caihui-mcp", "caihui")
 # 云端只需要一个能跑的模型，优先 DeepSeek（当前本机实测唯一可用的）
@@ -52,6 +54,46 @@ def caihui() -> tuple[str, str]:
             if url and key:
                 return url, key
     raise SystemExit("读不到财汇 MCP 配置：检查 ~/.workbuddy/mcp.json 的 caihui_mcp 条目")
+
+
+def smtp() -> dict:
+    """把本机填好的发件配置带给云端。
+
+    云端容器一重启，data/ 就空了，页面上填的 SMTP 会丢——所以用环境变量注入，
+    这些值只写进 _cloud/start.sh（该目录在 .gitignore 里），不进仓库。
+    本机没配就返回空，云端仍然可以在页面上填。
+    """
+    d = _read_json(MAIL_JSON)
+    if not (d.get("host") and d.get("user") and d.get("password")):
+        return {}
+    return {
+        "SMTP_HOST": d["host"],
+        "SMTP_PORT": str(d.get("port") or 465),
+        "SMTP_TLS": d.get("tls") or "ssl",
+        "SMTP_USER": d["user"],
+        "SMTP_PASS": d["password"],
+        "SMTP_FROM": d.get("from") or d["user"],
+    }
+
+
+def smtp() -> dict:
+    """把本机填好的发件配置带给云端。
+
+    云端容器一重启，data/ 就空了，页面上填的 SMTP 会丢——所以用环境变量注入，
+    这些值只写进 _cloud/start.sh（该目录在 .gitignore 里），不进仓库。
+    本机没配就返回空，云端仍然可以在页面上填。
+    """
+    d = _read_json(MAIL_JSON)
+    if not (d.get("host") and d.get("user") and d.get("password")):
+        return {}
+    return {
+        "SMTP_HOST": d["host"],
+        "SMTP_PORT": str(d.get("port") or 465),
+        "SMTP_TLS": d.get("tls") or "ssl",
+        "SMTP_USER": d["user"],
+        "SMTP_PASS": d["password"],
+        "SMTP_FROM": d.get("from") or d["user"],
+    }
 
 
 def model() -> dict:
@@ -122,6 +164,8 @@ def build(password: str | None = None, new_pw: bool = False) -> None:
         "LLM_MAX_INPUT": str(m.get("maxInputTokens") or 131072),
         "LLM_MAX_OUTPUT": str(m.get("maxOutputTokens") or 8192),
     }
+    env.update(smtp())
+    env.update(smtp())
     quoted = {k: ("" if v == "" else str(v).replace("'", "'\\''")) for k, v in env.items()}
     lines = ["#!/usr/bin/env bash", "# 由 make_cloud.py 生成，含密钥，勿提交",
              "set -e"]
@@ -149,6 +193,10 @@ def build(password: str | None = None, new_pw: bool = False) -> None:
     print(f"口令: {pw}")
     print(f"模型: {m['id']}  →  {m['url']}")
     print(f"财汇: {murl}")
+    st = smtp()
+    print(f"发件邮箱: {st.get('SMTP_USER', '(未配置，云端可在页面上填)')}"
+          + (f"  →  {st.get('SMTP_HOST')}:{st.get('SMTP_PORT')} {st.get('SMTP_TLS')}"
+             if st else ""))
 
 
 def main() -> None:

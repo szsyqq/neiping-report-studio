@@ -48,7 +48,7 @@ def config() -> dict:
             cfg = {}
     for key, env in (("host", "SMTP_HOST"), ("user", "SMTP_USER"),
                      ("password", "SMTP_PASS"), ("from", "SMTP_FROM"),
-                     ("tls", "SMTP_TLS")):
+                     ("tls", "SMTP_TLS"), ("default_to", "SMTP_DEFAULT_TO")):
         v = _env(env)
         if v:
             cfg[key] = v
@@ -95,7 +95,7 @@ def describe() -> dict:
             "user": cfg.get("user") or "", "from": cfg.get("from") or "",
             "tls": cfg.get("tls") or "ssl", "ready": cfg["ready"],
             "has_password": bool(cfg.get("password")),
-            "default_to": DEFAULT_TO}
+            "default_to": cfg.get("default_to") or DEFAULT_TO}
 
 
 def _attach(msg: EmailMessage, path: Path) -> int:

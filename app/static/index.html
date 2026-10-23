@@ -452,12 +452,35 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
   .upanel,.hpanel{position:fixed;left:10px;right:10px;width:auto;top:auto;bottom:10px;
     max-height:72vh;overflow-y:auto;z-index:60}
   .pkgpanel,.mlpanel{position:fixed;left:10px;right:10px;width:auto;top:auto;
-    bottom:calc(10px + env(safe-area-inset-bottom,0px));max-height:76vh;overflow-y:auto;z-index:60}
+    bottom:calc(10px + env(safe-area-inset-bottom,0px));max-height:76vh;overflow-y:auto;
+    overscroll-behavior:contain;z-index:60}
   .pkgpanel .pk-body{max-height:none;overflow:visible}
-  .setbox,.verbox{width:calc(100% - 20px);max-height:88vh}
+  /* 发送 / 打包的确认按钮同样粘在抽屉底部：抽屉是内部滚动的，
+     按钮原本在流末尾，手机上得先滚到底才看得见。 */
+  .ml-foot,.pk-foot{position:sticky;bottom:0;z-index:3;margin-top:10px;
+    padding:8px 0 calc(8px + env(safe-area-inset-bottom,0px) * 0);
+    background:linear-gradient(to bottom,rgba(255,255,255,0),#fff 26%)}
+  .ml-foot .st{font-size:11px}
+  .ml-foot .btn-sm,.pk-foot .btn-sm{padding:9px 14px;font-size:13px}
+  .setbox,.verbox{width:calc(100% - 20px);max-height:88vh;
+    overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
   .setgrid{grid-template-columns:1fr;gap:4px}
   .setgrid label{text-align:left;font-size:11px;margin-top:4px}
   .setgrid .wide{grid-column:1}
+
+  /* 保存按钮必须自己粘在面板底部。
+     四个分区合计约 1500px，而手机面板只有 88vh 高——按钮原本落在第 935px，
+     屏幕根本到不了那里；手指滑的是背后的页面，面板内部不动，看着就是「点不到保存」。
+     sticky bottom 让它停留在所属分区的可视底部，滚到哪一段就能存哪一段。 */
+  .setsec{padding-bottom:6px}
+  .setact{position:sticky;bottom:0;z-index:3;margin:8px -4px 0;
+    padding:8px 4px calc(8px + env(safe-area-inset-bottom,0px) * 0);
+    background:linear-gradient(to bottom,rgba(255,255,255,0),#fff 26%);
+    align-items:center}
+  .setact .msg{font-size:11.5px}
+  .setact .btn-sm{flex:none;padding:9px 14px;font-size:13px}
+  /* 说明文字占高度，手机上折成三行就够，剩下的要留给字段 */
+  .setsec .sd{font-size:11px;line-height:1.55;margin-bottom:6px}
   .gcard{width:calc(100% - 40px);padding:22px 18px 18px}
   /* 登录框同样要 16px：iOS 在聚焦时会为 <16px 的输入框自动放大整页 */
   .gcard input{font-size:16px;padding:10px 12px}
