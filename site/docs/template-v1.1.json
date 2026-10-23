@@ -1,0 +1,302 @@
+{
+  "template_id": "neiping-jianping-report",
+  "name": "内评简评报告通用模板",
+  "version": "1.1",
+  "scope": "所有信用评级主体的内部简评报告（一页半至三页），不按行业分支",
+  "companion": {
+    "spec_md": "01_模板/内评简评报告通用模板_v1.1.md",
+    "method_md": "02_方法/内评简评报告写作方法论_v1.1.md",
+    "docx": "01_模板/内评简评报告通用模板_v1.1.docx"
+  },
+  "design_principle": {
+    "structure_driver": "结构由「读者需要看到什么」决定，不由行业决定",
+    "indicator_driver": "行项由「字段是否可得 + 占比是否够大」决定，不由行业名称决定",
+    "external_condition_questions": ["钱从谁那里来", "量由什么决定", "价由谁定"],
+    "anti_overfit": [
+      "具体行业名词不得作为必填槽位；只能出现在标注「示例」处，且同处至少给三个不同行业的例子",
+      "字数、段数、列数只由版面容量与阅读时长决定，不因某份样本的篇幅而定为标准",
+      "模板可以规定「此处要写一句带但书的总判断」，不得规定「此处写盈利规模小、依赖补助」",
+      "任何新增条款都要回答：换一家完全不同的主体，这条还成立吗；不成立则降级为方法论例证"
+    ]
+  },
+  "typography": {
+    "font_cn": "楷体_GB2312",
+    "font_size_pt": 10.5,
+    "line_spacing": 1.15,
+    "first_line_indent_chars": 2,
+    "space_before_pt": 0,
+    "space_after_pt": 0,
+    "page": "A4",
+    "margin_cm": { "left": 3.17, "right": 3.17, "top": 2.54, "bottom": 2.54 },
+    "table": { "border": "all", "header_align": "center", "number_align": "right", "first_col_align": "left" }
+  },
+  "mark_layer": {
+    "rule": "定性概括层，除判断核心依赖量级外不列数据；判定口径为『删掉这个数字，判断是否仍成立』",
+    "forbidden_patterns": ["亿元", "万元", "%", "个百分点", "倍"],
+    "item_style": "单句成条，不换行，不带小标题，不编号嵌套",
+    "sort_principle": "经营约束 → 财务压力 → 资产质量与或有治理"
+  },
+  "sections": [
+    {
+      "id": "title",
+      "order": 1,
+      "type": "line",
+      "bold": true,
+      "align": "left",
+      "pattern": "{{company_full_name}}  主体：【{{internal_rating_code}}】",
+      "slots": [
+        { "key": "company_full_name", "desc": "工商注册全称，不用简称", "required": true },
+        { "key": "internal_rating_code", "desc": "内部评级代码，形如 4B / 5C / 3D；未定稿留【待填】，不猜测", "required": true }
+      ],
+      "notes": "外部主体评级不写在此处，写进基本情况末尾"
+    },
+    {
+      "id": "positive",
+      "order": 2,
+      "type": "numbered_list",
+      "title": "正面：",
+      "title_bold": true,
+      "min_items": 3,
+      "max_items": 5,
+      "default_items": 3,
+      "no_data": true,
+      "source_types": [
+        { "type": "身份与外部支持", "asks": "谁拥有它、谁在背后兜底、是否存在制度化的资金或政策通道", "avoid": "写层级与机制，不写称号" },
+        { "type": "不可替代性", "asks": "如果它明天停摆，谁最难受、多久能找到替代", "examples": ["牌照与特许经营", "网络与区位", "技术壁垒与客户认证", "资源禀赋", "规模带来的成本优势"], "note": "示例不代表清单" },
+        { "type": "经营量价与获现", "asks": "产出规模、价格或费率、利用率走向；经营现金流能否覆盖利息与资本开支", "avoid": "" },
+        { "type": "财务弹性", "asks": "期限结构、融资渠道、未使用授信、可变现资产", "avoid": "" }
+      ],
+      "selection_rule": "按支撑力强弱排序，不按上述类别顺序硬填；某类找不到能站住的事实就跳过，不为凑数把治理规范写成正面"
+    },
+    {
+      "id": "concern",
+      "order": 3,
+      "type": "numbered_list",
+      "title": "关注：",
+      "title_bold": true,
+      "min_items": 3,
+      "max_items": 5,
+      "default_items": 3,
+      "no_data": true,
+      "source_types": [
+        { "type": "天花板与集中度", "asks": "业务规模被什么卡住（产能、额度、储量、区域人口、单一客户、单一项目），约束是刚性还是可缓解" },
+        { "type": "盈利与现金流脆弱性", "asks": "利润是否依赖非经常性项目、成本能否传导、经营现金流与利润是否背离、应收与存货是否吞现金" },
+        { "type": "债务与再融资压力", "asks": "扩张是否超过内生现金流、短债占比与集中到期、单一融资渠道依赖、明股实债与表外承担" },
+        { "type": "资产质量、或有与治理", "asks": "受限资产、减值是否充分、对外担保与未决诉讼、股权质押与控制权、关联方占用" }
+      ],
+      "selection_rule": "先经营约束，再财务压力，最后资产与治理；一条只装一件事；同一事实不与正面重复"
+    },
+    {
+      "id": "basic_info",
+      "order": 4,
+      "type": "paragraph",
+      "title": "1、基本情况",
+      "title_bold": true,
+      "required": true,
+      "word_range": [150, 300],
+      "beats": [
+        "成立时间与前身",
+        "主营与功能定位（是谁、干什么、靠什么收钱，一句说清）",
+        "注册资本、实收资本、股东及持股比例、实际控制人",
+        "报告期内股权或控制权变动",
+        "增资到位、上市状态、外部主体评级、并表子公司数量（择要）"
+      ],
+      "excludes": ["经营数据", "财务指标"],
+      "slot": "{{basic_info}}"
+    },
+    {
+      "id": "commentary",
+      "order": 5,
+      "type": "composite",
+      "title": "2、点评",
+      "title_bold": true,
+      "required": true,
+      "blocks": [
+        {
+          "id": "overview",
+          "order": 1,
+          "type": "paragraph",
+          "label": "总述段",
+          "required": true,
+          "word_range": [300, 500],
+          "lead_bold": true,
+          "lead_rule": "全文总判断：主体定位 + 经营趋势 + 但书；不列数据",
+          "beats": [
+            "外部条件按三问展开：钱从谁那里来 / 量由什么决定 / 价由谁定",
+            "公司经营与盈利主线数据（营业收入、净利润及同比）",
+            "收入构成概览，末句引出业务构成表"
+          ],
+          "slot": "{{commentary_overview}}"
+        },
+        {
+          "id": "segment_table",
+          "order": 2,
+          "type": "table",
+          "label": "业务构成表",
+          "required": false,
+          "applies_when": "公司披露分板块收入",
+          "unit_line": "单位：亿元",
+          "columns": ["业务板块", "营业收入", "收入占比", "毛利率"],
+          "last_row": "营业总收入",
+          "missing_rule": "外部未披露分板块毛利率时该列留空，不推算",
+          "merge_rule": "收入占比默认低于5%的板块并入『其他业务』，可按披露层级调整",
+          "slot": "{{segment_table}}"
+        },
+        {
+          "id": "business_segments",
+          "order": 3,
+          "type": "paragraph_list",
+          "label": "分部业务段",
+          "min_items": 1,
+          "max_items": 4,
+          "lead_bold": false,
+          "pattern": "{{i}}）{{segment_name}}业务方面，……",
+          "word_range": [200, 600],
+          "beats": [
+            "业务模式与产出能力",
+            "报告期的产出量（计量单位按业务性质选取）",
+            "价格或费率与对应收入",
+            "成本结构与毛利率变动及其原因",
+            "项目、订单或资源储备",
+            "该板块的风险点"
+          ],
+          "output_unit_rule": "取该公司连续披露、可跨期比较、且与收入变动同向的那一个量；同一主体不同板块可用不同单位；找不到则跳过该拍，不拿无关指标充数",
+          "slot": "{{business_segments[]}}"
+        },
+        {
+          "id": "asset",
+          "order": 4,
+          "type": "paragraph",
+          "label": "资产段",
+          "required": true,
+          "word_range": [200, 400],
+          "lead_bold": true,
+          "manual_bold": true,
+          "lead_rule": "资产总判断：规模 + 结构 + 质量 + 受限",
+          "beats": [
+            "总资产规模与主要结构",
+            "占比最高的前五大科目金额及占总资产比重（按最新期次金额降序重排）",
+            "各科目主要构成（写清「是什么」：存货是不动产/在途贸易品/产成品，其他应收款是政府款/关联方占款/保证金，在建工程是哪个项目）",
+            "受限资产金额与占比"
+          ],
+          "slot": "{{asset}}"
+        },
+        {
+          "id": "financial_table",
+          "order": 5,
+          "type": "table",
+          "label": "主要财务数据和财务指标",
+          "required": true,
+          "caption": "公司主要财务数据和财务指标（合并口径）",
+          "caption_bold": true,
+          "caption_align": "center",
+          "unit_line": "单位：亿元",
+          "periods_min": 2,
+          "periods_max": 4,
+          "period_rule": ["最新期末", "最近完整年度", "上一年度"],
+          "period_note": "只有两个年度可比时用2列，不为了凑三列而填不存在的期次",
+          "missing_value": "--",
+          "slot": "{{financial_table}}"
+        },
+        {
+          "id": "debt",
+          "order": 6,
+          "type": "paragraph",
+          "label": "债务段",
+          "required": true,
+          "word_range": [250, 450],
+          "lead_bold": true,
+          "manual_bold": true,
+          "lead_rule": "债务与偿债总判断：规模趋势 + 期限结构 + 即期压力 + 备用流动性",
+          "beats": [
+            "负债总额与资产负债率",
+            "全部债务及长短债结构与占比",
+            "有息债务的融资构成（银行/债券/非标占比）",
+            "利息保障与经营获现",
+            "非受限货币资金对短期债务的覆盖",
+            "授信总额与未使用额度",
+            "或有事项：对外担保、未决诉讼、股东出资未到位"
+          ],
+          "slot": "{{debt}}"
+        },
+        {
+          "id": "special_topic",
+          "order": 7,
+          "type": "paragraph_list",
+          "label": "或有/专题段",
+          "min_items": 0,
+          "max_items": 2,
+          "lead_bold": true,
+          "manual_bold": true,
+          "applies_when": "存在需专门研判的重大风险，或需给出前瞻判断",
+          "lead_rule": "完整判断句，不是标签",
+          "slot": "{{special_topics[]}}"
+        }
+      ]
+    }
+  ],
+  "indicator_layers": {
+    "note": "行项不按行业匹配，按可得性与判断支点匹配；三层叠加后总量 11-16 行。触发即入选，仅在上限内按 priority 裁剪，priority 越小越优先保留。结构类行（固定资产、在建工程、存货、应收账款）排在前列，因为它们由占比阈值触发，命中即说明该主体的资产结构值得单独说一句。",
+    "max_rows": 16,
+    "value_formats": {
+      "yi": "千分位两位小数，单位亿元",
+      "pct": "两位小数加百分号",
+      "x": "两位小数，倍数"
+    },
+    "base": [
+      { "row": "资产总额", "field": "总资产", "fmt": "yi" },
+      { "row": "负债总额", "field": "总负债", "fmt": "yi" },
+      { "row": "所有者权益", "field": "所有者权益", "fmt": "yi", "fallback": "总资产-总负债" },
+      { "row": "资产负债率", "field": "资产负债率", "fmt": "pct", "fallback_calc": "debt_ratio" },
+      { "row": "营业总收入", "field": "营业总收入", "fmt": "yi" },
+      { "row": "净利润", "field": "净利润", "fmt": "yi" },
+      { "row": "经营活动现金流量净额", "field": "经营现金流", "fmt": "yi" },
+      { "row": "短期债务", "field": "短期债务", "fmt": "yi" },
+      { "row": "长期债务", "field": "长期债务", "fmt": "yi" },
+      { "row": "全部债务", "field": "有息债务", "fmt": "yi", "note": "有息口径，表下注明；与另一口径混用须说明差额来源" },
+      { "row": "总资本化比率", "fmt": "pct", "calc": "total_capitalization" }
+    ],
+    "conditional": [
+      { "row": "固定资产", "field": "固定资产", "fmt": "yi", "priority": 1, "when": { "all_of": [ { "type": "ratio_gte", "num": "固定资产", "den": "总资产", "threshold": 0.3 } ] } },
+      { "row": "在建工程", "field": "在建工程合计", "fmt": "yi", "priority": 2, "when": { "all_of": [ { "type": "ratio_gte", "num": "在建工程合计", "den": "总资产", "threshold": 0.1 } ] } },
+      { "row": "存货", "field": "存货", "fmt": "yi", "priority": 3, "when": { "all_of": [ { "type": "ratio_gte", "num": "存货", "den": "总资产", "threshold": 0.15 } ] } },
+      { "row": "应收账款", "field": "应收账款", "fmt": "yi", "priority": 4, "when": { "all_of": [ { "type": "ratio_gte", "num": "应收账款", "den": "总资产", "threshold": 0.15 } ] } },
+      { "row": "营业毛利率", "field": "销售毛利率", "fmt": "pct", "priority": 5, "when": { "any_of": [ { "type": "field_available", "field": "销售毛利率" }, { "type": "field_available", "field": "营业成本" } ] }, "fallback_calc": "gross_margin" },
+      { "row": "EBITDA", "field": "EBITDA", "fmt": "yi", "priority": 6, "when": { "all_of": [ { "type": "field_available", "field": "EBITDA" } ] } },
+      { "row": "货币资金/短期债务", "fmt": "x", "calc": "cash_to_short_debt", "priority": 7, "when": { "all_of": [ { "type": "gt_zero", "field": "短期债务" }, { "type": "field_available", "field": "货币资金" } ] } },
+      { "row": "EBITDA利息保障倍数", "field": "EBITDA利息保障倍数", "fmt": "x", "priority": 8, "when": { "all_of": [ { "type": "field_available", "field": "EBITDA利息保障倍数" } ] } },
+      { "row": "营业成本", "field": "营业成本", "fmt": "yi", "priority": 9, "when": { "all_of": [ { "type": "ratio_gte", "num": "营业成本", "den": "营业总收入", "threshold": 0.6 } ] } },
+      { "row": "投资收益", "field": "投资收益", "fmt": "yi", "priority": 10, "when": { "all_of": [ { "type": "abs_ratio_gte", "num": "投资收益", "den": "利润总额", "threshold": 0.3 } ] } },
+      { "row": "公允价值变动损益", "field": "公允价值变动收益", "fmt": "yi", "priority": 11, "when": { "all_of": [ { "type": "abs_ratio_gte", "num": "公允价值变动收益", "den": "利润总额", "threshold": 0.1 } ] } },
+      { "row": "利润总额", "field": "利润总额", "fmt": "yi", "priority": 12, "when": { "all_of": [ { "type": "ratio_gte", "num": "利润总额", "den": "净利润", "threshold": 1.5 } ] } }
+    ],
+    "exclusive": {
+      "note": "只在该主体披露且其偿付来源被专门监管或被合同锁定时取用，不得因名称带「金融」「投资」而强加",
+      "groups": [
+        { "id": "regulated_financial", "applies_when": "存在监管资本或资产质量指标披露", "rows": ["不良率", "拨备覆盖率", "资本充足率", "流动性比例", "净息差", "综合偿付能力充足率"] },
+        { "id": "contractual_cashflow", "applies_when": "偿付来源锁定于特定资产池或合同现金流", "rows": ["可供分配金额", "分派率", "单位造价", "收费或处理单价"] },
+        { "id": "project_company", "applies_when": "单一项目公司，偿债依赖项目自身现金流", "rows": ["项目投资总额", "已投比例", "项目贷款余额"] }
+      ]
+    },
+    "order_rule": "按「规模 → 结构 → 盈利 → 获现 → 债务 → 偿债」排列，不按重要性打乱；主体前后期行项一致，新增行项时历史各期一并补齐"
+  },
+  "length_policy": {
+    "body_words": [2000, 4000],
+    "mark_items": [3, 5],
+    "commentary_paragraphs": [5, 9],
+    "tables": [1, 2],
+    "financial_periods": [2, 4]
+  },
+  "validation": [
+    "标题行企业全称与基本情况中的名称一致，内部评级代码已填或标【待填】",
+    "正面与关注各不少于3条，均不含数据，且无重复事项",
+    "基本情况只写身份，未混入经营数据与财务指标",
+    "业务构成表合计等于营业总收入，占比合计为100%（有抵销项则说明抵销额）",
+    "分部业务段的产出量、价格、毛利率与业务构成表一致",
+    "前五大资产科目按最新期次金额降序，占比合计不超过100%",
+    "债务段短债+长债=全部债务，且与财务表一致",
+    "财务表每行有值或为 --，无一格凭空推算；行项符合 indicator_layers 的触发条件",
+    "同一事实在摘要层与正文层口径一致（期次、单位、合并范围）",
+    "全文未出现「本期」「去年」「大幅」等不可核实表述"
+  ]
+}
