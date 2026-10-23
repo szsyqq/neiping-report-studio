@@ -43,12 +43,20 @@ body{margin:0;background:#fff;color:var(--ink);
 </head>
 <body>
 <div class="wrap">
-  <div class="top"><h1>版本历史</h1><span class="n">共 14 个版本</span></div>
+  <div class="top"><h1>版本历史</h1><span class="n">共 15 个版本</span></div>
   <p class="lede">每次改动都留了一份当时的页面，点开能直接用——不是截图，是那时的界面接现在的数据接口。
     想回最新版去 <a href="../../">工作台</a>。</p>
   <div class="timeline"><div class="v cur">
-  <div class="hd"><span class="lab">v14</span><span class="at">2026-10-23 17:45</span>
+  <div class="hd"><span class="lab">v15</span><span class="at">2026-10-23 17:57</span>
     <span class="cur-tag">当前</span></div>
+  <h2>每次改动的页面都留了一份</h2>
+  <p class="sum">页头多了「版本」：14 个历史版本，点开是当时的界面接现在的数据接口，能真的检索、生成、导出。</p>
+  <ul><li>页头「版本」打开时间线：每条写标题、一句话和 2–5 项具体改动，当前版标出来，改动可折叠。</li><li>每个版本一份可运行的快照：从 git 取出那天的页面，抹掉写死的本机地址、补上登录态，放在 /v/<id>/ 下。</li><li>顶部横幅说明这是哪一版、接口通不通，右边是「全部版本」与「回到最新版」。</li><li>以后加一版：改 versions.json 里的一条，跑一次 make_versions.py。</li></ul>
+  <div class="note">这一版之后，GitHub Pages 停用，只维护云端一个入口。</div>
+  <a class="open" href="./1023-1757/">打开这个版本 →</a>
+</div><div class="v">
+  <div class="hd"><span class="lab">v14</span><span class="at">2026-10-23 17:45</span>
+    </div>
   <h2>设置收成一处，专题段改成自己加</h2>
   <p class="sum">模型、邮件、财汇、口令四个设置合并到一个面板；或有事项不再自动写，改成点一下就加；数字核实提示能指到原句。</p>
   <ul><li>页头新增「设置」：模型 API、发件邮箱、财汇、访问口令四块放一起，每块标明配置从哪来（环境变量 / 页面填写 / WorkBuddy 已配），密钥只进不出。</li><li>修掉 SMTP 输入框点不到——一个 div 没闭合，后面的输入框被当成了复选框，缩成 16×13 像素；字其实输得进去，所以更难察觉。</li><li>专题段（或有事项、在建工程、政府补助、受限资产）默认不生成，要就点「+ 专题段（可选）」从五个预设里挑，可加多段、可删；每段开头是一句加粗判断句，之前缺样式所以显示不加粗。</li><li>债务段不再尾巴上挂一句「或有事项方面，……」，那正是看着像多出来的那句的来源。</li><li>数字核实提示从一串光秃秃的数字，改成逐条「段名 + 原句 + 疑似指标」，例如「· 95.35%（疑似占比）—— 资产段：『……流动资产占比95.35%……』」。</li></ul>

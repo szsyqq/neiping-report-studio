@@ -84,8 +84,13 @@ def build(keep_pw: bool) -> None:
 
     # 版本历史：/versions 时间线页与 /v/<id>/ 快照都从 site/ 读，
     # 云端没有这份就点开是 404。docs 里是模板与方法论页面，同理。
+    # 只拷这两个子目录：site/index.html 是 Pages 的迁移落地页，云端用不到
+    # （云端的 `/` 由 app/static/index.html 提供），拷过去反而多一个会自指的页面。
     shutil.copy2(BASE / "versions.json", OUT / "versions.json")
-    shutil.copytree(BASE / "site", OUT / "site")
+    for sub in ("docs", "versions"):
+        src = BASE / "site" / sub
+        if src.is_dir():
+            shutil.copytree(src, OUT / "site" / sub, dirs_exist_ok=True)
 
     # 口令：默认沿用上次的，除非要求重新生成
     pw_file = BASE / "_cloud_pw.txt"

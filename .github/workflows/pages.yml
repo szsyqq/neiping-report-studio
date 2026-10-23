@@ -1,8 +1,16 @@
 name: Deploy Pages
 
+# 只在手动触发时部署。
+#
+# 原来每次 push 到 main 都自动发布，等于维护两个站点：WorkBuddy 云端（有后端，
+# 唯一真正的入口）和这个静态站（没后端，打开要连本机）。两份前端得手工保持同步，
+# 漏一次就不一致。2026-10-23 定下只维护云端，这里停掉自动发布。
+#
+# site/ 里现在只有：一个迁移落地页（index.html，让旧链接不至于 404）、
+# docs/（模板与方法论，内容稳定）、versions/（历史快照，冻结在此）。
+# 换句话说，除非要改那张落地页，平时不需要动这个 workflow。
+
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:

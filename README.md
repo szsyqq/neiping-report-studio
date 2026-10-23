@@ -2,7 +2,8 @@
 
 把「外部材料（跟踪评级报告／募集说明书／年报）」变成「内部简评报告」的一套可复用资产：**通用模板 + 写作方法论 + 本地工作台**。工作台接财汇 MCP，输入企业名称即可自动取数、下材料、出草稿、导出 Word。
 
-在线入口：<https://szsyqq.github.io/neiping-report-studio/>
+**唯一入口（云端，自带后端）**：<https://neiping-report.app.workbuddy.host/?sharecode=2WWK44V4BB>
+口令见 `_cloud_pw.txt`（不入库）。GitHub Pages 已停用，见第六节。
 
 ## 一、三件产出
 
@@ -122,15 +123,22 @@ SMTP_USER=me@qq.com SMTP_PASS=授权码 PORT=8770 ... app/server.py
 
 ## 六、部署
 
-### 方式一：云端（不占本机、随时能开）
+**只维护一处：WorkBuddy 云端。** 2026-10-23 定，理由在下面「为什么不维护两份」。
 
 ```
 https://neiping-report.app.workbuddy.host/?sharecode=2WWK44V4BB
 ```
 
-`python3 make_cloud.py` 生成 `_cloud/`（只含程序、模板、依赖与启动脚本，不含 `data/` 里 98MB 历史 PDF），再发布即可。`_cloud/` 与 `_cloud_pw.txt` 都在 `.gitignore` 里——`start.sh` 含财汇与模型密钥。
+### 怎么发
 
-云端与本地共用同一份代码，靠环境变量补上「本机才有的配置」：
+```bash
+python3 make_versions.py        # 改了 versions.json 才需要，重生成历史快照
+python3 make_cloud.py --keep-pw # 生成 _cloud/：程序 + 模板 + docs + versions + 启动脚本
+```
+
+然后用发布工具把 `_cloud/` 发上去（目录里 `start.sh` 含财汇与模型密钥，`_cloud/` 与 `_cloud_pw.txt` 都在 `.gitignore`）。
+
+云端与本机共用同一份代码，靠环境变量补上「本机才有的配置」：
 
 | 本机来源 | 云端替代 |
 |---|---|
@@ -144,9 +152,19 @@ https://neiping-report.app.workbuddy.host/?sharecode=2WWK44V4BB
 2. **Authorization 头会被分享网关剥掉**。登录能过，后续请求全部「未登录」。改为同时下发 `Set-Cookie: nr_auth=…`（HttpOnly、SameSite=Lax），同源场景靠 Cookie，本机跨域仍用 Bearer，下载走 `?t=`。
 3. **网关在缺 sharecode 时回 200 的 HTML 提示页**。前端只判断 `r.ok` 会把「链接不完整」页当成「后端在」，所以探活必须校验回的是 `{ok:true}` 的 JSON。
 
-数据不持久：容器重启后 `data/`（上传件、历史）与 `output/`（导出的 docx）清空。要长期留存，用下面的本机方式。
+数据不持久：容器重启后 `data/`（上传件、历史）与 `output/`（导出的 docx）清空。要长期留存就把成品当场下载，或走下面的本机方式。
 
-### 方式二：本机
+### 为什么不维护两份
+
+原来还有一份 GitHub Pages（`szsyqq.github.io/neiping-report-studio`），它是**纯静态**的：`/api/health` 返回 404，页面打开后要去连本机的 `127.0.0.1:8770`。也就是说它必须依赖这台 Mac 开着服务，手机和外网进不来；每改一次前端还得 `cp app/static/index.html site/index.html` 手工同步，漏一次两边就不一致。
+
+所以停掉自动发布：`.github/workflows/pages.yml` 改成只 `workflow_dispatch`，`site/index.html` 换成一张迁移落地页（说明入口在哪、留三个链接），`site/docs/` 与 `site/versions/` 冻结在最后一次部署——模板与方法论不随功能变，历史快照本来就是历史。
+
+**仓库照常推送**，`git log` 与 `versions/` 仍是完整的改动记录；变的只是「对外只有一个站点」。旧链接不会 404，会落到那张说明页。
+
+要临时恢复自动发布，把 `pages.yml` 的 `on:` 加回 `push: branches: [main]` 即可。
+
+### 本机（开发与存档）
 
 ```bash
 cd /Users/panyp/WorkBuddy/评级报告外部自动生成
@@ -157,20 +175,7 @@ PORT=8770 /Users/panyp/.workbuddy/binaries/python/envs/rating-flow/bin/python ap
 数据全在本机（`data/` 材料与历史、`output/` 成品），关机即停。两个容易踩的点：
 
 - **进程会随终端退出而死**。用 `run_in_background` 或 `caffeinate` 之类的常驻方式启动，别在临时 shell 里 `&`。
-- **从 GitHub Pages 调本机会被 Chrome 的 Private Network Access 拦**。服务端已返 `Access-Control-Allow-Private-Network: true`；若仍连不上，先确认服务在跑（`curl 127.0.0.1:8770/api/health`）。
-
-### GitHub Pages 只放入口页
-
-`site/` 是 Pages 根目录：`index.html` 是工作台前端，`docs/` 放模板与方法论的 HTML/JSON/DOCX。
-
-```bash
-cd /Users/panyp/WorkBuddy/评级报告外部自动生成
-python3 app/md2html.py                # 模板与方法论 md → 可直接阅读的 html
-cp app/static/index.html site/index.html
-git add -A && git commit -m "update" && git push
-```
-
-**为什么 Pages 上的页面必须连本机后端**：财汇 MCP 不返回 `Access-Control-Allow-Origin`，浏览器直连会被 CORS 拦死。因此在线页面定位是「入口」——打开后它去 ping `http://127.0.0.1:8770`，连通就正常用（跨域头已由 `server.py` 放开，服务只监听本机回环）；不通就显示启动命令，并允许在页面上改服务地址（存 `localStorage.apiBase`）。
+- **从别的域名调本机会被 Chrome 的 Private Network Access 拦**。服务端已返 `Access-Control-Allow-Private-Network: true`；若仍连不上，先确认服务在跑（`curl 127.0.0.1:8770/api/health`）。
 
 ## 七、版本历史
 
@@ -210,7 +215,7 @@ python3 make_versions.py     # 从 git 取出该 tag 的 app/static/index.html�
 app/        server.py（HTTP 服务）jobs.py（长任务进度）docx_writer.py（排版）
             facts.py（公告检索与清单）generator.py（生成与校验）
             mcp_client.py（财汇）pdf_text.py（PDF 解析）llm.py（模型）usage.py（用量统计）
-site/       GitHub Pages 站点（index.html + docs/ + versions/ 历史快照）
+site/       Pages 落地页（index.html，已停用）+ docs/ + versions/ 历史快照
 data/       下载的原始 PDF；uploads/ 存上传件；usage.json 是用量统计（不入库）
 output/     导出的 docx 与草稿 JSON
 versions.json  版本清单（每次改动一条，含标题与逐项说明）
