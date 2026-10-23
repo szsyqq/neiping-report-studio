@@ -494,8 +494,15 @@ class Handler(BaseHTTPRequestHandler):
                 else:
                     self._json(job)
             elif p == "/api/models":
-                models = llm.list_models()
-                self._json({"models": models, "default": llm.pick_default(models)})
+                q = parse_qs(urlparse(self.path).query)
+                if (q.get("refresh") or [""])[0] in ("1", "true"):
+                    llm.check_all()
+                models, skipped = llm.usable_models()
+                cache = llm.load_health()
+                self._json({"models": models, "default": llm.pick_default(models),
+                            "skipped": skipped, "checked_at": cache.get("ts") or "",
+                            "reasons": {k: v.get("why") for k, v in
+                                        (cache.get("results") or {}).items() if not v.get("ok")}})
             elif p == "/api/health":
                 self._json({"ok": True, "time": datetime.now().isoformat()})
             elif p == "/api/stats":
@@ -566,6 +573,8 @@ def main():
     port = int(os.environ.get("PORT") or 8770)
     host = os.environ.get("HOST") or "127.0.0.1"
     srv = ThreadingHTTPServer((host, port), Handler)
+    # 模型体检放到后台跑：8 个端点逐个探活要十几秒，别挡住首页
+    threading.Thread(target=lambda: llm.check_all(), daemon=True, name="model-probe").start()
     print(f"内评简评报告工作台：http://{host}:{port}")
     try:
         srv.serve_forever()

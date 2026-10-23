@@ -7,9 +7,11 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import urllib.error
 import urllib.request
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -79,6 +81,90 @@ def list_models() -> list[dict]:
             "context": m.get("maxInputTokens"),
         })
     return out
+
+
+# ── 模型体检 ────────────────────────────────────────────────────────────
+# models.json 里有些条目在 WorkBuddy 内能用（它会补请求头、拼路径），
+# 从本进程直接调却不成立：OpenCode 那组要 x-opencode-session，
+# GLM-5.3-Flash 的 url 少了 /chat/completions，sensenova 的 id 对不上。
+# 下拉里列出来就是让人选一个必报错的，所以先探活，只列通得过的。
+HEALTH_JSON = Path(__file__).resolve().parent.parent / "data" / "model_health.json"
+PROBE_UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/131.0 Safari/537.36")
+
+
+def probe_model(m: dict, timeout: int = 20) -> tuple[bool, str]:
+    """发一个 max_tokens=1 的请求，只看端点认不认这条路径与模型名。
+
+    带浏览器 UA：有些网关按 UA 拦请求，用 Python 默认 UA 会拿到 403，
+    那是假阴性——失败原因也会记成 Cloudflare 而不是真实原因。
+    """
+    body = {"model": m["id"], "messages": [{"role": "user", "content": "hi"}],
+            "max_tokens": 1, "stream": False}
+    req = urllib.request.Request(
+        m["url"], data=json.dumps(body, ensure_ascii=False).encode(),
+        headers={"Content-Type": "application/json",
+                 "Authorization": f"Bearer {m['apiKey']}",
+                 "User-Agent": PROBE_UA, "Accept": "application/json"},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            r.read(64)
+        return True, ""
+    except urllib.error.HTTPError as e:
+        raw = e.read().decode("utf-8", "ignore")
+        msg = raw
+        try:
+            j = json.loads(raw)
+            err = j.get("error")
+            msg = (err.get("message") if isinstance(err, dict) else err) or j.get("message") or raw
+        except (json.JSONDecodeError, AttributeError):
+            pass
+        return False, f"HTTP {e.code}: {str(msg)[:90]}"
+    except Exception as e:  # noqa: BLE001 —— 网络层的什么都算不通
+        return False, f"{type(e).__name__}: {e}"[:100]
+
+
+def load_health() -> dict:
+    if not HEALTH_JSON.exists():
+        return {}
+    try:
+        return json.loads(HEALTH_JSON.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+def check_all(force: bool = False) -> dict:
+    """逐个探活并落盘。结果按 id 存，附时间戳与失败原因。"""
+    cache = load_health()
+    got: dict = {}
+    for m in list_models():
+        full = _get_model(m["id"])
+        ok, why = probe_model(full)
+        got[m["id"]] = {"ok": ok, "why": why}
+    cache = {"ts": datetime.now().isoformat(timespec="seconds"), "results": got}
+    try:
+        HEALTH_JSON.parent.mkdir(parents=True, exist_ok=True)
+        tmp = HEALTH_JSON.with_suffix(".tmp")
+        tmp.write_text(json.dumps(cache, ensure_ascii=False, indent=1), encoding="utf-8")
+        os.replace(tmp, HEALTH_JSON)
+    except OSError:
+        pass
+    return cache
+
+
+def usable_models() -> tuple[list[dict], int]:
+    """返回（可用的模型, 未通过数量）。没体检过就只给默认那一个。"""
+    models = list_models()
+    cache = load_health().get("results") or {}
+    if not cache:
+        d = pick_default(models)
+        return ([m for m in models if m["id"] == d], max(0, len(models) - 1))
+    ok = [m for m in models if (cache.get(m["id"]) or {}).get("ok")]
+    if not ok:  # 全挂时别让下拉空着，至少留默认那条让人能看到报错
+        d = pick_default(models)
+        ok = [m for m in models if m["id"] == d]
+    return ok, max(0, len(models) - len(ok))
 
 
 def pick_default(models: list[dict]) -> str | None:

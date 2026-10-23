@@ -420,8 +420,18 @@ async function pingConn(){
 async function loadModels(){
   try{
     const d = await (await fetch(apiUrl("/api/models"))).json();
-    $("#model").innerHTML = d.models.map(m =>
+    if(!(d.models || []).length){
+      $("#model").innerHTML = `<option>没有可用模型</option>`;
+      return;
+    }
+    let h = d.models.map(m =>
       `<option value="${esc(m.id)}" ${m.id === d.default ? "selected" : ""}>${esc(m.name)}</option>`).join("");
+    if(d.skipped) h += `<option disabled>另有 ${d.skipped} 个模型未通过验证</option>`;
+    $("#model").innerHTML = h;
+    const why = Object.entries(d.reasons || {});
+    $("#model").title = why.length
+      ? "未通过验证：\n" + why.map(([k, v]) => `${k} — ${v}`).join("\n")
+      : "";
   }catch(e){
     $("#model").innerHTML = `<option>未连接服务</option>`;
   }

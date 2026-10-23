@@ -46,6 +46,10 @@ PORT=8770 /Users/panyp/.workbuddy/binaries/python/envs/rating-flow/bin/python ap
 
 **进度不是装饰**：四步都是后台任务（`app/jobs.py`），前端按 `job_id` 轮询真实百分比——检索显示查到哪个关键词，读取材料显示每一份在「下载 12.4MB」还是「解析 74/107 页」，生成显示已用时。没开始的步骤整体灰掉，已完成的打勾。
 
+**模型从哪来**：不另配 Key，直接读 WorkBuddy 自己的 `~/.workbuddy/models.json`（`url` + `apiKey` 都用它），调 OpenAI 兼容的 `/chat/completions`。所以 token 记在模型厂商的账单上，不占 WorkBuddy 额度；目前实际跑的是 `deepseek-v4-flash`（`api.deepseek.com`）。
+
+这份配置里的条目并非都能从本进程直接调：OpenCode Go 那组要求 `x-opencode-session` 请求头（WorkBuddy 自己会补，我们不补），`GLM-5.3-Flash` 的 url 少了 `/chat/completions`，`sensenova` 的模型 id 对不上。全部列进下拉等于让人选一个必报错的，所以加了**模型体检**：服务启动时后台线程对每个模型发一个 `max_tokens=1` 的请求探活，结果落 `data/model_health.json`，下拉只列通得过的，其余折成一行「另有 N 个模型未通过验证」（鼠标悬停看各自原因）。`GET /api/models?refresh=1` 可强制重测。
+
 对应接口：`POST /api/jobs/{search|fetch|generate}` 起任务并拿到 `job_id`，`GET /api/jobs/<id>` 读进度（含逐份材料的明细）；`POST /api/upload?name=文件名` 收 PDF；`/api/export` 仍是同步接口（排版只需秒级）；`GET /api/bundle?company=…&title=…` 列可打包的文件，`POST /api/bundle` 按勾选打 zip（同步返回下载地址）；`GET /api/history` 列历史、`GET /api/history/<id>` 取全文。
 
 **调用统计**：页头右上角一行「累计 N 次 · 财汇 M 点」，点开是明细——今日与累计的生成次数、财汇点数与 token，输入输出拆分、单次平均耗时、缓存命中率，检索／读取／生成／导出四类动作的累计次数，以及**最近调用逐条记录**（时间、动作、主体、这一下花了多少点或多少 token）。不按月切，看的是「这一次点了几下、累计用了多少」。数字全部来自模型返回的 `usage`（端点不回时才按字符估算并标「含估算」）。
