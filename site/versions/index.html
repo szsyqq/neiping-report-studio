@@ -43,12 +43,20 @@ body{margin:0;background:#fff;color:var(--ink);
 </head>
 <body>
 <div class="wrap">
-  <div class="top"><h1>版本历史</h1><span class="n">共 16 个版本</span></div>
+  <div class="top"><h1>版本历史</h1><span class="n">共 17 个版本</span></div>
   <p class="lede">每次改动都留了一份当时的页面，点开能直接用——不是截图，是那时的界面接现在的数据接口。
     想回最新版去 <a href="../../">工作台</a>。</p>
   <div class="timeline"><div class="v cur">
-  <div class="hd"><span class="lab">v16</span><span class="at">2026-10-23 18:30</span>
+  <div class="hd"><span class="lab">v17</span><span class="at">2026-10-23 21:40</span>
     <span class="cur-tag">当前</span></div>
+  <h2>空行说清楚了，手机上也能改</h2>
+  <p class="sum">加粗句后面那条莫名其妙的空白去掉了；段与段之间统一一个空行；摘要多了候选观点；手机打开是能用的版式。</p>
+  <ul><li>「加粗句后面多一条空白」不是段落间距错了，是输入框的 rows：给 2 行就是最少占两行，一句话也占两行，多出来的那条就是它。改成按内容定高。</li><li>段与段之间的空行收成一个值（原来各处 8/12/22/26px 手调，必然对不齐）；工具条新增「段落空行：有/无」，页面和导出的 Word 一起变。</li><li>Word 里补上总述段与业务构成表之间漏掉的空行，删掉文末多余的空段（那会多出一页空白）。</li><li>摘要多了「候选观点」：模型写完正文回头抽出 5–8 条够格但没进定稿的判断，列在正面/关注下面，点一条就加进去。</li><li>手机上：顶栏变成一条可横滑的动作带（折行要占半屏）、两栏合成一条滚动轴、面板改成从底部弹出、表格整表左右滑且首列不动、删除键常显且加大、输入框 16px（否则 iPhone 一聚焦就放大整页）。</li><li>正文进入视野后右下角浮出「↑ 流程 / 正文 ↓」，生成完自动滚到正文。</li></ul>
+  
+  <a class="open" href="./1023-2140/">打开这个版本 →</a>
+</div><div class="v">
+  <div class="hd"><span class="lab">v16</span><span class="at">2026-10-23 18:30</span>
+    </div>
   <h2>口令统一成 ce-shi</h2>
   <p class="sum">本机与云端用同一个口令 ce-shi；界面上不再写死口令字面量。</p>
   <ul><li>默认口令 ceshi → ce-shi，本机重启即生效，云端已重新发布。</li><li>旧 token 自动失效：签名密钥由口令派生，换口令等于全体踢下线，不用另做撤销。</li><li>登录后的提示与设置里的徽标改成「仍是默认口令」，不再把口令字面量印在页面上。</li><li>make_cloud.py 默认沿用上次口令，要换用 --new-pw 或 --password 指定，免得每次发布都要重新告知一遍。</li></ul>
