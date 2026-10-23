@@ -17,6 +17,23 @@ from typing import Any
 
 MODELS_JSON = Path.home() / ".workbuddy" / "models.json"
 
+# 云端部署没有 ~/.workbuddy/models.json，用环境变量配一个模型就够：
+#   LLM_BASE_URL=https://api.deepseek.com/chat/completions
+#   LLM_API_KEY=sk-...
+#   LLM_MODEL=deepseek-v4-flash
+# 三个都给齐时优先用环境变量，忽略本地文件。
+_ENV_MODEL = ("LLM_BASE_URL", "LLM_API_KEY", "LLM_MODEL")
+
+
+def _env_model() -> dict | None:
+    url, key, mid = (os.environ.get(k, "").strip() for k in _ENV_MODEL)
+    if not (url and key and mid):
+        return None
+    return {"id": mid, "name": mid, "vendor": "env", "url": url, "apiKey": key,
+            "maxInputTokens": int(os.environ.get("LLM_MAX_INPUT") or 131072),
+            "maxOutputTokens": int(os.environ.get("LLM_MAX_OUTPUT") or 8192)}
+
+
 # 适合长文写作的偏好顺序（上下文大、中文好、性价比高）
 PREFERRED = ["deepseek-v4", "kimi-k2", "glm-5.1", "qwen3.7-plus", "qwen3.7-max", "glm-5"]
 
@@ -67,6 +84,10 @@ def _note_usage(targets: list[dict], model_id: str, usage: dict | None,
 
 
 def list_models() -> list[dict]:
+    env = _env_model()
+    if env:
+        return [{"id": env["id"], "name": env["name"], "vendor": env["vendor"],
+                 "context": env["maxInputTokens"]}]
     if not MODELS_JSON.exists():
         return []
     data = json.loads(MODELS_JSON.read_text(encoding="utf-8"))
@@ -176,6 +197,12 @@ def pick_default(models: list[dict]) -> str | None:
 
 
 def _get_model(model_id: str) -> dict:
+    env = _env_model()
+    if env and model_id == env["id"]:
+        return env
+    if not MODELS_JSON.exists():
+        raise RuntimeError("未找到模型配置：本地需要 ~/.workbuddy/models.json，"
+                           "云端需要 LLM_BASE_URL / LLM_API_KEY / LLM_MODEL")
     data = json.loads(MODELS_JSON.read_text(encoding="utf-8"))
     for m in data:
         if m.get("id") == model_id:

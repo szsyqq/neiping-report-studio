@@ -495,6 +495,10 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        # Chrome 的 Private Network Access：公网页面（GitHub Pages）请求本机地址前
+        # 会先发预检并带 Access-Control-Request-Private-Network，不认这个头就直接拦，
+        # 页面上表现为「连不上本机服务」——服务其实活着。头加了才放行。
+        self.send_header("Access-Control-Allow-Private-Network", "true")
         for k, v in (extra or {}).items():
             self.send_header(k, v)
         self.end_headers()
@@ -508,12 +512,21 @@ class Handler(BaseHTTPRequestHandler):
         except (BrokenPipeError, ConnectionResetError):
             pass
 
-    def _json(self, data: dict, code: int = 200):
-        self._send(code, json.dumps(data, ensure_ascii=False).encode(), "application/json; charset=utf-8")
+    def _json(self, data: dict, code: int = 200, extra: dict | None = None):
+        self._send(code, json.dumps(data, ensure_ascii=False).encode(),
+                   "application/json; charset=utf-8", extra)
 
     # ── 口令闸门 ────────────────────────────────────────────────────
     def _token(self) -> str:
-        """从 Authorization 头取 token；下载走浏览器直连，允许用 ?t= 传。"""
+        """三种取法，按场景选：
+        - Cookie nr_auth：同源（云端）最稳，浏览器自动带，代理也不动它
+        - Authorization: Bearer：本机跨域（Pages → 127.0.0.1），Cookie 会因跨站被拦
+        - ?t=：下载是浏览器直接跳转，带不了头
+        """
+        for c in (self.headers.get("Cookie") or "").split(";"):
+            k, _, v = c.strip().partition("=")
+            if k == "nr_auth" and v:
+                return v.strip()
         auth = self.headers.get("Authorization") or ""
         if auth.lower().startswith("bearer "):
             return auth[7:].strip()
@@ -634,11 +647,12 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({"error": "口令不对"}, 401)
                 return
             sess = auth_mod.issue()
-            self._json({"ok": True, **sess, "default_password": auth_mod.is_default()})
+            self._json({"ok": True, **sess, "default_password": auth_mod.is_default()},
+                       extra={"Set-Cookie": auth_mod.cookie(sess["token"])})
             return
         if p == "/api/logout":
             auth_mod.revoke(self._token())
-            self._json({"ok": True})
+            self._json({"ok": True}, extra={"Set-Cookie": auth_mod.cookie("", clear=True)})
             return
         if p == "/api/password":
             if not self._authed():

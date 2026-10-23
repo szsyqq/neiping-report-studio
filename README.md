@@ -120,7 +120,46 @@ SMTP_USER=me@qq.com SMTP_PASS=授权码 PORT=8770 ... app/server.py
 - **导出前再清一遍**：`api_export` 会对前端传来的草稿跑 `generator.polish_draft()`——页面上手工改的文字同样要过语言清理与去重，因为 Word 才是最终形态。清理了几处会在导出提示里写明。
 - **单独复用提示词**：页面上的「复制提示词」把系统提示＋用户提示整段复制出来，可贴到 WorkBuddy 用更强的模型精修同一份材料。
 
-## 六、部署到 GitHub Pages
+## 六、部署
+
+### 方式一：云端（不占本机、随时能开）
+
+```
+https://neiping-report.app.workbuddy.host/?sharecode=2WWK44V4BB
+```
+
+`python3 make_cloud.py` 生成 `_cloud/`（只含程序、模板、依赖与启动脚本，不含 `data/` 里 98MB 历史 PDF），再发布即可。`_cloud/` 与 `_cloud_pw.txt` 都在 `.gitignore` 里——`start.sh` 含财汇与模型密钥。
+
+云端与本地共用同一份代码，靠环境变量补上「本机才有的配置」：
+
+| 本机来源 | 云端替代 |
+|---|---|
+| `~/.workbuddy/models.json` | `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL` |
+| `~/.workbuddy/mcp.json` 的财汇条目 | `CAIHUI_MCP_URL` / `CAIHUI_MCP_KEY` |
+| `data/auth.json` 或默认口令 | `REPORT_PASSWORD` |
+
+**云端的三条实测教训**（都已修，记录下来免得再踩）：
+
+1. **会话不能存文件**。原来 token 的 sha256 写 `data/sessions.json`，云端表现为「登录成功、紧接着带 token 就 401」——容器多副本/重启，写进去的读不回。改成 HMAC 自签 token：密钥由口令派生，服务端不存任何会话，改口令即全部失效。
+2. **Authorization 头会被分享网关剥掉**。登录能过，后续请求全部「未登录」。改为同时下发 `Set-Cookie: nr_auth=…`（HttpOnly、SameSite=Lax），同源场景靠 Cookie，本机跨域仍用 Bearer，下载走 `?t=`。
+3. **网关在缺 sharecode 时回 200 的 HTML 提示页**。前端只判断 `r.ok` 会把「链接不完整」页当成「后端在」，所以探活必须校验回的是 `{ok:true}` 的 JSON。
+
+数据不持久：容器重启后 `data/`（上传件、历史）与 `output/`（导出的 docx）清空。要长期留存，用下面的本机方式。
+
+### 方式二：本机
+
+```bash
+cd /Users/panyp/WorkBuddy/评级报告外部自动生成
+PORT=8770 /Users/panyp/.workbuddy/binaries/python/envs/rating-flow/bin/python app/server.py
+# 浏览器打开 http://127.0.0.1:8770
+```
+
+数据全在本机（`data/` 材料与历史、`output/` 成品），关机即停。两个容易踩的点：
+
+- **进程会随终端退出而死**。用 `run_in_background` 或 `caffeinate` 之类的常驻方式启动，别在临时 shell 里 `&`。
+- **从 GitHub Pages 调本机会被 Chrome 的 Private Network Access 拦**。服务端已返 `Access-Control-Allow-Private-Network: true`；若仍连不上，先确认服务在跑（`curl 127.0.0.1:8770/api/health`）。
+
+### GitHub Pages 只放入口页
 
 `site/` 是 Pages 根目录：`index.html` 是工作台前端，`docs/` 放模板与方法论的 HTML/JSON/DOCX。
 

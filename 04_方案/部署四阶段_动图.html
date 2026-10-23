@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>四个阶段 · 单图逐层展开</title>
+<style>
+:root{
+  --bg:#f4f6f9; --card:#fff; --ink:#131b24; --ink2:#3f4d5d; --ink3:#6c7a8a;
+  --line:#e2e7ee; --brand:#1f3a5f; --brandbg:#edf3fa;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  -webkit-font-smoothing:antialiased}
+
+.top{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.top-in{max-width:1040px;margin:0 auto;padding:0 24px;height:52px;display:flex;align-items:center;gap:10px}
+.logo{display:flex;align-items:center;gap:9px;font-size:13.5px;font-weight:600}
+.logo .dot{width:8px;height:8px;border-radius:50%;background:var(--brand)}
+.logo em{font-style:normal;font-weight:400;color:var(--ink3);font-size:12px}
+.top .hint{margin-left:auto;font-size:12px;color:var(--ink3)}
+
+.wrap{max-width:1040px;margin:0 auto;padding:34px 24px 56px}
+h1{font-size:clamp(21px,2.4vw,26px);line-height:1.4;margin:0 0 8px;font-weight:600;letter-spacing:-.3px}
+.lead{font-size:14.5px;color:var(--ink2);margin:0 0 24px;max-width:790px;line-height:1.7}
+
+/* 步骤条 */
+.steps{display:flex;gap:0;align-items:stretch;margin:0 0 14px}
+.st{flex:1;display:flex;align-items:center;gap:8px;justify-content:center;background:none;border:0;
+  font:inherit;font-size:12.5px;color:var(--ink3);cursor:pointer;padding:9px 4px;border-radius:8px;
+  transition:color .25s,background .25s}
+.st i{font-style:normal;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;
+  font-size:11.5px;font-weight:600;background:#e7ecf3;color:#7c8b9c;transition:all .3s}
+.st.on{color:var(--brand);background:var(--brandbg);font-weight:600}
+.st.on i{background:var(--brand);color:#fff}
+.st:hover i{background:#c9d8e8}
+.st.on:hover i{background:var(--brand)}
+
+
+/* 舞台 */
+.deck{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 10px 8px}
+.deck svg{display:block;width:100%;height:auto}
+
+/* 分层显隐 */
+[data-s]{transition:opacity .45s ease}
+[data-s].hide{opacity:0}
+[data-s].fresh{animation:grow .62s cubic-bezier(.2,.75,.3,1) both}
+@keyframes grow{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}
+
+/* 基础图形 */
+.bx{stroke-width:1}
+.bx.h{fill:#fdf6e9;stroke:#e3c48d}
+.bx.i{fill:#eef1f6;stroke:#ccd6e2}
+.bx.s{fill:#edf3fa;stroke:#b9cde4}
+.bx.x{fill:#f3eef9;stroke:#d5c8e8}
+.bx.d{fill:#eef7f1;stroke:#c6e3d3}
+.bx.w{fill:#fff;stroke:#dfe6ef}
+.t1{font-size:12.5px;font-weight:600;fill:#1b2836;text-anchor:middle}
+.t2{font-size:10.5px;fill:#6c7a8a;text-anchor:middle}
+.t3{font-size:10.5px;fill:#8a97a6;text-anchor:middle}
+.tb{font-size:12.5px;font-weight:600;fill:#1f3a5f;text-anchor:start}
+.ln{stroke:#9fb0c2;stroke-width:1.4;fill:none}
+.flow{stroke-dasharray:6 5;animation:dash 1.1s linear infinite}
+@keyframes dash{to{stroke-dashoffset:-11}}
+.dashm{stroke:#b9a6cc;stroke-width:1.2;fill:none;stroke-dasharray:4 3}
+.zone{fill:#f7fbff;stroke:#9db6d0;stroke-width:1.3;stroke-dasharray:7 6}
+.zone-pulse{animation:zp 2.2s ease-in-out infinite}
+@keyframes zp{0%,100%{stroke-opacity:.5}50%{stroke-opacity:1}}
+.cruise{fill:none;stroke:#1f3a5f;stroke-width:1.4;stroke-dasharray:9 7;opacity:.5}
+
+/* 说明条 */
+.cap{display:flex;gap:14px;align-items:flex-start;background:var(--card);border:1px solid var(--line);
+  border-radius:12px;padding:14px 18px;margin:12px 0 0}
+.cap .k{font-size:12px;font-weight:600;color:var(--brand);background:var(--brandbg);border:1px solid #c3d5e8;
+  border-radius:5px;padding:1px 8px;white-space:nowrap}
+.cap .t{font-size:14px;color:var(--ink2);line-height:1.65}
+.cap .t b{color:var(--ink)}
+.more{margin:12px 0 0;font-size:12.5px;color:var(--ink3)}
+.more a{color:#2f5c8f;text-decoration:none;border-bottom:1px solid #c3d5e8}
+
+@media (max-width:760px){ .st{font-size:11px} .st i{display:none}
+  .deck{overflow-x:auto} .deck svg{min-width:700px} }
+@media print{ .top,.steps{display:none} [data-s]{opacity:1!important} }
+</style>
+</head>
+<body>
+
+<div class="top"><div class="top-in">
+  <div class="logo"><span class="dot"></span>四个阶段 <em>运行环境演进</em></div>
+  <div class="hint">点击阶段名称切换；各阶段元素在同一张图上叠加呈现</div>
+</div></div>
+
+<div class="wrap">
+  <h1>同一套生成逻辑，在一张图上逐层展开</h1>
+  <p class="lead">取数、装配、校验与排版四个环节始终一致，变化的是运行位置、受理入口数量与系统对接方式。四个阶段绘制于同一张图：已呈现的内容予以保留，新增部分在外层叠加。点击上方阶段名称切换，新增元素淡入显示。</p>
+
+  <div class="steps">
+    <button class="st on" data-s="1"><i>1</i>本地运行</button>
+    <button class="st" data-s="2"><i>2</i>部门服务器</button>
+    <button class="st" data-s="3"><i>3</i>多入口</button>
+    <button class="st" data-s="4"><i>4</i>系统融合</button>
+  </div>
+
+  <div class="deck">
+    <svg id="map" viewBox="0 0 880 400" role="img" aria-label="运行环境四个阶段的叠加图">
+      <defs>
+        <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M0,0 L10,5 L0,10 z" fill="#9fb0c2"/>
+        </marker>
+      </defs>
+
+      <!-- 阶段四才加的外层：CRUISE -->
+      <g data-s="4">
+        <rect class="cruise" x="225" y="56" width="640" height="248" rx="18"/>
+        <rect x="225" y="34" width="76" height="22" rx="5" fill="#1f3a5f"/>
+        <text x="263" y="49" style="font-size:11.5px;fill:#fff;text-anchor:middle">CRUISE</text>
+        <text class="t3" x="309" y="49" style="text-anchor:start">含外部版</text>
+      </g>
+
+      <!-- 入口：同一格，逐段更新 -->
+      <rect class="bx h" data-s="1 2 4" x="26" y="96" width="150" height="56" rx="9"/>
+      <rect class="bx i" data-s="3" x="26" y="96" width="150" height="56" rx="9"/>
+      <text class="t1" data-s="1 2" x="101" y="120">分析师</text>
+      <text class="t1" data-s="3" x="101" y="120">电脑网页</text>
+      <text class="t1" data-s="4" x="101" y="120">分析师</text>
+      <text class="t2" data-s="1" x="101" y="138">输入企业全称</text>
+      <text class="t2" data-s="2" x="101" y="138">电脑或移动端访问</text>
+      <text class="t2" data-s="3" x="101" y="138">浏览器直接访问</text>
+      <text class="t2" data-s="4" x="101" y="138">在 CRUISE 内发起生成</text>
+
+      <text class="t3" data-s="1" x="101" y="200">单人独立配置</text>
+      <text class="t3" data-s="1" x="101" y="218">部署于使用人电脑</text>
+      <text class="t3" data-s="2" x="101" y="200">同一套配置</text>
+      <text class="t3" data-s="2" x="101" y="218">部署于部门电脑</text>
+
+      <!-- 阶段三才长出来的另外三个入口 -->
+      <rect class="bx i" data-s="3" x="26" y="162" width="150" height="52" rx="8"/>
+      <text class="t1" data-s="3" x="101" y="185">移动端网页</text>
+      <text class="t2" data-s="3" x="101" y="202">移动办公可用</text>
+
+      <rect class="bx i" data-s="3" x="26" y="222" width="150" height="52" rx="8"/>
+      <text class="t1" data-s="3" x="101" y="245">企业微信 Bot</text>
+      <text class="t2" data-s="3" x="101" y="262">接入微信，提交需求</text>
+
+      <!-- 入口汇入 -->
+      <line class="ln flow" data-s="1 2 3 4" x1="178" y1="124" x2="241" y2="118" marker-end="url(#ar)"/>
+      <line class="ln flow" data-s="3" x1="178" y1="188" x2="241" y2="148" marker-end="url(#ar)"/>
+      <line class="ln flow" data-s="3" x1="178" y1="248" x2="241" y2="178" marker-end="url(#ar)"/>
+
+      <!-- 运行环境：位置不动，只换标签和内文 -->
+      <rect class="zone zone-pulse" data-s="1 2 3 4" x="245" y="96" width="390" height="150" rx="14"/>
+      <rect data-s="1 2 3 4" x="245" y="74" width="70" height="22" rx="5" fill="#1f3a5f"/>
+      <text data-s="1 2 3 4" x="280" y="89" style="font-size:11.5px;fill:#fff;text-anchor:middle">运行环境</text>
+      <text class="tb" data-s="1" x="325" y="90">个人电脑</text>
+      <text class="tb" data-s="2 3" x="325" y="90">部门服务器（常开）</text>
+      <text class="tb" data-s="4" x="325" y="90">CRUISE 内部</text>
+
+      <rect class="bx w" data-s="1 2 3 4" x="265" y="112" width="350" height="116" rx="10"/>
+      <text class="t2" data-s="1" x="440" y="132">本机部署一套，密钥与模型均配置在本机</text>
+      <text class="t2" data-s="2" x="440" y="132">配置与阶段一相同，仅部署位置改为部门电脑</text>
+      <text class="t2" data-s="3" x="440" y="132">受理入口改变，内部流程不变</text>
+      <text class="t2" data-s="4" x="440" y="132">生成、审稿、归档均在系统内完成，不经邮件流转</text>
+
+      <rect class="bx s" data-s="1 2 3 4" x="287" y="148" width="146" height="52" rx="8"/>
+      <text class="t1" data-s="1 2 3 4" x="360" y="172">生成服务</text>
+      <text class="t2" data-s="1 2 3 4" x="360" y="189">取数·装配·校验</text>
+      <line class="ln flow" data-s="1 2 3 4" x1="437" y1="174" x2="463" y2="174" marker-end="url(#ar)"/>
+
+      <rect class="bx d" data-s="1 2 3 4" x="467" y="148" width="128" height="52" rx="8"/>
+      <text class="t1" data-s="1 2 3" x="531" y="172">内评报告</text>
+      <text class="t2" data-s="1 2 3" x="531" y="189">外评一并打包</text>
+      <text class="t1" data-s="4" x="531" y="172">草稿库</text>
+      <text class="t2" data-s="4" x="531" y="189">外评同包归档</text>
+
+      <!-- 出口：位置不动，只换文案 -->
+      <line class="ln flow" data-s="1 2 3 4" x1="639" y1="182" x2="668" y2="182" marker-end="url(#ar)"/>
+      <rect class="bx d" data-s="1 2 3 4" x="672" y="146" width="182" height="72" rx="9"/>
+      <text class="t1" data-s="1" x="763" y="172">送达分析师</text>
+      <text class="t2" data-s="1" x="763" y="190">邮箱／快乐平安／目录</text>
+      <text class="t1" data-s="2 3" x="763" y="172">按人送达</text>
+      <text class="t2" data-s="2 3" x="763" y="190">各自邮箱／快乐平安</text>
+      <text class="t1" data-s="4" x="763" y="172">归档</text>
+      <text class="t2" data-s="4" x="763" y="190">版本留痕，可追溯</text>
+
+      <!-- 始终出网 -->
+      <rect class="bx x" data-s="1 2 3 4" x="300" y="340" width="280" height="44" rx="8"/>
+      <text class="t2" data-s="1 2 3 4" x="440" y="367">财汇 MCP · 评级官网 · 模型接口</text>
+      <line class="dashm" data-s="1 2 3 4" x1="440" y1="336" x2="440" y2="250" marker-end="url(#ar)"/>
+    </svg>
+  </div>
+
+  <div class="cap">
+    <span class="k" id="capK">阶段一</span>
+    <div class="t" id="capT"><b>本地运行。</b>整套流程运行于使用人本人电脑，单人独立配置，成稿亦留存于本机。</div>
+  </div>
+
+  <p class="more">各走法的完整流程图见 <a href="部署思路_流程图.html">部署思路_流程图.html</a>。</p>
+</div>
+
+<script>
+(function(){
+  var map=document.getElementById('map'),
+      els=[].slice.call(map.querySelectorAll('[data-s]')),
+      btns=[].slice.call(document.querySelectorAll('.st')),
+      capK=document.getElementById('capK'), capT=document.getElementById('capT'),
+      i=1;
+
+  var caps={
+    1:['阶段一','<b>本地运行。</b>整套流程运行于使用人本人电脑；token 与 MCP 由个人承担费用，提示词各自留档。'],
+    2:['阶段二','<b>部门服务器。</b>同一套配置部署至部门常开电脑，小组成员通过外网地址访问；token 与算力由部门承担。'],
+    3:['阶段三','<b>多个入口。</b>电脑网页、移动端网页与企业微信 Bot 均可受理；底层仍为同一台服务器、同一套逻辑。'],
+    4:['阶段四','<b>与系统融合。</b>外层接入 CRUISE，生成、草稿、审稿与归档均在系统内完成，报告不再经由邮件流转。']
+  };
+
+  function set(n, animate){
+    i=n;
+    var count=0;
+    els.forEach(function(el){
+      var list=(el.getAttribute('data-s')||'').split(/\s+/),
+          on=list.indexOf(String(n))>=0,
+          wasOn=list.indexOf(String(n-1))>=0;
+      el.classList.remove('fresh');
+      el.style.animationDelay='';
+      if(on){
+        el.classList.remove('hide');
+        if(animate && n>1 && !wasOn){
+          el.style.animationDelay=(count*0.05)+'s';
+          void el.getBoundingClientRect();
+          el.classList.add('fresh');
+          count++;
+        }
+      }else{
+        el.classList.add('hide');
+      }
+    });
+    btns.forEach(function(b,k){ b.classList.toggle('on', k===n-1); });
+    capK.textContent=caps[n][0];
+    capT.innerHTML=caps[n][1];
+  }
+
+  function go(n){
+    n = n<1 ? 4 : (n>4 ? 1 : n);
+    if(n===i) return;
+    set(n, true);
+  }
+
+  btns.forEach(function(b){ b.addEventListener('click', function(){ go(+b.getAttribute('data-s')); }); });
+  document.addEventListener('keydown', function(e){
+    if(e.key==='ArrowRight') go(i+1);
+    if(e.key==='ArrowLeft') go(i-1);
+  });
+
+  var m=location.hash.match(/^#s([1-4])$/);
+  set(m ? parseInt(m[1],10) : 1, false);
+})();
+</script>
+</body>
+</html>

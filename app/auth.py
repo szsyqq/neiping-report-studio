@@ -5,8 +5,9 @@
     2. data/auth.json 的 scrypt 哈希（改口令后写这里）
     3. 默认 ceshi
 
-登录成功后发一个随机 token，服务端只存它的 sha256（`data/sessions.json`），
+登录成功后发一个自签 token（过期时间 + 随机串 + HMAC 签名），**服务端不存会话**，
 前端放 localStorage，之后每个请求带 `Authorization: Bearer <token>`。
+无状态是有意的：云端容器会重启、也可能多副本，写文件的会话读回来时有时无。
 
 为什么用 Bearer 而不是 Cookie：GitHub Pages 上的页面调 127.0.0.1 属跨站请求，
 第三方 Cookie 会被浏览器直接拦掉（SameSite=None 还要求 Secure，本机 http 不满足），
@@ -19,6 +20,7 @@ import hashlib
 import hmac
 import json
 import os
+import base64
 import secrets
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -26,7 +28,6 @@ from pathlib import Path
 BASE = Path(__file__).resolve().parent.parent
 DATA = BASE / "data"
 AUTH_JSON = DATA / "auth.json"
-SESS_JSON = DATA / "sessions.json"
 
 DEFAULT_PASSWORD = "ceshi"
 TOKEN_DAYS = 30
@@ -93,48 +94,67 @@ def set_password(password: str) -> None:
     salt = secrets.token_bytes(16)
     _write(AUTH_JSON, {"salt": salt.hex(), "hash": _hash(pw, salt),
                        "updated": _now().isoformat(timespec="seconds")})
-    # 改口令后旧会话全部失效
-    _write(SESS_JSON, {"sessions": {}})
+    # 旧 token 会随密钥变化自动失效，无需清理会话表
 
 
-def _digest(token: str) -> str:
-    return hashlib.sha256((token or "").encode()).hexdigest()
+def _secret() -> bytes:
+    """签发密钥：由当前口令的校验材料派生。
+
+    不落盘、不依赖会话文件——容器可能重启、可能多副本共用同一镜像，
+    存文件里的会话会时有时无（云端实测就是：登录成功，紧接着带 token 就 401）。
+    改成无状态签名：密钥由口令派生，口令一改旧 token 全失效，天然满足「改密踢下线」。
+    """
+    env = env_password()
+    if env:
+        material = "env:" + env
+    else:
+        rec = _read(AUTH_JSON)
+        material = ("file:" + str(rec.get("hash") or "") + ":" + str(rec.get("salt") or "")) \
+            if rec.get("hash") else "default:" + DEFAULT_PASSWORD
+    return hashlib.sha256(("neiping-report|" + material).encode()).digest()
+
+
+def _sign(payload: str) -> str:
+    return hmac.new(_secret(), payload.encode(), hashlib.sha256).hexdigest()[:32]
 
 
 def issue(days: int = TOKEN_DAYS) -> dict:
-    """发一个新 token，返回 {token, exp}。"""
-    token = secrets.token_urlsafe(32)
+    """发一个自签 token：payload 是过期时间 + 随机串，附 HMAC 签名。"""
     exp = _now() + timedelta(days=days)
-    data = _read(SESS_JSON)
-    sessions = data.get("sessions") or {}
-    # 顺手清掉过期与超量的旧会话
-    today = _now()
-    sessions = {k: v for k, v in sessions.items()
-                if str(v.get("exp") or "") > today.isoformat(timespec="seconds")}
-    if len(sessions) > 20:
-        for k in sorted(sessions, key=lambda x: str(sessions[x].get("exp")))[:len(sessions) - 20]:
-            sessions.pop(k, None)
-    sessions[_digest(token)] = {"exp": exp.isoformat(timespec="seconds")}
-    _write(SESS_JSON, {"sessions": sessions})
-    return {"token": token, "exp": exp.isoformat(timespec="seconds")}
+    exp_s = exp.isoformat(timespec="seconds")
+    payload = f"{exp_s}|{secrets.token_hex(8)}"
+    token = base64.urlsafe_b64encode(payload.encode()).decode().rstrip("=") + "." + _sign(payload)
+    return {"token": token, "exp": exp_s}
 
 
 def valid(token: str) -> bool:
-    """token 是否有效。文件不存在（从未登录过）时一律不通过。"""
+    """校验自签 token：签名对得上、且没过期。"""
     tok = (token or "").strip()
-    if not tok:
+    if "." not in tok:
         return False
-    sessions = (_read(SESS_JSON).get("sessions") or {})
-    rec = sessions.get(_digest(tok))
-    if not rec:
+    body, _, sig = tok.rpartition(".")
+    try:
+        payload = base64.urlsafe_b64decode(body + "=" * (-len(body) % 4)).decode()
+    except (ValueError, UnicodeDecodeError):
         return False
-    return str(rec.get("exp") or "") > _now().isoformat(timespec="seconds")
+    if not hmac.compare_digest(sig, _sign(payload)):
+        return False
+    exp_s = payload.split("|", 1)[0]
+    return exp_s > _now().isoformat(timespec="seconds")
 
 
 def revoke(token: str) -> None:
-    sessions = (_read(SESS_JSON).get("sessions") or {})
-    if sessions.pop(_digest(token or ""), None) is not None:
-        _write(SESS_JSON, {"sessions": sessions})
+    """无状态 token 撤不掉服务端记录；前端删掉即可，改口令会让全部失效。"""
+    return None
+
+
+def cookie(token: str, clear: bool = False) -> str:
+    """会话 Cookie。同源部署（云端）用它最稳——代理通常不动 Cookie，
+    而 Authorization 头有可能被网关剥掉（云端实测过）。"""
+    if clear or not token:
+        return "nr_auth=; Path=/; Max-Age=0; SameSite=Lax; HttpOnly"
+    return (f"nr_auth={token}; Path=/; Max-Age={TOKEN_DAYS * 86400}; "
+            "SameSite=Lax; HttpOnly")
 
 
 def is_default() -> bool:

@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>四种入口 · 流程图</title>
+<style>
+:root{
+  --bg:#f4f6f9; --card:#fff; --ink:#131b24; --ink2:#394757; --ink3:#6c7a8a;
+  --line:#e2e7ee; --line2:#eef1f6;
+  --brand:#1f3a5f; --brandbg:#edf3fa;
+  --red:#a33a2a;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  font-size:15.5px;line-height:1.8;-webkit-font-smoothing:antialiased}
+
+.top{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.top-in{max-width:1000px;margin:0 auto;padding:0 24px;height:52px;display:flex;align-items:center;gap:16px}
+.logo{display:flex;align-items:center;gap:9px;font-size:13.5px;font-weight:600;white-space:nowrap}
+.logo .dot{width:8px;height:8px;border-radius:50%;background:var(--brand)}
+.logo em{font-style:normal;font-weight:400;color:var(--ink3);font-size:12px}
+.top nav{margin-left:auto;display:flex;gap:2px}
+.top nav a{font-size:12.5px;color:var(--ink2);padding:6px 9px;border-radius:6px;white-space:nowrap}
+.top nav a:hover{background:var(--brandbg);color:var(--brand)}
+
+.wrap{max-width:1000px;margin:0 auto;padding:38px 24px 64px}
+h1{font-size:clamp(22px,2.6vw,28px);line-height:1.4;margin:0 0 10px;font-weight:600;letter-spacing:-.3px}
+.lead{font-size:15px;color:#3a4757;margin:0 0 20px;max-width:780px}
+
+.legend{display:flex;flex-wrap:wrap;gap:14px;background:var(--card);border:1px solid var(--line);
+  border-radius:10px;padding:11px 15px;margin:0 0 26px;font-size:12px;color:var(--ink2)}
+.legend span{display:flex;align-items:center;gap:6px}
+.legend i{width:15px;height:11px;border-radius:3px;display:block}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 20px 10px;margin:0 0 16px}
+.c-h{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;margin:0 0 2px}
+.c-h .idx{font-size:11px;font-weight:600;color:#fff;background:var(--brand);border-radius:5px;padding:1px 7px;letter-spacing:.5px}
+.c-h h2{margin:0;font-size:17px;font-weight:600}
+.c-h .pos{font-size:12.5px;color:var(--ink3)}
+
+svg{display:block;width:100%;height:auto;margin:4px 0 0}
+.bx{stroke-width:1}
+.bx.h{fill:#fdf6e9;stroke:#e3c48d}
+.bx.i{fill:#eef1f6;stroke:#ccd6e2}
+.bx.s{fill:#edf3fa;stroke:#b9cde4}
+.bx.x{fill:#f3eef9;stroke:#d5c8e8}
+.bx.d{fill:#eef7f1;stroke:#c6e3d3}
+.t1{font-size:12.5px;font-weight:600;fill:#1b2836;text-anchor:middle}
+.t2{font-size:10.5px;fill:#6c7a8a;text-anchor:middle}
+.t3{font-size:10.5px;fill:#8a97a6;text-anchor:middle}
+.ln{stroke:#9fb0c2;stroke-width:1.4;fill:none}
+.dashm{stroke:#b9a6cc;stroke-width:1.2;fill:none;stroke-dasharray:4 3}
+
+.stop{margin:8px 0 4px;font-size:12.5px;color:var(--red);border-left:2px solid #e3bdb4;padding:0 0 0 10px}
+
+h3.sub{font-size:15px;font-weight:600;margin:32px 0 10px}
+.tbl{background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+table{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed}
+th,td{text-align:left;padding:9px 14px;border-bottom:1px solid var(--line2);vertical-align:top}
+th{background:#f6f8fb;font-weight:600;color:#2b3846;font-size:12px;white-space:nowrap}
+td{color:var(--ink2);line-height:1.6}
+tbody tr:last-child td{border-bottom:none}
+td.k{color:var(--ink);font-weight:600}
+
+.oneline{margin:14px 0 0;font-size:13.5px;color:var(--ink2);background:var(--card);border:1px solid var(--line);
+  border-radius:10px;padding:13px 16px}
+.oneline b{color:var(--brand)}
+
+@media (max-width:820px){ .top nav{display:none} }
+@media print{
+  body{background:#fff} .top{display:none} .wrap{padding:0}
+  .card,.tbl,.oneline{break-inside:avoid}
+}
+</style>
+<style id="__dm_no_drag_style__">* { -webkit-user-drag: none !important; }</style><style id="__dm_bindable_badge_style__">[data-sp-bindable="database"]{outline:1px dashed #0088ff;outline-offset:2px;border-radius:4px;}[data-sp-bindable="database"] *{pointer-events:none !important;transition:none !important;animation:none !important;}[data-sp-bindable="database"]{transition:none !important;animation:none !important;}</style></head>
+<body style="">
+
+<div class="top"><div class="top-in">
+  <div class="logo"><span class="dot"></span>四种入口 <em>流程图</em></div>
+  <nav>
+    <a href="#p1">一 本机</a><a href="#p2">二 部门共享</a><a href="#p3">三 多入口</a><a href="#p4">四 嵌入 CRUISE</a>
+  </nav>
+</div></div>
+
+<div class="wrap">
+
+  <h1>同一套生成逻辑，四种入口</h1>
+  <p class="lead">四种走法中，取数、装配、校验环节完全一致，差异仅在受理入口：本机浏览器、外网地址、移动端网页或企业微信，访问的是同一套页面。成稿与财汇下载的外部评级报告一并打包，发送至内网邮箱或快乐平安。</p>
+
+  <div class="legend">
+    <span><i style="background:#fdf6e9;border:1px solid #e3c48d"></i>人工环节</span>
+    <span><i style="background:#eef1f6;border:1px solid #ccd6e2"></i>受理入口</span>
+    <span><i style="background:#edf3fa;border:1px solid #b9cde4"></i>生成服务</span>
+    <span><i style="background:#f3eef9;border:1px solid #d5c8e8"></i>外部数据与模型</span>
+    <span><i style="background:#eef7f1;border:1px solid #c6e3d3"></i>交付</span>
+  </div>
+
+  <!-- 一 -->
+  <section class="card" id="p1">
+    <div class="c-h"><span class="idx">走法一</span><h2>本机</h2><span class="pos">部署于使用人本人设备，单人使用</span></div>
+    <svg viewBox="0 0 880 196" role="img" aria-label="本机流程图">
+      <defs><marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#9fb0c2"></path></marker></defs>
+      <rect class="bx h" x="30" y="46" width="175" height="62" rx="8"></rect>
+      <text class="t1" x="117" y="72">分析师</text><text class="t2" x="117" y="90">输入企业全称</text>
+      <rect class="bx s" x="245" y="46" width="175" height="62" rx="8"></rect>
+      <text class="t1" x="332" y="72">本机服务</text><text class="t2" x="332" y="90">取数·装配·校验</text>
+      <rect class="bx d" x="460" y="46" width="175" height="62" rx="8"></rect>
+      <text class="t1" x="547" y="72">生成内评报告</text><text class="t2" x="547" y="90">外评报告一并打包</text>
+      <rect class="bx d" x="675" y="46" width="175" height="62" rx="8"></rect>
+      <text class="t1" x="762" y="72">送达分析师</text><text class="t2" x="762" y="90">邮箱／快乐平安／目录</text>
+      <line class="ln" x1="207" y1="77" x2="241" y2="77" marker-end="url(#a1)"></line>
+      <line class="ln" x1="422" y1="77" x2="456" y2="77" marker-end="url(#a1)"></line>
+      <line class="ln" x1="637" y1="77" x2="671" y2="77" marker-end="url(#a1)"></line>
+      <rect class="bx x" x="217" y="144" width="230" height="34" rx="7"></rect>
+      <text class="t2" x="332" y="166">财汇 MCP · 评级官网 · 模型接口</text>
+      <line class="dashm" x1="332" y1="110" x2="332" y2="142" marker-end="url(#a1)"></line>
+    </svg>
+    <div class="stop">token 与 MCP 由分析师个人承担费用；提示词各自留档，修订后无法统一下发。</div>
+  </section>
+
+  <!-- 二 -->
+  <section class="card" id="p2">
+    <div class="c-h"><span class="idx">走法二</span><h2>部门共享</h2><span class="pos">同一套配置部署于部门电脑，供一个小组使用</span></div>
+    <svg viewBox="0 0 880 196" role="img" aria-label="部门共享流程图">
+      <defs><marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#9fb0c2"></path></marker></defs>
+      <rect class="bx i" x="30" y="46" width="175" height="62" rx="8"></rect>
+      <text class="t1" x="117" y="72">电脑／移动端</text><text class="t2" x="117" y="90">访问外网地址</text>
+      <rect class="bx s" x="245" y="46" width="175" height="62" rx="8"></rect>
+      <text class="t1" x="332" y="72">部门服务器</text><text class="t2" x="332" y="90">同一套服务，常开</text>
+      <rect class="bx d" x="460" y="46" width="175" height="62" rx="8"></rect>
+      <text class="t1" x="547" y="72">生成内评报告</text><text class="t2" x="547" y="90">外评报告一并打包</text>
+      <rect class="bx d" x="675" y="46" width="175" height="62" rx="8"></rect>
+      <text class="t1" x="762" y="72">按人送达</text><text class="t2" x="762" y="90">各自邮箱／快乐平安</text>
+      <line class="ln" x1="207" y1="77" x2="241" y2="77" marker-end="url(#a2)"></line>
+      <line class="ln" x1="422" y1="77" x2="456" y2="77" marker-end="url(#a2)"></line>
+      <line class="ln" x1="637" y1="77" x2="671" y2="77" marker-end="url(#a2)"></line>
+      <rect class="bx x" x="217" y="144" width="230" height="34" rx="7"></rect>
+      <text class="t2" x="332" y="166">财汇 MCP · 评级官网 · 模型接口</text>
+      <line class="dashm" x1="332" y1="110" x2="332" y2="142" marker-end="url(#a2)"></line>
+    </svg>
+    <div class="stop">配置与走法一相同，但 token、算力与设备均由部门承担，费用需明确列支渠道。</div>
+  </section>
+
+  <!-- 三 -->
+  <section class="card" id="p3">
+    <div class="c-h"><span class="idx">走法三</span><h2>三类入口，成稿送达邮箱</h2><span class="pos">企业微信 Bot、电脑网页、移动端网页</span></div>
+    <svg viewBox="0 0 880 236" role="img" aria-label="三个入口、稿子进邮箱流程图">
+      <defs><marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#9fb0c2"></path></marker></defs>
+      <rect class="bx i" x="30" y="26" width="175" height="66" rx="8"></rect>
+      <text class="t1" x="117" y="50">三类入口</text><text class="t2" x="117" y="68">企业微信 Bot（含微信）</text><text class="t3" x="117" y="82">电脑网页 · 移动端网页</text>
+      <rect class="bx i" x="245" y="26" width="175" height="66" rx="8"></rect>
+      <text class="t1" x="332" y="50">任务接入</text><text class="t2" x="332" y="68">Bot 或网页提交</text><text class="t3" x="332" y="82">解析企业名</text>
+      <rect class="bx s" x="460" y="26" width="175" height="66" rx="8"></rect>
+      <text class="t1" x="547" y="50">任务队列</text><text class="t2" x="547" y="68">排队·并发</text><text class="t3" x="547" y="82">失败重试</text>
+      <rect class="bx s" x="675" y="26" width="175" height="66" rx="8"></rect>
+      <text class="t1" x="762" y="50">服务端生成</text><text class="t2" x="762" y="68">取数·拉料·装配</text>
+      <line class="ln" x1="207" y1="59" x2="241" y2="59" marker-end="url(#a3)"></line>
+      <line class="ln" x1="422" y1="59" x2="456" y2="59" marker-end="url(#a3)"></line>
+      <line class="ln" x1="637" y1="59" x2="671" y2="59" marker-end="url(#a3)"></line>
+
+      <rect class="bx d" x="675" y="136" width="175" height="58" rx="8"></rect>
+      <text class="t1" x="762" y="162">生成内评报告</text><text class="t2" x="762" y="180">外评一并打包</text>
+      <line class="ln" x1="762" y1="92" x2="762" y2="132" marker-end="url(#a3)"></line>
+
+      <rect class="bx d" x="460" y="136" width="175" height="58" rx="8"></rect>
+      <text class="t1" x="547" y="162">按人送达</text><text class="t2" x="547" y="180">邮箱／快乐平安</text>
+      <rect class="bx i" x="245" y="136" width="175" height="58" rx="8"></rect>
+      <text class="t1" x="332" y="162">原会话回执</text><text class="t2" x="332" y="180">已完成，请查收</text>
+      <rect class="bx h" x="30" y="136" width="175" height="58" rx="8"></rect>
+      <text class="t1" x="117" y="162">分析师</text><text class="t2" x="117" y="180">审阅稿件、核定判断</text>
+      <line class="ln" x1="671" y1="165" x2="639" y2="165" marker-end="url(#a3)"></line>
+      <line class="ln" x1="456" y1="165" x2="424" y2="165" marker-end="url(#a3)"></line>
+      <line class="ln" x1="241" y1="165" x2="209" y2="165" marker-end="url(#a3)"></line>
+      <text class="t3" x="30" y="224" style="text-anchor:start">发件人即提出人，无需另行填写收件地址</text>
+    </svg>
+    <div class="stop">企业微信需单独配置机器人；网页入口无需额外配置。</div>
+  </section>
+
+
+  <!-- 四 -->
+  <section class="card" id="p4">
+    <div class="c-h"><span class="idx">走法四</span><h2>嵌入 CRUISE</h2><span class="pos">与 CRUISE 系统对接，随系统排期推进</span></div>
+    <svg viewBox="0 0 880 146" role="img" aria-label="嵌入 CRUISE 流程图" style="">
+      <defs><marker id="a5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto" style=""><path d="M0,0 L10,5 L0,10 z" fill="#9fb0c2"></path></marker></defs>
+      <rect class="bx i" x="30" y="46" width="175" height="58" rx="8"></rect>
+      <text class="t1" x="117" y="72">CRUISE</text><text class="t2" x="117" y="90">系统内发起生成</text>
+      <rect class="bx s" x="245" y="46" width="175" height="58" rx="8"></rect>
+      <text class="t1" x="332" y="72">生成服务</text><text class="t2" x="332" y="90">接口调用，逻辑一致</text>
+      <rect class="bx d" x="460" y="46" width="175" height="58" rx="8"></rect>
+      <text class="t1" x="547" y="72">回写 CRUISE</text><text class="t2" x="547" y="90">外部版同步、留痕</text>
+      <rect class="bx h" x="675" y="46" width="175" height="58" rx="8"></rect>
+      <text class="t1" x="762" y="72">审稿归档</text><text class="t2" x="762" y="90">走既有审批流</text>
+      <line class="ln" x1="207" y1="75" x2="241" y2="75" marker-end="url(#a5)"></line>
+      <line class="ln" x1="422" y1="75" x2="456" y2="75" marker-end="url(#a5)"></line>
+      <line class="ln" x1="637" y1="75" x2="671" y2="75" marker-end="url(#a5)"></line>
+    </svg>
+    <div class="stop">报告在 CRUISE 内完成生成、审阅与归档，全流程闭环。</div>
+  </section>
+
+  <h3 class="sub">四种走法对照</h3>
+  <div class="tbl">
+    <table>
+      <thead><tr><th style="width:15%">走法</th><th style="width:30%">发起方式</th><th style="width:25%">成稿去向</th><th style="width:30%">适用对象</th></tr></thead>
+      <tbody>
+        <tr><td class="k">一 本机</td><td>本机浏览器</td><td>内评与外评一并打包，发送至邮箱／快乐平安</td><td>单人使用，可即时启用</td></tr>
+        <tr><td class="k">二 部门共享</td><td>外网地址，电脑或移动端</td><td>内评与外评一并打包，按人送达</td><td>一个小组共用一台设备</td></tr>
+        <tr><td class="k">三 多入口</td><td>企业微信 Bot、电脑网页、移动端网页</td><td>同一交付包按人发送，原会话回执</td><td>一个小组，电脑与移动端均可使用</td></tr>
+        <tr><td class="k">四 嵌入 CRUISE</td><td>CRUISE 内发起生成</td><td>CRUISE 草稿库，外部版同步</td><td>全部门；随系统排期推进</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="oneline">
+    <b>总结：</b>入口共四种，交付去向仅两处——内网邮箱与快乐平安；交付物为同一个包：内评报告与财汇外部评级报告。前三种走法共用同一套页面，差异在于配置部署位置、费用承担方与入口数量；与 CRUISE 系统对接为后续工作，随系统排期推进。
+  </div>
+
+  
+</div>
+
+
+</body></html>

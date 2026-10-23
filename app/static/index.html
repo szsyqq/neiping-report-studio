@@ -395,12 +395,36 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
 const $ = (s) => document.querySelector(s);
 const S = { company: "", facts: null, uploads: [], mstate: {}, loaded: [], draft: null, stats: null };
 
-const API_BASE = (() => {
-  const h = location.hostname;
-  if (h === "127.0.0.1" || h === "localhost" || h === "") return "";
-  return (localStorage.getItem("apiBase") || "http://127.0.0.1:8770").replace(/\/+$/, "");
+/* 后端在哪：三种情况都要能自己认出来
+   1. 页面由后端自己发（本机 127.0.0.1 或云端域名）→ 同源，空串
+   2. 页面在 GitHub Pages 这类静态站 → 要连本机 127.0.0.1:8770（可用 localStorage.apiBase 改）
+   3. 用户在页面上手填过地址 → 以填的为准
+   靠「同源能不能打通」来判断，比按域名硬编码稳——换域名、换部署方式都不用改代码。 */
+let API_BASE = (() => {
+  const custom = (localStorage.getItem("apiBase") || "").trim();
+  if (custom) return custom.replace(/\/+$/, "");
+  return (location.protocol === "file:") ? "http://127.0.0.1:8770" : "";
 })();
 const apiUrl = (p) => API_BASE + p;
+
+async function probeBase(base){
+  try{
+    const r = await fetch((base || "") + "/api/health", { cache: "no-store" });
+    if(!r.ok) return false;
+    // 分享链接的网关在缺 sharecode 时会回一个 200 的 HTML 提示页，
+    // 只看状态码会误判成「后端在」。必须确认回的是 JSON 且 ok:true。
+    const d = await r.json().catch(() => null);
+    return !!(d && d.ok);
+  }catch(e){ return false; }
+}
+
+async function resolveApiBase(){
+  if((localStorage.getItem("apiBase") || "").trim()) return;   // 用户手填的优先
+  if(await probeBase(API_BASE)) return;                        // 同源即可
+  if(!API_BASE && await probeBase("http://127.0.0.1:8770")){
+    API_BASE = "http://127.0.0.1:8770";                        // 静态站 → 回落本机
+  }
+}
 
 /* ── 访问口令 ──────────────────────────────────────────────────
    服务端每个接口都要 token；token 放 localStorage，随请求头带过去。
@@ -459,8 +483,9 @@ async function logout(){
   lockUI("已退出");
 }
 async function gateBoot(){
-  // 页面本身是静态的，先问服务端这个 token 还作不作数。
+  // 页面本身是静态的，先定后端地址，再问服务端这个 token 还作不作数。
   // 注意别在登录页上提示默认口令——那是给所有人看的。
+  await resolveApiBase();
   try{
     const r = await _fetch(apiUrl("/api/session"), { headers: authHead() });
     const d = await r.json().catch(() => ({}));

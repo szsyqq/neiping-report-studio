@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>内评简评报告自动化 · 技术方案</title>
+<style>
+:root{
+  --bg:#f4f6f8; --card:#ffffff; --ink:#17202a; --ink2:#3d4a58; --ink3:#6b7887;
+  --line:#e3e8ed; --brand:#1f3a5f; --brand2:#2c5580; --soft:#eef2f7;
+  --warn:#a8621b; --warnbg:#fbf7ef; --ok:#1d6b4c; --okbg:#f0f7f3;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  -webkit-font-smoothing:antialiased; font-size:16px; line-height:1.88;
+}
+a{color:inherit;text-decoration:none}
+
+/* ---------- header ---------- */
+header{
+  position:sticky; top:0; z-index:40; height:58px;
+  background:rgba(255,255,255,.94); backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--line);
+  display:flex; align-items:center; gap:16px; padding:0 26px;
+}
+.brand{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.brand .dot{width:9px;height:9px;background:var(--brand);border-radius:50%;opacity:.85}
+.brand b{font-size:14px;font-weight:600;letter-spacing:.2px}
+.brand span{font-size:11.5px;color:var(--ink3);letter-spacing:.6px}
+.crumb{
+  flex:1; min-width:0; display:flex; align-items:center; gap:7px;
+  font-size:12.5px; color:var(--ink3); overflow:hidden; white-space:nowrap;
+}
+.crumb a{color:var(--ink3); border-bottom:1px solid transparent; padding-bottom:1px}
+.crumb a:hover{color:var(--brand); border-color:var(--brand)}
+.crumb .sep{opacity:.45; font-size:11px}
+.crumb .cur{color:var(--brand); font-weight:600}
+.levels{display:flex;align-items:center;gap:5px;margin-right:6px}
+.levels i{width:7px;height:7px;border-radius:50%;background:#d3dae1;display:block;transition:.25s}
+.levels i.on{background:var(--brand);transform:scale(1.15)}
+.toc-btn{
+  flex-shrink:0; border:1px solid var(--line); background:#fff; color:var(--ink2);
+  font-size:12.5px; padding:6px 13px; border-radius:7px; cursor:pointer;
+  font-family:inherit; transition:.2s;
+}
+.toc-btn:hover{border-color:var(--brand); color:var(--brand)}
+
+/* ---------- layout ---------- */
+main{max-width:1010px; margin:0 auto; padding:44px 26px 90px}
+.page{animation:fade .34s cubic-bezier(.22,.6,.36,1) both}
+@keyframes fade{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}
+
+.kicker{
+  font-size:11.5px; letter-spacing:1.6px; color:var(--brand2); font-weight:600;
+  text-transform:uppercase; margin-bottom:12px;
+}
+h1{
+  font-size:clamp(26px,3.2vw,35px); line-height:1.34; margin:0 0 20px;
+  font-weight:600; letter-spacing:-.2px; color:#111a24;
+}
+.lead{
+  font-size:17px; line-height:1.86; color:#2f3d4c; margin:0 0 30px;
+  padding-bottom:26px; border-bottom:1px solid var(--line);
+}
+@media (prefers-reduced-motion:reduce){
+  .page,.card,#toc,#mask{animation:none!important; transition:none!important}
+}
+
+/* ---------- metrics ---------- */
+.metrics{
+  display:grid; grid-template-columns:repeat(5,1fr); gap:1px;
+  background:var(--line); border:1px solid var(--line); border-radius:10px;
+  overflow:hidden; margin:0 0 34px;
+}
+.metrics div{background:#fff; padding:17px 15px 15px}
+.metrics b{
+  display:block; font-size:19px; font-weight:600; color:var(--brand);
+  font-variant-numeric:tabular-nums; letter-spacing:-.3px; line-height:1.3;
+}
+.metrics span{display:block; font-size:11.5px; color:var(--ink3); margin-top:5px; line-height:1.5}
+
+/* ---------- prose ---------- */
+.prose p{margin:0 0 1.05em; color:var(--ink2)}
+.prose p:last-child{margin-bottom:0}
+.prose strong{color:#111a24; font-weight:600}
+
+/* ---------- blocks ---------- */
+.block{margin:32px 0}
+.block-title{
+  font-size:12px; font-weight:600; color:var(--ink3); letter-spacing:.8px;
+  margin-bottom:11px;
+}
+table{width:100%; border-collapse:collapse; background:#fff; font-size:13px; line-height:1.65}
+table caption{caption-side:top; text-align:left; font-size:12px; color:var(--ink3); padding-bottom:9px}
+th,td{padding:10px 13px; text-align:left; border-bottom:1px solid var(--line); vertical-align:top}
+th{background:#f2f5f8; font-weight:600; color:#2a3644; font-size:12px; letter-spacing:.3px; white-space:nowrap}
+td{font-size:13.5px}
+td:first-child{color:#1b2734; font-weight:500; white-space:nowrap; padding-right:18px}
+td:nth-child(2){min-width:88px}
+table.fixed{table-layout:fixed}
+table.fixed td:first-child{white-space:normal}
+tr:last-child td{border-bottom:none}
+table{border:1px solid var(--line); border-radius:9px; overflow:hidden}
+td.num,th.num{text-align:right; font-variant-numeric:tabular-nums}
+
+ol,ul{margin:0; padding-left:0; list-style:none; counter-reset:n}
+ol li,ul li{
+  position:relative; padding-left:26px; margin-bottom:11px; color:var(--ink2);
+}
+ol li{counter-increment:n}
+ol li::before{
+  content:counter(n); position:absolute; left:0; top:.28em;
+  width:17px; height:17px; border-radius:50%; background:var(--soft);
+  color:var(--brand); font-size:10.5px; font-weight:600; line-height:17px;
+  text-align:center; font-variant-numeric:tabular-nums;
+}
+ul li::before{
+  content:""; position:absolute; left:5px; top:.72em;
+  width:5px; height:5px; border-radius:50%; background:#9fb0c2;
+}
+ol li:last-child,ul li:last-child{margin-bottom:0}
+li b{color:#111a24; font-weight:600}
+
+.note{
+  background:var(--warnbg); border-left:3px solid #cf9a4d; border-radius:0 8px 8px 0;
+  padding:13px 17px; font-size:14px; color:#5a4826; line-height:1.8;
+}
+.note.ok{background:var(--okbg); border-color:#5da583; color:#22543f}
+.note.info{background:var(--soft); border-color:#8fa8c2; color:#2b3f55}
+.note b{font-weight:600}
+
+/* ---------- child cards ---------- */
+.cards-title{
+  font-size:12px; font-weight:600; color:var(--ink3); letter-spacing:.8px;
+  margin:46px 0 14px; padding-top:26px; border-top:1px solid var(--line);
+}
+.cards{display:grid; grid-template-columns:1fr 1fr; gap:13px}
+.card{
+  display:block; background:#fff; border:1px solid var(--line); border-radius:9px;
+  padding:18px 19px 16px; position:relative; transition:.22s cubic-bezier(.2,.6,.35,1);
+}
+.card:hover{
+  border-color:#a9bdd2; transform:translateY(-2px);
+  box-shadow:0 6px 20px rgba(31,58,95,.07);
+}
+.card .idx{
+  font-family:var(--mono); font-size:12.5px; font-weight:600; color:var(--brand2);
+  letter-spacing:1.5px; display:block; margin-bottom:8px; opacity:.85;
+}
+.card h3{margin:0 0 6px; font-size:15px; font-weight:600; color:#15202b; letter-spacing:-.1px}
+.card p{margin:0; font-size:12.5px; color:var(--ink3); line-height:1.7}
+.card .go{
+  display:inline-block; margin-top:11px; font-size:11.5px; color:var(--brand);
+  opacity:.62; transition:.22s;
+}
+.card:hover .go{opacity:1; transform:translateX(2px)}
+
+/* ---------- back ---------- */
+.back{
+  margin-top:38px; padding-top:22px; border-top:1px solid var(--line);
+  display:flex; align-items:center; gap:14px;
+}
+.back a, .back button{
+  border:1px solid var(--line); background:#fff; color:var(--ink2);
+  font-size:12.5px; padding:7px 15px; border-radius:7px; cursor:pointer;
+  font-family:inherit; transition:.2s;
+}
+.back a:hover, .back button:hover{border-color:var(--brand); color:var(--brand)}
+.back .hint{margin-left:auto; font-size:11.5px; color:#9aa6b2}
+
+/* ---------- toc drawer ---------- */
+#mask{
+  position:fixed; inset:0; background:rgba(23,32,42,.24); opacity:0;
+  pointer-events:none; transition:.26s; z-index:50;
+}
+#mask.on{opacity:1; pointer-events:auto}
+#toc{
+  position:fixed; top:0; right:0; bottom:0; width:340px; max-width:86vw;
+  background:#fff; z-index:51; transform:translateX(100%); transition:.3s cubic-bezier(.3,.7,.4,1);
+  display:flex; flex-direction:column; box-shadow:-8px 0 30px rgba(23,32,42,.08);
+}
+#toc.on{transform:none}
+#toc .head{
+  padding:19px 22px 15px; border-bottom:1px solid var(--line);
+  display:flex; align-items:center; justify-content:space-between;
+}
+#toc .head b{font-size:13px; letter-spacing:.3px}
+#toc .head button{border:0;background:none;font-size:19px;color:var(--ink3);cursor:pointer;line-height:1;padding:2px 4px}
+#toc .body{overflow:auto; padding:12px 0 40px; flex:1}
+#toc a{
+  display:block; padding:8px 22px; font-size:13px; color:var(--ink2);
+  border-left:2px solid transparent; transition:.16s; line-height:1.55;
+}
+#toc a:hover{background:#f6f8fa; color:var(--brand)}
+#toc a.l1{padding-left:36px; font-size:12.5px; color:var(--ink3)}
+#toc a.l2{padding-left:50px; font-size:12px; color:#8794a2}
+#toc a.on{border-left-color:var(--brand); background:var(--soft); color:var(--brand); font-weight:600}
+#toc .grp{font-size:10.5px; letter-spacing:1.2px; color:#9aa6b2; padding:16px 22px 6px}
+
+/* ---------- footer ---------- */
+footer{
+  max-width:1010px; margin:0 auto; padding:0 26px 60px;
+  font-size:11.5px; color:#9aa6b2; line-height:1.9;
+}
+
+@media (max-width:820px){
+  main{padding:30px 18px 70px}
+  .metrics{grid-template-columns:repeat(2,1fr)}
+  .cards{grid-template-columns:1fr}
+  header{padding:0 16px; gap:10px}
+  .brand span{display:none}
+  .crumb{font-size:11.5px}
+}
+@media print{
+  body{background:#fff; font-size:11pt}
+  header,#toc,#mask,.back,.cards,.cards-title{display:none!important}
+  main{max-width:none; padding:0}
+  .page{animation:none}
+  table{page-break-inside:avoid}
+  .lead{border-bottom:none}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <span class="dot"></span>
+    <b>内评简评报告自动化</b>
+    <span>技术方案 v1.1</span>
+  </div>
+  <nav class="crumb" id="crumb"></nav>
+  <div class="levels" id="levels"><i></i><i></i><i></i></div>
+  <button class="toc-btn" onclick="toggleToc(1)">目录</button>
+</header>
+
+<main id="view"></main>
+<footer id="foot">
+  本页为内部技术方案，供评审与决策使用。所述性能数据为本机实测（2026 年 10 月，deepseek-v4-flash）；
+  人工工时基线尚未系统测量，建议在试点阶段记录。
+</footer>
+
+<div id="mask" onclick="toggleToc(0)"></div>
+<aside id="toc">
+  <div class="head"><b>内容目录</b><button onclick="toggleToc(0)">×</button></div>
+  <div class="body" id="tocBody"></div>
+</aside>
+
+<script>
+/* ============================================================
+   数据：方案内容树。每个节点可含 body（段落）、blocks（表/列表/提示）、
+   children（下一层）。level 决定渲染层级标记。
+   ============================================================ */
+const DATA = {
+  id:"root", level:0,
+  kicker:"技术方案 · v1.1 · 2026 年 10 月",
+  title:"内评简评报告自动化",
+  lead:"一份内评简评报告，过去要读三份材料、搭一遍结构、写四千字。现在输入企业全称，取数、装配、校验、排版由系统完成，人只做判断与审稿。全案由三部分组成：一份不依赖行业的模板、一套可复核的写作方法、一个接通财汇数据源的工作台。",
+  metrics:[
+    {v:"3 份", k:"自动获取材料<br>评级报告 / 募集书 / 年报"},
+    {v:"22 项 × 4 期", k:"财务台账"},
+    {v:"2,000–4,000 字", k:"正文装配区间"},
+    {v:"10 项", k:"装配校验"},
+    {v:"约 40 秒", k:"端到端实测"}
+  ],
+  body:[
+    "方案要解决的不是「写不出来」，而是「每次都要重新来一遍」。同一家企业换一个人写，取数口子、期次写法、摘要条数都会变；主体类型一换，财务表的行项也跟着变。这三件事本应是标准件，实际每次都在重做。",
+    "所以整套东西按「形式—内容—执行」三层组织：模板管形式，方法论管内容，工作台管执行。三者互为约束，任何一处改动都要同步另两处，避免出现「文档一套、代码一套」——这是同类工具最常见的失效方式。",
+    "汇报建议：先看第七章的验证结果，再看第二章的架构取舍；需要核细节时下钻第三、四、六章。每一页都可点击进入，左上角面包屑可逐级回退，右上角目录可直接跳转。"
+  ],
+  children:[
+    {
+      id:"why", level:1, idx:"一",
+      title:"问题：机械劳动挤占了判断",
+      desc:"六步里有四步是重复劳动，且经验不可累积",
+      lead:"单份报告的固定动作有六步，其中四步是机械的。瓶颈不在写作能力，而在取数与体例的一致性。",
+      body:[
+        "六步是：认料、取数、搭结构、写正文、提摘要、排版。这六步里真正需要判断的只有一件事——这家企业值什么评级；其余是翻 PDF 找数、核对口径、确认期次、调格式。人工做一遍，时间主要耗在这些地方，而不是耗在「怎么把话说准」上。",
+        "更麻烦的是不可累积。同一个人第二次写会快一些，但经验留在人身上；换人接手，取数口子、期次写法、摘要条数全部重来。三份材料的表述并不统一——同一笔债务，评级报告写「全部债务」，募集书可能写「有息负债」，年报表格又用「短期借款加一年内到期」。",
+        "所以问题的定义是：把「取数、结构、体例、排版」这四件机械劳动产品化，让判断留在人的环节。"
+      ],
+      children:[
+        {
+          id:"intake-reality", level:2,
+          title:"现状：三份材料、四套口径",
+          desc:"材料不缺，缺的是对齐",
+          lead:"材料不是没有，是散、重、口径不一。取数的真正成本在「对齐」，不在「找到」。",
+          body:[
+            "三份材料角色不同：跟踪评级报告给结论与风险表述，募集说明书给业务与项目细节（产能、在建、募投），年报给最权威的财务与股权数据。三者时间点经常错位——评级报告可能引用 3 月末数据，年报是 12 月末，募集书更早。",
+            "期次错位是最容易出事的地方。把评级报告里「2025 年 1—3 月」的营业收入，配上「2025 年 9 月末」的资产负债率，看起来都像 2025 年，实际拼了两个时点。这类错误人工审稿很难看出来，因为每个数字都真实存在。",
+            "单位与口径同理。评级报告用亿元、募集书用万元、年报附注用元；债务口径至少有「短期债务」「有息债务」「全部债务」三种，彼此不等。不先定这三件事，写出来的每个数都要回头核。"
+          ],
+          blocks:[
+            {type:"note", text:"<b>结论：</b>先定期次、再定单位、最后定口径。顺序倒了就得重做——期次一改，所有区间数据都要重取。"}
+          ]
+        },
+        {
+          id:"scope", level:2,
+          title:"目标与边界",
+          desc:"做四件事，不做三件事",
+          lead:"系统做四件事，不做三件事。边界写清楚，才敢用。",
+          blocks:[
+            {type:"list", title:"做", items:[
+              "<b>取数</b>：按企业名检索主体、股权、评级历史、存量债、财务、主营构成",
+              "<b>取料</b>：定位并解析最新跟踪评级报告、募集说明书、年报",
+              "<b>装配</b>：按模板生成正文、表格、摘要草稿",
+              "<b>校验与排版</b>：十项装配检查，导出符合体例的 docx"
+            ]},
+            {type:"list", title:"不做", kind:"ul", items:[
+              "不给评级结论——内部评级代码由人填",
+              "不替代现场调研与非公开信息",
+              "不保证判断正确——只保证数字有出处、结构合体例"
+            ]},
+            {type:"note", text:"这三条不是能力不足，是责任边界。评级结论必须有人签字，系统只提供证据与初稿。"}
+          ]
+        }
+      ]
+    },
+    {
+      id:"arch", level:1, idx:"二",
+      title:"架构：四层结构，一条主链路",
+      desc:"表格数字由程序写，模型只写判断句",
+      lead:"全案只有一条主链路，四层各管一件事。核心取舍是——表格数字由程序写，模型只写判断句。",
+      body:[
+        "这样切的原因很直接：模型的强项和弱项分得很清楚。它能把散落的材料组织成有因果的段落，但让它同时管「数字准确」和「表述得体」，两头都不稳。把数字从模型手里拿走、交给确定性代码，剩下的语言任务它就做得住。",
+        "四层之间用 JSON 传递：数据层产出「事实台账」，生成层产出「草稿 JSON」，质检层在草稿上打问题清单，排版层只认草稿结构、不认模型输出。任何一层都可以单独替换，换模型、换数据源都不用动其他层。"
+      ],
+      children:[
+        {
+          id:"layers", level:2,
+          title:"四层与职责",
+          desc:"每层的输入、输出与代码位置",
+          lead:"分工的唯一标准是「谁对准确性负责」：数字归数据层，规则归资产层，语言归生成层。",
+          blocks:[
+            {type:"table", caption:"表 2-1　分层与职责", head:["层","职责","实现","输出"], rows:[
+              ["数据层","主体检索、财务台账、公告与 PDF","mcp_client.py / facts.py / pdf_text.py","事实台账 JSON"],
+              ["资产层","体例、槽位、指标规则、写作方法","模板 v1.1.json + 方法论 v1.1.md","可执行规则"],
+              ["生成层","提示词装配、单次调用、结构补全","generator.py / llm.py","草稿 JSON"],
+              ["质检层","四类校验、问题清单","generator.validate","issues 列表"],
+              ["交付层","docx 装配与版式","docx_writer.py",".docx"]
+            ]}
+          ],
+          body:[
+            "数据层的输出叫「事实台账」，不是原始数据堆。里面已经做完单位换算（万元→亿元）、期次标注（2025 年年报 / 2026 年中报）、口径标记（有息债务 / 全部债务），并附一张「期次写法」对照表，告诉下游每一期该怎么写。",
+            "资产层是唯一允许人直接改的地方。模板是 json、方法论是 md，改完不用动代码——除非要新增一种触发条件的解释逻辑，那才需要改 generator.py 里的判断函数。"
+          ]
+        },
+        {
+          id:"pipeline", level:2,
+          title:"一次生成的完整链路",
+          desc:"九步，实测约 40 秒",
+          lead:"从企业名到 docx，九步，实测约 40 秒，其中模型生成占 20 秒上下。",
+          blocks:[
+            {type:"table", caption:"表 2-2　链路与实测耗时（无锡苏南国际机场，本机环境）", head:["步骤","动作","耗时"], rows:[
+              ["1 主体识别","工商信息、实控人、股东、评级历史、存量债","与下一步合计 14.5 秒"],
+              ["2 财务台账","22 项指标 × 最近 4 期","同上"],
+              ["3 材料定位","企业 → 债券 → 公告 → 评级 / 募集 / 年报","含在检索内"],
+              ["4 PDF 解析","下载、分页、按页打分摘录（每份上限 4.5 万字）","0.7 秒（三份共约 10 万字）"],
+              ["5 特征推断","按台账字段判断主体特征，不按行业名称","小于 0.1 秒"],
+              ["6 提示词装配","台账 + 材料摘录 + 输出结构","小于 0.1 秒"],
+              ["7 生成","单次调用，结构化 JSON 输出","21–26 秒"],
+              ["8 补全与校验","补表格、跑十项检查","小于 0.5 秒"],
+              ["9 排版","docx 装配","小于 1 秒"]
+            ]}
+          ],
+          body:[
+            "第 4 步的「按页打分摘录」是控制上下文的关键。三份材料原始文本约 10 万字，全塞进提示词既慢又容易漏重点；按页打分只保留与主体概况、业务、财务、债务相关的页，每份压到 4.5 万字以内。评分用关键词密度与数字密度，不用语义模型，所以稳定、可复现。",
+            "第 7 步只调一次模型。不是不想分步，而是分步会带来多次口径传递，误差反而放大。代价是单次输出较长，需关闭思考模式、把输出上限提到 1.2 万 token——否则 JSON 会在结尾被截断。"
+          ]
+        },
+        {
+          id:"stack", level:2,
+          title:"技术选型与理由",
+          desc:"全本机、无框架、密钥不出本地",
+          lead:"全部跑在本机，无外部服务依赖，密钥不出本地。",
+          blocks:[
+            {type:"list", kind:"ul", items:[
+              "<b>服务</b>：Python 标准库 ThreadingHTTPServer，无 Web 框架，单文件可跑",
+              "<b>文档</b>：python-docx 直接装配，不套 Word 模板，避免样式漂移",
+              "<b>解析</b>：PyMuPDF 提取文本与页码",
+              "<b>数据</b>：财汇 MCP（JSON-RPC over HTTPS），门类工具 + 执行工具两层调用",
+              "<b>模型</b>：读本机 models.json，可切换；当前可用 deepseek-v4-flash",
+              "<b>站点</b>：GitHub Pages 托管静态入口与文档，Actions 发布"
+            ]}
+          ],
+          body:[
+            "选标准库而不是 Flask 或 FastAPI，是为了把部署成本压到零——目标机器上有 Python 就能跑，不需要装依赖、不需要配反向代理。代价是并发能力有限，但这是单人使用的作业工具，不是对外服务。",
+            "密钥的处理是硬约束：财汇 API Key 只从本机的 WorkBuddy 配置读取，不进前端、不进仓库。公开仓库里做过全量扫描，确认没有明文密钥。"
+          ]
+        }
+      ]
+    },
+    {
+      id:"template", level:1, idx:"三",
+      title:"模板：两层五节，行项由数据决定",
+      desc:"废除按行业选表，改按报表结构选行",
+      lead:"模板管「长什么样」，不管「写什么」。v1.1 的关键改动是废除按行业选表——因为归类一错，整张财务表跟着错，而且不报错。",
+      body:[
+        "模板有两层。摘要层给领导看，正面与关注各 3–5 条，纯定性、不带数字；正文层给业务看，固定五节：基本情况、总述、分部业务、资产、财务表与债务。",
+        "早先的版本设了七个行业包（城投、产投、交通运输、制造业、房地产、金融、REITs），程序按企业名称关键词归类。问题在于归类靠关键词：「控股」一律判成产投，机场的非航收入超过航空性收入也照判交通运输。归类错了不报警，只是财务表悄悄多几行「--」或少几行关键指标。",
+        "v1.1 改为按数据选行：某一行出现与否，由这家企业的报表结构决定，与它被归到哪个行业无关。"
+      ],
+      children:[
+        {
+          id:"skeleton", level:2,
+          title:"骨架与槽位",
+          desc:"五节的顺序为什么不能变",
+          lead:"摘要层与正文层是「结论—证据」关系，不是缩写关系。",
+          blocks:[
+            {type:"table", caption:"表 3-1　报告骨架", head:["节","内容","篇幅"], rows:[
+              ["标题行","企业全称 + 主体：【内部评级代码】","1 行"],
+              ["摘要层","正面 3–5 条、关注 3–5 条，一条一事，不含数字","每条 1–2 句"],
+              ["1、基本情况","成立与前身、主营与功能定位、注册资本与股东、实控人、报告期股权变动","150–300 字"],
+              ["2、点评","总述段 → 业务构成表 → 分部业务段 → 资产段 → 财务表 → 债务段 → 专题段（可选）","2,000–4,000 字"]
+            ]}
+          ],
+          body:[
+            "摘要里的每一条，正文必须有对应段落；正文里没有的判断，摘要不能出现。这条约束防止摘要变成材料的二次概括——摘要要回答「这家企业值多少」，不是「材料里写了什么」。",
+            "正文顺序固定，是因为阅读顺序有讲究：先说靠什么活着（总述），再说各板块怎么挣钱（分部），再说钱变成了什么（资产），最后说欠了谁多少（债务）。顺序颠倒，读者就得来回翻。",
+            "专题段是可选的例外通道，只在某个问题塞不进上述四段时单列——比如重大在建项目的资本开支节奏、或有负债的集中度、政府支持的具体形式。它不是固定章节，写多了就说明前四段没写透。"
+          ]
+        },
+        {
+          id:"indicator-layers", level:2,
+          title:"财务表：三层行项规则",
+          desc:"11 必选 + 12 条件触发 + 专属层",
+          lead:"十一行必选、十二行条件触发、两组主体专属。触发看报表结构，不看行业名称。",
+          blocks:[
+            {type:"table", caption:"表 3-2　三层行项", colw:["11%","16%","73%"], head:["层","规则","行项"], rows:[
+              ["必选（11）","无条件出现","资产总额、负债总额、所有者权益、资产负债率、营业总收入、净利润、经营活动现金流量净额、短期债务、长期债务、全部债务、总资本化比率"],
+              ["条件（12）","阈值触发，彼此独立","固定资产（≥总资产 30%）、在建工程（≥10%）、存货（≥15%）、应收账款（≥15%）、营业毛利率（有毛利率或成本）、EBITDA（有值）、货币资金/短期债务（有短债与货币资金）、EBITDA 利息保障倍数（有值）、营业成本（占收入 ≥60%）、投资收益（占利润总额 ≥30%）、公允价值变动损益（≥10%）、利润总额（为净利润 1.5 倍以上）"],
+              ["专属","仅该主体披露时取用","监管指标（资本充足率、不良率等）、合同锁定现金流指标（REITs 分派率等）"]
+            ]}
+          ],
+          body:[
+            "阈值不是拍出来的，是按「这个科目占到多少才值得在简评里单独一行」定的。固定资产 30%、在建 10%、存货与应收各 15%——低于这个量级，写在正文里就够了，占一行反而稀释重点。",
+            "十二条彼此独立：一家企业可能同时命中在建工程、存货、应收账款三行。命中超过上限时按优先级截断，优先级按「对偿债能力的影响程度」排，不按科目金额排——这是两次调整后的结果，早先按金额排，把「应收账款占 26.6%」这类真正重要的结构行挤掉了。",
+            "专属层刻意做窄。监管指标只对金融类主体有意义，分派率只对 REITs 有意义，强行套到其他主体会得到一行「--」，既无信息量又显得不专业。"
+          ]
+        },
+        {
+          id:"typography", level:2,
+          title:"体例与格式",
+          desc:"写死在代码里，换机器不漂移",
+          lead:"这些参数不是审美选择，是内部报告的统一体例。",
+          blocks:[
+            {type:"table", caption:"表 3-3　版式参数", head:["项","规范"], rows:[
+              ["字体字号","楷体_GB2312 五号（10.5pt）"],
+              ["行距","1.15 倍，段前段后 0"],
+              ["首行缩进","2 字符"],
+              ["表题","居中，小四加粗"],
+              ["表格","数字右对齐、两位小数、合计行加粗"],
+              ["页边距","上下 2.54cm，左右 3.17cm"]
+            ]}
+          ],
+          body:["docx 生成器把这些写死，不依赖 Word 默认样式。换一台机器打开，字号、行距、缩进都不会变——这是「看起来像内部报告」的最低要求，也是过去每次排版都要返工的地方。"]
+        }
+      ]
+    },
+    {
+      id:"method", level:1, idx:"四",
+      title:"方法：五步成稿，每步有可检验的输出",
+      desc:"方法给人看，也给模型看",
+      lead:"方法是给人看的，也是给模型看的。能被检验的步骤才写进方法，检验不了的交给判断。",
+      body:[
+        "方法论分五步：认料、取数、写正文、提摘要、定稿检查。每一步都有明确产出物——认料产出「材料清单与期次表」，取数产出「事实台账」，写正文产出「五节草稿」，提摘要产出「正反各三条」，检查产出「问题清单」。",
+        "第六节是元规则：让方法不过拟合。它不讲写作技巧，讲的是对方法本身的约束——不从样本倒推规则、不把行业词写成必填项、不复用结论。这一节决定了这套方法能不能用在下一家企业身上。"
+      ],
+      children:[
+        {
+          id:"intake", level:2,
+          title:"认料与取数",
+          desc:"期次、单位、口径，三件事定死",
+          lead:"三件事定死再动笔：期次、单位、口径。定完顺手做一次复算，能挡住大部分台账错位。",
+          body:[
+            "期次分两类写法：时点（2025 年末、2026 年 6 月末）与区间（2025 年、2025 年 1—6 月）。资产、负债、债务用时点，收入、利润、现金流用区间。台账写「中报」的，时点就是 6 月末，不允许写成 9 月末——这一条已经做成自动校验。",
+            "单位统一到亿元、两位小数。财汇返回的是万元，换算在数据层做，模型看到的就是亿元，避免它自己换算时多一位少一位。",
+            "口径必须标注：短期债务、长期债务、有息债务是一套口径，评级报告的「全部债务」通常另含应付债券、租赁负债等，两者不等。正文出现哪个数，就要说清是哪个口径，差额来源记入 data_notes。",
+            "复算只有一条但很有效：资产 = 负债 + 所有者权益。某期对不上，多半是字段错位。这条也做成了自动检查——某机场有一期「存货」与「货币资金」同值，就是这一步发现的。"
+          ]
+        },
+        {
+          id:"prose", level:2,
+          title:"正文：六段的写法",
+          desc:"一段一条因果链，段末收口到偿债",
+          lead:"每段一条因果链，段首一句汇总，段末收口。",
+          blocks:[
+            {type:"list", kind:"ul", items:[
+              "<b>总述段</b>：三问——钱从谁那里来、量由什么决定、价由谁定。三个答案就是骨架，答完外部条件就写完了",
+              "<b>分部业务段</b>：六拍——业务模式与产能、报告期量价与收入、毛利率及变动原因、项目或订单储备、板块风险点",
+              "<b>资产段</b>：先把前五大科目按最新期次金额降序重排，再逐个解释「是什么、为什么变」，不能沿用上期名单只换数字",
+              "<b>财务表</b>：行项由字段决定，表后必须有一句读表结论，不能把表一贴就过",
+              "<b>债务段</b>：七个要素固定顺序——规模与结构、期限分布、融资成本、担保方式、受限情况、到期安排、缓释来源",
+              "<b>专题段</b>：只写塞不进上述段落的问题，一段一事"
+            ]}
+          ],
+          body:[
+            "三问的好处是可迁移。机场答成收入来自航空公司及旅客、业务量由腹地经济决定、价格受政策与市场共同影响；防水材料企业答成收入依赖建筑与基建需求、回款节奏决定现金流、价格受成本传导约束。同一个问句，两组完全不同的答案，没有一句是套话。",
+            "「段末收口」是硬要求。每段最后一句必须落到「这对偿债意味着什么」，否则这段就只是材料摘抄。收口不等于唱空，可以是「资本开支高峰已过、后续压力缓释」，但必须是一个判断。"
+          ]
+        },
+        {
+          id:"summary", level:2,
+          title:"摘要：从正文倒抽",
+          desc:"候选池按机制分类，不按行业分类",
+          lead:"摘要从正文倒抽，不从材料正推。候选池按机制分类，不按行业分类。",
+          blocks:[
+            {type:"table", caption:"表 4-1　五个候选池", head:["候选池","看什么","常见条目"], rows:[
+              ["现金流","经营现金流与利润的匹配、收现质量","回款周期拉长、现金流对利息的覆盖"],
+              ["资产质量","受限资产、应收集中度、存货去化","受限资产占比、单一客户依赖"],
+              ["债务结构","短债占比、集中到期、成本","一年内到期规模、非标占比"],
+              ["外部支持","股东背景、政府补助、担保","支持的形式与可持续性"],
+              ["治理与经营","股权变动、管理层、关联交易","控股股东变更、关联占款"]
+            ]}
+          ],
+          body:[
+            "提炼有准入三问：这件事在正文里有没有证据？它影响的是偿债能力还是只是经营波动？它和其他条目是不是同一件事？三问过不了的不写。",
+            "排序按「对信用水平的影响分量」，不按写作顺序。直接影响偿债的（短债集中到期、受限资产高）排前面，间接影响的（行业景气、项目储备）排后面。",
+            "措辞先定机制再选句式。「短期债务占比高」是机制，「债务期限结构短期化，滚续压力集中」是表述；顺序倒了就变成形容词堆砌。",
+            "双向校验：摘要每条能在正文找到对应段落，正文每个判断能在摘要找到落点。找不到的，要么补摘要，要么删正文——通常是后者。"
+          ]
+        },
+        {
+          id:"anti-overfit", level:2,
+          title:"反过拟合：三条自我约束",
+          desc:"防止方法退化成样本复制",
+          lead:"三条约束，用来防止方法退化成「某几份样本的复制」。",
+          blocks:[
+            {type:"list", items:[
+              "<b>不从样本倒推规则</b>：看到三份报告都有「在建工程」一行，不能就此认定所有报告都要这一行；要看这三家的在建工程占比是否都过了阈值",
+              "<b>不把行业词写成必填项</b>：模板里不出现「空域」「时刻」「矿权」「去化率」这类词，写了就等于要求模型去找，找不到也会硬写",
+              "<b>不复用结论</b>：上一家的「区域经济实力强」不能平移，判断必须由本期证据支撑"
+            ]}
+          ],
+          body:[
+            "检验只有一句：换一家业务完全不同的公司，这条还成立吗？成立就留在方法里，不成立就降级为示例。",
+            "这条规则是本轮改版的主要动因。v1.0 的模板里有七个行业包、方法论里全是机场个案（苏南硕放、军民合用、1,096.85 万人次），看起来具体，实际是把样本特征当成了通用规则。v1.1 把这些全部降级为示例，规则改成按数据和机制表述。"
+          ]
+        }
+      ]
+    },
+    {
+      id:"workbench", level:1, idx:"五",
+      title:"实现：八个模块，一条主链路",
+      desc:"后端 1,890 行，无框架依赖",
+      lead:"后端 1,890 行 Python，前端单页 493 行，无框架依赖。每个模块只做一件事，替换其中任何一个不影响其余。",
+      body:[
+        "模块划分按「数据从哪来、规则在哪、文字谁写、版式谁管」切。这样切的好处是排错快——出问题先看是哪一段的输出不对，再看那个模块，不用通读全部代码。"
+      ],
+      children:[
+        {
+          id:"modules", level:2,
+          title:"模块与职责",
+          desc:"八个文件，行数与分工",
+          lead:"最大的模块是 generator.py，因为规则都在这里——它是唯一「改规则要动代码」的地方。",
+          blocks:[
+            {type:"table", caption:"表 5-1　模块清单", head:["模块","行数","职责"], rows:[
+              ["server.py","236","HTTP 服务、路由、跨域头、文件下载"],
+              ["generator.py","617","提示词装配、表格生成、结构补全、十项校验"],
+              ["docx_writer.py","294","docx 装配、字体表格版式、空白骨架"],
+              ["facts.py","219","事实台账：主体、股权、评级、债券、财务、材料清单"],
+              ["llm.py","147","模型发现与调用、JSON 解析容错"],
+              ["mcp_client.py","134","财汇 MCP 客户端（门类工具 + 执行）"],
+              ["md2html.py","132","模板与方法论转可读 HTML"],
+              ["pdf_text.py","111","PDF 下载、分页、按页打分摘录"]
+            ]}
+          ],
+          body:["除 generator.py 外，其余模块都可以独立替换。比如换一个数据源，只要新模块输出同样结构的台账 JSON，下游一行不用改。"]
+        },
+        {
+          id:"api", level:2,
+          title:"接口清单",
+          desc:"六个写接口、四个读接口",
+          lead:"接口按作业顺序排列，一个接口对应用户界面上的一次点击。",
+          blocks:[
+            {type:"table", caption:"表 5-2　HTTP 接口", head:["方法","路径","用途"], rows:[
+              ["GET","/api/health","页面探活，判断本机服务是否在跑"],
+              ["GET","/api/models","可用模型列表与默认模型"],
+              ["POST","/api/search","主体检索，返回事实台账"],
+              ["POST","/api/fetch","拉取并解析三份材料"],
+              ["POST","/api/generate","生成草稿（含校验结果）"],
+              ["POST","/api/export","草稿转 docx，返回下载地址"],
+              ["POST","/api/prompt","导出完整提示词，供核对或换模型重跑"],
+              ["GET","/download/{name}","下载生成的 docx"],
+              ["GET","/docs/{file}","模板与方法论的浏览页"]
+            ]}
+          ],
+          body:["/api/prompt 是为审计留的口子。同一份台账和材料，任何时候都能导出当时的提示词，确认模型看到的输入是什么——出了错，能分清是「数据错」还是「写错」。"]
+        },
+        {
+          id:"mcp", level:2,
+          title:"取数与材料解析",
+          desc:"企业 → 债券 → 公告 → PDF",
+          lead:"财汇 MCP 是两层结构：先按门类查有哪些工具，再执行具体工具。取数路径是企业 → 债券 → 公告 → PDF。",
+          body:[
+            "门类工具只返回工具清单和参数说明，实际取数要调执行工具并传工具名。这一层设计是让模型自己发现能力，对固定流程来说多一次往返；实现里缓存了门类结果，只调一次。",
+            "材料定位的关键是「从企业到公告」。企业名先查存量债券拿到债券代码，再按代码查公告，筛「跟踪评级报告」「募集说明书」「年度报告」三类；部分主体没有存续债，退回按企业名查公司公告。",
+            "公告记录里带 PDF 直链，下载后本地解析。解析不是全文塞入，而是分页打分：与主体概况、业务、财务、债务相关的页得分高，优先保留，总量控制在上限内。",
+            "结构化数据与原文冲突时以原文为准。财汇的字段口径与评级报告不完全一致，正文引用报告结论时按报告原文，差异记入 data_notes——这条也写进了模型提示词。"
+          ]
+        },
+        {
+          id:"deploy", level:2,
+          title:"部署形态",
+          desc:"本机服务 + 在线入口",
+          lead:"取数与生成在本地，页面与文档可在线访问。",
+          body:[
+            "财汇 MCP 不返回跨域响应头，浏览器无法直连，因此页面不能做成纯静态取数。当前形态是：GitHub Pages 提供入口与文档（模板、方法论的可读 HTML 与 docx 骨架），打开页面时先探本机端口，通就直接用，不通则显示启动命令并允许改服务地址。",
+            "服务只监听 127.0.0.1，外部网络无法访问；放开跨域头是因为服务本身没有暴露面，且方便页面从 Pages 域名访问本机。密钥在服务端，不进前端、不进仓库。",
+            "要走全在线，需要加一层代理转发财汇请求，代价是密钥托管到第三方、模型调用也要跟着上云。这不是技术障碍，是合规与成本选择，列为待决事项。"
+          ]
+        }
+      ]
+    },
+    {
+      id:"qc", level:1, idx:"六",
+      title:"质检：四类校验",
+      desc:"专治「数字都对但拼错了」",
+      lead:"模型最容易犯的错不是编数字，是把真实数字放到错误的期次或口径上。四类校验针对的就是这一类。",
+      body:["校验不判断内容好坏，只判断「能不能被台账或原文支撑」。这是有意的限制——判断好坏需要人，机器只做可验证的部分。"],
+      children:[
+        {
+          id:"checks", level:2,
+          title:"四类校验",
+          desc:"摘要、数字、期次、结构",
+          lead:"四类互补：前两类管数据，第三类管拼装，第四类管体例。",
+          blocks:[
+            {type:"table", caption:"表 6-1　校验规则", head:["类别","检查什么","触发后果"], rows:[
+              ["A 摘要层","正面与关注是否含阿拉伯数字","逐条报出，摘要层应为纯定性"],
+              ["B 数字溯源","正文每个数字能否在台账或材料全文中找到同值（负数按绝对值）","列出无出处数字，提示复核算式"],
+              ["C 期次一致","正文出现的期次写法是否在台账「期次写法」或材料原文中出现过","列出疑似拼凑的期次"],
+              ["D 结构自洽","资产=负债+权益、正反各≥3 条、加粗汇总句存在、财务表非空、字数区间","报出具体偏差与差额"]
+            ]}
+          ],
+          body:[
+            "B 类最容易被误判，也最需要克制。最初版本把「两数相减得到的占比」全部报为不可溯源，噪音太大；后来改为「找不到同值即列出」，并明确提示「多为正文自算的占比、增速或差额，请复核算式」，把判断交回人。",
+            "C 类的价值在于抓拼凑。数字真实但期次错位，人工审稿几乎看不出来——每个数都查得到，只是不在同一期。校验把正文期次与台账、原文的期次写法做集合比对，多出来的就是嫌疑。",
+            "D 类里的「资产=负债+权益」是意外收获。本来只是防台账字段错位，实际跑下来能抓出数据源本身的问题。"
+          ]
+        },
+        {
+          id:"caught", level:2,
+          title:"实际拦下的三类错",
+          desc:"三次实测，三类，都是人工容易漏的",
+          lead:"三次实测，三类错，共同点是「看起来都对」。",
+          blocks:[
+            {type:"list", items:[
+              "<b>期次被改写</b>：台账写「2026 年中报」，模型输出「2026 年 1—9 月」。数字对，期次错，C 类拦下",
+              "<b>期次被拼造</b>：某制造企业草稿出现「2026 年 3 月末」，三份材料里都没有这个期次，模型自己拼的，C 类拦下",
+              "<b>台账字段错位</b>：某期「存货」与「货币资金」同值，D 类复算对不上，回头查是数据源字段问题"
+            ]}
+          ],
+          body:["这三类错的共同点是「看起来都对」。第一个每个数字都真实，第二个期次格式完全规范，第三个在表格里毫无异常。人工审稿靠通读，很难发现；机器靠集合比对，一次就能列出来。"]
+        },
+        {
+          id:"residual", level:2,
+          title:"残余风险",
+          desc:"管得住出处，管不住用法",
+          lead:"校验管得住「有没有出处」，管不住「用得对不对」。",
+          blocks:[
+            {type:"list", kind:"ul", items:[
+              "<b>语义误用</b>：数字有出处，但用在不成立的推论上（如用单体数据说明合并口径）",
+              "<b>口径混淆</b>：有息债务与全部债务混用，差额未说明",
+              "<b>材料时效</b>：评级报告引用的是 3 月末数据，正文写成「最新一期」",
+              "<b>判断偏差</b>：正面与关注的分量排序不合实际"
+            ]},
+            {type:"note", text:"这些留给审稿人。系统的定位是「把错降到审稿能发现的量级」，不是「消灭审稿」。汇报时这一点要说清楚，否则容易把工具当成结论生成器。"}
+          ]
+        }
+      ]
+    },
+    {
+      id:"evidence", level:1, idx:"七",
+      title:"验证：三家跨行业主体",
+      desc:"骨架一致，行项不同",
+      lead:"用机场、防水材料、城投平台三类主体跑同一套模板，财务表同为 16 行，结构行各不相同，差异全部来自数据。",
+      children:[
+        {
+          id:"cross", level:2,
+          title:"三家对照",
+          desc:"同一套模板的三种答案",
+          lead:"三家财务表都是 16 行（11 必选 + 5 条件），但具体是哪 5 行完全不同。",
+          blocks:[
+            {type:"table", caption:"表 7-1　三家主体的结构差异（财务表行项实测）", head:["主体","类型","财务表","决定性行项"], rows:[
+              ["无锡苏南国际机场","机场","16 行","在建工程，占总资产 32%"],
+              ["科顺防水","防水材料","16 行","应收账款，占总资产 26.6%"],
+              ["中山城建","城投平台","16 行","存货，占总资产 30%"]
+            ]}
+          ],
+          body:[
+            "行项差异确实由报表结构驱动，不受主体类型影响——这是「去行业化」最直接的证据：不是把行业词换掉，而是把选择依据从「你是什么行业」改成「你的报表长什么样」。",
+            "总述段的证据更直观。同一套三问框架，机场答成：收入来自航空公司及旅客，业务量由腹地经济与机场保障能力决定，价格受民航收费政策与市场定价共同影响。防水材料企业答成：收入依赖房屋建筑与基建需求，下游回款节奏决定现金流与资产质量，价格受成本传导与行业竞争约束。两组答案没有一个共同的行业词。",
+            "需要说明范围：财务表行项在三家均已实测；完整链路（取数—材料—生成—导出）目前在机场与制造两类主体上跑通，平台类主体的成稿质量还要在批量阶段验证。当前状态是「初稿可用、需审稿」，不是「直接发布」。"
+          ]
+        },
+        {
+          id:"timing", level:2,
+          title:"实测耗时",
+          desc:"机器快不是目的",
+          lead:"端到端约 40 秒，但机器快不是目的，减少重复劳动才是。",
+          blocks:[
+            {type:"table", caption:"表 7-2　耗时拆分（本机，deepseek-v4-flash）", head:["环节","实测","说明"], rows:[
+              ["主体与台账检索","14.5 秒","6 类查询，含财务 22 项 × 4 期"],
+              ["材料下载与解析","0.7 秒","三份共约 10 万字，摘录后入提示词"],
+              ["模型生成","21–26 秒","单次调用，结构化输出"],
+              ["补全、校验、排版","小于 2 秒","本地计算"]
+            ]}
+          ],
+          body:[
+            "人工基线尚未系统测量。建议在试点中记两个数：从拿到材料到成稿的实际工时、审稿修改的比例。这两个数比机器耗时更能说明价值——如果审稿改动量仍在一半以上，说明装配质量还不够。"
+          ]
+        }
+      ]
+    },
+    {
+      id:"plan", level:1, idx:"八",
+      title:"推进：三阶段，三件待决",
+      desc:"技术不是瓶颈，验证与合规是",
+      lead:"工具已经可用，接下来的瓶颈不在技术，在批量验证与合规边界。",
+      children:[
+        {
+          id:"roadmap", level:2,
+          title:"三阶段路线",
+          desc:"已完成、建议启动、视试点",
+          lead:"第二阶段是能否落地的关键：单跑一家说明不了问题，跑二十家才看得出规则边界。",
+          blocks:[
+            {type:"table", caption:"表 8-1　推进路线", head:["阶段","内容","产出","状态"], rows:[
+              ["一、基础建设","模板 v1.1、方法论 v1.1、工作台 v1.1、在线入口","可运行的单机工具","已完成"],
+              ["二、批量验证","选 20 家存量主体跑批，与既有定稿逐项比对","差异清单、规则修订记录、评级代码字典","建议启动"],
+              ["三、系统对接","与信评系统打通、留痕与版本管理、多主体并行","可审计的作业流","视试点结果"]
+            ]}
+          ],
+          body:[
+            "比对方法建议逐项而非整体：同一主体的既有定稿与系统草稿，按「数字、期次、口径、判断、措辞」五类标注差异，统计哪一类最多。差异集中在措辞，说明方法有效；集中在数字，说明取数环节要修。"
+          ]
+        },
+        {
+          id:"decisions", level:2,
+          title:"三件待决事项",
+          desc:"影响下一步形态",
+          lead:"三件事需要拍板，都会影响下一步的形态。",
+          blocks:[
+            {type:"list", items:[
+              "<b>页面形态</b>：维持「本机取数 + 在线入口」，还是加代理做全在线？后者需把财汇密钥托管到第三方，涉及合规",
+              "<b>模型配置</b>：继续用本机现有可用模型，还是申请企业级模型额度？影响生成质量与稳定性",
+              "<b>试点范围</b>：先跑哪一类主体？建议选存量债多、材料齐的城投或交通类，样本容易凑齐"
+            ]}
+          ],
+          body:["三件事里，第二件最影响成稿质量，第一件最影响推广方式。第三件可以边跑边调，不必等结论。"]
+        }
+      ]
+    }
+  ]
+};
+
+/* ============================================================
+   路由与渲染
+   ============================================================ */
+const view = document.getElementById("view");
+const crumbEl = document.getElementById("crumb");
+const levelsEl = document.getElementById("levels");
+const NODE_INDEX = new Map();
+
+(function index(node, path){
+  const p = path.concat([node]);
+  NODE_INDEX.set(node.id, {node, path: p});
+  (node.children || []).forEach(c => index(c, p));
+})(DATA, []);
+
+function esc(s){
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function blocksHtml(blocks){
+  if (!blocks) return "";
+  // 只有纯数值（含百分比、倍数、--）右对齐；含中文的说明性文字一律左对齐，
+  // 否则长句会因右对齐而在行内错位。
+  const looksNum = s => {
+    const t = String(s == null ? "" : s).trim();
+    return t === "--" || /^[¥￥]?[\d,]+(\.\d+)?%?$/.test(t) || /^\d+(\.\d+)?(倍|%)$/.test(t);
+  };
+  return blocks.map(b => {
+    if (b.type === "table"){
+      const head = (b.head || []).map(h => `<th>${esc(h)}</th>`).join("");
+      const rows = (b.rows || []).map(r => "<tr>" + r.map((c, i) =>
+        (i === 0 || !looksNum(c)) ? `<td>${esc(c)}</td>` : `<td class="num">${esc(c)}</td>`
+      ).join("") + "</tr>").join("");
+      const colgroup = b.colw
+        ? "<colgroup>" + b.colw.map(w => `<col style="width:${w}">`).join("") + "</colgroup>"
+        : "";
+      return `<div class="block"><div class="block-title">${esc(b.caption || "")}</div>
+        <table${b.colw ? ' class="fixed"' : ""}>${colgroup}<thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>`;
+    }
+    if (b.type === "list"){
+      const tag = b.kind === "ul" ? "ul" : "ol";
+      const items = (b.items || []).map(x => `<li>${x}</li>`).join("");
+      return `<div class="block">${b.title ? `<div class="block-title">${esc(b.title)}</div>` : ""}
+        <${tag}>${items}</${tag}></div>`;
+    }
+    if (b.type === "note"){
+      const tone = b.tone ? " " + b.tone : "";
+      return `<div class="block"><div class="note${tone}">${b.text}</div></div>`;
+    }
+    return "";
+  }).join("");
+}
+
+function metricsHtml(m){
+  if (!m) return "";
+  return `<div class="metrics">${m.map(x =>
+    `<div><b>${esc(x.v)}</b><span>${x.k}</span></div>`).join("")}</div>`;  // k 允许写 <br>
+}
+
+function cardsHtml(children, level){
+  if (!children || !children.length) return "";
+  const cards = children.map((c, i) => {
+    const tag = String(i + 1).padStart(2, "0");
+    return `<a class="card" href="#/${c.id}">
+      <span class="idx">${tag}</span>
+      <h3>${esc(c.title)}</h3>
+      <p>${esc(c.desc || "")}</p>
+      <span class="go">进入 →</span>
+    </a>`;
+  }).join("");
+  return `<div class="cards-title">${level === 0 ? "分章阅读" : "本节下钻"}</div>
+    <div class="cards">${cards}</div>`;
+}
+
+function backHtml(entry){
+  const parent = entry.path.length > 1 ? entry.path[entry.path.length - 2] : null;
+  const btn = parent
+    ? `<a href="#/${parent.id}">← 返回：${esc(parent.title)}</a>`
+    : `<a href="#/">← 回到首页</a>`;
+  return `<div class="back">${btn}
+    <button onclick="toggleToc(1)">打开目录</button>
+    <button onclick="window.print()">打印本页</button>
+    <span class="hint">按 Esc 返回上级</span></div>`;
+}
+
+function render(id){
+  const entry = NODE_INDEX.get(id) || NODE_INDEX.get("root");
+  const {node, path} = entry;
+
+  // 面包屑
+  crumbEl.innerHTML = path.map((n, i) => {
+    const last = i === path.length - 1;
+    const label = i === 0 ? "总览" : n.title;
+    return (i ? '<span class="sep">/</span>' : "") +
+      (last ? `<span class="cur">${esc(label)}</span>` : `<a href="#/${n.id}">${esc(label)}</a>`);
+  }).join("");
+
+  // 层级指示
+  [...levelsEl.children].forEach((el, i) => el.classList.toggle("on", i === node.level));
+
+  const bodyHtml = (node.body || []).map(p => `<p>${p}</p>`).join("");
+  view.innerHTML = `<article class="page">
+    <div class="kicker">${esc(node.kicker || "")}</div>
+    <h1>${esc(node.title)}</h1>
+    <p class="lead">${esc(node.lead || "")}</p>
+    ${metricsHtml(node.metrics)}
+    ${bodyHtml ? `<div class="prose">${bodyHtml}</div>` : ""}
+    ${blocksHtml(node.blocks)}
+    ${cardsHtml(node.children, node.level)}
+    ${backHtml(entry)}
+  </article>`;
+
+  document.getElementById("foot").style.display = node.level === 0 ? "" : "none";
+  document.title = (node.id === "root" ? "" : node.title + " · ") + "内评简评报告自动化";
+  window.scrollTo(0, 0);
+  markToc(id);
+}
+
+/* ---------- 目录 ---------- */
+function buildToc(){
+  let html = `<a href="#/" data-id="root">总览</a>`;
+  (DATA.children || []).forEach(c => {
+    html += `<a href="#/${c.id}" data-id="${c.id}">${esc(c.idx)}、${esc(c.title)}</a>`;
+    (c.children || []).forEach(g => {
+      html += `<a href="#/${g.id}" data-id="${g.id}" class="l1">${esc(g.title)}</a>`;
+      (g.children || []).forEach(h => {
+        html += `<a href="#/${h.id}" data-id="${h.id}" class="l2">${esc(h.title)}</a>`;
+      });
+    });
+  });
+  document.getElementById("tocBody").innerHTML = html;
+}
+function markToc(id){
+  document.querySelectorAll("#tocBody a").forEach(a =>
+    a.classList.toggle("on", a.dataset.id === id));
+}
+function toggleToc(on){
+  document.getElementById("toc").classList.toggle("on", !!on);
+  document.getElementById("mask").classList.toggle("on", !!on);
+}
+
+/* ---------- 路由 ---------- */
+function route(){
+  const m = location.hash.match(/^#\/(.+)$/);
+  render(m ? decodeURIComponent(m[1]) : "root");
+  toggleToc(0);
+}
+window.addEventListener("hashchange", route);
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape"){
+    const tocOpen = document.getElementById("toc").classList.contains("on");
+    if (tocOpen){ toggleToc(0); return; }
+    const m = location.hash.match(/^#\/(.+)$/);
+    if (m){
+      const entry = NODE_INDEX.get(decodeURIComponent(m[1]));
+      const parent = entry && entry.path.length > 1 ? entry.path[entry.path.length - 2] : null;
+      location.hash = parent ? "#/" + parent.id : "#/";
+    }
+  }
+});
+
+buildToc();
+route();
+</script>
+</body>
+</html>
