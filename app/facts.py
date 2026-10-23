@@ -96,12 +96,19 @@ def _norm_fin(rows: list[dict], periods_wanted: int = 4) -> dict[str, Any]:
     return {"periods": periods, "data": {p: by_period[p] for p in periods}}
 
 
-def build_facts(client: CaihuiClient, company: str, with_financials: bool = True) -> dict:
+def _p(progress, pct: int, stage: str, detail: str = ""):
+    if progress:
+        progress(pct, stage, detail)
+
+
+def build_facts(client: CaihuiClient, company: str, with_financials: bool = True,
+                progress=None) -> dict:
     facts: dict[str, Any] = {"query_name": company, "company": {}, "equity": {},
                              "ratings": [], "bonds": [], "financials": {"periods": [], "data": {}},
                              "composition": [], "materials": {}, "notes": []}
 
     # 1) 基础档案
+    _p(progress, 4, "工商档案", "查询注册资本、行业、成立日期")
     try:
         out = client.execute("get_company_basic_info",
                              {"target_company": [company], "indicator_name": BASIC_INDICATORS})
@@ -113,6 +120,7 @@ def build_facts(client: CaihuiClient, company: str, with_financials: bool = True
         facts["notes"].append(f"基础档案查询失败：{e}")
 
     # 2) 股权
+    _p(progress, 16, "股权结构", "查询实际控制人与直接股东")
     try:
         out = client.execute("get_company_actual_controller", {"target_company": [company]})
         rows = CaihuiClient.rows(out)
@@ -129,6 +137,7 @@ def build_facts(client: CaihuiClient, company: str, with_financials: bool = True
         facts["notes"].append(f"股东查询失败：{e}")
 
     # 3) 评级历史
+    _p(progress, 28, "评级历史", "查询外部主体评级")
     try:
         out = client.execute("get_corporate_credit_ratings", {"target_company": [company]})
         facts["ratings"] = CaihuiClient.rows(out)[:8]
@@ -136,6 +145,7 @@ def build_facts(client: CaihuiClient, company: str, with_financials: bool = True
         facts["notes"].append(f"评级历史查询失败：{e}")
 
     # 4) 存量债券
+    _p(progress, 38, "存量债券", "查询存续债券清单")
     try:
         out = client.execute("get_company_issued_bonds", {"target_company": [company]})
         facts["bonds"] = CaihuiClient.rows(out)
@@ -145,6 +155,7 @@ def build_facts(client: CaihuiClient, company: str, with_financials: bool = True
     # 5) 财务指标（分两次取：近三年年报 + 最新报告期，避免指标过多时接口截断）
     if with_financials:
         merged: dict[str, dict] = {}
+        _p(progress, 46, "财务指标", "取近三年年报与最新报告期")
         for date_arg in ("近三年年报", "最新报告期"):
             try:
                 out = client.execute("get_company_financial_metrics", {
@@ -168,6 +179,7 @@ def build_facts(client: CaihuiClient, company: str, with_financials: bool = True
             periods = sorted(merged.keys(), key=sort_key, reverse=True)[:4]
             facts["financials"] = {"periods": periods, "data": {p: merged[p] for p in periods}}
         try:
+            _p(progress, 68, "主营构成", "查询业务板块收入")
             out = client.execute("get_company_business_composition",
                                  {"target_company": company, "date": "最新年报"})
             facts["composition"] = CaihuiClient.rows(out)
@@ -183,7 +195,9 @@ def build_facts(client: CaihuiClient, company: str, with_financials: bool = True
         ({"title_keywords": ["年度报告"], "limit": 20}, None),
     ]
     seen: set[str] = set()
-    for args, _ in queries:
+    for qi, (args, _) in enumerate(queries):
+        _p(progress, 76 + qi * 5, "公告检索",
+           "检索" + "、".join(args.get("title_keywords") or []))
         try:
             out = client.execute("search_company_announcements",
                                  {"target_company": [company], **args})

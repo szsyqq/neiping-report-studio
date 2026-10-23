@@ -1,11 +1,13 @@
 """内评简评报告 docx 生成器（与模板 v1.1 一一对应）。
 
 只依赖 python-docx。输入一个符合 01_模板/内评简评报告通用模板_v1.1.json 的
-数据结构，输出 .docx，版式按模板「三、格式规范」落地：
+数据结构，输出 .docx，版式按参考件（人工撰写的同类报告）对齐：
 
 - 中文楷体_GB2312、五号(10.5pt)、行距1.15、首行缩进2字符、段前段后0
 - 标题行 / 正面： / 关注： / 1、基本情况 / 2、点评 / 汇总句 / 表题 加粗
-- 表格全框线，表头居中加粗，数值列右对齐，首列左对齐
+- 段落之间插入一个空段作为分块间隔（参考件即如此，否则整页挤成一块）
+- 表格：外框上下 1.5pt、内部横竖线 0.5pt、左右不封口；表头加粗居中，
+  数值列右对齐、首列左对齐；行高 0.4cm 起、单元格垂直居中、禁止跨页断行
 """
 
 from __future__ import annotations
@@ -15,7 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from docx import Document
-from docx.enum.table import WD_TABLE_ALIGNMENT
+from docx.enum.table import WD_ROW_HEIGHT_RULE, WD_TABLE_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
@@ -23,6 +25,11 @@ from docx.shared import Cm, Pt
 
 FONT_CN = "楷体_GB2312"
 FONT_SIZE_PT = 10.5
+TEXT_WIDTH_CM = 14.66          # A4 21cm - 左右各 3.17cm
+ROW_HEIGHT_TWIPS = 227         # 参考件行高 0.4cm（atLeast）
+
+_TBLPR_TAIL = ("w:shd", "w:tblLayout", "w:tblCellMar", "w:tblLook",
+               "w:tblCaption", "w:tblDescription", "w:tblPrChange")
 
 
 def _end_period(text: str) -> str:
@@ -79,6 +86,13 @@ def _add_para(doc, text: str, bold: bool = False, align=None, indent: bool = Tru
     return p
 
 
+def _add_blank(doc):
+    """块之间的空行。参考件用空段落分隔，不靠段前段后间距。"""
+    p = doc.add_paragraph()
+    _fmt_paragraph(p)
+    return p
+
+
 def _add_lead_para(doc, lead: str, body: str, bold_lead: bool = True, align=None):
     """段首加粗汇总句 + 常规正文。"""
     p = doc.add_paragraph()
@@ -96,12 +110,68 @@ def _cell_text(cell, text: str, bold=False, align=WD_ALIGN_PARAGRAPH.RIGHT):
     cell.text = ""
     p = cell.paragraphs[0]
     pf = p.paragraph_format
-    pf.line_spacing_rule = WD_LINE_SPACING.SINGLE
+    pf.line_spacing_rule = WD_LINE_SPACING.MULTIPLE
+    pf.line_spacing = 1.15
     pf.space_before = Pt(0)
     pf.space_after = Pt(0)
     p.alignment = align
     r = p.add_run(str(text))
     _set_run_font(r, bold=bold)
+    # 单元格垂直居中，与参考件一致
+    tcPr = cell._tc.get_or_add_tcPr()
+    valign = tcPr.find(qn("w:vAlign"))
+    if valign is None:
+        valign = OxmlElement("w:vAlign")
+        tcPr.append(valign)
+    valign.set(qn("w:val"), "center")
+
+
+def _tbl_borders(tblPr):
+    """外框上下 1.5pt、左右不画；内部横竖线 0.5pt。与参考件一致。"""
+    for old in tblPr.findall(qn("w:tblBorders")):
+        tblPr.remove(old)
+    borders = OxmlElement("w:tblBorders")
+    for edge, val, sz in (("top", "single", 12), ("left", "none", 0),
+                          ("bottom", "single", 12), ("right", "none", 0),
+                          ("insideH", "single", 4), ("insideV", "single", 4)):
+        el = OxmlElement(f"w:{edge}")
+        el.set(qn("w:val"), val)
+        el.set(qn("w:sz"), str(sz))
+        el.set(qn("w:space"), "0")
+        el.set(qn("w:color"), "000000")
+        borders.append(el)
+    tblPr.insert_element_before(borders, *_TBLPR_TAIL)
+
+
+def _tbl_cell_margins(tblPr):
+    for old in tblPr.findall(qn("w:tblCellMar")):
+        tblPr.remove(old)
+    mar = OxmlElement("w:tblCellMar")
+    for side, w in (("top", 0), ("left", 108), ("bottom", 0), ("right", 108)):
+        el = OxmlElement(f"w:{side}")
+        el.set(qn("w:w"), str(w))
+        el.set(qn("w:type"), "dxa")
+        mar.append(el)
+    tblPr.insert_element_before(mar, "w:tblLook", "w:tblCaption",
+                                "w:tblDescription", "w:tblPrChange")
+
+
+def _tbl_width(tblPr, cm: float):
+    el = tblPr.find(qn("w:tblW"))
+    if el is None:
+        el = OxmlElement("w:tblW")
+        tblPr.insert_element_before(el, "w:jc", "w:tblCellSpacing", "w:tblInd",
+                                    *_TBLPR_TAIL)
+    el.set(qn("w:type"), "dxa")
+    el.set(qn("w:w"), str(int(round(cm * 567))))
+
+
+def _row_props(row):
+    trPr = row._tr.get_or_add_trPr()
+    if trPr.find(qn("w:cantSplit")) is None:
+        trPr.append(OxmlElement("w:cantSplit"))
+    row.height = Pt(ROW_HEIGHT_TWIPS / 20.0)
+    row.height_rule = WD_ROW_HEIGHT_RULE.AT_LEAST
 
 
 def _add_table(doc, header, rows, unit_line=None, col_widths_cm=None, bold_rows=()):
@@ -119,21 +189,41 @@ def _add_table(doc, header, rows, unit_line=None, col_widths_cm=None, bold_rows=
         cells = table.add_row().cells
         for i in range(ncols):
             val = row[i] if i < len(row) else ""
-            align = WD_ALIGN_PARAGRAPH.LEFT if i == 0 else WD_ALIGN_PARAGRAPH.RIGHT
+            # 长文本（如项目名、板块名）左对齐，纯数值右对齐 → 数值列才能看齐
+            is_num = bool(val) and all(ch.isdigit() or ch in ".,%-—()（） " for ch in str(val))
+            align = WD_ALIGN_PARAGRAPH.RIGHT if (i > 0 and is_num) else WD_ALIGN_PARAGRAPH.LEFT
             _cell_text(cells[i], val, bold=(idx in bold_rows), align=align)
-    if col_widths_cm:
-        for row in table.rows:
-            for i, w in enumerate(col_widths_cm):
-                if i < len(row.cells):
-                    row.cells[i].width = Cm(w)
+
+    widths = list(col_widths_cm or [])
+    if len(widths) != ncols:
+        first = 6.6 if ncols <= 4 else 5.0
+        rest = max(TEXT_WIDTH_CM - first, 4.0) / max(ncols - 1, 1)
+        widths = [first] + [round(rest, 2)] * max(ncols - 1, 0)
+    total = sum(widths)
+    if total > TEXT_WIDTH_CM:  # 按版心等比压缩，避免表格超出页边距
+        widths = [round(w * TEXT_WIDTH_CM / total, 2) for w in widths]
+
+    tblPr = table._tbl.tblPr
+    _tbl_borders(tblPr)
+    _tbl_cell_margins(tblPr)
+    _tbl_width(tblPr, sum(widths))
+    table.autofit = False
+
+    for i, w in enumerate(widths):
+        table.columns[i].width = Cm(w)
+    for row in table.rows:
+        _row_props(row)
+        for i, w in enumerate(widths):
+            if i < len(row.cells):
+                row.cells[i].width = Cm(w)
     return table
 
 
 def _fin_col_widths(n_periods: int) -> list[float]:
-    """财务表按列数均分 12.5cm 版心宽度。"""
+    """财务表按列数分配版心宽度：项目列宽、期次列等分。"""
     n = max(n_periods + 1, 2)
-    first = 6.6 if n <= 4 else 5.0
-    rest = max(12.5 - first, 4.0) / (n - 1)
+    first = 6.61 if n <= 4 else 5.2
+    rest = max(TEXT_WIDTH_CM - first, 4.0) / (n - 1)
     return [first] + [round(rest, 2)] * (n - 1)
 
 
@@ -153,17 +243,21 @@ def render_report(data: dict[str, Any], out_path: str | Path) -> Path:
     company = data.get("company_full_name", "")
     code = (data.get("internal_rating_code") or "").strip()
     _add_para(doc, f"{company}  主体：【{code or '待填'}】", bold=True, align=WD_ALIGN_PARAGRAPH.LEFT)
+    _add_blank(doc)
 
     _add_para(doc, "正面：", bold=True)
     for i, item in enumerate(data.get("positive") or [], 1):
         _add_para(doc, f"{i}）{_end_period(item)}")
+    _add_blank(doc)
 
     _add_para(doc, "关注：", bold=True)
     for i, item in enumerate(data.get("concern") or [], 1):
         _add_para(doc, f"{i}）{_end_period(item)}")
+    _add_blank(doc)
 
     _add_para(doc, "1、基本情况", bold=True, align=WD_ALIGN_PARAGRAPH.LEFT)
     _add_para(doc, data.get("basic_info", ""))
+    _add_blank(doc)
 
     _add_para(doc, "2、点评", bold=True, align=WD_ALIGN_PARAGRAPH.LEFT)
     c = data.get("commentary") or {}
@@ -179,18 +273,24 @@ def render_report(data: dict[str, Any], out_path: str | Path) -> Path:
             seg.get("header") or ["业务板块", "营业收入", "收入占比", "毛利率"],
             seg.get("rows") or [],
             unit_line=seg.get("unit_line", "单位：亿元"),
-            col_widths_cm=seg.get("col_widths_cm") or [5.4, 3.4, 3.4, 3.4],
+            col_widths_cm=seg.get("col_widths_cm") or [4.91, 3.91, 3.1, 3.1],
             bold_rows=[len(seg.get("rows") or []) - 1] if seg.get("last_row_bold", True) else [],
         )
+    _add_blank(doc)
+
+    from generator import segment_heading  # 与网页预览、校验共用同一套编号口径
 
     for i, s in enumerate(c.get("segments") or [], 1):
         name = s.get("name", "")
         body = s.get("body") or s.get("text") or ""
-        _add_para(doc, f"{i}）{name}业务方面，{body}")
+        _add_para(doc, f"{segment_heading(i, name)}{body}")
+    if c.get("segments"):
+        _add_blank(doc)
 
     at = c.get("asset") or {}
     if at:
         _add_lead_para(doc, at.get("lead", ""), at.get("body", ""))
+        _add_blank(doc)
 
     ft = c.get("financial_table")
     if ft:
@@ -203,16 +303,20 @@ def render_report(data: dict[str, Any], out_path: str | Path) -> Path:
             unit_line=ft.get("unit_line", "单位：亿元"),
             col_widths_cm=ft.get("col_widths_cm") or _fin_col_widths(len(ft.get("periods") or [])),
         )
+        _add_blank(doc)
 
     db = c.get("debt") or {}
     if db:
         _add_lead_para(doc, db.get("lead", ""), db.get("body", ""))
+        _add_blank(doc)
 
-    for t in c.get("special_topics") or []:
+    topics = c.get("special_topics") or []
+    for t in topics:
         if isinstance(t, str):
             _add_para(doc, t)
         else:
             _add_lead_para(doc, t.get("lead", ""), t.get("body", ""))
+        _add_blank(doc)
 
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)

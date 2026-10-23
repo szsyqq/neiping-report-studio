@@ -24,21 +24,35 @@ KEEP_HINTS = ("基本情况", "股权", "实际控制人", "业务", "经营", "
               "正面", "关注", "财务", "主要指标", "募集资金", "主营业务")
 
 
-def download(url: str, filename: str) -> Path:
+def download(url: str, filename: str, on_progress=None) -> Path:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     digest = hashlib.sha256(url.encode()).hexdigest()[:12]
     safe = re.sub(r"[^\w\u4e00-\u9fa5.\-]+", "_", filename)[:80]
     path = DATA_DIR / f"{safe}_{digest}.pdf"
     if path.exists() and path.stat().st_size > 5000:
+        if on_progress:
+            on_progress(1.0, "本地已缓存")
         return path
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
     with urllib.request.urlopen(req, timeout=180) as r:
-        data = r.read()
+        total = int(r.headers.get("Content-Length") or 0)
+        chunk, got = b"", 0
+        parts = []
+        while True:
+            block = r.read(65536)
+            if not block:
+                break
+            parts.append(block)
+            got += len(block)
+            if on_progress:
+                on_progress(min(got / total, 1.0) if total else 0.0,
+                            f"{got / 1048576:.1f}".rstrip("0").rstrip(".") + "MB")
+        data = b"".join(parts)
     path.write_bytes(data)
     return path
 
 
-def extract_pages(pdf_path: str | Path) -> list[str]:
+def extract_pages(pdf_path: str | Path, on_progress=None) -> list[str]:
     try:
         import pymupdf  # noqa: F401
         doc = pymupdf.open(pdf_path)
@@ -46,12 +60,15 @@ def extract_pages(pdf_path: str | Path) -> list[str]:
         import fitz as pymupdf  # type: ignore
         doc = pymupdf.open(pdf_path)
     pages = []
+    n = doc.page_count or 1
     for i, page in enumerate(doc):
         try:
             txt = page.get_text("text")
         except Exception:
             txt = ""
         pages.append(txt or "")
+        if on_progress and (i % 10 == 0 or i == n - 1):
+            on_progress(min((i + 1) / n, 1.0), f"{i + 1}/{n} 页")
     doc.close()
     return pages
 
@@ -103,9 +120,20 @@ def excerpt(pages: list[str], budget: int = 45000, title: str = "") -> str:
     return f"《{title}》摘录（原{len(pages)}页，保留{len(keep)}页）\n{body}"
 
 
-def load_material(url: str, title: str, budget: int = 45000) -> dict:
-    """下载并抽取一份材料，返回 {title, path, chars, text}。"""
-    pdf = download(url, title)
-    pages = extract_pages(pdf)
+def load_material(url: str, title: str, budget: int = 45000, progress=None) -> dict:
+    """下载并抽取一份材料，返回 {title, path, chars, text}。
+
+    progress(frac, label)：frac 是这一份材料的完成度（0-1），供前端显示逐份进度。
+    """
+    def rep(frac, label):
+        if progress:
+            progress(max(0.0, min(1.0, frac)), label)
+
+    rep(0.02, "开始下载")
+    pdf = download(url, title, on_progress=lambda f, lab: rep(0.05 + 0.45 * f, "下载 " + lab))
+    rep(0.55, "解析 PDF")
+    pages = extract_pages(pdf, on_progress=lambda f, lab: rep(0.55 + 0.35 * f, "解析 " + lab))
+    rep(0.94, "生成摘录")
     text = excerpt(pages, budget=budget, title=title)
+    rep(1.0, "完成")
     return {"title": title, "path": str(pdf), "pages": len(pages), "chars": len(text), "text": text}

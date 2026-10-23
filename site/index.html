@@ -3,147 +3,221 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>内评简评报告工作台</title>
+<title>内评简评报告</title>
 <style>
 :root{
-  --bg:#0d1016; --panel:#151922; --panel2:#1b2130; --line:#262d3b;
-  --text:#e6ebf5; --muted:#8b96ab; --accent:#7aa2f7; --accent2:#4fd1c5;
-  --warn:#f0a25a; --danger:#f07178; --ok:#7ec699;
+  --ink:#111418; --ink2:#4b5563; --muted:#9aa1ac; --line:#e6e8eb; --line2:#f1f2f4;
+  --bg:#fff; --hover:#f7f8f9; --red:#c0392b; --amber:#9a6700;
 }
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);
-  font-family:-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
-  font-size:14px;line-height:1.7}
-a{color:var(--accent)}
-header{padding:18px 26px;border-bottom:1px solid var(--line);display:flex;
-  align-items:center;gap:16px;background:linear-gradient(180deg,#141926,#0d1016)}
-header h1{font-size:16px;margin:0;font-weight:600;letter-spacing:.5px}
-header .sub{color:var(--muted);font-size:12px}
-main{display:grid;grid-template-columns:320px 1fr;gap:0;min-height:calc(100vh - 61px)}
-aside{border-right:1px solid var(--line);padding:18px;overflow-y:auto;max-height:calc(100vh - 61px)}
-section{padding:20px 26px;overflow-y:auto;max-height:calc(100vh - 61px)}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:14px}
-.card h2{font-size:13px;margin:0 0 10px;color:var(--accent2);font-weight:600;letter-spacing:.3px}
-.card h3{font-size:12.5px;margin:14px 0 6px;color:var(--muted);font-weight:500}
-input[type=text],textarea,select{width:100%;background:var(--panel2);border:1px solid var(--line);
-  color:var(--text);border-radius:8px;padding:9px 11px;font:inherit;outline:none}
-input[type=text]:focus,textarea:focus,select:focus{border-color:var(--accent)}
-textarea{resize:vertical;min-height:68px;line-height:1.75}
-button{background:var(--accent);color:#0b1020;border:0;border-radius:8px;padding:9px 16px;
-  font:inherit;font-weight:600;cursor:pointer}
-button.ghost{background:transparent;border:1px solid var(--line);color:var(--text);font-weight:500}
-button:disabled{opacity:.45;cursor:not-allowed}
-.row{display:flex;gap:8px;align-items:center}
-.muted{color:var(--muted);font-size:12px}
-.kv{display:grid;grid-template-columns:96px 1fr;gap:4px 10px;font-size:12.5px}
-.kv div:nth-child(odd){color:var(--muted)}
-.pill{display:inline-block;padding:1px 8px;border-radius:999px;background:#222a3a;
-  color:var(--muted);font-size:11px;margin-right:6px}
-.list-item{display:flex;gap:8px;align-items:flex-start;padding:7px 0;border-bottom:1px dashed var(--line);font-size:12.5px}
-.list-item:last-child{border-bottom:0}
-.list-item input{margin-top:4px}
-.list-item .t{flex:1}
-.steps{counter-reset:s;font-size:12.5px}
-.steps li{list-style:none;margin:0 0 8px;color:var(--muted);display:flex;gap:8px}
-.steps li b{color:var(--text);font-weight:600}
-.steps li.done b{color:var(--ok)}
-#status{position:fixed;right:22px;bottom:20px;background:var(--panel2);border:1px solid var(--line);
-  border-radius:10px;padding:10px 16px;font-size:12.5px;display:none;max-width:420px;box-shadow:0 8px 30px #0008}
-#status.show{display:block}
-#status.err{border-color:var(--danger);color:#ffd7d9}
-.seg{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:10px;background:#131722}
-.seg .head{display:flex;gap:8px;align-items:center;margin-bottom:6px}
-.seg .head input{flex:0 0 180px}
-.tbl{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}
-.tbl th,.tbl td{border:1px solid var(--line);padding:5px 8px}
-.tbl th{background:#1c2231;color:var(--muted);font-weight:500;text-align:center}
-.tbl td.n{text-align:right;font-variant-numeric:tabular-nums}
-.tbl td:first-child{text-align:left}
-.badge{font-size:11px;padding:1px 7px;border-radius:6px;background:#243049;color:var(--accent)}
-.issues li{margin-bottom:5px;color:var(--warn);font-size:12.5px}
-.issues li.bad{color:var(--danger)}
-label.lbl{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px}
-.split{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.conn{display:none;padding:10px 18px;font-size:13px;line-height:1.7;background:#2a2416;color:#f0c674;border-bottom:1px solid #4a3c1c}
-.conn.show{display:block}
-.conn code{background:#00000040;padding:1px 5px;border-radius:4px;font-size:12px}
-.conn a{color:#ffd479}
-.doclink{color:var(--muted);font-size:12.5px;text-decoration:none;border:1px solid var(--line);
-  padding:3px 9px;border-radius:7px;margin-left:8px;white-space:nowrap}
-.doclink:hover{color:var(--accent);border-color:var(--accent)}
-@media(max-width:1100px){main{grid-template-columns:1fr}aside{max-height:none;border-right:0;border-bottom:1px solid var(--line)}}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-size:13.5px;line-height:1.7;
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  -webkit-font-smoothing:antialiased}
+button{font:inherit;cursor:pointer}
+input,textarea,select{font:inherit;color:inherit}
+
+header{height:52px;display:flex;align-items:center;gap:14px;padding:0 20px;
+  border-bottom:1px solid var(--line);background:#fff}
+header .brand{font-size:14px;font-weight:600;letter-spacing:.2px}
+header .spacer{flex:1}
+header a{color:var(--muted);text-decoration:none;font-size:12.5px;padding:4px 2px}
+header a:hover{color:var(--ink)}
+header .sep{width:1px;height:14px;background:var(--line)}
+
+.wrap{display:grid;grid-template-columns:318px 1fr;height:calc(100vh - 52px)}
+aside{border-right:1px solid var(--line);overflow-y:auto;padding:18px 18px 40px}
+main{overflow-y:auto;padding:26px 40px 90px}
+
+.block{padding-bottom:16px;margin-bottom:16px;border-bottom:1px solid var(--line2)}
+.block:last-child{border-bottom:0}
+.block .title{font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.4px;margin-bottom:10px}
+
+.field{display:flex;gap:6px}
+.field input{flex:1;min-width:0;border:1px solid var(--line);border-radius:6px;padding:8px 10px;
+  background:#fff;outline:none;font-size:13px}
+.field input:focus{border-color:#c4c9d1}
+.field button{border:1px solid var(--ink);background:var(--ink);color:#fff;border-radius:6px;
+  padding:0 14px;font-size:13px;white-space:nowrap}
+.field button:hover{background:#000}
+.field button:disabled{background:#c9ccd1;border-color:#c9ccd1;cursor:not-allowed}
+
+/* 流程进度 */
+.steps{display:flex;flex-direction:column}
+.step{display:grid;grid-template-columns:18px 1fr;gap:10px;padding:7px 0}
+.step .dot{width:18px;height:18px;border-radius:50%;border:1px solid var(--line);
+  display:grid;place-items:center;font-size:10px;line-height:1;color:var(--muted);margin-top:1px}
+.step .label{font-size:13px;display:flex;justify-content:space-between;gap:8px}
+.step .pct{color:var(--muted);font-size:11.5px;font-variant-numeric:tabular-nums}
+.step .detail{font-size:11.5px;color:var(--muted);margin-top:3px;word-break:break-all}
+.step .bar{height:2px;background:var(--line2);border-radius:2px;overflow:hidden;margin-top:6px}
+.step .bar i{display:block;height:100%;background:var(--ink);width:0;transition:width .45s ease}
+.step.wait .label{color:#c2c7cf}
+.step.wait .dot{border-color:#eceef1;color:#cdd2d9}
+.step.run .dot{border-color:var(--ink);color:var(--ink)}
+.step.done .dot{background:var(--ink);border-color:var(--ink);color:#fff;font-size:11px}
+.step.done .label{color:var(--ink2)}
+.step.error .dot{border-color:var(--red);color:var(--red)}
+.step.error .label{color:var(--red)}
+.step.error .detail{color:var(--red)}
+
+/* 材料清单 */
+.mat{display:flex;gap:8px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--line2)}
+.mat:last-child{border-bottom:0}
+.mat input{margin:2px 0 0;width:14px;height:14px;accent-color:var(--ink);flex:none}
+.mat .t{flex:1;min-width:0;font-size:12.5px;line-height:1.55}
+.mat .t .nm{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.mat .t .meta{color:var(--muted);font-size:11px;margin-top:2px}
+.mat .bar{display:block;height:2px;background:var(--line2);border-radius:2px;overflow:hidden;margin-top:5px}
+.mat .bar i{display:block;height:100%;background:var(--ink);transition:width .4s ease}
+.mat.done .meta{color:var(--ink2)}
+.mat.error .meta{color:var(--red)}
+.mat.wait{opacity:.45}
+.btn{width:100%;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:6px;
+  padding:8px 12px;font-size:13px}
+.btn:hover{border-color:#c4c9d1;background:var(--hover)}
+.btn:disabled{color:#c2c7cf;border-color:var(--line2);background:#fff;cursor:not-allowed}
+.btn.primary{background:var(--ink);border-color:var(--ink);color:#fff}
+.btn.primary:hover{background:#000}
+.btn.primary:disabled{background:#c9ccd1;border-color:#c9ccd1;color:#fff}
+select{width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 8px;background:#fff;
+  font-size:12.5px;outline:none}
+
+/* 文档区 */
+.sheet{max-width:756px;margin:0 auto}
+.docbar{display:flex;align-items:flex-start;gap:12px;margin-bottom:18px}
+.docbar .grow{flex:1;min-width:0}
+.docbar .acts{display:flex;gap:8px;align-items:center;white-space:nowrap}
+.btn-sm{border:1px solid var(--line);background:#fff;border-radius:6px;padding:6px 12px;font-size:12.5px}
+.btn-sm:hover{border-color:#c4c9d1;background:var(--hover)}
+.btn-sm.solid{background:var(--ink);border-color:var(--ink);color:#fff}
+.btn-sm.solid:hover{background:#000}
+.btn-sm:disabled{color:#c2c7cf;border-color:var(--line2);cursor:not-allowed;background:#fff}
+
+.doc{font-family:"Kaiti SC","KaiTi","STKaiti","Songti SC","SimSun",serif;
+  font-size:15.5px;line-height:1.82;color:#1b1f24}
+.doc-head{display:flex;align-items:baseline;gap:8px;margin-bottom:2px}
+.doc-head input{border:0;background:transparent;outline:none;font-family:inherit;font-weight:700}
+.in-company{flex:1;min-width:0;font-size:16.5px;padding:1px 2px}
+.in-code{width:64px;font-size:16.5px;padding:1px 2px;border-bottom:1px solid var(--line)!important;
+  text-align:center;font-weight:400!important}
+.doc-h{font-weight:700;font-size:15.5px;margin:26px 0 2px}
+.doc-h.first{margin-top:22px}
+.ta{display:block;width:100%;border:1px solid transparent;border-radius:4px;background:transparent;
+  padding:1px 4px;margin:0 -4px;line-height:inherit;font-family:inherit;font-size:inherit;
+  resize:none;overflow:hidden;outline:none;color:inherit;text-indent:0}
+.ta:hover{border-color:var(--line2);background:#fcfcfd}
+.ta:focus{border-color:#cfd4dc;background:#fff}
+.ta.lead{font-weight:700}
+.items{display:flex;flex-direction:column}
+.item{display:flex;gap:2px;align-items:flex-start}
+.item .num{white-space:nowrap;padding-top:1px}
+.item .ta{flex:1;min-width:0}
+.tool{border:0;background:transparent;color:#c2c7cf;font-size:12px;padding:0 3px;line-height:1.9;
+  opacity:0;transition:opacity .15s}
+.item:hover .tool,.seg:hover .tool,.topic:hover .tool{opacity:1}
+.tool:hover{color:var(--red)}
+.add{border:0;background:transparent;color:var(--muted);font-size:12px;padding:2px 4px}
+.add:hover{color:var(--ink)}
+.unit{text-align:right;color:var(--ink2);font-size:13.5px;margin:6px 0 2px}
+.doc-table{width:100%;border-collapse:collapse;font-size:13.5px;
+  border-top:1.5px solid #111;border-bottom:1.5px solid #111;margin-bottom:4px}
+.doc-table th,.doc-table td{padding:3px 8px;border-right:.5px solid #c9ccd1;
+  border-bottom:.5px solid #c9ccd1;font-weight:400;text-align:right;vertical-align:middle}
+.doc-table th{font-weight:700;text-align:center}
+.doc-table th:first-child,.doc-table td:first-child{text-align:left}
+.doc-table tr>*:last-child{border-right:0}
+.doc-table tbody tr:last-child>*{border-bottom:0}
+.seg{margin-bottom:2px}
+.seg-head{display:flex;align-items:baseline;gap:2px;line-height:1.6}
+.seg-body{margin-top:-3px}
+.seg-head .nm{border:0;background:transparent;outline:none;font-family:inherit;font-size:inherit;
+  font-weight:inherit;padding:1px 2px;border-bottom:1px dashed transparent;width:auto}
+.seg-head .nm:hover{border-bottom-color:var(--line)}
+.seg-head .nm:focus{border-bottom-color:#cfd4dc}
+.seg-head .suffix{color:var(--ink)}
+.topic{margin-bottom:6px}
+.notes{margin:14px 0 0;padding:10px 12px;border:1px solid var(--line);border-radius:6px;
+  background:#fcfcfd;font-family:-apple-system,"PingFang SC",sans-serif;font-size:12px;
+  line-height:1.7;color:var(--ink2)}
+.notes .h{font-weight:600;color:var(--ink);margin-bottom:4px}
+.notes ul{margin:0;padding-left:16px}
+.notes li{margin:2px 0}
+.notes li.bad{color:var(--red)}
+.empty{color:#c2c7cf;font-size:13px;text-align:center;padding:120px 0;
+  font-family:-apple-system,"PingFang SC",sans-serif}
+
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(8px);
+  background:#111418;color:#fff;font-size:12.5px;padding:8px 16px;border-radius:6px;
+  opacity:0;pointer-events:none;transition:.2s;max-width:80vw}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#toast.err{background:var(--red)}
+#conn{display:none;padding:8px 20px;font-size:12.5px;color:var(--amber);background:#fffbf0;
+  border-bottom:1px solid #f3e6c8}
+#conn.show{display:block}
+#conn code{background:#f6f0e2;padding:1px 5px;border-radius:3px;font-size:11.5px}
+@media(max-width:980px){
+  .wrap{grid-template-columns:1fr;height:auto}
+  aside{border-right:0;border-bottom:1px solid var(--line)}
+  main{padding:20px 18px 80px}
+}
 </style>
 </head>
 <body>
-<div id="conn" class="conn"></div>
+<div id="conn"></div>
 <header>
-  <h1>内评简评报告工作台</h1>
-  <span class="sub">财汇 MCP 取数 · 通用模板 v1.1 · 方法论 v1.1</span>
-  <span style="flex:1"></span>
-  <a class="doclink" href="docs/template-v1.1.html" target="_blank">模板</a>
-  <a class="doclink" href="docs/method-v1.1.html" target="_blank">方法论</a>
-  <a class="doclink" href="docs/template-v1.1.docx" target="_blank">骨架 docx</a>
-  <span class="muted" id="modelHint" style="margin-left:12px">模型加载中…</span>
+  <div class="brand">内评简评报告</div>
+  <div class="spacer"></div>
+  <a href="docs/template-v1.1.html" target="_blank">模板</a>
+  <span class="sep"></span>
+  <a href="docs/method-v1.1.html" target="_blank">方法论</a>
 </header>
 
-<main>
+<div class="wrap">
 <aside>
-  <div class="card">
-    <h2>流程</h2>
-    <ol class="steps" id="steps">
-      <li id="s1"><b>① 检索主体</b><span>财汇查档案、股权、评级、债券</span></li>
-      <li id="s2"><b>② 拉取材料</b><span>跟踪评级报告、募集说明书、年报</span></li>
-      <li id="s3"><b>③ 生成草稿</b><span>表格来自台账，文字来自材料</span></li>
-      <li id="s4"><b>④ 校对导出</b><span>改判断句，导出 docx</span></li>
-    </ol>
-  </div>
-  <div class="card">
-    <h2>主体</h2>
-    <input type="text" id="company" placeholder="输入企业全称，例如 无锡苏南国际机场集团有限公司" />
-    <div class="row" style="margin-top:8px">
-      <button id="btnSearch" onclick="search()">检索</button>
-      <button class="ghost" onclick="quickFill()">示例</button>
+  <div class="block">
+    <div class="title">主体</div>
+    <div class="field">
+      <input id="company" placeholder="企业全称" autocomplete="off" />
+      <button id="btnSearch" onclick="doSearch()">检索</button>
     </div>
-    <div id="companyMeta" class="muted" style="margin-top:10px"></div>
   </div>
-  <div class="card" id="factCard" style="display:none">
-    <h2>事实台账</h2>
-    <div id="facts"></div>
+
+  <div class="block">
+    <div class="title">进度</div>
+    <div class="steps" id="steps"></div>
   </div>
-  <div class="card" id="matCard" style="display:none">
-    <h2>可用材料</h2>
-    <div id="materials"></div>
-    <button class="ghost" style="margin-top:10px;width:100%" onclick="fetchMaterials()">拉取选中材料</button>
-    <div class="muted" id="matStat" style="margin-top:8px"></div>
+
+  <div class="block" id="matBlock" style="display:none">
+    <div class="title">材料</div>
+    <div id="matList"></div>
+    <button class="btn" id="btnFetch" style="margin-top:10px" onclick="doFetch()">拉取选中材料</button>
   </div>
-  <div class="card" id="genCard" style="display:none">
-    <h2>生成</h2>
-    <label class="lbl">模型</label>
+
+  <div class="block" id="genBlock" style="display:none">
+    <div class="title">生成</div>
     <select id="model"></select>
-    <div class="row" style="margin-top:10px">
-      <button id="btnGen" onclick="generate()">生成草稿</button>
-      <button class="ghost" onclick="copyPrompt()">复制提示词</button>
-    </div>
-    <div class="muted" style="margin-top:8px">生成约需 1–3 分钟，请勿关闭页面</div>
+    <button class="btn primary" id="btnGen" style="margin-top:8px" onclick="doGenerate()">生成草稿</button>
+  </div>
+
+  <div class="block" id="factBlock" style="display:none;font-size:12px;color:var(--ink2)">
+    <div class="title">台账</div>
+    <div id="facts"></div>
   </div>
 </aside>
 
-<section>
-  <div id="empty" class="card">
-    <h2>开始</h2>
-    <p class="muted" style="margin:0">左侧输入企业全称点「检索」，程序会通过财汇 MCP 拉取企业档案、股权、评级历史、存量债券与财务指标，再列出可下载的跟踪评级报告与募集说明书。拉取材料后生成草稿，正文可直接在此编辑，最后导出 Word。</p>
-  </div>
+<main>
+  <div id="empty" class="empty">输入企业全称开始</div>
   <div id="draftArea" style="display:none"></div>
-</section>
 </main>
+</div>
 
-<div id="status"></div>
+<div id="toast"></div>
 
 <script>
 const $ = (s) => document.querySelector(s);
-let STATE = { company: "", facts: null, materials: [], draft: null };
+const S = { company: "", facts: null, items: [], loaded: [], draft: null };
 
-// 同源直接访问（本机跑 server.py）时不加前缀；从 GitHub Pages 打开时指向本机后端。
 const API_BASE = (() => {
   const h = location.hostname;
   if (h === "127.0.0.1" || h === "localhost" || h === "") return "";
@@ -151,343 +225,487 @@ const API_BASE = (() => {
 })();
 const apiUrl = (p) => API_BASE + p;
 
-async function pingConn(){
-  if (!API_BASE) return true;
-  const el = $("#conn");
-  try{
-    const r = await fetch(apiUrl("/api/health"), { mode: "cors" });
-    if (!r.ok) throw new Error();
-    el.className = "conn";
-    el.textContent = "";
-    return true;
-  }catch(e){
-    el.className = "conn show";
-    el.innerHTML = `未连上本机服务（当前配置：${esc(API_BASE)}）。本页托管在 GitHub Pages，取数与生成需要本机跑后端：
-      <br><code>cd 评级报告外部自动生成 &amp;&amp; python app/server.py</code>
-      <br>启动后可直接 <a href="http://127.0.0.1:8770">用 127.0.0.1:8770 打开</a>（同源，最稳），或在下面改服务地址：
-      <div style="margin-top:8px"><input id="apiBaseIn" placeholder="http://127.0.0.1:8770" style="max-width:260px">
-      <button class="ghost" onclick="setApiBase()">保存</button></div>`;
-    return false;
-  }
-}
-function setApiBase(){
-  const v = ($("#apiBaseIn").value || "").trim();
-  if (!v) return;
-  localStorage.setItem("apiBase", v);
-  location.reload();
-}
+const STEPS = [
+  { key: "search", label: "检索主体" },
+  { key: "materials", label: "拉取材料" },
+  { key: "generate", label: "生成草稿" },
+  { key: "export", label: "导出报告" },
+];
+const ST = {};
+STEPS.forEach(s => ST[s.key] = { state: "wait", pct: 0, detail: "" });
 
-function status(msg, isErr) {
-  const el = $("#status");
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+
+function paintSteps(){
+  $("#steps").innerHTML = STEPS.map((s,i) => {
+    const st = ST[s.key];
+    const mark = st.state === "done" ? "✓" : (st.state === "error" ? "!" : (i + 1));
+    const bar = st.state === "run"
+      ? `<div class="bar"><i style="width:${Math.max(2, st.pct)}%"></i></div>` : "";
+    const pct = st.state === "run" ? `<span class="pct">${st.pct}%</span>` : "";
+    const det = st.detail ? `<div class="detail">${esc(st.detail)}</div>` : "";
+    return `<div class="step ${st.state}">
+      <div class="dot">${mark}</div>
+      <div><div class="label"><span>${s.label}</span>${pct}</div>${bar}${det}</div>
+    </div>`;
+  }).join("");
+}
+function setStep(key, patch){ Object.assign(ST[key], patch); paintSteps(); }
+function resetStepsFrom(key){
+  const i = STEPS.findIndex(s => s.key === key);
+  STEPS.slice(i).forEach(s => ST[s.key] = { state: "wait", pct: 0, detail: "" });
+  paintSteps();
+}
+paintSteps();
+
+let toastTimer = null;
+function toast(msg, isErr){
+  const el = $("#toast");
   el.textContent = msg;
   el.className = "show" + (isErr ? " err" : "");
-  if (!isErr) setTimeout(() => { if (el.textContent === msg) el.className = ""; }, 6000);
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.className = ""; }, isErr ? 8000 : 4000);
 }
-async function api(path, body) {
+
+async function api(path, body){
   const r = await fetch(apiUrl(path), { method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body || {}) });
   const data = await r.json().catch(() => ({}));
   if (!r.ok || data.error) throw new Error(data.error || ("HTTP " + r.status));
   return data;
 }
-function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
-function step(n){ for(let i=1;i<=4;i++) $("#s"+i).classList.toggle("done", i<=n); }
+
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+async function runJob(kind, body, onTick){
+  const { job } = await api("/api/jobs/" + kind, body);
+  for(;;){
+    await sleep(600);
+    const r = await fetch(apiUrl("/api/jobs/" + job));
+    const j = await r.json().catch(() => ({}));
+    if(!r.ok) throw new Error(j.error || "任务状态读取失败");
+    if(onTick) onTick(j);
+    if(j.state === "done") return j;
+    if(j.state === "error") throw new Error(j.error || "任务失败");
+  }
+}
+
+async function pingConn(){
+  if(!API_BASE) return;
+  try{
+    const r = await fetch(apiUrl("/api/health"), { mode: "cors" });
+    if(!r.ok) throw new Error();
+  }catch(e){
+    const el = $("#conn");
+    el.className = "show";
+    el.innerHTML = `未连上本机服务。取数与生成需要本机运行后端：<code>python app/server.py</code>
+      <a href="http://127.0.0.1:8770" style="color:inherit;margin-left:8px">改用本机地址打开</a>`;
+  }
+}
 
 async function loadModels(){
   try{
     const d = await (await fetch(apiUrl("/api/models"))).json();
-    const sel = $("#model");
-    sel.innerHTML = d.models.map(m=>`<option value="${esc(m.id)}" ${m.id===d.default?"selected":""}>${esc(m.name)}${m.context?` · ${Math.round(m.context/1000)}k`:""}</option>`).join("");
-    $("#modelHint").textContent = d.models.length ? `${d.models.length} 个可用模型` : "未配置模型";
-  }catch(e){ $("#modelHint").textContent = "未连接本机服务"; }
+    $("#model").innerHTML = d.models.map(m =>
+      `<option value="${esc(m.id)}" ${m.id === d.default ? "selected" : ""}>${esc(m.name)}</option>`).join("");
+  }catch(e){
+    $("#model").innerHTML = `<option>未连接服务</option>`;
+  }
 }
-function quickFill(){ $("#company").value = "无锡苏南国际机场集团有限公司"; }
 
-async function search(){
+/* ---------------- 检索 ---------------- */
+async function doSearch(){
   const company = $("#company").value.trim();
-  if(!company) return status("请先输入企业名称", true);
+  if(!company) return toast("请输入企业全称", true);
   $("#btnSearch").disabled = true;
-  status("正在检索 " + company + " …");
+  resetStepsFrom("search");
+  setStep("search", { state: "run", pct: 0, detail: "连接财汇" });
   try{
-    const d = await api("/api/search", { company });
-    STATE.company = company; STATE.facts = d.facts; STATE.materials = [];
-    step(1);
-    renderFacts(d.facts);
-    renderMaterials(d.facts);
-    $("#factCard").style.display = "block";
-    $("#matCard").style.display = "block";
-    $("#genCard").style.display = "block";
-    $("#empty").style.display = "none";
-    status("检索完成：" + d.company);
-  }catch(e){ status("检索失败：" + e.message, true); }
-  finally{ $("#btnSearch").disabled = false; }
+    const j = await runJob("search", { company }, j => {
+      setStep("search", { state: "run", pct: j.pct, detail: j.detail || j.stage });
+    });
+    S.company = company;
+    S.facts = j.result.facts;
+    S.loaded = [];
+    S.draft = null;
+    setStep("search", { state: "done", pct: 100, detail: "台账已取" });
+
+    renderFacts(S.facts);
+    renderMaterials(S.facts);
+    const n = (S.facts.materials && Object.values(S.facts.materials).reduce((a, b) => a + b.length, 0)) || 0;
+    setStep("materials", { state: "wait", pct: 0, detail: n ? `${n} 份可选` : "未检索到材料" });
+    $("#matBlock").style.display = "block";
+    $("#genBlock").style.display = "block";
+    $("#factBlock").style.display = "block";
+    $("#empty").style.display = "block";
+    $("#empty").textContent = "勾选材料并拉取后生成草稿";
+    $("#draftArea").style.display = "none";
+    toast("台账已取：" + (j.result.company || company));
+  }catch(e){
+    setStep("search", { state: "error", detail: e.message });
+    toast(e.message, true);
+  }finally{
+    $("#btnSearch").disabled = false;
+  }
 }
 
 function renderFacts(f){
   const ind = (f.company && f.company.indicators) || {};
   const ctrl = (f.equity && f.equity.controller) || {};
-  const holders = (f.equity && f.equity.shareholders) || [];
   const ratings = f.ratings || [];
   const bonds = f.bonds || [];
-  const fin = (f.financials && f.financials.data) || {};
-  const periods = (f.financials && f.financials.periods) || [];
-  let html = `<div class="kv">
-    <div>名称</div><div>${esc(f.company && f.company.name)}</div>
-    <div>信用代码</div><div>${esc(f.company && f.company.credit_code)}</div>
-    <div>实控人</div><div>${esc(ctrl["实际控制人名称"] || "—")}</div>
-    <div>持股</div><div>${esc(ctrl["持股比例（直接+间接）"] || "—")}</div>
-    <div>注册资本</div><div>${esc(ind["注册资本"] || "—")} 万元</div>
-    <div>所属行业</div><div>${esc(ind["所属行业"] || "—")}</div>
-    <div>是否城投</div><div>${esc(ind["是否城投"] || "—")}</div>
-    </div>`;
-  if(holders.length){
-    html += `<h3>直接股东</h3><div class="muted">` +
-      holders.map(h=>`${esc(h["股东名称"])} ${esc(h["持股比例"])}%`).join("　") + `</div>`;
-  }
+  const rows = [
+    ["名称", (f.company && f.company.name) || "—"],
+    ["实控人", ctrl["实际控制人名称"] || "—"],
+    ["持股", ctrl["持股比例（直接+间接）"] || "—"],
+    ["注册资本", (ind["注册资本"] || "—") + " 万元"],
+    ["行业", ind["所属行业"] || "—"],
+    ["城投", ind["是否城投"] || "—"],
+  ];
   if(ratings.length){
     const r = ratings[0];
-    html += `<h3>最新外部评级</h3><div class="muted">${esc(r["评级机构名称"])} ${esc(r["主体评级"])}/${esc(r["评级展望"]||"")} · ${esc(r["评级日期"])}</div>`;
+    rows.push(["评级", `${r["评级机构名称"] || ""} ${r["主体评级"] || ""}/${r["评级展望"] || ""}`.trim()]);
   }
-  if(bonds.length){
-    html += `<h3>存量债券 ${bonds.length} 只</h3><div class="muted">` +
-      bonds.slice(0,6).map(b=>esc(b["债券简称"]||"")).join("、") + (bonds.length>6?"…":"") + `</div>`;
-  }
-  if(periods.length){
-    html += `<h3>财务台账（亿元）</h3>`;
-    for(const p of periods.slice(0,3)){
-      const d = fin[p] || {};
-      html += `<div class="muted" style="margin-bottom:4px">${esc(p)}：总资产 ${d["总资产"]??"—"} / 负债 ${d["总负债"]??"—"} / 收入 ${d["营业总收入"]??"—"} / 净利润 ${d["净利润"]??"—"} / 经营现金流 ${d["经营现金流"]??"—"}</div>`;
-    }
-  }
-  if((f.notes||[]).length){
-    html += `<h3>提示</h3><div class="muted">${f.notes.map(esc).join("<br>")}</div>`;
-  }
-  $("#facts").innerHTML = html;
+  rows.push(["债券", bonds.length ? bonds.length + " 只" : "—"]);
+  $("#facts").innerHTML = rows.map(([k, v]) =>
+    `<div style="display:flex;gap:8px;padding:2px 0"><span style="color:var(--muted);width:52px;flex:none">${esc(k)}</span>
+     <span style="min-width:0;word-break:break-all">${esc(v)}</span></div>`).join("");
 }
 
+/* ---------------- 材料 ---------------- */
+const MAT_ORDER = ["跟踪评级报告", "募集说明书", "年度报告", "半年报", "季度报告", "审计报告"];
 function renderMaterials(f){
   const ms = f.materials || {};
-  const order = ["跟踪评级报告","募集说明书","年度报告","半年报","季度报告","审计报告"];
   let html = "";
-  for(const k of order){
+  for(const k of MAT_ORDER){
     const arr = ms[k] || [];
     if(!arr.length) continue;
-    html += `<h3>${k}（${arr.length}）</h3>`;
-    arr.slice(0,4).forEach((m,i)=>{
-      const checked = (k==="跟踪评级报告"&&i===0) || (k==="募集说明书"&&i===0) || (k==="年度报告"&&i===0);
-      html += `<label class="list-item"><input type="checkbox" class="mchk" data-url="${esc(m.url)}" data-title="${esc(m.title)}" ${checked?"checked":""}/>
-        <span class="t">${esc(m.title)}<br><span class="muted">${esc(m.date)} · ${esc(m.source||"")}</span></span></label>`;
+    html += `<div style="font-size:11.5px;color:var(--muted);margin:10px 0 2px">${esc(k)}</div>`;
+    arr.slice(0, 4).forEach((m, i) => {
+      const checked = i === 0 && (k === "跟踪评级报告" || k === "募集说明书" || k === "年度报告");
+      html += `<label class="mat">
+        <input type="checkbox" class="mchk" data-url="${esc(m.url)}" data-title="${esc(m.title)}" ${checked ? "checked" : ""}/>
+        <span class="t"><span class="nm">${esc(m.title)}</span>
+        <span class="meta">${esc(m.date || "")}</span></span>
+      </label>`;
     });
   }
-  $("#materials").innerHTML = html || `<div class="muted">未检索到可用材料，可先在 WorkBuddy 里手动取 PDF</div>`;
+  $("#matList").innerHTML = html || `<div style="font-size:12px;color:var(--muted)">未检索到可用公告</div>`;
+}
+function renderMatItems(){
+  const ms = S.facts && S.facts.materials || {};
+  const flat = [];
+  for(const k of MAT_ORDER) (ms[k] || []).slice(0, 4).forEach(m => flat.push(m));
+  const byTitle = {};
+  S.items.forEach(it => { byTitle[it.title] = it; });
+  const nodes = [...document.querySelectorAll("#matList .mat")];
+  nodes.forEach(el => {
+    const cb = el.querySelector(".mchk");
+    const it = byTitle[cb.dataset.title];
+    if(!it) return;
+    el.classList.toggle("wait", it.state === "wait");
+    el.classList.toggle("done", it.state === "done");
+    el.classList.toggle("error", it.state === "error");
+    let bar = el.querySelector(".bar");
+    if(it.state === "run"){
+      if(!bar){ bar = document.createElement("span"); bar.className = "bar"; bar.innerHTML = "<i></i>";
+        el.querySelector(".t").appendChild(bar); }
+      bar.querySelector("i").style.width = it.pct + "%";
+    }else if(bar){
+      bar.remove();
+    }
+    el.querySelector(".meta").textContent = it.detail || "";
+  });
 }
 
-async function fetchMaterials(){
-  const picks = [...document.querySelectorAll(".mchk:checked")].map(el=>({url:el.dataset.url,title:el.dataset.title}));
-  if(!picks.length) return status("请至少勾选一份材料", true);
-  status("正在下载并解析 " + picks.length + " 份材料 …");
+async function doFetch(){
+  const picks = [...document.querySelectorAll(".mchk:checked")].map(el => ({ url: el.dataset.url, title: el.dataset.title }));
+  if(!picks.length) return toast("请至少勾选一份材料", true);
+  $("#btnFetch").disabled = true;
+  document.querySelectorAll(".mchk").forEach(c => c.disabled = true);
+  S.items = picks.map(p => ({ title: p.title, state: "wait", pct: 0, detail: "等待" }));
+  renderMatItems();
+  setStep("materials", { state: "run", pct: 0, detail: `0/${picks.length} 份` });
   try{
-    const d = await api("/api/fetch", { company: STATE.company, materials: picks });
-    STATE.materials = d.loaded || [];
-    step(2);
-    const lines = d.materials.map(m => m.error ? `✗ ${m.title}：${m.error}` : `✓ ${m.title}（${m.pages}页，摘录${m.chars}字）`);
-    $("#matStat").innerHTML = lines.map(esc).join("<br>");
-    status("材料就绪：" + STATE.materials.length + " 份");
-  }catch(e){ status("拉取失败：" + e.message, true); }
+    const j = await runJob("fetch", { company: S.company, materials: picks }, j => {
+      setStep("materials", { state: "run", pct: j.pct, detail: j.detail || "" });
+      if(j.items){ S.items = j.items; renderMatItems(); }
+    });
+    S.loaded = j.result.loaded || [];
+    setStep("materials", { state: "done", pct: 100, detail: `${S.loaded.length}/${picks.length} 份已就绪` });
+    S.items = j.result.items || S.items;
+    renderMatItems();
+    setStep("generate", { state: "wait", pct: 0, detail: "" });
+    toast("材料已就绪");
+  }catch(e){
+    setStep("materials", { state: "error", detail: e.message });
+    toast(e.message, true);
+  }finally{
+    $("#btnFetch").disabled = false;
+    document.querySelectorAll(".mchk").forEach(c => c.disabled = false);
+  }
 }
 
-async function generate(){
-  if(!STATE.materials.length) return status("请先拉取材料", true);
+/* ---------------- 生成 ---------------- */
+async function doGenerate(){
+  if(!S.loaded.length) return toast("请先拉取材料", true);
   $("#btnGen").disabled = true;
-  status("正在生成草稿（1–3 分钟）…");
+  setStep("generate", { state: "run", pct: 0, detail: "准备提示词" });
   try{
-    const d = await api("/api/generate", { company: STATE.company, model: $("#model").value });
-    STATE.draft = d.draft;
-    step(3);
+    const j = await runJob("generate", { company: S.company, model: $("#model").value }, j => {
+      setStep("generate", { state: "run", pct: j.pct, detail: j.detail || j.stage });
+    });
+    S.draft = j.result.draft;
+    setStep("generate", { state: "done", pct: 100, detail: "草稿已生成" });
+    setStep("export", { state: "wait", pct: 0, detail: "可编辑后导出" });
     renderDraft();
-    status("草稿已生成，可直接编辑");
-  }catch(e){ status("生成失败：" + e.message, true); }
-  finally{ $("#btnGen").disabled = false; }
+    toast("草稿已生成，可直接修改");
+  }catch(e){
+    setStep("generate", { state: "error", detail: e.message });
+    toast(e.message, true);
+  }finally{
+    $("#btnGen").disabled = false;
+  }
 }
 
-function ta(id, val, rows){
-  return `<textarea id="${id}" rows="${rows||4}">${esc(val||"")}</textarea>`;
+/* ---------------- 草稿 ---------------- */
+function ta(cls, val, rows){
+  return `<textarea class="ta ${cls}" rows="${rows || 3}">${esc(val || "")}</textarea>`;
 }
-function tableHtml(t, firstCol){
+function segSuffix(name){
+  const n = (name || "").trim();
+  if(!n) return "业务方面，";
+  return /(业务|板块|产品|服务|行业)$/.test(n) ? "方面，" : "业务方面，";
+}
+function fitSegName(el){
+  let w = 0;
+  for(const ch of (el.value || "")) w += /[\u2e80-\u9fff\uff00-\uffef]/.test(ch) ? 2 : 1;
+  el.style.width = Math.max(2, w + 1) + "ch";
+}
+function tableHtml(t){
   if(!t || !t.rows) return "";
   const head = t.periods ? ["项目", ...t.periods] : (t.header || []);
-  let h = `<div class="muted" style="text-align:right">${esc(t.unit_line||"单位：亿元")}</div><table class="tbl"><thead><tr>` +
-    head.map(x=>`<th>${esc(x)}</th>`).join("") + `</tr></thead><tbody>`;
-  for(const r of t.rows){
-    h += `<tr>` + r.map((c,i)=>`<td class="${i===0?'':'n'}">${esc(c)}</td>`).join("") + `</tr>`;
-  }
+  let h = `<div class="unit">${esc(t.unit_line || "单位：亿元")}</div><table class="doc-table"><thead><tr>` +
+    head.map(x => `<th>${esc(x)}</th>`).join("") + `</tr></thead><tbody>`;
+  for(const r of t.rows) h += `<tr>` + r.map(c => `<td>${esc(c)}</td>`).join("") + `</tr>`;
   return h + `</tbody></table>`;
 }
 
 function renderDraft(){
-  const d = STATE.draft, c = d.commentary || {};
-  const v = d.validation || {};
-  let h = `<div class="card">
-    <h2>草稿</h2>
-    <label class="lbl">标题行：企业全称与内部评级代码</label>
-    <div class="row">
-      <input type="text" id="d-company" value="${esc(d.company_full_name)}" style="flex:2"/>
-      <input type="text" id="d-code" value="${esc(d.internal_rating_code)}" placeholder="内部评级代码，如 4B" style="flex:1"/>
-    </div>
-    <div class="muted" style="margin-top:6px">财务表 ${(d.commentary&&d.commentary.financial_table&&d.commentary.financial_table.rows||[]).length} 行 · 正文约 ${v.body_chars||0} 字</div>
-  </div>`;
+  const d = S.draft, c = d.commentary || {}, v = d.validation || {};
+  let h = `<div class="sheet">
+    <div class="docbar">
+      <div class="grow">
+        <div class="doc-head">
+          <input class="in-company" id="d-company" value="${esc(d.company_full_name)}" spellcheck="false"/>
+          <span style="font-weight:700">主体：【</span>
+          <input class="in-code" id="d-code" value="${esc(d.internal_rating_code)}" placeholder="—" spellcheck="false"/>
+          <span style="font-weight:700">】</span>
+        </div>
+        <div style="font-size:11.5px;color:var(--muted);margin-top:2px">
+          正文 ${v.body_chars || 0} 字 · 财务表 ${((c.financial_table || {}).rows || []).length} 行
+        </div>
+      </div>
+      <div class="acts">
+        <button class="btn-sm" onclick="copyPrompt()">提示词</button>
+        <button class="btn-sm solid" id="btnExport" onclick="exportDocx()">导出 Word</button>
+      </div>
+    </div>`;
 
-  if((v.issues||[]).length){
-    h += `<div class="card"><h2>校验提示</h2><ul class="issues">` +
-      v.issues.map(x=>`<li class="${/未找到同值|不足|为空/.test(x)?'bad':''}">${esc(x)}</li>`).join("") + `</ul></div>`;
+  if((v.issues || []).length){
+    h += `<div class="notes"><div class="h">待核对 ${v.issues.length} 项</div><ul>` +
+      v.issues.map(x => `<li class="${/不足|为空|未找到同值/.test(x) ? "bad" : ""}">${esc(x)}</li>`).join("") +
+      `</ul></div>`;
   }
 
-  h += `<div class="card"><h2>摘要层</h2>
-    <label class="lbl">正面（3–5 条，纯定性，不写数字）</label><div id="d-pos"></div>
-    <button class="ghost" onclick="addItem('pos')">+ 加一条</button>
-    <label class="lbl" style="margin-top:16px">关注（3–5 条，纯定性，一条一事）</label><div id="d-con"></div>
-    <button class="ghost" onclick="addItem('con')">+ 加一条</button>
-  </div>`;
+  h += `<div class="doc">
+    <div class="doc-h first">正面：</div>
+    <div class="items" id="d-pos"></div>
+    <button class="add" onclick="addItem('pos')">+ 条目</button>
 
-  h += `<div class="card"><h2>1、基本情况</h2>${ta("d-basic", d.basic_info, 5)}</div>`;
+    <div class="doc-h">关注：</div>
+    <div class="items" id="d-con"></div>
+    <button class="add" onclick="addItem('con')">+ 条目</button>
 
-  h += `<div class="card"><h2>2、点评 · 总述段</h2>
-    <label class="lbl">加粗汇总句（判断，不带数字）</label>${ta("d-ov-lead", c.overview && c.overview.lead, 2)}
-    <label class="lbl">正文</label>${ta("d-ov-body", c.overview && c.overview.body, 8)}
-  </div>`;
+    <div class="doc-h">1、基本情况</div>
+    ${ta("basic", d.basic_info, 5)}
 
-  h += `<div class="card"><h2>业务构成表 <span class="badge">由台账生成</span></h2>${tableHtml(c.segment_table) || '<div class="muted">台账无主营构成数据，可手工补表</div>'}</div>`;
+    <div class="doc-h">2、点评</div>
+    ${ta("ov-lead lead", c.overview && c.overview.lead, 2)}
+    ${ta("ov-body", c.overview && c.overview.body, 7)}`;
 
-  h += `<div class="card"><h2>分部业务段</h2><div id="d-segs"></div>
-    <button class="ghost" onclick="addSeg()">+ 加一个板块</button></div>`;
+  if(c.segment_table && c.segment_table.rows) h += tableHtml(c.segment_table);
 
-  h += `<div class="card"><h2>资产段</h2>
-    <label class="lbl">加粗汇总句</label>${ta("d-as-lead", c.asset && c.asset.lead, 2)}
-    <label class="lbl">正文</label>${ta("d-as-body", c.asset && c.asset.body, 7)}
-  </div>`;
+  h += `<div id="d-segs"></div>
+    <button class="add" onclick="addSeg()">+ 板块</button>
 
-  h += `<div class="card"><h2>主要财务数据和财务指标 <span class="badge">由台账生成</span></h2>${tableHtml(c.financial_table)}</div>`;
+    <div style="height:12px"></div>
+    ${ta("as-lead lead", c.asset && c.asset.lead, 2)}
+    ${ta("as-body", c.asset && c.asset.body, 6)}`;
 
-  h += `<div class="card"><h2>债务段</h2>
-    <label class="lbl">加粗汇总句</label>${ta("d-db-lead", c.debt && c.debt.lead, 2)}
-    <label class="lbl">正文</label>${ta("d-db-body", c.debt && c.debt.body, 8)}
-  </div>`;
-
-  h += `<div class="card"><h2>或有／专题段（可空）</h2><div id="d-topics"></div>
-    <button class="ghost" onclick="addTopic()">+ 加一段</button></div>`;
-
-  if((d.data_notes||[]).length || (d.sources||[]).length){
-    h += `<div class="card"><h2>模型标注</h2>`;
-    if((d.data_notes||[]).length) h += `<h3>口径与不确定处</h3><ul class="issues">` + d.data_notes.map(x=>`<li>${esc(x)}</li>`).join("") + `</ul>`;
-    if((d.sources||[]).length) h += `<h3>出处</h3><div class="muted">` + d.sources.map(s=>`${esc(s.claim||"")} — ${esc(s.where||"")}`).join("<br>") + `</div>`;
-    h += `</div>`;
+  if(c.financial_table && c.financial_table.rows){
+    h += `<div style="text-align:center;font-weight:700;margin:22px 0 0">${esc(c.financial_table.caption || "公司主要财务数据和财务指标（合并口径）")}</div>`;
+    h += tableHtml(c.financial_table);
   }
 
-  h += `<div class="card" style="position:sticky;bottom:0;background:var(--panel)">
-    <div class="row"><button onclick="exportDocx()">导出 Word</button>
-    <button class="ghost" onclick="copyPrompt()">复制提示词</button>
-    <span class="muted" id="exportHint"></span></div></div>`;
+  h += `<div style="height:12px"></div>
+    ${ta("db-lead lead", c.debt && c.debt.lead, 2)}
+    ${ta("db-body", c.debt && c.debt.body, 7)}
+    <div id="d-topics"></div>
+    <button class="add" onclick="addTopic()">+ 专题段</button>
+  </div></div>`;
 
   $("#draftArea").innerHTML = h;
   $("#draftArea").style.display = "block";
-  renderList("pos", d.positive || []);
-  renderList("con", d.concern || []);
+  $("#empty").style.display = "none";
+
+  renderItems("pos", d.positive || []);
+  renderItems("con", d.concern || []);
   renderSegs(c.segments || []);
   renderTopics(c.special_topics || []);
+  autoGrowAll();
 }
 
-function renderList(kind, items){
-  const box = $(kind==="pos" ? "#d-pos" : "#d-con");
-  box.innerHTML = items.map((t,i)=>`<div class="row" style="margin-bottom:6px">
-    <span class="muted" style="width:22px">${i+1}）</span>
-    <textarea class="d-item-${kind}" rows="2">${esc(t)}</textarea>
-    <button class="ghost" onclick="this.parentNode.remove()">×</button></div>`).join("");
+function renderItems(kind, items){
+  const box = $("#" + (kind === "pos" ? "d-pos" : "d-con"));
+  box.innerHTML = items.map((t, i) => `<div class="item">
+    <span class="num">${i + 1}）</span>
+    <textarea class="ta it-${kind}" rows="2">${esc(t)}</textarea>
+    <button class="tool" onclick="this.parentNode.remove();renumber()">×</button>
+  </div>`).join("");
 }
 function addItem(kind){
-  const box = $(kind==="pos" ? "#d-pos" : "#d-con");
+  const box = $("#" + (kind === "pos" ? "d-pos" : "d-con"));
   const div = document.createElement("div");
-  div.className = "row"; div.style.marginBottom = "6px";
-  div.innerHTML = `<span class="muted" style="width:22px"></span><textarea class="d-item-${kind}" rows="2"></textarea><button class="ghost" onclick="this.parentNode.remove()">×</button>`;
+  div.className = "item";
+  div.innerHTML = `<span class="num"></span><textarea class="ta it-${kind}" rows="2"></textarea>
+    <button class="tool" onclick="this.parentNode.remove();renumber()">×</button>`;
   box.appendChild(div);
+  renumber();
+  div.querySelector("textarea").focus();
+  autoGrow(div.querySelector("textarea"));
 }
+function renumber(){
+  ["#d-pos", "#d-con"].forEach(sel => {
+    [...$(sel).querySelectorAll(".item")].forEach((el, i) => {
+      el.querySelector(".num").textContent = (i + 1) + "）";
+    });
+  });
+}
+
 function renderSegs(segs){
-  const box = $("#d-segs");
-  box.innerHTML = segs.map((s,i)=>`<div class="seg" data-seg>
-    <div class="head"><span class="muted">${i+1}）</span>
-      <input type="text" class="seg-name" value="${esc(s.name)}" placeholder="板块名，如 航空性"/>
-      <button class="ghost" onclick="this.closest('.seg').remove()">删除</button></div>
-    <textarea class="seg-body" rows="7">${esc(s.body)}</textarea></div>`).join("");
+  $("#d-segs").innerHTML = segs.map(s => `<div class="seg">
+    <div class="seg-head">
+      <span class="num"></span>
+      <input class="nm seg-name" value="${esc(s.name)}" placeholder="板块名" spellcheck="false"
+        oninput="fitSegName(this);this.parentNode.querySelector('.suffix').textContent=segSuffix(this.value)"/>
+      <span class="suffix">${segSuffix(s.name)}</span>
+      <button class="tool" onclick="this.closest('.seg').remove();renumberSegs()">×</button>
+    </div>
+    <textarea class="ta seg-body" rows="5">${esc(s.body)}</textarea>
+  </div>`).join("");
+  renumberSegs();
 }
 function addSeg(){
   const div = document.createElement("div");
-  div.className = "seg"; div.setAttribute("data-seg","");
-  div.innerHTML = `<div class="head"><span class="muted"></span>
-    <input type="text" class="seg-name" placeholder="板块名"/>
-    <button class="ghost" onclick="this.closest('.seg').remove()">删除</button></div>
-    <textarea class="seg-body" rows="7"></textarea>`;
+  div.className = "seg";
+  div.innerHTML = `<div class="seg-head"><span class="num"></span>
+    <input class="nm seg-name" placeholder="板块名" spellcheck="false"
+      oninput="fitSegName(this);this.parentNode.querySelector('.suffix').textContent=segSuffix(this.value)"/>
+    <span class="suffix">业务方面，</span>
+    <button class="tool" onclick="this.closest('.seg').remove();renumberSegs()">×</button></div>
+    <textarea class="ta seg-body" rows="5"></textarea>`;
   $("#d-segs").appendChild(div);
+  renumberSegs();
+  div.querySelector(".seg-name").focus();
 }
+function renumberSegs(){
+  [...document.querySelectorAll("#d-segs .seg")].forEach((el, i) => {
+    el.querySelector(".num").textContent = (i + 1) + "）";
+    fitSegName(el.querySelector(".seg-name"));
+  });
+}
+
 function renderTopics(ts){
-  $("#d-topics").innerHTML = ts.map(t=>`<div class="row" style="margin-bottom:8px;align-items:flex-start">
-    <div style="flex:1"><label class="lbl">加粗判断句</label><textarea class="topic-lead" rows="2">${esc(t.lead)}</textarea>
-    <label class="lbl">正文</label><textarea class="topic-body" rows="5">${esc(t.body)}</textarea></div>
-    <button class="ghost" onclick="this.parentNode.remove()">×</button></div>`).join("");
+  $("#d-topics").innerHTML = ts.map(t => `<div class="topic">
+    <textarea class="ta topic-lead" rows="2">${esc(t.lead)}</textarea>
+    <textarea class="ta topic-body" rows="5">${esc(t.body)}</textarea>
+    <button class="tool" onclick="this.parentNode.remove()">× 删除本段</button>
+  </div>`).join("");
 }
 function addTopic(){
   const div = document.createElement("div");
-  div.className = "row"; div.style.marginBottom = "8px"; div.style.alignItems = "flex-start";
-  div.innerHTML = `<div style="flex:1"><label class="lbl">加粗判断句</label><textarea class="topic-lead" rows="2"></textarea>
-    <label class="lbl">正文</label><textarea class="topic-body" rows="5"></textarea></div>
-    <button class="ghost" onclick="this.parentNode.remove()">×</button>`;
+  div.className = "topic";
+  div.innerHTML = `<textarea class="ta topic-lead" rows="2" placeholder="加粗判断句"></textarea>
+    <textarea class="ta topic-body" rows="5" placeholder="正文"></textarea>
+    <button class="tool" onclick="this.parentNode.remove()">× 删除本段</button>`;
   $("#d-topics").appendChild(div);
+  div.querySelector("textarea").focus();
 }
 
+function autoGrow(el){
+  el.style.height = "auto";
+  el.style.height = (el.scrollHeight + 2) + "px";
+}
+function autoGrowAll(){ document.querySelectorAll("textarea.ta").forEach(autoGrow); }
+document.addEventListener("input", e => {
+  if(e.target && e.target.classList && e.target.classList.contains("ta")) autoGrow(e.target);
+});
+
 function collectDraft(){
-  const d = JSON.parse(JSON.stringify(STATE.draft));
+  const d = JSON.parse(JSON.stringify(S.draft));
   d.company_full_name = $("#d-company").value.trim();
   d.internal_rating_code = $("#d-code").value.trim();
-  d.positive = [...document.querySelectorAll(".d-item-pos")].map(t=>t.value.trim()).filter(Boolean);
-  d.concern = [...document.querySelectorAll(".d-item-con")].map(t=>t.value.trim()).filter(Boolean);
-  d.basic_info = $("#d-basic").value.trim();
-  d.commentary.overview = { lead: $("#d-ov-lead").value.trim(), body: $("#d-ov-body").value.trim() };
-  d.commentary.segments = [...document.querySelectorAll("[data-seg]")].map(s=>({
+  d.positive = [...document.querySelectorAll(".it-pos")].map(t => t.value.trim()).filter(Boolean);
+  d.concern = [...document.querySelectorAll(".it-con")].map(t => t.value.trim()).filter(Boolean);
+  d.basic_info = $(".ta.basic").value.trim();
+  d.commentary.overview = { lead: $(".ta.ov-lead").value.trim(), body: $(".ta.ov-body").value.trim() };
+  d.commentary.segments = [...document.querySelectorAll("#d-segs .seg")].map(s => ({
     name: s.querySelector(".seg-name").value.trim(),
     body: s.querySelector(".seg-body").value.trim()
-  })).filter(s=>s.body);
-  d.commentary.asset = { lead: $("#d-as-lead").value.trim(), body: $("#d-as-body").value.trim() };
-  d.commentary.debt = { lead: $("#d-db-lead").value.trim(), body: $("#d-db-body").value.trim() };
-  const topics = [];
-  document.querySelectorAll("#d-topics .row").forEach(r=>{
-    const lead = r.querySelector(".topic-lead"), body = r.querySelector(".topic-body");
-    if(lead && body && body.value.trim()) topics.push({lead: lead.value.trim(), body: body.value.trim()});
-  });
-  d.commentary.special_topics = topics;
+  })).filter(s => s.body);
+  d.commentary.asset = { lead: $(".ta.as-lead").value.trim(), body: $(".ta.as-body").value.trim() };
+  d.commentary.debt = { lead: $(".ta.db-lead").value.trim(), body: $(".ta.db-body").value.trim() };
+  d.commentary.special_topics = [...document.querySelectorAll("#d-topics .topic")].map(t => ({
+    lead: t.querySelector(".topic-lead").value.trim(),
+    body: t.querySelector(".topic-body").value.trim()
+  })).filter(t => t.body);
   return d;
 }
 
 async function exportDocx(){
   try{
     const d = collectDraft();
-    if(!d.company_full_name) return status("请填企业全称", true);
-    const r = await api("/api/export", { draft: d, company: STATE.company });
-    $("#exportHint").innerHTML = `已生成 <a href="${apiUrl(r.url)}" download>${esc(r.name)}</a>`;
-    step(4);
-    status("已导出：" + r.name);
-  }catch(e){ status("导出失败：" + e.message, true); }
+    if(!d.company_full_name) return toast("请填企业全称", true);
+    const btn = $("#btnExport");
+    btn.disabled = true;
+    setStep("export", { state: "run", pct: 60, detail: "排版中" });
+    const r = await api("/api/export", { draft: d, company: S.company });
+    setStep("export", { state: "done", pct: 100, detail: r.name });
+    const a = document.createElement("a");
+    a.href = apiUrl(r.url);
+    a.download = r.name;
+    a.click();
+    toast("已导出 " + r.name);
+    btn.disabled = false;
+  }catch(e){
+    setStep("export", { state: "error", detail: e.message });
+    toast(e.message, true);
+    const btn = $("#btnExport"); if(btn) btn.disabled = false;
+  }
 }
 
 async function copyPrompt(){
   try{
-    const r = await api("/api/prompt", { company: STATE.company });
-    const text = `【系统提示】\n${r.system}\n\n【用户提示】\n${r.prompt}`;
-    await navigator.clipboard.writeText(text);
-    status("提示词已复制（约 " + Math.round(text.length/1000) + "k 字），可贴到 WorkBuddy 里用更强模型精修");
-  }catch(e){ status("复制失败：" + e.message, true); }
+    const r = await api("/api/prompt", { company: S.company });
+    await navigator.clipboard.writeText(`【系统提示】\n${r.system}\n\n【用户提示】\n${r.prompt}`);
+    toast("提示词已复制");
+  }catch(e){ toast(e.message, true); }
 }
 
 loadModels();
 pingConn();
-$("#company").addEventListener("keydown", e=>{ if(e.key==="Enter") search(); });
+$("#company").addEventListener("keydown", e => { if(e.key === "Enter") doSearch(); });
 </script>
 </body>
 </html>

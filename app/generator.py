@@ -401,6 +401,51 @@ def _clean_llm_table(t: Any) -> dict | None:
     }
 
 
+_LEAD_NUM_RE = re.compile(
+    r"^\s*(?:[（(]\s*[0-9一二三四五六七八九十]{1,2}\s*[）)]"
+    r"|[0-9]{1,2}\s*[）)、.．]"
+    r"|[一二三四五六七八九十]{1,2}\s*[、）)])\s*")
+
+
+def clean_segment_name(name: str) -> str:
+    """板块名只留主体部分：去掉编号与『业务/板块/方面』这类后缀。"""
+    n = _LEAD_NUM_RE.sub("", str(name or "")).strip()
+    n = re.sub(r"(?:业务方面|方面|板块)$", "", n).strip()
+    return n
+
+
+def clean_segment_body(name: str, body: str) -> str:
+    """去掉模型自带的导语。
+
+    程序排版时会统一加「1）××业务方面，」，模型若已写了同样的开头，
+    docx 里就会出现「2）新材料业务方面，2）新材料业务方面，」这种重复句。
+    """
+    b = _LEAD_NUM_RE.sub("", str(body or "").strip())
+    for _ in range(2):  # 模型偶尔把导语写两遍
+        before = b
+        if name:
+            b = re.sub(rf"^{re.escape(name)}\s*(?:业务)?方面\s*[，,、：:]?\s*", "", b)
+        # 板块名与模型写法略有出入时（如「新材料」与「新材料业务」）再兜一层
+        b = re.sub(r"^[^，。；：\n]{2,16}?业务方面\s*[，,、：:]\s*", "", b, count=1)
+        if b == before:
+            break
+    return b.strip()
+
+
+def segment_heading(i: int, name: str) -> str:
+    n = clean_segment_name(name)
+    if not n:
+        return f"{i}）"
+    if n.endswith(("业务", "板块", "产品", "服务", "行业")):
+        return f"{i}）{n}方面，"
+    return f"{i}）{n}业务方面，"
+
+
+def _p(progress, pct: int, stage: str, detail: str = ""):
+    if progress:
+        progress(pct, stage, detail)
+
+
 def _ensure_structure(draft: dict, facts: dict) -> dict:
     """补齐缺省字段，并把程序生成的表格塞进去。"""
     out: dict[str, Any] = {}
@@ -419,7 +464,9 @@ def _ensure_structure(draft: dict, facts: dict) -> dict:
         "overview": {"lead": (ov.get("lead") or "").strip(), "body": (ov.get("body") or "").strip()},
         "segment_table": build_segment_table(facts) or _clean_llm_table(c.get("segment_table")),
         "segments": [
-            {"name": str(s.get("name") or "").strip(), "body": str(s.get("body") or "").strip()}
+            {"name": clean_segment_name(str(s.get("name") or "")),
+             "body": clean_segment_body(clean_segment_name(str(s.get("name") or "")),
+                                        str(s.get("body") or ""))}
             for s in (c.get("segments") or []) if str(s.get("body") or "").strip()
         ],
         "asset": {"lead": (at.get("lead") or "").strip(), "body": (at.get("body") or "").strip()},
@@ -602,16 +649,42 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
     return {"issues": issues, "body_chars": body_len}
 
 
-def generate(facts: dict, materials: list[dict], model_id: str | None = None) -> dict:
+def generate(facts: dict, materials: list[dict], model_id: str | None = None,
+             progress=None) -> dict:
+    import threading
+    import time
+
+    _p(progress, 3, "组装提示词", "合并台账与材料原文")
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": build_user_prompt(facts, materials)},
     ]
-    raw = llm.chat(messages, model_id=model_id, temperature=0.3, max_tokens=12000,
-                   timeout=900, thinking=False)
+    chars = sum(len(m.get("text") or "") for m in materials)
+    _p(progress, 8, "模型写作中", f"已送入 {len(materials)} 份材料、约 {chars // 1000}k 字")
+
+    stop = threading.Event()
+
+    def tick():
+        t0 = time.time()
+        while not stop.wait(1.5):
+            e = time.time() - t0
+            # 逐步逼近 88%：模型实际耗时不可知，进度只作参考，不做承诺
+            pct = 8 + int(80 * (1 - 2.718281828 ** (-e / 75)))
+            _p(progress, pct, "模型写作中", f"已用时 {int(e)} 秒")
+
+    th = threading.Thread(target=tick, daemon=True)
+    th.start()
+    try:
+        raw = llm.chat(messages, model_id=model_id, temperature=0.3, max_tokens=12000,
+                       timeout=900, thinking=False)
+    finally:
+        stop.set()
+
+    _p(progress, 90, "解析结构", "检查 JSON 与字段完整性")
     draft = llm.parse_json(raw)
     if isinstance(draft, list):
         draft = draft[0] if draft else {}
     draft = _ensure_structure(draft, facts)
+    _p(progress, 96, "校验", "数字溯源、期次写法、财务表自洽")
     draft["validation"] = validate(draft, facts, materials)
     return draft
