@@ -356,10 +356,46 @@ select{width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 8px
 .ta:hover{border-color:var(--line2);background:#fcfcfd}
 .ta:focus{border-color:#cfd4dc;background:#fff}
 .ta.lead{font-weight:700}
-.items{display:flex;flex-direction:column}
-.item{display:flex;gap:2px;align-items:flex-start}
-.item .num{white-space:nowrap;padding-top:1px}
-.item .ta{flex:1;min-width:0}
+/* ── 正面 / 关注 的条目 ──────────────────────────────────────────
+   一行 = 序号（兼作拖动把手）＋ 正文 ＋ 右上角删除圈。
+   删除圈平时不显形，鼠标移到这一行才浮出来；右侧留一条空槽给它，
+   所以出现时正文不会重排（叠在字上会挡住最后一两个字，重排又会让整段跳）。
+   触屏没有 hover，手机上一律显示。 */
+.items{display:flex;flex-direction:column;gap:1px}
+.item{position:relative;display:flex;gap:2px;align-items:flex-start;padding-right:24px;
+  border-radius:5px}
+.item>.num{white-space:nowrap;padding:1px 2px 1px 0;cursor:grab;touch-action:none;
+  border-radius:3px;transition:background .14s ease,color .14s ease}
+.item>.num:hover{background:#f1f3f6;color:var(--ink)}
+.item>.num:active{cursor:grabbing}
+.item>.ta{flex:1;min-width:0}
+.item .del{position:absolute;right:0;top:2px;width:18px;height:18px;padding:0;border-radius:50%;
+  display:grid;place-items:center;border:1px solid #e4e7ec;background:#fff;color:#a9b0ba;
+  opacity:0;transform:scale(.86);pointer-events:none;z-index:2;
+  box-shadow:0 1px 2px rgba(17,20,24,.05);
+  transition:opacity .14s ease,transform .14s ease,background .14s ease,border-color .14s ease,
+    color .14s ease}
+.item:hover .del,.item:focus-within .del{opacity:1;transform:none;pointer-events:auto}
+.item .del:hover{background:var(--red);border-color:var(--red);color:#fff}
+.item .del:active{transform:scale(.92)}
+.item .del svg{width:9px;height:9px;fill:none;stroke:currentColor;stroke-width:2.1;
+  stroke-linecap:round}
+.item.gone{opacity:0;transform:translateX(4px);transition:opacity .13s ease,transform .13s ease}
+/* 落位后回一下底色，确认它停在这儿了 */
+.item.settle{animation:settleRow .85s ease-out}
+@keyframes settleRow{0%{background:#eff3f8}70%{background:#f7f9fc}100%{background:transparent}}
+/* 拖动：原位留虚线占位，跟着走的是浮起的影子 */
+.item.drag-src{display:none}
+.item.ph{background:#f5f7fa;border:1px dashed #ccd3dc;border-radius:5px}
+body.dragging{cursor:grabbing;user-select:none;-webkit-user-select:none}
+body.dragging .item-ghost{display:flex}
+.item-ghost{position:fixed;left:0;top:0;z-index:120;display:none;align-items:flex-start;gap:2px;
+  padding-right:24px;overflow:hidden;pointer-events:none;background:#fff;border-radius:6px;
+  will-change:transform;
+  box-shadow:0 12px 30px rgba(17,20,24,.16),0 0 0 1px rgba(17,20,24,.06)}
+.item-ghost>.num{white-space:nowrap;padding:1px 2px 1px 0;color:var(--ink2)}
+.item-ghost>.ta{flex:1;min-width:0;border-color:transparent;background:transparent}
+.item-ghost .del{display:none}
 .pool{margin:6px 0 0}
 .pool-t{font-size:11px;color:var(--muted);margin-bottom:4px}
 .chip{display:block;width:100%;text-align:left;font-family:inherit;font-size:11.5px;
@@ -373,6 +409,10 @@ select{width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 8px
 .tool:hover{color:var(--red)}
 .add{border:0;background:transparent;color:var(--muted);font-size:12px;padding:2px 4px}
 .add:hover{color:var(--ink)}
+/* 拖动是把序号当把手，不说一句没人会去试；只有一条时没必要提 */
+.addhint{font-family:-apple-system,"PingFang SC",sans-serif;font-size:10.5px;
+  color:#c3c8d0;margin-left:6px;letter-spacing:.01em}
+.addhint.off{display:none}
 .unit{text-align:right;color:var(--ink2);font-size:13.5px;margin:6px 0 2px}
 .doc-table{width:100%;border-collapse:collapse;font-size:13.5px;
   border-top:1.5px solid #111;border-bottom:1.5px solid #111;margin-bottom:4px}
@@ -458,7 +498,12 @@ select{width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 8px
 
 #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(8px);
   background:#111418;color:#fff;font-size:12.5px;padding:8px 16px;border-radius:6px;
-  opacity:0;pointer-events:none;transition:.2s;max-width:80vw}
+  opacity:0;pointer-events:none;transition:.2s;max-width:80vw;
+  display:flex;align-items:center;gap:12px}
+/* 删了能撤回：删的是一条完整观点，没有撤销就太脆了 */
+#toast .undo{flex:none;border:0;background:transparent;color:#8fc7ff;font:inherit;font-size:12.5px;
+  padding:0;text-decoration:underline;text-underline-offset:2px}
+#toast .undo:hover{color:#cfe4ff}
 
 /* ── 口令闸门：没进来之前，整页糊在毛玻璃后面 ───────────────────── */
 #gate{position:fixed;inset:0;z-index:80;display:none;align-items:center;justify-content:center;
@@ -551,7 +596,8 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
 .gcard button:hover{background:#000}
 .gcard button:disabled{background:#c2c7cf;cursor:not-allowed}
 .gcard .gerr{min-height:16px;margin-top:8px;font-size:11.5px;color:var(--red)}
-.gcard .ghint{margin-top:12px;font-size:11px;color:var(--muted);line-height:1.6}#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.gcard .ghint{margin-top:12px;font-size:11px;color:var(--muted);line-height:1.6}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
 #toast.err{background:var(--red)}
 #conn{display:none;padding:8px 20px;font-size:12.5px;color:var(--amber);background:#fffbf0;
   border-bottom:1px solid #f3e6c8}
@@ -682,6 +728,11 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
   .item .tool,.seg .tool,.topic .tool{opacity:1;font-size:15px;
     min-width:32px;min-height:32px;display:inline-flex;align-items:center;justify-content:center}
   .seg .tool{top:0}
+  /* 条目上的删除圈同理：常显，并且放大到 24px 好按；右侧空槽跟着加宽 */
+  .item{padding-right:30px}
+  .item .del{width:24px;height:24px;opacity:1;transform:none;pointer-events:auto;top:0}
+  .item .del svg{width:10px;height:10px}
+  .item>.num{padding:2px 3px 2px 0}
   .chip{padding:8px 10px;font-size:12.5px;white-space:normal;line-height:1.5}
   .add{padding:8px 4px;font-size:13px}
   .pkgpanel .pkrow,.mlpanel .mlatt label.r{min-height:34px}
@@ -1031,6 +1082,42 @@ function toast(msg, isErr){
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => { el.className = ""; }, isErr ? 8000 : 4000);
 }
+/* 带「撤销」的提示：删除是即时生效的，给一次后悔的机会 */
+let toastUndo = null;
+function toastWithUndo(msg, onUndo){
+  const el = $("#toast");
+  el.textContent = "";
+  const span = document.createElement("span");
+  span.textContent = msg;
+  const btn = document.createElement("button");
+  btn.className = "undo";
+  btn.textContent = "撤销";
+  btn.onclick = () => {
+    el.className = "";
+    clearTimeout(toastTimer);
+    toastUndo = null;
+    onUndo();
+  };
+  el.append(span, btn);
+  el.className = "show";
+  clearTimeout(toastTimer);
+  toastUndo = onUndo;
+  toastTimer = setTimeout(() => { el.className = ""; toastUndo = null; }, 6000);
+}
+/* ⌘/Ctrl+Z 接上「撤销删除」：习惯用键盘的人不必去点那一行提示。
+   只看当前焦点在哪：焦点在正在改字的输入框里，⌘Z 归输入框自己。 */
+document.addEventListener("keydown", e => {
+  if(!toastUndo) return;
+  if(!((e.metaKey || e.ctrlKey) && !e.shiftKey && (e.key === "z" || e.key === "Z"))) return;
+  const a = document.activeElement;
+  if(a && (a.tagName === "TEXTAREA" || a.tagName === "INPUT") && a.value) return;
+  e.preventDefault();
+  const fn = toastUndo;
+  toastUndo = null;
+  clearTimeout(toastTimer);
+  $("#toast").className = "";
+  fn();
+});
 
 async function api(path, body){
   const r = await fetch(apiUrl(path), { method: "POST", headers: { "Content-Type": "application/json" },
@@ -1690,12 +1777,14 @@ function renderDraft(){
       <div class="doc-h first">正面：</div>
       <div class="items" id="d-pos"></div>
       <button class="add" onclick="addItem('pos')">+ 条目</button>
+      <span class="addhint" id="h-pos">按住序号可上下拖动换位置</span>
       ${wide ? "" : '<div class="pool" id="p-pos"></div>'}
     </div>
     <div class="blk" id="blk-con">
       <div class="doc-h">关注：</div>
       <div class="items" id="d-con"></div>
       <button class="add" onclick="addItem('con')">+ 条目</button>
+      <span class="addhint" id="h-con">按住序号可上下拖动换位置</span>
       ${wide ? "" : '<div class="pool" id="p-con"></div>'}
     </div>
     <div class="blk" id="blk-basic">
@@ -2032,32 +2121,236 @@ function usePool(kind, i){
   }
 }
 
+/* 条目 markup：序号兼作拖动把手，删除做成右上角一个圈 */
+function itemHtml(kind, text, n){
+  return `<span class="num" title="按住拖动，可调整这条的先后">${n}）</span>` +
+    `<textarea class="ta it-${kind}" rows="1">${esc(text || "")}</textarea>` +
+    `<button class="del" onclick="delItem(this)" title="删除这条" aria-label="删除这条">` +
+    `<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M2.4 2.4 7.6 7.6M7.6 2.4 2.4 7.6"/></svg></button>`;
+}
 function renderItems(kind, items){
   const box = $("#" + (kind === "pos" ? "d-pos" : "d-con"));
-  box.innerHTML = items.map((t, i) => `<div class="item">
-    <span class="num">${i + 1}）</span>
-    <textarea class="ta it-${kind}" rows="1">${esc(t)}</textarea>
-    <button class="tool" onclick="this.parentNode.remove();renumber()">×</button>
-  </div>`).join("");
+  box.innerHTML = items.map((t, i) => `<div class="item">${itemHtml(kind, t, i + 1)}</div>`).join("");
+  renumber();
 }
 function addItem(kind, text){
   const box = $("#" + (kind === "pos" ? "d-pos" : "d-con"));
   const div = document.createElement("div");
   div.className = "item";
-  div.innerHTML = `<span class="num"></span><textarea class="ta it-${kind}" rows="1">${esc(text || "")}</textarea>
-    <button class="tool" onclick="this.parentNode.remove();renumber()">×</button>`;
+  div.innerHTML = itemHtml(kind, text, box.children.length + 1);
   box.appendChild(div);
   renumber();
   div.querySelector("textarea").focus();
   autoGrow(div.querySelector("textarea"));
 }
-function renumber(){
-  ["#d-pos", "#d-con"].forEach(sel => {
-    [...$(sel).querySelectorAll(".item")].forEach((el, i) => {
-      el.querySelector(".num").textContent = (i + 1) + "）";
+/* 删除：先淡出再摘掉，同时留一个「撤销」。
+   删的是一条完整观点，误点一下就没了的代价太大，所以给六秒后悔期（⌘/Ctrl+Z 也认）。 */
+function delItem(btn){
+  const el = btn && btn.closest && btn.closest(".item");
+  if(!el || el.classList.contains("ph")) return;
+  const list = el.parentNode;
+  const text = (el.querySelector("textarea") || {}).value || "";
+  const idx = [...list.children].indexOf(el);
+  const kind = list.id === "d-pos" ? "pos" : "con";
+  el.classList.add("gone");
+  setTimeout(() => {
+    if(el.parentNode) el.remove();
+    renumber();
+    toastWithUndo("已删除一条", () => {
+      const sibs = [...list.children];
+      const div = document.createElement("div");
+      div.className = "item";
+      div.innerHTML = itemHtml(kind, text, idx + 1);
+      if(sibs[idx]) list.insertBefore(div, sibs[idx]); else list.appendChild(div);
+      renumber();
+      autoGrow(div.querySelector("textarea"));
+      div.classList.add("settle");
+      setTimeout(() => div.classList.remove("settle"), 900);
     });
+  }, 130);
+}
+function renumber(){
+  [["#d-pos", "#h-pos"], ["#d-con", "#h-con"]].forEach(([sel, hint]) => {
+    const items = [...$(sel).querySelectorAll(".item")];
+    items.forEach((el, i) => {
+      const n = el.querySelector(".num");
+      if(n) n.textContent = (i + 1) + "）";
+    });
+    // 只有一条时「换位置」无从谈起，把提示收起来
+    const h = $(hint);
+    if(h) h.classList.toggle("off", items.length < 2);
   });
 }
+
+/* ── 拖动排序 ──────────────────────────────────────────────────
+   按住前面的序号（1）2）…）就能拖，松手落位；拖的是整条，文字不会丢。
+   用 pointer 事件而不是 HTML5 拖放：后者在触屏上不触发，而这份报告手机上也要改。
+   拖动期间原位留一个虚线占位、其余条目跟着让位，落点看得见；
+   中途按 Esc 或指针被系统收走，就退回原来的位置。 */
+const DRAG = { on: false, started: false, el: null, list: null, ph: null, ghost: null,
+  sp: null, x0: 0, y0: 0, lastY: 0, offX: 0, offY: 0, w: 0, h: 0,
+  anchor: null, raf: 0, v: 0 };
+
+function dragBegin(e){
+  if(e.button) return;                       // 只认左键/单指
+  const num = e.target.closest && e.target.closest(".item>.num");
+  if(!num) return;
+  const el = num.closest(".item");
+  if(!el || el.classList.contains("ph")) return;
+  const r = el.getBoundingClientRect();
+  Object.assign(DRAG, {
+    on: true, started: false, cancel: false, el, list: el.parentNode, ph: null, ghost: null, sp: null,
+    x0: e.clientX, y0: e.clientY, lastY: e.clientY,
+    offX: e.clientX - r.left, offY: e.clientY - r.top, w: r.width, h: r.height,
+    anchor: el.nextElementSibling, v: 0
+  });
+  try{ num.setPointerCapture(e.pointerId); }catch(err){}
+  document.addEventListener("pointermove", dragMove, { passive: false });
+  document.addEventListener("pointerup", dragEnd);
+  document.addEventListener("pointercancel", dragEnd);
+  document.addEventListener("keydown", dragKey);
+}
+
+function dragLift(){
+  const d = DRAG;
+  d.started = true;
+  document.body.classList.add("dragging");
+  // 占位：高度与原条目一致，位置就是它现在的位置
+  const ph = document.createElement("div");
+  ph.className = "item ph";
+  ph.style.height = d.h + "px";
+  d.list.insertBefore(ph, d.el);
+  d.ph = ph;
+  // 影子：克隆一份浮起来跟着指针，宽度锁定，避免拖到空格里忽然变形
+  const g = d.el.cloneNode(true);
+  g.className = "item item-ghost";
+  g.style.width = d.w + "px";
+  g.style.height = d.h + "px";
+  // textarea 的当前内容是 value，不在子节点里：克隆之后要把值补过去，
+  // 否则刚改过的那句在影子里还是旧文字。
+  const src = d.el.querySelectorAll("textarea"), dst = g.querySelectorAll("textarea");
+  src.forEach((t, i) => { if(dst[i]) dst[i].value = t.value; });
+  g.style.transform = `translate(${d.x0 - d.offX}px,${d.y0 - d.offY}px)`;
+  document.body.appendChild(g);
+  d.ghost = g;
+  d.el.classList.add("drag-src");
+}
+
+function dragPlace(y){
+  const d = DRAG;
+  if(!d.ph) return;
+  let before = null;
+  for(const k of d.list.children){
+    if(!k.classList.contains("item") || k === d.ph || k === d.el) continue;
+    const r = k.getBoundingClientRect();
+    if(y < r.top + r.height / 2){ before = k; break; }
+  }
+  if(before){ if(d.ph.nextElementSibling !== before) d.list.insertBefore(d.ph, before); }
+  else if(d.list.lastElementChild !== d.ph) d.list.appendChild(d.ph);
+}
+
+function dragMove(e){
+  const d = DRAG;
+  if(!d.on) return;
+  if(!d.started){
+    if(Math.abs(e.clientY - d.y0) < 4 && Math.abs(e.clientX - d.x0) < 4) return;
+    dragLift();
+  }
+  if(e.cancelable) e.preventDefault();
+  d.lastY = e.clientY;
+  if(d.ghost) d.ghost.style.transform = `translate(${e.clientX - d.offX}px,${e.clientY - d.offY}px)`;
+  dragPlace(e.clientY);
+  dragScroll(e.clientY);
+}
+
+/* 拖到视口上下沿附近就自己滚，长列表不用先滚到位置再拖 */
+function dragScroll(y){
+  const d = DRAG;
+  if(!d.sp) d.sp = scrollHost(d.list);
+  const isDoc = d.sp === document.scrollingElement;
+  const top = isDoc ? 0 : d.sp.getBoundingClientRect().top;
+  const bottom = isDoc ? innerHeight : d.sp.getBoundingClientRect().bottom;
+  const edge = 54;
+  let v = 0;
+  if(y < top + edge) v = -(top + edge - y) / 4;
+  else if(y > bottom - edge) v = (y - (bottom - edge)) / 4;
+  d.v = Math.max(-15, Math.min(15, Math.round(v)));
+  if(d.v && !d.raf) d.raf = requestAnimationFrame(dragScrollStep);
+  if(!d.v && d.raf){ cancelAnimationFrame(d.raf); d.raf = 0; }
+}
+function dragScrollStep(){
+  const d = DRAG;
+  d.raf = 0;
+  if(!d.started || !d.v) return;
+  d.sp.scrollTop += d.v;
+  dragPlace(d.lastY);
+  d.raf = requestAnimationFrame(dragScrollStep);
+}
+function scrollHost(el){
+  let p = el && el.parentNode;
+  while(p && p !== document.body && p.nodeType === 1){
+    const s = getComputedStyle(p);
+    if(/(auto|scroll)/.test(s.overflowY) && p.scrollHeight > p.clientHeight + 4) return p;
+    p = p.parentNode;
+  }
+  return document.scrollingElement || document.documentElement;
+}
+
+function dragEnd(ev){
+  const d = DRAG;
+  document.removeEventListener("pointermove", dragMove);
+  document.removeEventListener("pointerup", dragEnd);
+  document.removeEventListener("pointercancel", dragEnd);
+  document.removeEventListener("keydown", dragKey);
+  if(d.raf){ cancelAnimationFrame(d.raf); d.raf = 0; }
+  d.v = 0;
+  if(d.on && d.started && d.el){
+    if(d.cancel){
+      // 撤：先把占位拿掉，再把原条目插回它原来的后面那一条前面。
+      // 顺序不能反——占位还在时插回去，replaceChild 又会把它挪到占位的落点。
+      if(d.ph && d.ph.parentNode) d.ph.remove();
+      if(d.anchor && d.anchor.parentNode === d.list) d.list.insertBefore(d.el, d.anchor);
+      else if(d.list) d.list.appendChild(d.el);
+    }else if(d.ph && d.ph.parentNode){
+      d.ph.parentNode.replaceChild(d.el, d.ph);
+    }
+    d.el.classList.remove("drag-src");
+    if(d.ghost) d.ghost.remove();
+    document.body.classList.remove("dragging");
+    renumber();
+    if(!d.cancel){
+      d.el.classList.remove("settle");
+      void d.el.offsetWidth;
+      d.el.classList.add("settle");
+      const el = d.el;
+      setTimeout(() => el.classList.remove("settle"), 900);
+    }
+  }else{
+    if(d.el) d.el.classList.remove("drag-src");
+    if(d.ghost) d.ghost.remove();
+    document.body.classList.remove("dragging");
+  }
+  Object.assign(d, { on: false, started: false, cancel: false, el: null, list: null, ph: null,
+    ghost: null, sp: null, anchor: null });
+}
+
+/* Esc 撤掉这次拖动，回到原位 */
+function dragKey(e){
+  const d = DRAG;
+  if(e.key !== "Escape" || !d.on) return;
+  d.cancel = true;
+  dragEnd(e);
+}
+function flashBlk(el){
+  const blk = el && el.closest && el.closest(".blk");
+  if(!blk) return;
+  blk.classList.remove("flash");
+  void blk.offsetWidth;
+  blk.classList.add("flash");
+  clearTimeout(blk._fl);
+  blk._fl = setTimeout(() => blk.classList.remove("flash"), 1500);
+}
+document.addEventListener("pointerdown", dragBegin);
 
 /* 分部段：编号、板块名、正文在同一段里，像 Word 那样整段编辑 */
 function segText(name, body){
