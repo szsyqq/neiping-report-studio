@@ -449,42 +449,71 @@ body.dragging .item-ghost{display:flex}
 .rail-l .pool-t{font-size:10.5px;letter-spacing:.04em;color:var(--muted);margin-bottom:5px}
 .rail-l .chip{white-space:normal;line-height:1.55;padding:5px 8px;font-size:11.5px}
 
-/* 待核对：一条一张卡，标题 + 复选框；点卡片正文跳到对应位置，
-   勾选与跳转互不干扰（勾选框自己吃掉点击）。 */
+/* 待核对：按「一类问题」分组，一组一卡。
+   一个数目类问题常有十来个待核数，逐条打勾等于点十几次——所以组头带一个全选框，
+   勾一次把整组销账；单条要单独确认时，再点行首那个框。
+   行本身点一下会跳到正文里那句话并把它选中，勾选框自己吃掉点击，两者不冲突。 */
 .ck-h{display:flex;align-items:baseline;gap:6px;margin:0 0 6px}
 .ck-h b{font-size:11px;color:var(--muted);letter-spacing:.06em;font-weight:600}
 .ck-h .n{font-size:11px;color:var(--ink2);margin-left:auto;font-variant-numeric:tabular-nums}
-.ck-h .ck-reset{border:0;background:none;color:#c6cbd2;font-size:11px;padding:0 0 0 6px;cursor:pointer}
-.ck-h .ck-reset:hover{color:var(--red)}
+.ck-h button{border:0;background:none;font-size:11px;padding:0 0 0 6px;cursor:pointer;color:#c6cbd2}
+.ck-h button:hover{color:var(--ink2)}
+.ck-h button.ck-all{color:#2f5fd0}
+.ck-h button.ck-all:hover{color:#1d47a8}
 /* 折起：手机上十几条核对项会占掉半屏，默认折成一行，点开展开 */
 .ck-fold{border:0;background:none;color:#b9bfc8;font-size:9px;padding:0 1px;line-height:1;
   cursor:pointer;transform:translateY(-1px)}
 .ck-fold:hover{color:var(--ink2)}
-.rail-r.collapsed .ck-list,.rail-r.collapsed .ck-bar{display:none}
+.rail-r.collapsed .ck-list,.rail-r.collapsed .ck-bar,.rail-r.collapsed .ck-auto{display:none}
 .rail-r.collapsed .ck-h{margin-bottom:0}
 .ck-bar{height:2px;background:var(--line2);border-radius:2px;margin:0 0 9px;overflow:hidden}
 .ck-bar i{display:block;height:100%;width:0;background:var(--ink);transition:width .25s ease}
-.ck{border:1px solid var(--line);border-radius:7px;background:#fff;padding:8px 9px;margin-bottom:7px;
-  transition:border-color .16s ease,background .16s ease,opacity .16s ease}
-.ck:hover{border-color:#d3d8de;background:#fcfcfd}
-.ck-row{display:flex;gap:7px;align-items:flex-start}
-.ck-row input{width:14px;height:14px;flex:none;margin:2px 0 0;accent-color:var(--ink);cursor:pointer}
-.ck-body{flex:1;min-width:0;cursor:pointer}
-.ck-t{display:block;font-size:12px;font-weight:600;color:var(--ink);line-height:1.55;
+
+/* 一组一卡 */
+.ckg{border:1px solid var(--line);border-radius:7px;background:#fff;margin-bottom:7px;
+  transition:border-color .16s ease,background .16s ease}
+.ckg:hover{border-color:#d3d8de}
+.ckg-h{display:flex;align-items:flex-start;gap:7px;padding:8px 9px}
+.ckg-h input{width:14px;height:14px;flex:none;margin:2px 0 0;accent-color:var(--ink);cursor:pointer}
+.ckg-h .t{flex:1;min-width:0;font-size:12px;font-weight:600;color:var(--ink);line-height:1.55;
+  cursor:pointer;overflow-wrap:break-word}
+.ckg-h .c{flex:none;font-size:10.5px;color:var(--muted);font-variant-numeric:tabular-nums;
+  padding-top:2px}
+.ckg-h .ckg-all{flex:none;border:0;background:none;color:#2f5fd0;font-size:10.5px;padding:1px 0 0;
+  cursor:pointer}
+.ckg-h .ckg-all:hover{text-decoration:underline}
+.ckg-b{border-top:1px dashed var(--line2);padding:4px 9px 7px}
+.ckg.done{background:#fafbfc;border-color:var(--line2)}
+.ckg.done .ckg-h .t{color:#9aa1ac}
+
+/* 组内一行 = 一个待核对象 */
+.ckr{display:flex;align-items:flex-start;gap:6px;padding:3px 0;cursor:pointer;border-radius:4px}
+.ckr:hover{background:#f7f9fc}
+.ckr input{width:13px;height:13px;flex:none;margin:3px 0 0;accent-color:var(--ink);cursor:pointer}
+.ckr .m{flex:1;min-width:0;line-height:1.55}
+.ckr .k{font-size:11.5px;color:var(--ink);font-variant-numeric:tabular-nums;
   overflow-wrap:break-word}
-.ck-go{float:right;margin-left:6px;color:#ccd1d8;font-size:11px;line-height:1.6}
-.ck:hover .ck-go{color:var(--ink2)}
-.ck-m{font-size:11px;color:var(--muted);line-height:1.62;margin-top:3px;overflow-wrap:break-word}
-.ck.done{background:#fafbfc;border-color:var(--line2)}
-.ck.done .ck-t{color:#9aa1ac}
-.ck.done .ck-go{color:#e0e4e9}
-.ck-d{display:none;margin-top:7px;padding-top:6px;border-top:1px dashed var(--line2)}
-.ck-d.show{display:block}
-.ck-d .d{display:block;width:100%;text-align:left;border:0;background:none;font-family:inherit;
-  font-size:11px;color:var(--ink2);line-height:1.6;padding:2px 0;cursor:pointer}
-.ck-d .d:hover{color:#2f5fd0}
-.ck-more{border:0;background:none;color:#2f5fd0;font-size:10.5px;padding:4px 0 0;cursor:pointer}
-.ck-more:hover{text-decoration:underline}
+.ckr .p{font-size:10.5px;color:#b0b6bf;margin-left:5px;white-space:nowrap}
+.ckr .s{display:block;font-size:10.5px;color:var(--muted);line-height:1.5;margin-top:1px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ckr .f{display:block;font-size:10.5px;color:#7a828c;line-height:1.5;margin-top:1px;
+  font-variant-numeric:tabular-nums}
+.ckr.done .k,.ckr.done .s{color:#b6bcc4;text-decoration:line-through}
+.ckr.done .f{color:#cfd4da}
+.ckr .go{flex:none;color:#d3d8de;font-size:10px;padding-top:2px}
+.ckr:hover .go{color:var(--ink2)}
+
+/* 机器自己核对过的：默认收起，点开看算式——不然用户会以为数字凭空少了 */
+.ck-auto{margin-top:8px;border-top:1px solid var(--line2);padding-top:7px}
+.ck-auto summary{cursor:pointer;font-size:10.5px;color:#5b7a2e;list-style:none;outline:none}
+.ck-auto summary::-webkit-details-marker{display:none}
+.ck-auto summary::before{content:"▸ ";color:var(--muted)}
+.ck-auto[open] summary::before{content:"▾ "}
+.ck-auto .lst{margin:5px 0 0;font-size:10.5px;color:var(--ink2);line-height:1.6;
+  max-height:180px;overflow-y:auto}
+.ck-auto .lst div{padding:2px 0;border-bottom:1px solid #f4f6f8;overflow-wrap:break-word}
+.ck-auto .lst div:last-child{border-bottom:0}
+.ck-auto .lst b{font-weight:500;color:var(--ink)}
 /* 勾完的整块换个颜色，剩下的自然浮上来 */
 .rail-r.all-done .ck-h b{color:#2e7d32}
 /* 跳到正文时的落点提示：底色与左侧竖条闪一下，两秒后自己退掉 */
@@ -711,11 +740,15 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
   .in-company{font-size:16px}
   .doc-sub .subj .in-code{width:84px}
   /* 触屏上的核对项：勾选框与整张卡片都要够大 */
-  .ck{padding:9px 10px}
-  .ck-row input{width:19px;height:19px;margin-top:1px}
-  .ck-t{font-size:13px}
-  .ck-m{font-size:12px}
-  .ck-d .d{font-size:12px;padding:4px 0}
+  .ckg-h{padding:10px}
+  .ckg-h input{width:19px;height:19px;margin-top:1px}
+  .ckg-h .t{font-size:13px}
+  .ckg-b{padding:4px 10px 9px}
+  .ckr{padding:6px 0}
+  .ckr input{width:18px;height:18px;margin-top:2px}
+  .ckr .k{font-size:12.5px}
+  .ckr .p,.ckr .s,.ckr .f{font-size:11px}
+  .ckr .go{display:none}
   .rail-r{margin:2px 0 16px}
 
   /* 表格：整表横向滑动，单元格不折行，否则「-10.66%」会被拆成两行看错 */
@@ -1906,72 +1939,184 @@ function ckPersist(set){
   const all = ckAll(); all[ckOwner()] = [...set];
   try{ localStorage.setItem("nr_ck_v1", JSON.stringify(all)); }catch(e){}
 }
+/* 一组内的每一行 = 一个待核对象。后端新给的 issue_items 已带定位
+   （anchor 段、field 输入框、seg 第几个板块、full 整句、si 第几句），
+   历史记录里没有这个字段，退回旧的文本解析，只落到段落一级。 */
+function ckRowsFromItem(it){
+  const rows = [];
+  for(const d of (it.d || [])){
+    const full = d.full || "";
+    const head = full ? (full.length > 46 ? full.slice(0, 46) + "…" : full) : (d.where || "");
+    const pos = [d.where, d.si ? `第 ${d.si} 句` : ""].filter(Boolean).join(" · ");
+    const key = ckHash([it.t, d.num, d.where, full].join("|"));
+    rows.push({
+      k: key, main: d.num || it.t, pos,
+      sub: d.num ? head : "",
+      formula: d.formula || "", note: d.note || "",
+      anchor: d.anchor || it.a || "d-doc",
+      field: d.field || "", seg: d.seg || 0, full
+    });
+  }
+  if(!rows.length){
+    // 没有明细的结构性问题（正面不足、财务表为空…）：整组就是一条
+    rows.push({ k: ckHash([it.t, it.a].join("|")), main: it.t, pos: "",
+      sub: "", formula: "", note: "", anchor: it.a || "d-doc", field: "", seg: 0, full: "" });
+  }
+  return rows;
+}
 function ckItems(v){
+  if((v.issue_items || []).length){
+    return v.issue_items.map(it => {
+      const rows = ckRowsFromItem(it);
+      return { k: ckHash(it.t + "|" + rows.map(r => r.k).join(",")),
+        title: it.t, note: it.note || "", anchor: it.a || "d-doc",
+        rows, derived: true };
+    });
+  }
+  // 旧版记录：只从 issues 文本里拆，定位到段落
   const out = [];
   for(const raw of (v.issues || [])){
     const lines = String(raw).split("\n").map(x => x.trim()).filter(Boolean);
     if(!lines.length) continue;
     const head = lines[0];
-    const details = lines.slice(1).map(x => {
+    const meta = ckHead(head);
+    const rows = lines.slice(1).map(x => {
       const t = x.replace(/^[·•]\s*/, "").trim();
       const m = t.match(/——\s*([^：]+)：/);
-      return { text: t, anchor: m ? whereAnchor(m[1]) : "d-doc" };
+      return { k: ckHash(head + "|" + t), main: t.slice(0, 46), pos: "",
+        sub: "", formula: "", note: "",
+        anchor: m ? whereAnchor(m[1]) : "d-doc", field: "", seg: 0, full: "" };
     });
-    const meta = ckHead(head);
-    // 汇总句自己是「全文」级别的，明细里若能定位到具体段，就落到那里
-    const anchor = meta.anchor === "d-doc" && details.length ? details[0].anchor : meta.anchor;
-    out.push({
-      k: ckHash(head + "\n" + details.map(d => d.text).join("\n")),
-      title: meta.title,
-      sub: meta.derived ? head : "",
-      anchor, details
-    });
+    out.push({ k: ckHash(head), title: meta.title,
+      note: meta.derived ? head : "", anchor: meta.anchor, rows, derived: meta.derived });
   }
   return out;
 }
 function ckHtml(v){
   const items = ckItems(v);
-  if(!items.length) return "";
+  const auto = (v.auto_checks || []);
+  if(!items.length && !auto.length) return "";
   const done = ckDoneSet();
-  const n = items.filter(x => done.has(x.k)).length;
-  return `<div class="ck-h"><button class="ck-fold" onclick="ckFold(this)" title="收起核对项">▾</button><b>待核对</b><span class="n"><i id="ckDoneN">${n}</i>/${items.length}</span>
-      <button class="ck-reset" onclick="ckReset()" title="清空勾选">重置</button></div>
-    <div class="ck-bar"><i id="ckBar" style="width:${items.length ? (n / items.length * 100).toFixed(1) : 0}%"></i></div>
-    <div class="ck-list">` + items.map(it => {
-      const on = done.has(it.k);
-      const more = it.details.length
-        ? `<button class="ck-more" onclick="ckMore(this,event)">看 ${it.details.length} 条明细</button>` : "";
-      const det = it.details.length
-        ? `<div class="ck-d">` + it.details.map(d =>
-            `<button class="d" data-t="${d.anchor}" onclick="ckJump(this,event)">${esc(d.text)}</button>`).join("") + `</div>`
-        : "";
-      return `<div class="ck${on ? " done" : ""}" data-k="${it.k}" data-t="${it.anchor}">
-        <div class="ck-row">
-          <input type="checkbox"${on ? " checked" : ""} aria-label="标记为已核对" onchange="ckToggle(this)"/>
-          <div class="ck-body" onclick="ckJump(this,event)" title="点一下跳到正文对应的位置">
-            <span class="ck-t"><span class="ck-go">↗</span>${esc(it.title)}</span>
-            ${it.sub ? `<span class="ck-m">${esc(it.sub)}</span>` : ""}
-            ${more}
-          </div>
-        </div>${det}</div>`;
-    }).join("") + `</div>`;
+  const allRows = items.reduce((a, x) => a.concat(x.rows), []);
+  const n = allRows.filter(r => done.has(r.k)).length;
+  const pct = allRows.length ? (n / allRows.length * 100).toFixed(1) : 0;
+  let h = `<div class="ck-h"><button class="ck-fold" onclick="ckFold(this)" title="收起核对项">▾</button><b>待核对</b>
+      <span class="n"><i id="ckDoneN">${n}</i>/${allRows.length}</span>
+      <button class="ck-all" onclick="ckAllDone()" title="把所有待核对都标为已核对">全勾</button>
+      <button class="ck-reset" onclick="ckReset()" title="清空勾选">清空</button></div>
+    <div class="ck-bar"><i id="ckBar" style="width:${pct}%"></i></div>
+    <div class="ck-list">`;
+  h += items.map(it => {
+    const on = it.rows.filter(r => done.has(r.k)).length;
+    const full = on === it.rows.length;
+    const part = on > 0 && !full;
+    return `<div class="ckg${full ? " done" : ""}" data-k="${it.k}">
+      <div class="ckg-h">
+        <input type="checkbox"${full ? " checked" : ""} data-part="${part ? 1 : 0}"
+          aria-label="整组标为已核对" onchange="ckGroup(this)"/>
+        <span class="t">${esc(it.title)}${it.note ? `<i style="font-style:normal;color:#b0b6bf;font-weight:400"> · ${esc(it.note)}</i>` : ""}</span>
+        <span class="c">${on}/${it.rows.length}</span>
+        <button class="ckg-all" onclick="ckGroupAll(this)" title="这一组全部标为已核对">全勾</button>
+      </div>
+      <div class="ckg-b">` + it.rows.map(r => {
+        const d1 = done.has(r.k);
+        const sub = r.sub ? `<span class="s">${esc(r.sub)}</span>` : "";
+        const fm = r.formula ? `<span class="f">${esc(r.formula)}</span>` : "";
+        const nt = r.note ? `<span class="f">${esc(r.note)}</span>` : "";
+        return `<label class="ckr${d1 ? " done" : ""}" data-k="${r.k}" data-t="${r.anchor}"
+            data-f="${r.field}" data-g="${r.seg}" data-s="${esc(r.full)}">
+          <input type="checkbox"${d1 ? " checked" : ""} onchange="ckOne(this)"/>
+          <span class="m" onclick="ckJump(this,event)" title="跳到正文里这一句并选中">
+            <span class="k">${esc(r.main)}${r.pos ? `<span class="p">${esc(r.pos)}</span>` : ""}</span>
+            ${sub}${fm}${nt}
+          </span>
+          <span class="go">↗</span>
+        </label>`;
+      }).join("") + `</div></div>`;
+  }).join("") + `</div>`;
+  // 机器已经自己核对过的：默认收起，点开能看算式，避免「数字怎么少了」的疑虑
+  if(auto.length){
+    const lines = auto.join("\n").split("\n").filter(x => x.trim());
+    h += `<details class="ck-auto"><summary>机器已自动核对 ${v.auto_count || 0} 项</summary>
+      <div class="lst">` + lines.map(x => `<div>${esc(x.replace(/^[·•]\s*/, ""))}</div>`).join("") + `</div></details>`;
+  }
+  return h;
 }
 function ckPaint(){
-  const items = [...document.querySelectorAll(".ck")];
-  const done = items.filter(x => x.classList.contains("done")).length;
+  const rows = [...document.querySelectorAll(".ckr")];
+  const done = rows.filter(x => x.classList.contains("done")).length;
   const n = $("#ckDoneN"), bar = $("#ckBar"), rail = $("#railR");
   if(n) n.textContent = done;
-  if(bar) bar.style.width = (items.length ? done / items.length * 100 : 0) + "%";
-  if(rail) rail.classList.toggle("all-done", items.length > 0 && done === items.length);
+  if(bar) bar.style.width = (rows.length ? done / rows.length * 100 : 0) + "%";
+  if(rail) rail.classList.toggle("all-done", rows.length > 0 && done === rows.length);
+  // 组状态：全勾 / 部分（半选要靠 indeterminate，HTML 属性给不了）
+  document.querySelectorAll(".ckg").forEach(g => {
+    const rs = [...g.querySelectorAll(".ckr")];
+    const on = rs.filter(x => x.classList.contains("done")).length;
+    const box = g.querySelector(".ckg-h input");
+    if(box){
+      box.checked = on === rs.length && rs.length > 0;
+      box.indeterminate = on > 0 && on < rs.length;
+    }
+    g.classList.toggle("done", on === rs.length && rs.length > 0);
+    const c = g.querySelector(".c");
+    if(c) c.textContent = `${on}/${rs.length}`;
+  });
 }
-function ckToggle(input){
-  const item = input.closest(".ck");
-  if(!item) return;
-  const set = ckDoneSet(), k = item.dataset.k;
+function ckOne(input){
+  const row = input.closest(".ckr");
+  if(!row) return;
+  const set = ckDoneSet(), k = row.dataset.k;
   if(input.checked) set.add(k); else set.delete(k);
   ckPersist(set);
-  item.classList.toggle("done", input.checked);
+  row.classList.toggle("done", input.checked);
   ckPaint();
+}
+function ckGroup(input){
+  const g = input.closest(".ckg");
+  if(!g) return;
+  const want = input.checked;
+  const set = ckDoneSet();
+  g.querySelectorAll(".ckr").forEach(r => {
+    if(want) set.add(r.dataset.k); else set.delete(r.dataset.k);
+    r.classList.toggle("done", want);
+    const b = r.querySelector("input");
+    if(b) b.checked = want;
+  });
+  ckPersist(set);
+  ckPaint();
+}
+function ckGroupAll(btn){
+  const g = btn.closest(".ckg");
+  if(!g) return;
+  // 已经全勾的再点一次就取消，省得只能逐条撤
+  const rs = [...g.querySelectorAll(".ckr")];
+  const want = !rs.every(r => r.classList.contains("done"));
+  const set = ckDoneSet();
+  rs.forEach(r => {
+    if(want) set.add(r.dataset.k); else set.delete(r.dataset.k);
+    r.classList.toggle("done", want);
+    const b = r.querySelector("input");
+    if(b) b.checked = want;
+  });
+  ckPersist(set);
+  ckPaint();
+  toast(want ? "这一组已标为核对完成" : "这一组已取消勾选");
+}
+function ckAllDone(){
+  const rows = [...document.querySelectorAll(".ckr")];
+  if(!rows.length) return;
+  const want = !rows.every(r => r.classList.contains("done"));
+  const set = ckDoneSet();
+  rows.forEach(r => {
+    if(want) set.add(r.dataset.k); else set.delete(r.dataset.k);
+    r.classList.toggle("done", want);
+    const b = r.querySelector("input");
+    if(b) b.checked = want;
+  });
+  ckPersist(set);
+  ckPaint();
+  toast(want ? `${rows.length} 项已全部标为核对完成` : "已清空勾选");
 }
 function ckMore(btn, ev){
   if(ev) ev.stopPropagation();
@@ -2013,26 +2158,89 @@ function placeRailR(){
     grid.appendChild(rail);
   }
 }
+/* ── 跳转：落到「哪一段 → 哪个输入框 → 哪一句」 ───────────────────
+   只滚到段落还不够用：一段五六百字，眼睛还得自己找那个数。
+   这里把目标句子在文本框里选中，浏览器会连着色带光标一起标出来，
+   一眼就能看出是哪句、哪个数。 */
+function ckFieldEl(field, seg){
+  if(!field) return null;
+  if(field === "seg") return document.querySelectorAll("#d-segs .seg-line")[Math.max(0, seg - 1)] || null;
+  if(field === "topic") return document.querySelectorAll("#d-topics .topic-body")[Math.max(0, seg - 1)] || null;
+  if(field === "table") return document.getElementById("blk-fintable");
+  return document.querySelector(".ta." + field);
+}
+/* 在 textarea 或 contenteditable 里选中某一句，返回是否选中 */
+function selectSentence(el, full){
+  if(!el || !full) return false;
+  const isArea = el.tagName === "TEXTAREA";
+  const text = isArea ? (el.value || "") : (el.innerText || "");
+  let i = text.indexOf(full);
+  if(i < 0 && full.length > 12) i = text.indexOf(full.slice(0, 12));
+  if(i < 0) return false;
+  const end = Math.min(text.length, i + full.length);
+  if(isArea){
+    el.focus({ preventScroll: true });
+    try{ el.setSelectionRange(i, end); }catch(e){ return false; }
+    return true;
+  }
+  // contenteditable：把字符偏移换算成 Range
+  let pos = 0, startNode = null, startOff = 0, endNode = null, endOff = 0;
+  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
+  let node;
+  while((node = walker.nextNode())){
+    const len = node.textContent.length;
+    if(startNode === null && pos + len > i){ startNode = node; startOff = i - pos; }
+    if(startNode !== null && pos + len >= end){ endNode = node; endOff = end - pos; break; }
+    pos += len;
+  }
+  if(!startNode || !endNode) return false;
+  const range = document.createRange();
+  range.setStart(startNode, startOff);
+  range.setEnd(endNode, endOff);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+  el.focus({ preventScroll: true });
+  return true;
+}
 function ckJump(el, ev){
-  if(ev) ev.stopPropagation();
-  const t = (el && el.dataset && el.dataset.t) || (el && el.closest(".ck") && el.closest(".ck").dataset.t);
-  const target = t && document.getElementById(t);
+  if(ev){ ev.stopPropagation(); ev.preventDefault(); }
+  const row = el.closest && el.closest(".ckr");
+  const anchor = row ? row.dataset.t : (el.dataset && el.dataset.t);
+  const field = row ? row.dataset.f : "";
+  const seg = row ? Number(row.dataset.g || 0) : 0;
+  const full = row ? (row.dataset.s || "") : "";
+  const target = document.getElementById(anchor || "d-doc");
   if(!target) return;
-  target.scrollIntoView({ behavior: "smooth", block: t === "d-doc" ? "start" : "center" });
-  target.classList.remove("flash");
-  void target.offsetWidth;
-  target.classList.add("flash");
-  clearTimeout(target._fl);
-  target._fl = setTimeout(() => target.classList.remove("flash"), 1900);
+  target.scrollIntoView({ behavior: "smooth", block: "center" });
+  const fieldEl = ckFieldEl(field, seg);
+  let hit = false;
+  if(fieldEl){
+    // 等滚动落位再选，否则浏览器会把选区滚回它自己的位置
+    setTimeout(() => {
+      hit = selectSentence(fieldEl, full);
+      if(hit) flashEl(fieldEl.closest(".blk") || fieldEl);
+    }, 260);
+  }
+  flashEl(target);
+  if(!field && !row) return;
+}
+function flashEl(el){
+  if(!el) return;
+  el.classList.remove("flash");
+  void el.offsetWidth;
+  el.classList.add("flash");
+  clearTimeout(el._fl);
+  el._fl = setTimeout(() => el.classList.remove("flash"), 1900);
 }
 function ckReset(){
-  const items = [...document.querySelectorAll(".ck")];
-  if(!items.length) return;
+  const rows = [...document.querySelectorAll(".ckr")];
+  if(!rows.length) return;
   if(!confirm("清空这份报告的全部勾选？")) return;
   ckPersist(new Set());
-  items.forEach(x => {
-    x.classList.remove("done");
-    const i = x.querySelector("input");
+  rows.forEach(r => {
+    r.classList.remove("done");
+    const i = r.querySelector("input");
     if(i) i.checked = false;
   });
   ckPaint();
@@ -2043,7 +2251,7 @@ function syncRails(){
   if(!g) return;
   const l = $("#railL"), r = $("#railR");
   const hasL = !!(l && l.querySelector(".chip"));
-  const hasR = !!(r && r.querySelector(".ck"));
+  const hasR = !!(r && (r.querySelector(".ckr") || r.querySelector(".ck-auto")));
   if(l) l.style.display = hasL ? "" : "none";
   if(r) r.style.display = hasR ? "" : "none";
   g.classList.toggle("nol", !hasL);

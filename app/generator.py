@@ -325,6 +325,14 @@ SYSTEM_PROMPT = """你是信用评级机构的分析员，负责撰写内部「�
 14. 正文不出现编制层面的说明：不写「因数据可得性」「受限于资料」「以××为准」「详见下表」「如下所示」。表格由程序排版，正文只管判断。
 15. 概念不得混用：已实现营业收入不等于合同金额、中标金额或订单储备；净利润不等于 EBITDA，也不等于经营活动现金流；年度数据不等于单季或累计数据；历史数据不等于预测数。用之前先确认是哪一种，口径不同时在句中点明。
 16. 变化要算幅度并归因：收入、利润、毛利率、资产负债率、有息债务等关键指标，与上期相比变动超过 5% 的，写出变动幅度并说明成因（量、价、结构、并表范围、政府补助、会计口径调整），不要只并列两期数字让读者自己算。
+16.1 自算值必须交底算式。凡正文里出现的、不是材料直接给出的数（占比、增速、变动幅度、倍数、差额、合计），逐条写进 data_notes，一行一条，格式固定为：
+指标名 = 操作数A 运算符 操作数B [运算符 操作数C]
+例：
+- 短期债务占比 = 3,421.53 ÷ 5,924.25 × 100%
+- 毛利率同比上升 = 73.84 − 67.44
+- 资产负债率 = 9,121.40 ÷ 13,337.76 × 100%
+操作数一律用材料里的原值（不要写成「上年数」「总额」这种代称），单位统一亿元或百分比。程序会按这些算式逐条复算：算得上就不用人工核，算不上的会挑出来问。没有列进 data_notes 的自算值，一律按「未交底」对待、进待核对清单，所以宁可多写一行，不要漏。
+材料直接给出、只需照抄的数（资产总额、营业收入、债券余额等）不用写算式。
 17. 措辞分级、不用极端词与宣传语：判断词只用很强／较强／一般／较弱、可控／充足／尚可／承压这类分级表述，不用「极强」「极弱」「恶劣」「极大」「严重恶化」；材料里的「荣获」「行业领先」「填补空白」「有力保障」「成效显著」等宣传语与美化表述一律不进正文，只写可核实的事实与风险。
 18. 正文每段至少锚定一个具体数据或明确事实（金额、比率、期限、数量、协议条款），不写通篇定性的空段；也不为凑数据引与判断无关的数字——引的每个数都要能用在一句判断上。
 19. 同一件事只说一遍。加粗汇总句是判断，正文不得把这句话换个说法再说一次；专题段只写它自己那件事的新证据，不复述债务段、资产段或业务段已经写过的数据与结论；同一条事实（如某科目余额、某协议条款）在全文只出现一次，后文需要引用时用「上述」带过或直接给结论，不重抄原句。
@@ -398,7 +406,7 @@ def build_user_prompt(facts: dict, materials: list[dict]) -> str:
     "debt": {"lead": "加粗汇总句（不带数字）", "body": "债务段正文"},
     "special_topics": []
   },
-  "data_notes": ["口径差异或不确定处，逐条说明"],
+  "data_notes": ["自算值的算式，一行一条，照此写：『比率·毛利率同比上升6.40个百分点 = 73.84 − 67.44』；口径差异或不确定处同样写在这里"],
   "sources": [{"claim": "文中的关键判断或数字", "where": "材料名+页码/章节"}]
 }"""
     return f"""请为下列主体撰写内评简评报告，按给定 JSON 结构输出。
@@ -1002,9 +1010,305 @@ def _cite(sent: str, num: str, width: int = 34) -> str:
     return out
 
 
+# ── 机器自动核对：正文里自算的数，能不能用同段数据复原出来 ────────────────
+# 待核对里原来有一大堆「12.34% 找不到出处」，其实多数是占比、增速、差额——
+# 运算过程就在同一段里摆着（分子分母、两期数），机器自己算一遍就能定论，
+# 不该甩给人。这里只做一件事：用同段里可溯源的数两两组合，把 target 复原出来。
+# 复现不了才留在待核对里，并且带上「在第几段第几句」的位置。
+_NUM_TOL = 0.02          # 两位小数四舍五入后的最大偏差
+
+
+def _close(a: float, b: float) -> bool:
+    """两个数是否在两位小数的精度内相等（大数放宽相对误差）。"""
+    return abs(a - b) <= max(_NUM_TOL, abs(b) * 0.0016)
+
+
+def _sentences(text: str) -> list[str]:
+    """按句号切句，保留句子本身（不截断），用于定位到具体哪一句。"""
+    out: list[str] = []
+    start = 0
+    for m in re.finditer(r"[。！？]", text or ""):
+        s = (text[start:m.end()] or "").strip()
+        if s:
+            out.append(s)
+        start = m.end()
+    rest = (text[start:] or "").strip()
+    if rest:
+        out.append(rest)
+    return out
+
+
+def _fmt_num(v: float) -> str:
+    """算式里显示的操作数：整数不带小数点，其余保留两位。"""
+    if abs(v - round(v)) < 1e-9:
+        return f"{v:,.0f}"
+    return f"{v:,.2f}"
+
+
+def _pool_index(vals: list[float]) -> dict[float, float]:
+    """把候选操作数做成「两位小数 → 原值」的索引，供 O(1) 反查。"""
+    idx: dict[float, float] = {}
+    for v in vals:
+        if abs(v) < 1e-9 or abs(v) > 1e9:
+            continue
+        idx.setdefault(round(v, 2), v)
+    return idx
+
+
+def _lookup(idx: dict[float, float], want: float) -> float | None:
+    """在索引里找一个等于 want 的数（容两位小数的舍入误差）。
+
+    容差必须收紧：早先为兼容「材料写 18、正文写 18.00」加了 round(,0) 兜底，
+    结果 3.769 被当成 4，凑出 (3.79−4)÷4 这种根本不成立的算式。
+    假核对比不核对更糟，所以只按 ±0.02 找，整数兜底要求 want 本身接近整数。
+    """
+    if not idx or abs(want) > 1e9:
+        return None
+    k = round(want, 2)
+    if k in idx:
+        return idx[k]
+    for d in (0.01, -0.01, 0.02, -0.02):
+        k2 = round(want + d, 2)
+        if k2 in idx:
+            return idx[k2]
+    if abs(want - round(want)) < 0.03:
+        ik = float(round(want))
+        if ik in idx:
+            return idx[ik]
+    return None
+
+
+# ── 按模型交底的算式复算 ─────────────────────────────────────────────────
+# 「事后猜算式」只能覆盖同段出现操作数的那一小部分，剩下的大量增速、占比
+# 永远猜不出来（正文只写结果、不写分子分母）。所以真正省人工的办法是
+# 让模型在 data_notes 里把算式写出来，程序照着复算——
+# 算得上的直接销账，算不上的、没交底的才进待核对。
+_FORMULA_LINE = re.compile(
+    r"^(?P<name>[^=＝]{2,40})[=＝]\s*(?P<expr>[0-9,.\s+\-−×÷*/%()（）]+?)\s*$")
+
+
+def _parse_formula(note: str) -> dict | None:
+    """解析一行 data_notes 算式：『短期债务占比 = 3,421.53 ÷ 5,924.25 × 100%』。"""
+    s = (note or "").strip().lstrip("-·•* ").strip()
+    m = _FORMULA_LINE.match(s)
+    if not m:
+        return None
+    name = re.sub(r"^[^·]*·", "", m.group("name")).strip(" ：:")
+    # 千分位逗号先去掉：留着会让「3,421.53」被切成 3 和 421.53 两个数
+    expr = m.group("expr").replace(",", "").replace("，", "")
+    if not re.search(r"[+\-−×÷*/]", expr):
+        return None
+    nums = [float(x) for x in re.findall(r"\d+(?:\.\d+)?", expr)]
+    if len(nums) < 2:
+        return None
+    return {"name": name, "expr": m.group("expr"), "nums": nums, "raw": s}
+
+
+def _eval_formula(expr: str, nums: list[float]) -> float | None:
+    """按四则运算把算式算出来。只认数字与 + − × ÷ * / 和百分号，不执行任意代码。"""
+    e = (expr.replace(",", "").replace("，", "")
+         .replace("−", "-").replace("－", "-").replace("×", "*").replace("÷", "/")
+         .replace(" ", "").replace("%", ""))
+    if not re.fullmatch(r"[0-9.+\-*/()]+", e):
+        return None
+    # 按出现顺序把数字替换成实际值再求值；不能用字符串 replace，
+    # 否则「1」会把「100」的前缀吃掉，算式就变了。
+    it = iter(nums)
+    try:
+        filled = re.sub(r"\d+(?:\.\d+)?", lambda m: f"({next(it)!r})", e)
+    except StopIteration:
+        return None
+    if next(it, None) is not None:
+        return None
+    try:
+        out = eval(filled, {"__builtins__": {}}, {})  # noqa: S307 — 已限定字符集
+    except Exception:
+        return None
+    return float(out) if isinstance(out, (int, float)) else None
+
+
+def _verify_notes(draft: dict, corpus_nums: set[str]) -> tuple[list[dict], list[dict]]:
+    """把 data_notes 里交底的算式逐条复算。
+
+    返回 (通过, 不通过)。通过的要求是三条同时成立：
+    ① 两个以上操作数；② 每个操作数都能在材料/台账里找到；③ 算出来的值与正文一致。
+    比对一律用数值而不是字符串：按字符串取整会把 5.95 和 6.40 当成同一个数。
+    """
+    ok: list[dict] = []
+    bad: list[dict] = []
+    c = draft.get("commentary") or {}
+    body_text = " ".join([
+        draft.get("basic_info") or "",
+        ((c.get("overview") or {}).get("body") or ""),
+        ((c.get("asset") or {}).get("body") or ""),
+        ((c.get("debt") or {}).get("body") or ""),
+        " ".join(s.get("body") or "" for s in (c.get("segments") or [])),
+        " ".join(t.get("body") or "" for t in (c.get("special_topics") or [])),
+    ])
+    body_vals: list[float] = []
+    for n in collect_numbers(body_text):
+        try:
+            body_vals.append(float(re.sub(r"[^\d.]", "", n)))
+        except ValueError:
+            pass
+
+    for note in (draft.get("data_notes") or []):
+        f = _parse_formula(str(note))
+        if not f:
+            continue
+        # ② 操作数是否都在材料里
+        missing: list[float] = []
+        for v in f["nums"]:
+            cands = {f"{v:.2f}", f"{v:.1f}", f"{v:.0f}",
+                     (str(int(v)) if v == int(v) else "")}
+            if not any(x and x in corpus_nums for x in cands):
+                if not any(_close(v, m) for m in missing):
+                    missing.append(v)
+        val = _eval_formula(f["expr"], f["nums"])
+        # ③ 算出来的值是否真的出现在正文里（数值比较，两位小数容差）
+        hit_text = val is not None and any(_close(abs(val), b) for b in body_vals)
+        row = {"name": f["name"], "expr": f["raw"], "val": val,
+               "missing": missing, "hit": hit_text}
+        (ok if (val is not None and hit_text and not missing) else bad).append(row)
+    return ok, bad
+
+
+
+def _calc(mode: str, a: float, b: float) -> float | None:
+    """按算式模式实际算一遍。回代校验用，见 _try_formula。"""
+    try:
+        if mode == "diff":
+            return a - b
+        if mode == "sum":
+            return a + b
+        if mode == "ratio":
+            return a / b * 100
+        if mode == "rest":
+            return (a - b) / a * 100
+        if mode == "growth":
+            return (a - b) / b * 100
+        if mode == "times":
+            return a / b
+    except ZeroDivisionError:
+        return None
+    return None
+
+
+_MODES = ("ratio", "rest", "growth", "diff", "sum", "times")
+
+
+def _formula_table(pool: list[float]) -> dict:
+    """把「这一段里任意两个数」能算出的所有结果先算一遍，建成表。
+
+    同段只有一二十个数，两两组合全算出来也就几千条，一次建表反复查，
+    比「按 target 反解需要的那个操作数」稳得多：反解要经过除法，
+    target 又是两位小数，误差会被放大——42.25% 反解出 3421.24，
+    而段里真实的数是 3421.53，差 0.29，查不到。穷举没这个问题。
+    """
+    vals = sorted({round(v, 4) for v in pool if 1e-9 < abs(v) < 1e9})
+    table: dict[tuple[str, float], tuple[float, float, float]] = {}
+    for a in vals:
+        for b in vals:
+            if a == b:
+                continue
+            for m in _MODES:
+                v = _calc(m, a, b)
+                if v is None or abs(v) > 1e9:
+                    continue
+                table.setdefault((m, round(v, 2)), (a, b, v))
+    return table
+
+
+def _try_formula(target: float, kind: str, table: dict) -> tuple[str, str] | None:
+    """按 target 去表里找一条成立的算式，返回 (算式文字, 口径名)。
+
+    只在「同一段」的数字里找，不碰材料全文——全文几千个数两两组合，
+    几乎能凑出任何 target，那是假核对，比不核对更糟。
+    """
+    if not table:
+        return None
+    pct = kind in ("占比", "增速", "比率", "比例/增速") or (kind == "" and abs(target) <= 100)
+    if kind == "占比":
+        orders = ("ratio", "rest")          # 前者 分子÷总数；后者 (总数−分子)÷总数
+    elif kind == "增速":
+        orders = ("growth",)
+    elif kind in ("差额", "金额", "变动幅度"):
+        # 「上升 0.63 倍」「增加 5.95 个百分点」都是两个数相减，不是比例
+        orders = ("diff", "sum")
+    elif kind in ("规模", "结构"):
+        orders = ("diff", "sum", "rest")
+    elif kind == "倍数/覆盖率":
+        # 「同比上升 0.63 倍」是两个倍数相减，不是相除，所以差额优先；
+        # 小于 1 的「倍数」只能是差额说法，除法那一档直接不给——
+        # 否则 42.25 ÷ 66.97 = 0.63 这种凑巧的算式会被当成核对通过。
+        orders = ("diff", "times") if abs(target) >= 1 else ("diff",)
+    else:
+        orders = ("ratio", "growth", "diff", "sum") if pct else ("diff", "sum")
+
+    for mode in orders:
+        for key in (round(target, 2), round(target + 0.01, 2), round(target - 0.01, 2),
+                    round(target + 0.02, 2), round(target - 0.02, 2)):
+            hit = table.get((mode, key))
+            if not hit:
+                continue
+            a, b, got = hit
+            # 操作数不能是 target 自己，否则是自证：0.63 ÷ 1.02 = 0.63
+            if _close(a, target) or _close(b, target):
+                continue
+            if mode in ("ratio", "growth", "times") and (b <= 0 or abs(b - 1) < 1e-9):
+                continue          # 除以 1 不是算式
+            if not _close(got, target):
+                continue
+            if mode == "ratio":
+                return (f"{_fmt_num(a)} ÷ {_fmt_num(b)} × 100% = {_fmt_num(target)}%", "占比")
+            if mode == "rest":
+                return (f"({_fmt_num(a)} − {_fmt_num(b)}) ÷ {_fmt_num(a)} × 100% = "
+                        f"{_fmt_num(target)}%", "占比")
+            if mode == "growth":
+                return (f"({_fmt_num(a)} − {_fmt_num(b)}) ÷ {_fmt_num(b)} × 100% = "
+                        f"{_fmt_num(target)}%", "增速")
+            if mode == "diff":
+                unit = " 个百分点" if kind == "变动幅度" else ""
+                return (f"{_fmt_num(a)} − {_fmt_num(b)} = {_fmt_num(target)}{unit}", "差额")
+            if mode == "sum":
+                return (f"{_fmt_num(a)} + {_fmt_num(b)} = {_fmt_num(target)}", "合计")
+            if mode == "times":
+                return (f"{_fmt_num(a)} ÷ {_fmt_num(b)} = {_fmt_num(target)} 倍", "倍数")
+    return None
+
+
+def _locate_sent(text: str, sent: str, num: str) -> dict:
+    """给一个数字找出「在第几句、句内第几个字」，前端据此把那一句选中。"""
+    sents = _sentences(text)
+    for i, s in enumerate(sents, 1):
+        if num in s:
+            # 句子里可能有多个相同数字，取第一个还没被占用的
+            return {"si": i, "sent": s, "idx": i}
+    return {"si": 0, "sent": _cite(sent, num), "idx": 0}
+
+
+def _index_of_sent(text: str, sent: str) -> int:
+    """这一句在整段里是第几句（1 起）。找不到就返回 0，前端只滚到段落。"""
+    key = (sent or "").strip()
+    if not key:
+        return 0
+    for i, s in enumerate(_sentences(text), 1):
+        if s == key or s.startswith(key[:16]) or key.startswith(s[:16]):
+            return i
+    return 0
+
+
+
 def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
-    """数字溯源校验 + 摘要层数据扫描 + 结构检查。"""
+    """数字溯源校验 + 摘要层数据扫描 + 结构检查。
+
+    返回 issues（人读的一句话）与 issue_items（结构化，带段/句定位，前端据此逐条跳转）。
+    auto_checks 是机器已经自己算过、不需要人工看的那部分，只作留痕。
+    """
     issues: list[str] = []
+    issue_items: list[dict] = []
+    auto_notes: list[str] = []
+    auto_ok: list[dict] = []
 
     def _sketch(t: str, width: int = 60) -> str:
         """取命中处前后一小段，提示里看得懂是哪句话。"""
@@ -1071,16 +1375,25 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
     # 2) 正文数字溯源
     # 带段落标签收集，出问题时要能指出「在哪个段、哪句话、大概是哪个指标」——
     # 只报一串数字（14.76%、0.41亿元）等于让用户自己去全文搜，等于没提。
-    labeled: list[tuple[str, str]] = [("基本情况", draft.get("basic_info", ""))]
+    # 第三项 meta 是定位信息：点一下要能落到具体那个输入框里的那一句，
+    # 所以除了段落锚点，还要交代是哪个字段、第几个板块。
+    labeled: list[tuple[str, str, dict]] = [
+        ("基本情况", draft.get("basic_info", ""),
+         {"anchor": "blk-basic", "field": "basic"})]
     c = draft.get("commentary") or {}
     for k, name in (("overview", "总述段"), ("asset", "资产段"), ("debt", "债务段")):
         block = c.get(k) or {}
-        labeled.append((name, (block.get("body") or "")))
+        field = {"overview": "ov-body", "asset": "as-body", "debt": "db-body"}[k]
+        anchor = {"overview": "blk-overview", "asset": "blk-asset", "debt": "blk-debt"}[k]
+        labeled.append((name, (block.get("body") or ""),
+                        {"anchor": anchor, "field": field}))
     for i, seg in enumerate(c.get("segments") or [], 1):
-        labeled.append((f"{i}）{seg.get('name') or '板块'}", seg.get("body", "")))
+        labeled.append((f"{i}）{seg.get('name') or '板块'}", seg.get("body", ""),
+                        {"anchor": "blk-segments", "field": "seg", "seg": i}))
     for i, t in enumerate(c.get("special_topics") or [], 1):
-        labeled.append((f"专题段{i}", t.get("body", "")))
-    texts = [t for _n, t in labeled]
+        labeled.append((f"专题段{i}", t.get("body", ""),
+                        {"anchor": "blk-topics", "field": "topic", "seg": i}))
+    texts = [t for _n, t, _m in labeled]
     seg_tbl = c.get("segment_table")
     if seg_tbl:
         for r in seg_tbl.get("rows") or []:
@@ -1101,8 +1414,37 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
     unsourced: list[dict] = []
     derived: list[dict] = []
     seen_num: set[str] = set()
-    for label, text in labeled:
-        for sent in re.split(r"(?<=[。！？])", text or ""):
+    # 先按模型交底的算式复算一遍：算得上的数直接销账，不必再进待核对。
+    notes_ok, notes_bad = _verify_notes(draft, corpus_nums)
+    proven: list[tuple[float, dict]] = [
+        (float(r["val"]), r) for r in notes_ok if r["val"] is not None]
+
+    def _proven_for(v: float) -> dict | None:
+        """这个数有没有交底过算式并且复算通过（数值比较，不用字符串取整）。"""
+        for pv, r in proven:
+            if _close(abs(v), pv):
+                return r
+        return None
+
+    # 同段数字池：没有交底算式时，退一步用「这一段里的数」反推算式。
+    # 先试都已对得上材料的（结论最硬），再试整段全部数字——
+    # 操作数自己没溯源不要紧，它各自还会单独进待核对；这里要确认的只是
+    # 「这个结果是算出来的，不是凭空写的」。同段只有一二十个数，凑巧成立的概率很低。
+    for label, text, meta in labeled:
+        sure: list[float] = []
+        every: list[float] = []
+        for n in collect_numbers(text or ""):
+            dg = re.sub(r"[^\d.]", "", n)
+            try:
+                v = float(dg)
+            except ValueError:
+                continue
+            every.append(v)
+            if dg in corpus_nums or f"{v:.2f}" in corpus_nums or f"{v:.1f}" in corpus_nums:
+                sure.append(v)
+        tab_sure = _formula_table(sure)
+        tab_every = _formula_table(every)
+        for sent in _sentences(text or ""):
             for n in collect_numbers(sent):
                 digits = re.sub(r"[^\d.]", "", n)
                 try:
@@ -1115,23 +1457,96 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
                 if key in seen_num:
                     continue
                 seen_num.add(key)
+                kind = _guess_kind(sent, n)
+                loc = _locate_sent(text, sent, n)
                 hit = {"num": n, "where": label, "sent": _cite(sent, n),
-                       "kind": _guess_kind(sent, n)}
-                (derived if (digits in declared or f"{v:.2f}" in declared) else unsourced).append(hit)
+                       "full": loc["sent"], "si": loc["si"], "kind": kind,
+                       "anchor": meta.get("anchor"), "field": meta.get("field"),
+                       "seg": meta.get("seg") or 0}
+                # ① 模型交过算式且复算通过
+                note = _proven_for(v)
+                if note:
+                    hit["formula"], hit["rule"] = note["expr"], "算式复算通过"
+                    auto_ok.append(hit)
+                    continue
+                # ② 同段反推：运算过程就在这一段里摆着
+                proof = _try_formula(v, kind, tab_sure) or _try_formula(v, kind, tab_every)
+                if proof and not (digits in declared or f"{v:.2f}" in declared):
+                    hit["formula"], hit["rule"] = proof[0], proof[1]
+                    auto_ok.append(hit)
+                    continue
+                if digits in declared or f"{v:.2f}" in declared:
+                    hit["formula"] = proof[0] if proof else ""
+                    hit["rule"] = proof[1] if proof else "声明为推算值"
+                    derived.append(hit)
+                    continue
+                unsourced.append(hit)
 
+    if auto_ok:
+        # 已核对的不进待核对，但要在页面上留个痕迹：不然用户会怀疑数字凭空少了
+        by_rule: dict[str, int] = {}
+        for h in auto_ok:
+            by_rule[h.get("rule") or "其他"] = by_rule.get(h.get("rule") or "其他", 0) + 1
+        auto_lines = [f"机器自动核对通过 {len(auto_ok)} 个自算值（"
+                      + "、".join(f"{k} {v}" for k, v in by_rule.items()) + "）："]
+        for h in auto_ok[:8]:
+            auto_lines.append(f"· {h['num']} —— {h.get('formula') or '—'}　（{h['where']}）")
+        if len(auto_ok) > 8:
+            auto_lines.append(f"……另有 {len(auto_ok) - 8} 处")
+        auto_notes.append("\n".join(auto_lines))
+    if notes_bad:
+        # 交了算式但对不上的，是最该看的一类：要么抄错数，要么算式写错。
+        # 尽量按「算出来的值」在正文里找回那句话，点一下就能落过去。
+        def _locate_val(val: float | None):
+            if val is None:
+                return None
+            for label, text, meta in labeled:
+                for sent in _sentences(text):
+                    for n in collect_numbers(sent):
+                        try:
+                            nv = float(re.sub(r"[^\d.]", "", n))
+                        except ValueError:
+                            continue
+                        if _close(abs(val), nv):
+                            return {"where": label, "full": sent,
+                                    "si": _index_of_sent(text, sent),
+                                    "anchor": meta.get("anchor"),
+                                    "field": meta.get("field"),
+                                    "seg": meta.get("seg") or 0}
+            return None
+
+        issues.append(f"{len(notes_bad)} 条算式复算不通过（操作数在材料里找不到，或算出来与正文不符）")
+        ndets = []
+        for r in notes_bad[:8]:
+            loc = _locate_val(r["val"]) or {}
+            ndets.append({
+                "num": (f"{r['val']:.2f}" if r["val"] is not None else "—"),
+                "where": loc.get("where") or r["name"],
+                "full": loc.get("full") or "", "si": loc.get("si") or 0,
+                "formula": r["expr"], "kind": "算式",
+                "note": (("算式本身算不出来（除零或写法有误）" if r["val"] is None else
+                          ("操作数 " + "、".join(f"{m:g}" for m in r["missing"]) + " 在材料里找不到")
+                          if r["missing"] else "算出来的值在正文里找不到")),
+                "anchor": loc.get("anchor") or "d-doc",
+                "field": loc.get("field") or "", "seg": loc.get("seg") or 0})
+        issue_items.append({"t": "交底的算式复算不通过", "a": "d-doc", "d": ndets})
     if unsourced:
-        lines = [f"以下 {len(unsourced)} 个数字在材料原文里找不到直接出处，多为正文自算的占比、增速或差额，请复核算式："]
-        for h in unsourced[:12]:
-            kind = f"（疑似{h['kind']}）" if h["kind"] else ""
-            lines.append(f"· {h['num']}{kind} —— {h['where']}：「{h['sent']}」")
-        if len(unsourced) > 12:
-            lines.append(f"……另有 {len(unsourced) - 12} 处")
-        issues.append("\n".join(lines))
+        # 明细不写进 issues 文本（前端要用结构化条目逐条定位），这里只留一句总述，
+        # 具体「第几段第几句、哪个数」由 issue_items 承载。
+        kinds = {}
+        for h in unsourced:
+            kinds[h["kind"] or "未定"] = kinds.get(h["kind"] or "未定", 0) + 1
+        top = "、".join(f"{k} {v} 个" for k, v in sorted(kinds.items(), key=lambda x: -x[1])[:3])
+        issues.append(f"{len(unsourced)} 个数字既对不上材料原文，也没能用同段数据复原算式"
+                      f"（{top}），已逐条定位到句，请核对")
+        issue_items.append({
+            "t": "数字对不上，算式也复原不了", "a": "d-doc", "note": top,
+            "d": [dict(x) for x in unsourced]})
     if derived:
-        lines = [f"以下 {len(derived)} 个数字 data_notes 已声明为推算值，核对注释是否写清口径："]
-        for h in derived[:8]:
-            lines.append(f"· {h['num']} —— {h['where']}：「{h['sent']}」")
-        issues.append("\n".join(lines))
+        issues.append(f"{len(derived)} 个数字标为推算值，核对算式口径是否与正文一致")
+        issue_items.append({
+            "t": "推算值要说清口径", "a": "d-doc",
+            "d": [dict(x) for x in derived]})
 
     # 3) 期次写法校验：防止把「中报」写成「9月末／1-9月」
     def _norm_period(s: str) -> str:
@@ -1146,11 +1561,18 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
     for mat in materials:
         for m in pat.finditer(_norm_period(mat.get("text") or "")):
             allowed.add(m.group(0))
-    bad = {p for t in texts
+    bad = {p: (label, meta) for label, t, meta in labeled
            for p in (m.group(0) for m in pat.finditer(_norm_period(t or "")))
            if p not in allowed and p[:4] in years}
     if bad:
-        issues.append("以下期次写法在台账与材料原文中找不到依据（可能是把材料里不同期次的数字拼到了同一个期次上），需核对：" + "、".join(sorted(bad)))
+        issues.append("以下期次写法在台账与材料原文中找不到依据（可能是把材料里不同期次的数字拼到了同一个期次上），需核对："
+                      + "、".join(sorted(bad)))
+        issue_items.append({
+            "t": "期次写法没有依据", "a": "d-doc",
+            "d": [{"num": p, "where": bad[p][0], "anchor": bad[p][1].get("anchor"),
+                   "field": bad[p][1].get("field"), "seg": bad[p][1].get("seg") or 0,
+                   "full": "", "si": 0, "kind": "期次"}
+                  for p in sorted(bad)]})
 
     # 4) 财务表自洽：资产 = 负债 + 权益，差额多来自台账字段错位
     ft = (c.get("financial_table") or {})
@@ -1165,6 +1587,12 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
                 continue
             if abs(a - l - e) > 0.05:
                 issues.append(f"{per} 财务表中资产总额与负债加权益相差 {a - l - e:+.2f} 亿元，需回台账核对该期字段")
+                issue_items.append({
+                    "t": "资产负债表不平", "a": "blk-fintable",
+                    "d": [{"num": f"{a - l - e:+.2f} 亿元", "where": f"财务表 {per}",
+                           "anchor": "blk-fintable", "field": "table", "seg": 0,
+                           "full": f"资产总额 {a:,.2f}、负债总额 {l:,.2f}、所有者权益 {e:,.2f}",
+                           "si": 0, "kind": "差额", "note": "资产 − 负债 − 权益"}]})
 
     # 5) 「未披露」与材料对不上：材料里有该年度报表，正文却整列写未披露
     miss_cols = []
@@ -1185,25 +1613,30 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
                           + " 有整列空缺，确认材料确实未披露该期次")
 
     # 6) 叙述视角残留：程序已清理过一轮，还漏的就是句子结构太绕
-    left = [t for t in texts if has_view_words(t or "")]
+    left = [(label, t, meta) for label, t, meta in labeled if has_view_words(t or "")]
     if left:
-        sample = "；".join(_sketch(t) for t in left[:3])
+        sample = "；".join(_sketch(t) for _l, t, _m in left[:3])
         issues.append(f"正文仍有 {len(left)} 处交代资料来源的表述（程序未能自动改写），"
                       f"建议改为直接陈述或删去：{sample}")
+        dets = []
+        for label, t, meta in left[:8]:
+            for sent in _sentences(t):
+                if has_view_words(sent):
+                    dets.append({"num": "来源表述", "where": label, "full": sent,
+                                 "si": _index_of_sent(t, sent), "kind": "表述",
+                                 "anchor": meta.get("anchor"), "field": meta.get("field"),
+                                 "seg": meta.get("seg") or 0})
+                    break
+        issue_items.append({"t": "还有交代来源的句子", "a": "d-doc", "d": dets})
 
     # 7) 跨段重复：同一句话在别处已经说过。只提示不自动删——
     # 业务段的风险点与专题段的核心证据常常是同一事实，机器分不清该留哪处。
-    named: list[tuple[str, str]] = [("基本情况", draft.get("basic_info") or "")]
-    named.append(("总述段", (c.get("overview") or {}).get("body") or ""))
-    for i, s in enumerate(c.get("segments") or [], 1):
-        named.append((f"{i}）{s.get('name') or '板块'}", s.get("body") or ""))
-    named.append(("资产段", (c.get("asset") or {}).get("body") or ""))
-    named.append(("债务段", (c.get("debt") or {}).get("body") or ""))
-    for i, t in enumerate(c.get("special_topics") or [], 1):
-        named.append((f"专题段{i}", t.get("body") or ""))
+    named: list[tuple[str, str]] = [(label, text) for label, text, _m in labeled]
     seen_sent: list[tuple[str, str]] = []
     dup_hits: list[str] = []
+    dup_dets: list[dict] = []
     for label, text in named:
+        meta = next((m for l, _t, m in labeled if l == label), {})
         for sent in re.split(r"(?<=[。！？])", text):
             core = _core_text(sent)
             if len(core) < 20:
@@ -1211,28 +1644,54 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
             for prev_label, prev_core in seen_sent:
                 if is_real_dup(core, prev_core, 18, min_han=10):
                     dup_hits.append(f"「{sent.strip()[:26]}…」在{prev_label}与{label}重复")
+                    if len(dup_dets) < 8:
+                        dup_dets.append({"num": "重复句", "where": f"{label}（与{prev_label}重复）",
+                                         "full": sent.strip(), "si": _index_of_sent(text, sent),
+                                         "kind": "表述", "anchor": meta.get("anchor"),
+                                         "field": meta.get("field"), "seg": meta.get("seg") or 0})
                     break
             else:
                 seen_sent.append((label, core))
     if dup_hits:
         issues.append("同一表述在两处出现，删一处即可：" + "；".join(dup_hits[:3]))
+        issue_items.append({"t": "同一句话出现了两遍", "a": "d-doc", "d": dup_dets})
 
     # 8) 程度词与过短板块：程度词留给数据去说，板块段要有实质内容
     vague = sorted({w for w in ("极大", "极强", "极弱", "恶劣", "严重恶化", "显著")
                     for t in texts if w in (t or "")})
     if vague:
         issues.append("正文含不可核实的程度词 " + "、".join(vague) + "，建议换成数据或分级判断词")
+        vdets = []
+        for label, t, meta in labeled:
+            for w in vague:
+                if w and w in (t or ""):
+                    for sent in _sentences(t):
+                        if w in sent:
+                            vdets.append({"num": w, "where": label, "full": sent,
+                                          "si": _index_of_sent(t, sent), "kind": "程度词",
+                                          "anchor": meta.get("anchor"), "field": meta.get("field"),
+                                          "seg": meta.get("seg") or 0})
+                            break
+                    break
+        issue_items.append({"t": "程度词要换成数据", "a": "d-doc", "d": vdets[:8]})
 
     # 8.1) 点题式风险句：程序已把「该板块风险点在于」融进前句，剩下的变体人工看一眼
     #      （只认小句开头的点题，「回收风险主要来自…」这类定语说法不算）
     tagged: list[str] = []
-    for label, text in named:
+    tdets: list[dict] = []
+    for label, text, meta in labeled:
         for sent in re.split(r"(?<=[。；])", text or ""):
             if len(sent.strip()) > 6 and _RISK_TAG.search(sent):
                 tagged.append(f"{label}「{sent.strip()[:26]}…」")
+                if len(tdets) < 8:
+                    tdets.append({"num": "点题句", "where": label, "full": sent.strip(),
+                                  "si": _index_of_sent(text, sent), "kind": "表述",
+                                  "anchor": meta.get("anchor"), "field": meta.get("field"),
+                                  "seg": meta.get("seg") or 0})
     if tagged:
         issues.append("以下句子仍是在给风险贴标签（改成「条件—后果」，接在已经说过的事实后面，"
                       "不另起一句点题）：" + "；".join(tagged[:3]))
+        issue_items.append({"t": "还在给风险贴标签", "a": "d-doc", "d": tdets})
 
     thin = [(s.get("name"), len((s.get("body") or "").strip()))
             for s in (c.get("segments") or []) if 0 < len((s.get("body") or "").strip()) < 120]
@@ -1240,16 +1699,28 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
         issues.append("以下板块段内容偏薄，补一句经营数据或制约条件（谁付钱、什么时候能回、"
                       "价格由谁定），或与同类小板块并为一段："
                       + "、".join(f"{n}（{k} 字）" for n, k in thin))
+        issue_items.append({
+            "t": "板块段内容偏薄", "a": "blk-segments",
+            "d": [{"num": f"{k} 字", "where": f"{i}）{n}", "full": "", "si": 0,
+                   "kind": "篇幅", "anchor": "blk-segments", "field": "seg", "seg": i}
+                  for i, (n, k) in enumerate(thin, 1)]})
 
     # 8) 结构检查
     if len(draft.get("positive") or []) < 3:
         issues.append("正面不足 3 条")
+        issue_items.append({"t": "正面不足 3 条", "a": "blk-pos", "d": []})
     if len(draft.get("concern") or []) < 3:
         issues.append("关注不足 3 条")
+        issue_items.append({"t": "关注不足 3 条", "a": "blk-con", "d": []})
     if not (c.get("overview") or {}).get("lead"):
         issues.append("总述段缺加粗汇总句")
+        issue_items.append({"t": "总述段缺加粗句", "a": "blk-overview",
+                            "d": [{"num": "", "where": "总述段", "full": "", "si": 0,
+                                   "kind": "结构", "anchor": "blk-overview",
+                                   "field": "ov-lead", "seg": 0}]})
     if not (c.get("financial_table") or {}).get("rows"):
         issues.append("财务指标表为空（台账与材料里都没找到可用的财务数据）")
+        issue_items.append({"t": "财务表是空的", "a": "blk-asset", "d": []})
 
     body_len = sum(len(t) for t in texts)
     if body_len < 2000:
@@ -1257,7 +1728,10 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
     if body_len > 5200:
         issues.append(f"正文偏长（约{body_len}字），建议压缩到 4000 字以内")
 
-    return {"issues": issues, "body_chars": body_len}
+    return {"issues": issues, "body_chars": body_len,
+            "issue_items": issue_items,          # 结构化，带段/句定位
+            "auto_checks": auto_notes,           # 机器已自己核对过的（附算式），仅留痕
+            "auto_count": len(auto_ok)}
 
 
 def generate(facts: dict, materials: list[dict], model_id: str | None = None,
