@@ -586,27 +586,49 @@ body.dragging .item-ghost{display:flex}
   font-size:16px;cursor:pointer;line-height:1;padding:2px 4px}
 .verbox .vh .x:hover{color:var(--red)}
 .vlist{position:relative;padding:4px 20px 16px}
-.vlist::before{content:"";position:absolute;left:24px;top:10px;bottom:18px;width:1px;background:var(--line)}
-.vi{position:relative;padding:12px 0 11px 22px;border-bottom:1px solid var(--line2)}
+/* 两层结构：大版本是分组标题（带主要更新与主要修复），小版本挂在它下面。
+   时间线竖线只在组内画，组与组之间留白断开，视觉上「五代」比「二十四条」好认。 */
+.vm{margin:14px 0 2px}
+.vm:first-child{margin-top:4px}
+.vm-h{display:flex;align-items:baseline;gap:8px;padding:7px 10px;border-radius:6px;
+  background:#f6f7f9;border:1px solid var(--line)}
+.vm-h .v{font-size:13px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
+.vm-h .t{font-size:12.5px;font-weight:600;color:var(--ink)}
+.vm-h .p{margin-left:auto;font-size:10.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.vm-s{font-size:11.5px;color:var(--ink2);line-height:1.6;margin:5px 2px 0}
+.vm-k{display:flex;gap:7px;margin:5px 2px 0;font-size:11.5px;line-height:1.62}
+.vm-k b{flex:none;font-weight:600;color:var(--muted);letter-spacing:.04em}
+.vm-k.c b{color:#2f6b3a}
+.vm-k.f b{color:#9a6700}
+.vm-k span{flex:1;min-width:0;color:var(--ink2)}
+.vm-k ul{margin:0;padding-left:14px}
+.vm-k li{margin:1px 0}
+.vlist .vl-grp{position:relative;padding-left:22px;margin-top:6px}
+.vlist .vl-grp::before{content:"";position:absolute;left:4px;top:2px;bottom:8px;width:1px;
+  background:var(--line)}
+.vi{position:relative;padding:9px 0 9px 0;border-bottom:1px solid var(--line2)}
 .vi:last-child{border-bottom:0}
-.vi::before{content:"";position:absolute;left:1px;top:17px;width:7px;height:7px;border-radius:50%;
+.vi::before{content:"";position:absolute;left:-21px;top:14px;width:7px;height:7px;border-radius:50%;
   background:#fff;border:1.5px solid #c3c9d2}
 .vi.cur::before{background:#16191d;border-color:#16191d}
 .vi .meta{display:flex;align-items:baseline;gap:8px;font-size:11px;color:var(--muted)}
-.vi .meta .lab{font-weight:600;color:var(--ink2);letter-spacing:.03em}
+.vi .meta .lab{font-weight:600;color:var(--ink2);letter-spacing:.03em;font-variant-numeric:tabular-nums}
+.vi .meta .kind{font-size:10px;padding:0 5px;border-radius:8px;border:1px solid var(--line);
+  color:var(--muted);line-height:15px}
+.vi .meta .kind.mj{color:#1f4e79;border-color:#cfe0ef;background:#f4f9fd}
 .vi .meta .now{color:#2e7d32}
-.vi h3{margin:2px 0 3px;font-size:13.5px;font-weight:600;line-height:1.5}
-.vi .sum{font-size:12px;color:var(--ink2);margin:0 0 5px;line-height:1.65}
-.vi details summary{cursor:pointer;font-size:11.5px;color:#2f5fd0;list-style:none;outline:none;
+.vi h3{margin:2px 0 3px;font-size:13px;font-weight:600;line-height:1.55}
+.vi .sum{font-size:11.5px;color:var(--ink2);margin:0 0 4px;line-height:1.65}
+.vi details summary{cursor:pointer;font-size:11px;color:#2f5fd0;list-style:none;outline:none;
   display:inline-block}
 .vi details summary::-webkit-details-marker{display:none}
 .vi details summary::before{content:"▸ ";color:var(--muted)}
 .vi details[open] summary::before{content:"▾ "}
 .vi ul{margin:5px 0 0;padding-left:16px}
-.vi li{font-size:12px;color:var(--ink2);margin:3px 0;line-height:1.68}
+.vi li{font-size:11.5px;color:var(--ink2);margin:3px 0;line-height:1.7}
 .vi .note{font-size:11px;color:#8a6d1f;background:#fffbf0;border:1px solid #f0e0b8;
   border-radius:4px;padding:4px 8px;margin-top:6px;line-height:1.6}
-.vi .go{display:inline-block;margin-top:7px;font-size:11.5px;color:#2f5fd0;text-decoration:none;
+.vi .go{display:inline-block;margin-top:6px;font-size:11px;color:#2f5fd0;text-decoration:none;
   border:1px solid #d6ddea;border-radius:4px;padding:2px 9px;background:#fbfcfe}
 .vi .go:hover{background:#f1f5fd;border-color:#bccbe6}
 body.locked{overflow:hidden}
@@ -3154,26 +3176,71 @@ function closeVersions(){ $("#verMask").classList.remove("show"); }
 function renderVersions(){
   const d = VER.data || {};
   const vs = d.versions || [];
+  const ms = d.majors || [];
   const cur = d.current;
   const tk = (typeof TOKEN === "string" && TOKEN) ? TOKEN : "";
+  const nMaj = ms.length || new Set(vs.map(v => v.major || "")).size;
   let h = `<div class="vh"><b>版本历史</b>
-      <span class="n">共 ${vs.length} 个版本 · 点开是当时的页面，能直接用</span>
+      <span class="n">${nMaj} 个大版本 · ${vs.length} 次改动 · 点开是当时的页面，能直接用</span>
       <a href="versions/" target="_blank" style="font-size:11.5px;color:#2f5fd0;text-decoration:none;margin-left:2px">独立页 ↗</a>
-      <button class="x" onclick="closeVersions()">×</button></div><div class="vlist">`;
+      <button class="x" onclick="closeVersions()">×</button></div>
+    <div class="vlist">`;
+
+  // 按大版本分组。组的顺序取 versions 的自然顺序（新的在前）去重，
+  // 这样最新的大版本置顶；不要按 majors 的声明顺序，否则 1.x 永远在最上面。
+  const order = [];
   vs.forEach(v => {
-    const isCur = v.id === cur;
-    const items = (v.items || []).map(i => `<li>${esc(i)}</li>`).join("");
-    h += `<div class="vi ${isCur ? "cur" : ""}">
-      <div class="meta"><span class="lab">${esc(v.label)}</span><span>${esc(v.at)}</span>
-        ${isCur ? `<span class="now">当前</span>` : ""}</div>
-      <h3>${esc(v.title)}</h3>
-      <p class="sum">${esc(v.summary)}</p>
-      <details><summary>改了 ${(v.items || []).length} 处</summary><ul>${items}</ul>
-        ${v.note ? `<div class="note">${esc(v.note)}</div>` : ""}</details>
-      <a class="go" href="versions/${encodeURIComponent(v.id)}/${tk ? "?t=" + encodeURIComponent(tk) : ""}"
-         target="_blank" rel="noopener">打开这个版本 ↗</a>
-    </div>`;
+    const id = v.major || "m?";
+    if(!order.includes(id)) order.push(id);
   });
+  const groups = order.map(id => {
+    const meta = ms.find(m => m.id === id) || {};
+    const rows = vs.filter(v => (v.major || "m?") === id);
+    return { meta, rows, id };
+  }).filter(g => g.rows.length);
+
+  groups.forEach(g => {
+    const m = g.meta || {};
+    const ver = m.ver || String(g.rows[0].ver || "").split(".")[0] || "?";
+    h += `<div class="vm">
+      <div class="vm-h">
+        <span class="v">${esc(ver)}.x</span>
+        <span class="t">${esc(m.title || "未分类")}</span>
+        <span class="p">${esc(m.period || "")} · ${g.rows.length} 次改动</span>
+      </div>`;
+    if(m.summary) h += `<div class="vm-s">${esc(m.summary)}</div>`;
+    if((m.core || []).length){
+      h += `<div class="vm-k c"><b>主要更新</b><span><ul>` +
+        m.core.map(x => `<li>${esc(x)}</li>`).join("") + `</ul></span></div>`;
+    }
+    if((m.fixed || []).length){
+      h += `<div class="vm-k f"><b>主要修复</b><span><ul>` +
+        m.fixed.map(x => `<li>${esc(x)}</li>`).join("") + `</ul></span></div>`;
+    }
+    h += `</div><div class="vl-grp">`;
+
+    g.rows.forEach(v => {
+      const isCur = v.id === cur;
+      const items = (v.items || []).map(i => `<li>${esc(i)}</li>`).join("");
+      const isMajor = v.kind === "major";
+      h += `<div class="vi ${isCur ? "cur" : ""}">
+        <div class="meta">
+          <span class="lab">v${esc(v.ver || v.label || "")}</span>
+          <span>${esc((v.at || "").slice(5))}</span>
+          <span class="kind${isMajor ? " mj" : ""}">${isMajor ? "大版本" : "小版本"}</span>
+          ${isCur ? `<span class="now">当前</span>` : ""}
+        </div>
+        <h3>${esc(v.title)}</h3>
+        <p class="sum">${esc(v.summary)}</p>
+        <details><summary>具体改动 ${(v.items || []).length} 项</summary><ul>${items}</ul>
+          ${v.note ? `<div class="note">${esc(v.note)}</div>` : ""}</details>
+        <a class="go" href="versions/${encodeURIComponent(v.id)}/${tk ? "?t=" + encodeURIComponent(tk) : ""}"
+           target="_blank" rel="noopener">打开这个版本 ↗</a>
+      </div>`;
+    });
+    h += `</div>`;
+  });
+
   h += `</div>`;
   $("#verBox").innerHTML = h;
 }

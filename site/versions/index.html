@@ -10,31 +10,54 @@
 body{margin:0;background:#fff;color:var(--ink);
   font:14px/1.7 -apple-system,"PingFang SC","Helvetica Neue",Arial,sans-serif;
   -webkit-font-smoothing:antialiased}
-.wrap{max-width:820px;margin:0 auto;padding:44px 24px 80px}
-.top{display:flex;align-items:baseline;gap:10px;margin-bottom:6px}
+.wrap{max-width:860px;margin:0 auto;padding:44px 24px 80px}
+.top{display:flex;align-items:baseline;gap:10px;margin-bottom:6px;flex-wrap:wrap}
 .top h1{font-size:20px;font-weight:600;margin:0;letter-spacing:.01em}
 .top .n{font-size:12px;color:var(--muted)}
-.lede{color:var(--ink2);font-size:13px;margin:0 0 30px;max-width:64ch}
+.lede{color:var(--ink2);font-size:13px;margin:0 0 26px;max-width:64ch}
 .lede a{color:#2f5fd0;text-decoration:none}
 .lede a:hover{text-decoration:underline}
-.timeline{position:relative;padding-left:26px}
-.timeline::before{content:"";position:absolute;left:5px;top:6px;bottom:6px;width:1px;background:var(--line)}
-.v{position:relative;padding:0 0 26px}
-.v::before{content:"";position:absolute;left:-25px;top:7px;width:9px;height:9px;border-radius:50%;
+/* 大版本：一块浅底卡片，写主要更新与主要修复；小版本挂在它下面的时间线上 */
+.mj{margin:22px 0 10px;border:1px solid var(--line);border-radius:8px;padding:12px 14px;
+  background:#fafbfc}
+.mj .hd{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
+.mj .v{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums}
+.mj .t{font-size:14px;font-weight:600}
+.mj .p{margin-left:auto;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.mj .s{font-size:12.5px;color:var(--ink2);margin:6px 0 0;max-width:70ch}
+.mj .k{display:grid;grid-template-columns:64px 1fr;gap:2px 10px;margin:8px 0 0;font-size:12.5px}
+.mj .k b{font-weight:600;color:var(--muted);font-size:11.5px;letter-spacing:.04em;padding-top:2px}
+.mj .k.c b{color:#2f6b3a}
+.mj .k.f b{color:#9a6700}
+.mj .k ul{margin:0;padding-left:16px}
+.mj .k li{margin:2px 0;color:var(--ink2)}
+.grp{position:relative;padding-left:24px;margin:0 0 22px}
+.grp::before{content:"";position:absolute;left:5px;top:4px;bottom:6px;width:1px;background:var(--line)}
+.v{position:relative;padding:0 0 18px}
+.v::before{content:"";position:absolute;left:-22px;top:6px;width:9px;height:9px;border-radius:50%;
   background:#fff;border:1.5px solid #c3c9d2}
 .v.cur::before{border-color:var(--ink);background:var(--ink)}
 .v .hd{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
-.v .lab{font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.04em}
+.v .lab{font-size:11.5px;font-weight:600;color:var(--ink2);letter-spacing:.02em;
+  font-variant-numeric:tabular-nums}
 .v .at{font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.v .kind{font-size:10px;color:var(--muted);border:1px solid var(--line);border-radius:8px;
+  padding:0 5px;line-height:15px}
+.v .kind.mj{color:#1f4e79;border-color:#cfe0ef;background:#f4f9fd}
 .v .cur-tag{font-size:10px;color:#2e7d32;background:#f1f8f1;border:1px solid #c8e6c9;
   border-radius:9px;padding:0 6px;line-height:16px}
-.v h2{font-size:14.5px;font-weight:600;margin:3px 0 4px;line-height:1.5}
-.v .sum{color:var(--ink2);font-size:12.5px;margin:0 0 7px;max-width:62ch}
-.v ul{margin:0 0 8px;padding-left:17px}
-.v li{color:var(--ink2);font-size:12.5px;margin:3px 0}
+.v h2{font-size:14px;font-weight:600;margin:3px 0 4px;line-height:1.5}
+.v .sum{color:var(--ink2);font-size:12.5px;margin:0 0 6px;max-width:66ch}
+.v details summary{cursor:pointer;font-size:11.5px;color:#2f5fd0;list-style:none;
+  display:inline-block;outline:none}
+.v details summary::-webkit-details-marker{display:none}
+.v details summary::before{content:"▸ ";color:var(--muted)}
+.v details[open] summary::before{content:"▾ "}
+.v ul{margin:5px 0 0;padding-left:17px}
+.v li{color:var(--ink2);font-size:12px;margin:3px 0;line-height:1.7}
 .v .note{font-size:11.5px;color:#8a6d1f;background:#fffbf0;border:1px solid #f0e0b8;
   border-radius:5px;padding:5px 9px;margin:6px 0 0;max-width:66ch}
-.v .open{display:inline-block;margin-top:7px;font-size:12px;color:#2f5fd0;text-decoration:none;
+.v .open{display:inline-block;margin-top:6px;font-size:12px;color:#2f5fd0;text-decoration:none;
   border:1px solid #d6ddea;border-radius:5px;padding:3px 10px;background:#fbfcfe}
 .v .open:hover{background:#f1f5fd;border-color:#bccbe6}
 .foot{margin-top:26px;padding-top:16px;border-top:1px solid var(--line2);
@@ -43,200 +66,226 @@ body{margin:0;background:#fff;color:var(--ink);
 </head>
 <body>
 <div class="wrap">
-  <div class="top"><h1>版本历史</h1><span class="n">共 24 个版本</span></div>
-  <p class="lede">每次改动都留了一份当时的页面，点开能直接用——不是截图，是那时的界面接现在的数据接口。
+  <div class="top"><h1>版本历史</h1>
+    <span class="n">5 个大版本 · 24 次改动</span></div>
+  <p class="lede">按大版本归档：每个大版本写明主要更新与主要修复，其下按时间列出各次改动。
+    每次改动都留了一份当时的页面，点开能直接用——不是截图，是那时的界面接现在的数据接口。
     想回最新版去 <a href="../../">工作台</a>。</p>
-  <div class="timeline"><div class="v cur">
-  <div class="hd"><span class="lab">v24</span><span class="at">2026-10-25 11:49</span>
+  <div class="mj"><div class="hd"><span class="v">5.x</span><span class="t">撰写质量与核对</span><span class="p">2026-10-24 · 3 次改动</span></div><p class="s">重心从「能写出来」转向「写得站得住」：风险表述融入事实，自算值由程序复算，人工核对量显著下降。</p><div class="k c"><b>主要更新</b><ul><li>风险表述融入段落，取消「该板块风险点在于」类点题句</li><li>自算值按交底算式复算，通过者不进入待核对</li><li>待核对按问题类型分组，支持整组与全部勾选</li><li>待核对定位细化至句，历史记录打开时自动补算</li></ul></div><div class="k f"><b>主要修复</b><ul><li>贴标签式风险表述只给出风险名称、缺少发生机制</li><li>算式反解容差导致错算，以及以结果自身作为操作数的自证</li><li>存量记录无句级字段，点击待核对只能退到段落级</li></ul></div></div><div class="grp"><div class="v cur">
+  <div class="hd"><span class="lab">v5.2</span>
+    <span class="at">10-25 11:49</span>
+    <span class="kind">小版本</span>
     <span class="cur-tag">当前</span></div>
-  <h2>待核对真的能点到那句了——之前是数据里根本没有句子</h2>
-  <p class="sum">问题不在定位函数，在于历史记录都是旧版生成的，压根没存「哪一句」。现在旧记录打开时自动补算，前端也不再依赖这些元数据。</p>
-  <ul><li>查明原因：13 份历史记录全部是旧版生成的，校验结果里只有一段自然语言，没有任何「第几句、哪个输入框」的字段，前端只能退回按段落滚动。所以在旧记录上点，看起来永远只到一大段。</li><li>旧记录打开时自动升级：记录里存了材料 PDF 路径，恢复时重读材料、重跑校验，把段/句/输入框定位补齐并写回记录。13 份已全部升级。</li><li>读 PDF 约 0.6 秒一份，按「路径 + 修改时间」缓存，同一份不会反复解析；材料已被删除或解析失败就记一个跳过标记，不再每次打开都试。</li><li>前端不再依赖后端元数据：把旧记录那行自然语言拆成「数字 / 引文 / 段落」，自己在所有正文框里按句切开，按「引文重合度 + 这个数字是否在这句」打分取最高那句。实测零元数据、材料也没了的情况下，仍能选到 33–34 字的分句。</li><li>长句再收窄：两百字一句的不少，整句高亮看着还是一大块。现在选中范围收到「含这个数字的那一小句」，前后各带一小句保证读得通；但「重复句」「点题句」这类目标本来就是整句，不切。</li><li>点完后底部提示「已定位：债务段 第 4 句」，知道自己落在哪。</li><li>修掉「92 字」这类篇幅统计被当数字搜的错——「92」会命中正文里的「692.74」，数字匹配改成词边界。</li><li>修掉「偏薄板块」段号用子集序号导致第 5 段定位到第 1 段的问题。</li><li>修掉引文等于整句时被提前收窄、236 字长句没切开的错。</li><li>修掉段落名兜底分给了所有句子、第一句永远胜出的错；以及没命中时不清旧选区、让人看到上一处高亮以为定错了的问题。</li></ul>
-  
+  <h2>待核对定位细化至句</h2>
+  <p class="sum">存量记录由旧版本生成，校验结果不含句级字段，点击待核对只能退到段落级。本版补齐历史记录的定位并降低前端对元数据的依赖。</p>
+  <details><summary>具体改动 11 项</summary><ul><li>原因为数据而非定位逻辑：13 份历史记录均无句级字段，前端只能按段落滚动，故在旧记录上始终表现为「只能定位到一大段」。</li><li>打开历史记录时按记录内材料路径重读材料并重跑校验，补齐段落、语句与输入框定位后写回记录；13 份存量记录已全部完成。</li><li>材料解析按路径与修改时间缓存，同一份不重复解析；材料缺失或解析失败时标记跳过，不再每次打开都尝试。</li><li>前端不再依赖后端元数据：解析旧格式文本得到数字、引文与段落，在全部正文框内切句，按引文重合度与数字是否命中打分取最高。</li><li>长句高亮收窄至包含目标数字的分句，前后各保留一句以保证语义完整；重复句与点题句等整句类问题不做收窄。</li><li>定位完成后提示段落名与句序，并在视口外时把该句带入视野。</li><li>修复数字边界：篇幅统计（如「92 字」）不再命中正文中的长数字（如 692.74）。</li><li>修复板块序号取值错误：偏薄板块校验使用子集序号，导致第 5 段定位到第 1 段。</li><li>修复引文等于整句时提前收窄，导致 236 字长句未切分的问题。</li><li>修复段落名兜底加分覆盖全部句子、致使首句恒被选中的问题。</li><li>修复未命中时未清除既有选区，造成上一处高亮被误认为本次定位结果的问题。</li></ul></details>
   <a class="open" href="./1025-1149/">打开这个版本 →</a>
 </div><div class="v">
-  <div class="hd"><span class="lab">v23</span><span class="at">2026-10-24 13:05</span>
+  <div class="hd"><span class="lab">v5.1</span>
+    <span class="at">10-24 13:05</span>
+    <span class="kind">小版本</span>
     </div>
-  <h2>待核对先让机器算，剩下的点到哪一句就是哪一句</h2>
-  <p class="sum">自算值由程序复算销账，只有真核不上的才留下；留下的每条都能点进正文里那一句并选中，勾选可以整组一次勾完。</p>
-  <ul><li>定位做到句一级：每条待核对带着「哪一段 / 哪个输入框 / 第几个板块 / 整句原文 / 第几句」。点一下先滚到那一段，再把光标放进对应输入框、把那一句选中（浅蓝选中态），不用自己在五六百字里找那个数。</li><li>板块段是整段可编辑，没法用选区接口，改成按字符偏移换算成 Range 去选，同样能选中那一句。</li><li>机器先自己核对：正文里那些不是材料直接给出的数（占比、增速、变动百分点、倍数），提示词现在要求模型在 data_notes 里交底算式，写成『短期债务占比 = 3,421.53 ÷ 5,924.25 × 100%』。</li><li>程序把交底的算式逐条复算，三条同时成立才销账：至少两个操作数、每个操作数都能在材料/台账里找到、算出来的值确实出现在正文里。算得上的不进待核对，收进「机器已自动核对 N 项」的折叠块，附算式可抽查。</li><li>没交底算式的再退一步：用同一段里的数字穷举出所有两两运算的结果建表反查，能对上就认为「这是算出来的」。同段只有一二十个数，凑巧成立的概率低。</li><li>不去材料全文里捞操作数：几千个数字两两组合几乎能凑出任何一个值，那是假核对，比不核对更糟。</li><li>交底了但对不上的单独成组（操作数找不到 / 算出来与正文不符 / 算式本身算不出来），这类最该看——多半是抄错数或写错算式。</li><li>打勾不必逐个：按问题类型分组，组头一个框勾整组，半选时显示为中间态；侧栏顶部「全勾」一次全部销账，再点一次撤回。单条仍可单独确认。</li><li>组内每行写明「哪个数 · 哪一段 · 第几句」，下面一行是该句原文，长句自动折成一行的省略号，点开那一行才展开。</li><li>顺手修掉两个算式匹配的错误：带容差的反解会把 4.31% 算成 4.69%（改成穷举建表并回代验算）；「同比上升 0.63 倍」被当成除法去凑（那是差额，小于 1 的倍数不再给除法档）；操作数取到结果自身算自证，已排除。</li></ul>
-  
+  <h2>待核对增加机器复算与批量勾选</h2>
+  <p class="sum">自算值由程序按交底算式复算，通过者不进入待核对；其余按问题类型分组，支持整组与全部勾选。</p>
+  <details><summary>具体改动 9 项</summary><ul><li>提示词要求模型在 data_notes 中交底算式，格式为「指标 = 操作数A 运算符 操作数B」，操作数取材料原值。</li><li>程序解析算式并复算，需同时满足三项：至少两个操作数、操作数可在材料或台账中检索到、计算结果确实出现在正文中。</li><li>未交底者退一步处理：在所属段落数字范围内穷举两两运算建表反查，命中即视为自算值。</li><li>不以材料全文作为算式反推范围：数字量级过大时任意结果均可凑出，属无效核对。</li><li>复算通过项收入「机器已自动核对」折叠区并附算式，供抽样检查，不占用待核对清单。</li><li>交底但对不上的单独成组，标注操作数缺失或结果不符。</li><li>待核对按问题类型分组，组头复选框支持整组勾选并显示中间状态。</li><li>顶部提供全部勾选，再次点击撤回；单条仍可独立确认。</li><li>算式匹配设三条约束：操作数不得为结果自身、小于 1 的倍数只按差额处理、每一档近似均需回代验算。</li></ul></details>
   <a class="open" href="./1024-1305/">打开这个版本 →</a>
 </div><div class="v">
-  <div class="hd"><span class="lab">v22</span><span class="at">2026-10-24 09:56</span>
+  <div class="hd"><span class="lab">v5.0</span>
+    <span class="at">10-24 09:56</span>
+    <span class="kind mj">大版本</span>
     </div>
-  <h2>「该板块风险在于」不再另起一句，风险融进事实里</h2>
-  <p class="sum">风险照写，但不再单起一句贴标签；谁付钱、什么时候能回、价格由谁定，直接接在已经说过的那件事后面。</p>
-  <ul><li>写作纪律第 7 条：分部段的最后一拍从「该板块风险点」改成「这一块受什么制约」——不是不写风险，是不把风险当标签贴。</li><li>新增 7.1 专门讲这一拍怎么写：用「取决于」「受……制约」「一旦……将」把条件和后果连起来，让读者看到这件事怎么发生，而不是看到一句分类。</li><li>给了正反两个例子对照——反例「……确认收入0.88亿元。该板块风险点在于回款依赖财政结算」；正例「……确认收入0.88亿元，同期回款0.31亿元，缺口随结算进度波动，回款节奏取决于财政资金安排」。</li><li>给了检验法：把「该板块风险在于」删掉，剩下半句若主语仍是具体条件（回款、去化、价差、期限、担保对象）且能独立成句，合格；若删掉就读不通、或主语还是「该板块」，说明这句话本来就是硬贴上去的。</li><li>「需关注……」也一并要求带条件：只挂一个风险名称（「需关注合规风险」）等于没写。</li><li>程序兜底：模型真写了「该板块风险点在于，」这类引导语，后处理会连同前面的句号一起去掉、并成逗号，接在前一句后面——「……回款0.31亿元，回款节奏取决于财政安排」。带逗号和不带逗号两种写法都认。</li><li>只处理后面能接整句的谓语（在于／来自／集中于／表现为／源自）；「风险是××」后半句多是名词短语，删了会缺谓语，留给校验提示，不硬擦。</li><li>校验新增一条：仍有点题式表述的句子会列出来，提示改成「条件—后果」。只认小句开头的点题，「应收账款的回收风险主要来自政府结算」这种正常定语说法不会误报。</li><li>用 21 份历史草稿回测：41 个板块段被自动改写，改写后残留点题句 0 处。</li></ul>
-  
+  <h2>风险表述改为融入段落</h2>
+  <p class="sum">分部段末不再单起一句为风险贴标签，改为以条件与后果接续前文；程序侧合并引导语，校验侧列出残留。</p>
+  <details><summary>具体改动 6 项</summary><ul><li>写作纪律第 7 条：分部段末拍由「该板块风险点」改为「这一块受什么制约」，要求写明付款方、结算方式、回款时点与定价方。</li><li>新增 7.1 说明：以「取决于」「受……制约」「一旦……将」连接条件与后果，使读者看到风险如何发生，而非仅获得一个分类标签。</li><li>提供正反例对照与检验法：删除引导语后，剩余半句主语若仍为具体条件且可独立成句，即为合格。</li><li>程序侧将「该板块风险点在于」类引导语与前句合并；仅处理后接完整小句的谓语，名词性表述保留给校验提示。</li><li>校验新增残留点题句清单，仅识别小句开头的点题，定语用法不误报。</li><li>以 21 份历史草稿回归：41 个板块段被自动改写，改写后残留 0 处。</li></ul></details>
   <a class="open" href="./1024-0956/">打开这个版本 →</a>
-</div><div class="v">
-  <div class="hd"><span class="lab">v21</span><span class="at">2026-10-24 09:46</span>
+</div></div><div class="mj"><div class="hd"><span class="v">4.x</span><span class="t">编辑体验</span><span class="p">2026-10-23 · 5 次改动</span></div><p class="s">正文改稿成为主要场景：版式精度、移动端可用性、流程导航与条目操作逐项重做。</p><div class="k c"><b>主要更新</b><ul><li>段落间距收敛为单一变量，段落空行可在页面与 Word 间同步开关</li><li>移动端可用性改造：单滚动轴、底部抽屉、表格横滑、输入框 16px</li><li>左侧流程改为手风琴，展开状态即当前进度</li><li>正文区改为三栏，条目支持圆形删除与拖动排序</li></ul></div><div class="k f"><b>主要修复</b><ul><li>输入框 rows=2 导致单行内容占两行，视觉上多出一个空行</li><li>移动端设置保存按钮位于视口之外，操作不可达</li><li>企业名称与操作按钮同行，按钮增多即挤压名称至显示不全</li></ul></div></div><div class="grp"><div class="v">
+  <div class="hd"><span class="lab">v4.4</span>
+    <span class="at">10-24 09:46</span>
+    <span class="kind">小版本</span>
     </div>
-  <h2>正面和关注：删除变成一个圈，条目可以拖着换位置</h2>
-  <p class="sum">行尾那个小 × 换成右上角随鼠标浮现的圆圈，删错了还能撤回；按住序号上下拖就能调整先后。</p>
-  <ul><li>删除改成右上角一个 18px 的描边圆圈，鼠标移到这一行才淡入，圈内悬停转红。原来那个 × 字号小、贴着文字，既难点又不显眼。</li><li>行尾右侧预留一条 24px 的空槽：圆圈出现、消失都不会让正文重新排版。叠在字上会挡住最后一两个字，突然挤开又会让整段跳一下。</li><li>手机上没有鼠标悬停，圆圈一律常显并放大到 24px；空槽同步加宽，不压字。</li><li>删除可以撤销：删完底部提示「已删除一条 · 撤销」，六秒内点一下，或按 ⌘/Ctrl+Z，条目原样回到原来的位置。删的是一条完整观点，没有后悔药太脆。</li><li>焦点在正在改字的输入框里时，⌘Z 让给输入框自己的撤销，不会被这条提示抢走。</li><li>拖动排序：按住前面的序号（1）2）…）往下或往上拖，松手落位。原位留一条虚线占位，其余条目跟着让位，跟着指针的是一份锁宽浮起的影子，落点看得见。</li><li>拖动中途按 Esc 或指针被系统收走，退回原位，顺序不乱。</li><li>拖到屏幕上下沿附近会自己滚，条目多的时候不用先滚到位置再拖。</li><li>用 pointer 事件而不是浏览器自带的拖放：后者在手机上不触发，而这份报告手机上也要改。只轻点序号不会误触发拖动。</li><li>列表下方加一行浅提示「按住序号可上下拖动换位置」，只有一条时自动收起——不说一句没人会去试。</li><li>拖完落位的那一条会回一下底色，确认它停在这儿了。</li></ul>
-  
+  <h2>条目删除与拖动排序</h2>
+  <p class="sum">删除改为悬停显示的圆形按钮并支持撤销；条目可按住序号拖动调整顺序。</p>
+  <details><summary>具体改动 10 项</summary><ul><li>删除按钮改为右上角 18px 描边圆形按钮，悬停该行时淡入，圈内悬停转为警示色。</li><li>行尾预留 24px 空槽，删除按钮的出现与消失不引起正文重排。</li><li>移动端无悬停状态，删除按钮常显并放大至 24px，空槽同步加宽。</li><li>删除支持撤销：底部提示提供撤销入口，六秒内可点击或使用快捷键将条目恢复至原位置。</li><li>焦点位于有内容的输入框时，快捷键交由输入框自身的撤销处理。</li><li>拖动排序：按住序号上下拖动，原位保留虚线占位，其余条目让位，跟随指针的为定宽浮层。</li><li>拖动中按 Esc 或指针被系统接管时退回原位，顺序不变。</li><li>指针接近视口上下沿时自动滚动，条目较多时无需先行滚动定位。</li><li>采用指针事件而非原生拖放接口，以支持触屏；轻点序号不触发拖动。</li><li>条目下方提示拖动方式，仅有一条时自动隐藏。</li></ul></details>
   <a class="open" href="./1024-0946/">打开这个版本 →</a>
 </div><div class="v">
-  <div class="hd"><span class="lab">v20</span><span class="at">2026-10-23 23:27</span>
+  <div class="hd"><span class="lab">v4.3</span>
+    <span class="at">10-23 23:27</span>
+    <span class="kind">小版本</span>
     </div>
-  <h2>正文两侧终于用上了：左边候选观点，右边待核对</h2>
-  <p class="sum">企业名独占一行，按钮收成顶上的一排；两边留白放附加内容，点待核对能直接跳到正文那一处。</p>
-  <ul><li>「显示不全」的根子是把企业名和五个按钮塞在同一行：名字是可伸缩的输入框，按钮一多只能把它压窄。现在名字单独一行、17px 满宽，按钮整排移到名字上方，右对齐、可换行。</li><li>按钮顺序按「改稿 → 交付」重排：提示词、段落空行在左，发送、下载居中偏右，导出 Word 最右。发送与下载改成图标加文字，图标只描边、跟字色走。</li><li>标题拆成两行：企业名一行；第二行是主体代码与「正文 ×××× 字 / 财务表 × 行 / 本次 token」，主体代码仍然可直接改。</li><li>宽屏（≥1500px）三栏：左栏放候选观点、中间是正文、右栏放待核对，两侧各自 sticky 独立滚动。正文版心仍是 756，屏幕不够宽时先收正文，不会横向溢出。</li><li>窄屏退回单栏：候选观点回到正面/关注板块下面，待核对在手机上折成一行放在工具条下方（正文太长，放文末等于找不到），点箭头展开。</li><li>待核对一条一张卡：短标题按问题类型取名（资产负债表不平、数字找不到出处、同一句话出现了两遍…），原句降为小字，不重复；勾选框标已完成，进度条与计数同步。</li><li>点卡片正文直接滚到对应段落并闪一下（左侧竖条 + 浅黄底，两秒退掉）；一条里有十几处数字的，展开明细后每一行都能单独跳。</li><li>勾选状态按「企业 + 主体代码」存在本地，切空行、重画、重开页面都还在；顶部「重置」清空。</li><li>在左栏点一条候选观点，会把它加进板块里，并把新条目滚进视野闪一下——左右隔了半屏，不然点了像没反应。</li></ul>
-  
+  <h2>正文区改为三栏布局</h2>
+  <p class="sum">企业名称独占一行、操作按钮上移成排；左右留白分别承载候选观点与待核对，正文版心固定。</p>
+  <details><summary>具体改动 7 项</summary><ul><li>企业名称与五个按钮原处同一行，名称作为可伸缩输入框被持续压缩；改为名称独占一行（17px 满宽），按钮整排上移、右对齐并允许换行。</li><li>按钮按修改与交付两段重排；发送、下载改为图标加文字，图标仅描边并跟随字色。</li><li>标题拆为两行：企业名称一行；主体代码与正文字数、财务表行数、本次 token 一行，主体代码仍可编辑。</li><li>宽屏（≥1500px）三栏：左栏候选观点、中间正文、右栏待核对，两侧独立吸附滚动；正文版心保持 756，窄屏优先压缩正文，不产生横向溢出。</li><li>窄屏退回单栏，候选观点回到所属板块下方，待核对移至工具条下方并默认折叠。</li><li>待核对按问题类型生成短标题，原句作为副文本；勾选状态按企业与主体代码本地保存。</li><li>点击待核对滚动至对应段落并作高亮提示。</li></ul></details>
   <a class="open" href="./1023-2327/">打开这个版本 →</a>
 </div><div class="v">
-  <div class="hd"><span class="lab">v19</span><span class="at">2026-10-23 23:06</span>
+  <div class="hd"><span class="lab">v4.2</span>
+    <span class="at">10-23 23:06</span>
+    <span class="kind">小版本</span>
     </div>
-  <h2>左侧四步收成一层层展开的卡片</h2>
-  <p class="sum">同一时刻只展开一步，展开的那张就是「当前在哪」；折叠的压平，走过的打勾。</p>
-  <ul><li>四个步骤各自装着自己的输入与按钮，不再另起「主体 / 资料清单 / 生成区」三块——步骤本身就是流程。</li><li>默认只展开第 1 步，其余折叠成一行；检索完自动展开「读取材料」，读完自动展开「生成草稿」，生成完自动展开「导出报告」。</li><li>点前面某一步的标题就能回去，当前那步随即折叠、后一步一起收回；每步底部有「下一步 →」，该步完成后才亮。</li><li>折叠的卡片压平成浅底、去掉阴影；走过的换成白底并打勾，文字次深；正在展开的那张浮起来，标题最深。</li><li>展开收起是 0→1 的平滑高度过渡（按内容自适应，不会跳），右侧折角同时转 90°，内容淡入并微微上移。</li><li>没走到的步骤是锁着的，点了不动；直接上传 PDF 也能跳过检索，从第 2 步开始；从历史记录打开会直接落到第 4 步。</li></ul>
-  
+  <h2>左侧流程改为手风琴</h2>
+  <p class="sum">同一时刻仅展开一步，展开状态即当前进度；步骤卡片各自承载输入与按钮。</p>
+  <details><summary>具体改动 6 项</summary><ul><li>四个步骤各自承载输入与按钮，不再另设主体、资料清单、生成区三块。</li><li>默认仅展开第一步，检索、读取材料、生成完成后依次自动展开下一步。</li><li>点击前序步骤标题可回退，当前步骤随即折叠，后续步骤一并收起。</li><li>折叠项压平为浅底无阴影，已完成项转为白底并标记，展开项浮起且标题最深。</li><li>展开收起采用 0→1 的高度过渡，右侧折角同步旋转九十度。</li><li>未到达的步骤保持锁定；直接上传 PDF 可跳过检索；从历史记录打开直接落到第四步。</li></ul></details>
   <a class="open" href="./1023-2306/">打开这个版本 →</a>
 </div><div class="v">
-  <div class="hd"><span class="lab">v18</span><span class="at">2026-10-23 21:54</span>
+  <div class="hd"><span class="lab">v4.1</span>
+    <span class="at">10-23 21:54</span>
+    <span class="kind">小版本</span>
     </div>
-  <h2>手机上的保存按不到，其实是被滚出屏幕了</h2>
-  <p class="sum">设置面板的保存按钮在手机上一律粘在底部；QQ 邮箱配置写进云端，不用再每次手填。</p>
-  <ul><li>「无法保存」不是保存失败：请求一直是成功的，是邮件那一段的「保存」按钮落在第 935 像素，而手机屏幕只有 844 高——手指滑的是背后页面，面板内部没动，看不到按钮。</li><li>现在设置里每一段的保存按钮都粘在面板底部，滚到哪一段就能存哪一段；发送邮件、打包下载的确认按钮同样处理。</li><li>面板滚动锁在容器内，不会再出现「滑了半天是背景在动」。</li><li>QQ 邮箱（smtp.qq.com:465）连同授权码写进云端环境变量，容器重启也不会丢；本机与云端现在都是配置好就能发。</li><li>默认收件人 panyuping641@pingan.com.cn 可在 data/mail.json 里改，不用动代码。</li></ul>
-  
+  <h2>修复移动端设置保存按钮不可达</h2>
+  <p class="sum">保存请求本身正常，问题在于按钮位于视口之外；改为吸附面板底部，并固化邮箱配置。</p>
+  <details><summary>具体改动 5 项</summary><ul><li>原因为按钮位于约 935 像素处，移动端视口高度 844 像素；面板内部未滚动而背景页面在动，按钮始终不可见。</li><li>设置各区段的保存按钮改为吸附面板底部；发送邮件与打包下载的确认按钮同样处理。</li><li>面板滚动锁定在容器内，避免滚动传递给背景页面。</li><li>QQ 邮箱配置写入云端环境变量，容器重启不丢失。</li><li>默认收件人改由 data/mail.json 配置，无需修改代码。</li></ul></details>
   <a class="open" href="./1023-2154/">打开这个版本 →</a>
 </div><div class="v">
-  <div class="hd"><span class="lab">v17</span><span class="at">2026-10-23 21:40</span>
+  <div class="hd"><span class="lab">v4.0</span>
+    <span class="at">10-23 21:40</span>
+    <span class="kind mj">大版本</span>
     </div>
-  <h2>空行说清楚了，手机上也能改</h2>
-  <p class="sum">加粗句后面那条莫名其妙的空白去掉了；段与段之间统一一个空行；摘要多了候选观点；手机打开是能用的版式。</p>
-  <ul><li>「加粗句后面多一条空白」不是段落间距错了，是输入框的 rows：给 2 行就是最少占两行，一句话也占两行，多出来的那条就是它。改成按内容定高。</li><li>段与段之间的空行收成一个值（原来各处 8/12/22/26px 手调，必然对不齐）；工具条新增「段落空行：有/无」，页面和导出的 Word 一起变。</li><li>Word 里补上总述段与业务构成表之间漏掉的空行，删掉文末多余的空段（那会多出一页空白）。</li><li>摘要多了「候选观点」：模型写完正文回头抽出 5–8 条够格但没进定稿的判断，列在正面/关注下面，点一条就加进去。</li><li>手机上：顶栏变成一条可横滑的动作带（折行要占半屏）、两栏合成一条滚动轴、面板改成从底部弹出、表格整表左右滑且首列不动、删除键常显且加大、输入框 16px（否则 iPhone 一聚焦就放大整页）。</li><li>正文进入视野后右下角浮出「↑ 流程 / 正文 ↓」，生成完自动滚到正文。</li></ul>
-  
+  <h2>修正段落间距与移动端适配</h2>
+  <p class="sum">定位并消除加粗句后的多余空行，段间距收敛为单一变量；摘要层增加候选观点；移动端完成基础可用性改造。</p>
+  <details><summary>具体改动 6 项</summary><ul><li>多余空行源于输入框 rows 属性：rows=2 使单行内容最少占两行，改为按内容自适应高度。</li><li>段间距统一由单一变量控制（原为 8/12/22/26 像素分散手调）；工具条增加段落空行开关，页面与导出 Word 同步。</li><li>导出 Word 补齐总述段与业务构成表之间缺失的空行，移除文末多余空段。</li><li>摘要层增加候选观点：模型完成正文后回抽 5–8 条未入选的判断，点击即可加入。</li><li>移动端改造：顶栏改为横向滑动动作带，双栏合并为单一滚动轴，面板改为底部抽屉，表格整表横滑且首列固定，删除按钮常显，输入框统一 16px。</li><li>正文进入视口后显示流程与正文跳转按钮；生成完成后自动滚动至正文。</li></ul></details>
   <a class="open" href="./1023-2140/">打开这个版本 →</a>
-</div><div class="v">
-  <div class="hd"><span class="lab">v16</span><span class="at">2026-10-23 18:30</span>
+</div></div><div class="mj"><div class="hd"><span class="v">3.x</span><span class="t">安全与交付</span><span class="p">2026-10-23 · 8 次改动</span></div><p class="s">从「本机能跑」推向「别人也能用」：访问控制、邮件交付、云端部署与版本归档依次补齐。</p><div class="k c"><b>主要更新</b><ul><li>访问口令与服务端鉴权，除页面骨架外全部接口需凭证</li><li>邮件发送，并区分网页 SMTP 与连接器两条通道</li><li>部署至云端，会话改为无状态签名 token</li><li>设置集中管理、专题段改为按需添加、版本快照与时间线</li></ul></div><div class="k f"><b>主要修复</b><ul><li>多副本环境下登录成功随即 401（token 写文件读不回）</li><li>分享网关剥离 Authorization 头导致云端验签失效</li><li>网关以 200 返回提示页，使探活误判为服务在线</li><li>SMTP 输入框未闭合，被渲染为 16×13 像素的复选框</li></ul></div></div><div class="grp"><div class="v">
+  <div class="hd"><span class="lab">v3.7</span>
+    <span class="at">10-23 18:30</span>
+    <span class="kind">小版本</span>
     </div>
-  <h2>口令统一成 ce-shi</h2>
-  <p class="sum">本机与云端用同一个口令 ce-shi；界面上不再写死口令字面量。</p>
-  <ul><li>默认口令 ceshi → ce-shi，本机重启即生效，云端已重新发布。</li><li>旧 token 自动失效：签名密钥由口令派生，换口令等于全体踢下线，不用另做撤销。</li><li>登录后的提示与设置里的徽标改成「仍是默认口令」，不再把口令字面量印在页面上。</li><li>make_cloud.py 默认沿用上次口令，要换用 --new-pw 或 --password 指定，免得每次发布都要重新告知一遍。</li></ul>
-  <div class="note">界面与 v15 几乎一致，只有口令与两处文案变了。</div>
+  <h2>统一访问口令</h2>
+  <p class="sum">本机与云端使用同一口令，界面不再输出口令字面量。</p>
+  <details><summary>具体改动 4 项</summary><ul><li>默认口令调整为本机与云端一致的一组，云端已重新发布。</li><li>签名密钥由口令派生，更换口令即令旧 token 全部失效，无需额外撤销机制。</li><li>登录后提示与设置徽标改为「仍是默认口令」，不再在页面输出口令原文。</li><li>云端打包脚本默认沿用上次口令，更换需显式指定。</li></ul><div class="note">界面与 v15 几乎一致，只有口令与两处文案变了。</div></details>
   <a class="open" href="./1023-1830/">打开这个版本 →</a>
 </div><div class="v">
-  <div class="hd"><span class="lab">v15</span><span class="at">2026-10-23 17:57</span>
+  <div class="hd"><span class="lab">v3.6</span>
+    <span class="at">10-23 17:57</span>
+    <span class="kind">小版本</span>
     </div>
-  <h2>每次改动的页面都留了一份</h2>
-  <p class="sum">页头多了「版本」：14 个历史版本，点开是当时的界面接现在的数据接口，能真的检索、生成、导出。</p>
-  <ul><li>页头「版本」打开时间线：每条写标题、一句话和 2–5 项具体改动，当前版标出来，改动可折叠。</li><li>每个版本一份可运行的快照：从 git 取出那天的页面，抹掉写死的本机地址、补上登录态，放在 /v/<id>/ 下。</li><li>顶部横幅说明这是哪一版、接口通不通，右边是「全部版本」与「回到最新版」。</li><li>以后加一版：改 versions.json 里的一条，跑一次 make_versions.py。</li></ul>
-  <div class="note">这一版之后，GitHub Pages 停用，只维护云端一个入口。</div>
+  <h2>增加版本快照与时间线</h2>
+  <p class="sum">每次改动保留一份可运行的历史页面，按时间线归档，可在旧界面下调用当前数据接口。</p>
+  <details><summary>具体改动 4 项</summary><ul><li>页头版本入口打开时间线，每条含标题、概述与具体改动，当前版本单独标记。</li><li>每个版本生成一份可运行快照：从 git 取出对应页面，抹除写死的本机地址并注入登录态。</li><li>快照顶部横幅标注版本与接口连通状态，附全部版本与回到最新版入口。</li><li>新增版本仅需在清单中追加一条并重新生成快照。</li></ul><div class="note">这一版之后，GitHub Pages 停用，只维护云端一个入口。</div></details>
   <a class="open" href="./1023-1757/">打开这个版本 →</a>
 </div><div class="v">
-  <div class="hd"><span class="lab">v14</span><span class="at">2026-10-23 17:45</span>
+  <div class="hd"><span class="lab">v3.5</span>
+    <span class="at">10-23 17:45</span>
+    <span class="kind">小版本</span>
     </div>
-  <h2>设置收成一处，专题段改成自己加</h2>
-  <p class="sum">模型、邮件、财汇、口令四个设置合并到一个面板；或有事项不再自动写，改成点一下就加；数字核实提示能指到原句。</p>
-  <ul><li>页头新增「设置」：模型 API、发件邮箱、财汇、访问口令四块放一起，每块标明配置从哪来（环境变量 / 页面填写 / WorkBuddy 已配），密钥只进不出。</li><li>修掉 SMTP 输入框点不到——一个 div 没闭合，后面的输入框被当成了复选框，缩成 16×13 像素；字其实输得进去，所以更难察觉。</li><li>专题段（或有事项、在建工程、政府补助、受限资产）默认不生成，要就点「+ 专题段（可选）」从五个预设里挑，可加多段、可删；每段开头是一句加粗判断句，之前缺样式所以显示不加粗。</li><li>债务段不再尾巴上挂一句「或有事项方面，……」，那正是看着像多出来的那句的来源。</li><li>数字核实提示从一串光秃秃的数字，改成逐条「段名 + 原句 + 疑似指标」，例如「· 95.35%（疑似占比）—— 资产段：『……流动资产占比95.35%……』」。</li></ul>
-  
+  <h2>设置集中管理，专题段改为按需添加</h2>
+  <p class="sum">模型、邮件、财汇、口令四项配置合并为单一面板；专题段默认不生成，改为按需添加。</p>
+  <details><summary>具体改动 5 项</summary><ul><li>页头新增设置入口，四项配置集中管理，每项标注来源（环境变量、页面填写、已预置），密钥只写不读。</li><li>修复 SMTP 输入框无法点击：容器元素未闭合，后续输入框被当作复选框渲染并压缩至 16×13 像素。</li><li>专题段（或有事项、在建工程、政府补助、受限资产）默认不生成，可从预设中添加多段或删除。</li><li>债务段不再附加「或有事项方面，……」句式。</li><li>数字核实提示改为逐条列出段名、原句与疑似指标。</li></ul></details>
   <a class="open" href="./1023-1745/">打开这个版本 →</a>
 </div><div class="v">
-  <div class="hd"><span class="lab">v13</span><span class="at">2026-10-23 17:28</span>
+  <div class="hd"><span class="lab">v3.4</span>
+    <span class="at">10-23 17:28</span>
+    <span class="kind">小版本</span>
     </div>
-  <h2>搬到云端，不用再启本机服务</h2>
-  <p class="sum">发布成独立网址，手机和别的电脑都能开；顺带修掉「连不上本机服务」。</p>
-  <ul><li>发布到 neiping-report.app.workbuddy.host，不再依赖这台电脑开着。</li><li>会话改成无状态签名 token：原来把 token 写文件，云端多副本下「登录成功、紧接着就 401」，因为写进去的读不回来。</li><li>登录同时下发 Cookie。分享网关会把 Authorization 头剥掉，自签 token 本地验签通过、云端照样 401，只有 Cookie 能过。</li><li>探活改成校验返回的 JSON。网关在缺 sharecode 时回 200 加一个提示页，只看状态码会误判成后端在。</li><li>顺带修 Chrome 的 Private Network Access：Pages 调 127.0.0.1 要求服务端回 Access-Control-Allow-Private-Network，之前没回，请求直接被拦。</li></ul>
-  <div class="note">数据不持久：容器重启后上传件、生成历史、导出的 Word 都会清空。要长期存档用本机。</div>
+  <h2>部署至云端</h2>
+  <p class="sum">发布为独立网址，不再依赖本机常开；会话改为无状态签名 token，登录同时下发 Cookie。</p>
+  <details><summary>具体改动 5 项</summary><ul><li>发布至独立域名，手机与其他电脑可直接访问。</li><li>会话改为无状态签名 token：原实现将 token 写入文件，多副本下出现登录成功后立即返回 401。</li><li>登录同时下发 Cookie：分享网关会剥离 Authorization 头，自签 token 本地验签通过但云端仍返回 401。</li><li>探活改为校验返回 JSON：网关在缺少 sharecode 时返回 200 与提示页，仅看状态码会误判。</li><li>修复私有网络访问（PNA）预检失败：跨站调用本机地址需返回 Access-Control-Allow-Private-Network。</li></ul><div class="note">数据不持久：容器重启后上传件、生成历史、导出的 Word 都会清空。要长期存档用本机。</div></details>
   <a class="open" href="./1023-1728/">打开这个版本 →</a>
 </div><div class="v">
-  <div class="hd"><span class="lab">v12</span><span class="at">2026-10-23 17:00</span>
+  <div class="hd"><span class="lab">v3.3</span>
+    <span class="at">10-23 17:00</span>
+    <span class="kind">小版本</span>
     </div>
-  <h2>说清两条发信通道</h2>
-  <p class="sum">网页发信要 SMTP 授权码；助手用 QQ 邮箱连接器代发受 3MB 限额，发不了原底稿。</p>
-  <ul><li>网页「发送邮件」走 SMTP，需要邮箱的客户端授权码；QQ 邮箱服务器 smtp.qq.com、端口 465、SSL。</li><li>助手侧的 QQ 邮箱连接器是另一条通道：单文件 1MB、合计 3MB，报告本体 42KB 能发，评级报告 1.14MB、募集说明书 2.49MB 发不了。</li><li>面板未配置时的提示补全了两条路各自的前提，README 加了对照表。</li></ul>
-  
+  <h2>区分两条发信通道</h2>
+  <p class="sum">网页发送走 SMTP，助手侧经 QQ 邮箱连接器代发受单文件与合计大小限制。</p>
+  <details><summary>具体改动 3 项</summary><ul><li>网页发送依赖邮箱客户端授权码，QQ 邮箱为 smtp.qq.com:465、SSL。</li><li>连接器通道单文件 1MB、合计 3MB：报告本体 42KB 可发送，评级报告 1.14MB 与募集说明书 2.49MB 无法发送。</li><li>未配置时的面板提示补全两条通道各自前提，README 增加对照表。</li></ul></details>
   <a class="open" href="./1023-1700/">打开这个版本 →</a>
 </div><div class="v">
-  <div class="hd"><span class="lab">v11</span><span class="at">2026-10-23 16:46</span>
+  <div class="hd"><span class="lab">v3.2</span>
+    <span class="at">10-23 16:46</span>
+    <span class="kind">小版本</span>
     </div>
-  <h2>一键发送邮件</h2>
-  <p class="sum">纸面右上多一个「发送邮件」，标题默认企业全称，收件人默认 panyuping641@pingan.com.cn。</p>
-  <ul><li>附件可选：报告（没导出就当场排版）与原始底稿 PDF；收件人、抄送一个框里填多个，逗号分号都认。</li><li>发件配置只存本机，密码只进不出；连不上、认证失败、被拒收三类错误翻成中文分别提示。</li><li>实测平安邮箱：外网只能投递到它，提交端口 465/587 全部超时，要发信得在内网或 VPN，或换个能外发的发件邮箱。</li></ul>
-  
+  <h2>增加邮件发送</h2>
+  <p class="sum">纸面工具条增加发送入口，支持附件选择、多收件人与本机保存发件配置。</p>
+  <details><summary>具体改动 3 项</summary><ul><li>附件可选报告（未导出时现场排版）与原始底稿 PDF；收件人与抄送支持逗号、分号分隔多个地址。</li><li>发件配置仅保存在本机，密码只写不读；连接失败、认证失败、拒收三类错误分别给出中文提示。</li><li>实测平安邮箱外网仅可投递，465 与 587 端口均超时，需内网或 VPN，或改用可外发的发件邮箱。</li></ul></details>
   <a class="open" href="./1023-1646/">打开这个版本 →</a>
 </div><div class="v">
-  <div class="hd"><span class="lab">v10</span><span class="at">2026-10-23 15:42</span>
+  <div class="hd"><span class="lab">v3.1</span>
+    <span class="at">10-23 15:42</span>
+    <span class="kind">小版本</span>
     </div>
-  <h2>进门先输口令</h2>
-  <p class="sum">没输口令时整页毛玻璃，默认口令 ceshi；闸门在服务端，不在页面上。</p>
-  <ul><li>未登录时整页盖一层模糊，中间一张小卡，输对口令才加载内容。</li><li>除页面骨架外所有接口都要 token，包括统计、历史、打包、上传、下载——别人拿到线上地址也取不到你的报告和点数。</li><li>用请求头而不是 Cookie：Pages 跨站调本机，第三方 Cookie 会被浏览器丢掉（本机 http 也拿不到 Secure）。下载带不了头，改用链接上挂 ?t=。</li><li>页头加「锁定」，点一下即退。</li></ul>
-  
+  <h2>增加访问口令</h2>
+  <p class="sum">未通过校验时整页毛玻璃遮罩，口令校验在服务端完成，除页面骨架外全部接口需要凭证。</p>
+  <details><summary>具体改动 4 项</summary><ul><li>未登录时整页模糊遮罩并弹出输入卡，校验通过后加载内容。</li><li>统计、历史、打包、上传、下载等接口均需 token，仅有线上地址无法获取报告与用量数据。</li><li>使用请求头而非 Cookie 传递凭证（跨站调用时第三方 Cookie 会被丢弃）；下载无法携带请求头，改以链接参数传递。</li><li>页头增加锁定入口。</li></ul></details>
   <a class="open" href="./1023-1542/">打开这个版本 →</a>
 </div><div class="v">
-  <div class="hd"><span class="lab">v9</span><span class="at">2026-10-23 15:31</span>
+  <div class="hd"><span class="lab">v3.0</span>
+    <span class="at">10-23 15:31</span>
+    <span class="kind mj">大版本</span>
     </div>
-  <h2>模型下拉只留能跑通的</h2>
-  <p class="sum">8 个模型里只有 1 个从本进程调得通，其余折成一行灰字并写明原因。</p>
-  <ul><li>启动时在后台逐个探活，下拉只列通过验证的（现在就是 deepseek-v4-flash），其余显示「另有 8 个模型未通过验证」，悬停看原因。</li><li>失败原因各不相同：OpenCode 那几个缺 x-opencode-session 请求头；GLM-5.3-Flash 的地址少了 /chat/completions；sensenova 的模型名对不上。</li><li>探活带浏览器 UA —— 用 Python 默认 UA 会被 Cloudflare 拦成 403，看起来像网关不通，真实原因是缺那个头。</li></ul>
-  
+  <h2>模型下拉仅保留可用项</h2>
+  <p class="sum">启动时后台逐个探活，下拉只列出调用成功的模型，其余折叠并说明原因。</p>
+  <details><summary>具体改动 3 项</summary><ul><li>探活通过者进入下拉，未通过者折叠为一行并标注数量，悬停显示原因。</li><li>失败原因分类记录：缺少请求头、接口地址缺路径、模型名不匹配。</li><li>探活请求携带浏览器 UA，避免被 Cloudflare 以默认 UA 拦截为 403 而误判为网关不通。</li></ul></details>
   <a class="open" href="./1023-1531/">打开这个版本 →</a>
-</div><div class="v">
-  <div class="hd"><span class="lab">v8</span><span class="at">2026-10-23 14:39</span>
+</div></div><div class="mj"><div class="hd"><span class="v">2.x</span><span class="t">数据准确与文风</span><span class="p">2026-10-23 · 3 次改动</span></div><p class="s">解决「数字读不到」与「语言不像评级报告」两类根本问题，前者属摘录策略，后者属提示词内部规则冲突。</p><div class="k c"><b>主要更新</b><ul><li>财务三表页优先占用摘录预算，修复整列误判「未披露」</li><li>统一叙述视角，清除来源交代语与框架提示语</li><li>分部业务段合并为整段，清理粘连病句与重复表述</li></ul></div><div class="k f"><b>主要修复</b><ul><li>合并资产负债表后续页被丢弃，导致 2025 年数据整列缺失</li><li>提示词自相矛盾：一边要求不虚构，一边示范「未披露」写法</li><li>模型跨段粘连产生的残句与段内重复</li></ul></div></div><div class="grp"><div class="v">
+  <div class="hd"><span class="lab">v2.2</span>
+    <span class="at">10-23 14:39</span>
+    <span class="kind">小版本</span>
     </div>
-  <h2>一个板块就是一整段</h2>
-  <p class="sum">分部段不再被拆成「编号 / 板块名 / 正文」三行；粘连病句和重复表述一并清掉。</p>
-  <ul><li>每个板块改成可编辑的一整段：编号、板块名、「业务方面，」和正文连排折行，改板块名后后缀自动跟着变。</li><li>以「和 / 与 / 及」开头的句子是模型把上下两段粘在一起留下的病句，整句删。</li><li>段内重复句、正文复述加粗句的自动删；跨段重复只提示不删——试过自动删，把专题段的证据句删掉后整段读不通。</li><li>导出前再清一遍：页面上手改、粘贴进来的文字同样过语言清理，提示里写明清了几处。</li></ul>
-  
+  <h2>分部业务段合并为整段并清理重复</h2>
+  <p class="sum">分部段不再拆分为编号、板块名、正文三行；粘连病句与段内重复一并清理，导出前再执行一次语言清理。</p>
+  <details><summary>具体改动 4 项</summary><ul><li>每个板块改为可编辑的整段，编号、板块名、「业务方面，」与正文连排换行，板块名变更后后缀自动跟随。</li><li>以「和」「与」「及」开头的句子多为模型跨段粘连所致，整句删除。</li><li>段内重复句与复述加粗句的句子自动删除；跨段重复仅提示不删，避免误删专题段证据句。</li><li>导出前对页面手改与粘贴文本再次执行语言清理，并提示清理数量。</li></ul></details>
   <a class="open" href="./1023-1439/">打开这个版本 →</a>
 </div><div class="v">
-  <div class="hd"><span class="lab">v7</span><span class="at">2026-10-23 14:00</span>
+  <div class="hd"><span class="lab">v2.1</span>
+    <span class="at">10-23 14:00</span>
+    <span class="kind">小版本</span>
     </div>
-  <h2>正文不再出现「材料未披露」「从外部条件看」</h2>
-  <p class="sum">根子是规则自相矛盾：一边要求不虚构，一边示范「未披露」这个写法。</p>
-  <ul><li>系统提示新增叙述视角：句子的主语只能是公司、股东、政府、行业或政策，不能是「材料」。</li><li>禁「披露 / 载明 / 列示 / 数据显示」这类转述来源的词，也禁「从××看」这种把分析框架暴露给读者的提示语。</li><li>生成后再清一遍：先擦掉「材料显示，」这类前缀（擦完多数句子就能用），擦不净的按小句摘除；「原材料」「新材料」是业务词，先换占位符再判，不会被误删。</li><li>并入外部提示词里的几条：营收≠订单储备、净利≠EBITDA、年度≠季度≠累计、变化超 5% 要写幅度并归因、禁极端词与宣传语。</li><li>模板总述段放宽到 300–600 字，并要求政府结算类主体在「钱从谁那里来」处给出区域财力实数。</li></ul>
-  <div class="note">这一版界面与 13:40 那版完全一致（改动只在生成规则），打开看到的是同一张页面。</div>
+  <h2>清除正文中的来源交代与框架提示语</h2>
+  <p class="sum">提示词内部规则冲突（要求不虚构，同时示范「未披露」写法），统一叙述视角为公司、股东、政府、行业与政策，并增加生成后清理。</p>
+  <details><summary>具体改动 5 项</summary><ul><li>系统提示新增叙述视角约束：句子主语不得为「材料」。</li><li>禁用披露、载明、列示、数据显示等转述来源词，以及「从××看」类框架提示语。</li><li>生成后二次清理：先擦除「材料显示，」类前缀，残留按小句摘除；原材料、新材料等业务词先替换占位符，避免误删。</li><li>并入外部提示词中可用的条款：营收不等于订单储备、净利不等于 EBITDA、年度不等于季度不等于累计、变动超 5% 须写幅度并归因、禁用极端词与宣传语。</li><li>模板总述段放宽至 300–600 字，政府结算类主体须在「钱从谁那里来」处给出区域财力实数。</li></ul><div class="note">这一版界面与 13:40 那版完全一致（改动只在生成规则），打开看到的是同一张页面。</div></details>
   <a class="open" href="./1023-1400/">打开这个版本 →</a>
 </div><div class="v">
-  <div class="hd"><span class="lab">v6</span><span class="at">2026-10-23 13:40</span>
+  <div class="hd"><span class="lab">v2.0</span>
+    <span class="at">10-23 13:40</span>
+    <span class="kind mj">大版本</span>
     </div>
-  <h2>2025 年写成「未披露」，问题出在摘录</h2>
-  <p class="sum">财务表页被摘录预算挤掉了，模型根本没看到那些数字；顺带把财汇点数从 3 点降到 1 点，用量改成按次。</p>
-  <ul><li>财务三表页（含跨页的后半张）优先占摘录预算。天心那份募集说明书 225 页，合并资产负债表从 99 页起，之前只保留了 99 页，资产总计与负债合计在 100、101 页，全被丢掉。</li><li>财汇检索改成一次宽查询、本地按标题分类，只有某类一条都没出现才补查；实测 1 点取回 4 份募集 + 3 份评级。</li><li>用量不再按月：页头写「累计 N 次 · 财汇 M 点」，明细逐条列时间、动作、主体、这一下花了多少点或多少 token。</li><li>新增生成历史：每次生成落一份到 data/history，列表可回看、把草稿恢复到编辑区、直接下当次 Word。</li><li>网页楷体加粗用四向文字阴影补偿——楷体没有第二档字重，font-weight:700 在浏览器里几乎看不出。</li></ul>
-  
+  <h2>修复财务表整列误判「未披露」</h2>
+  <p class="sum">摘录预算未按财务页优先分配，合并资产负债表的后续页被丢弃，导致模型未见数据而写成「未披露」；改为按财务页级别占用预算。</p>
+  <details><summary>具体改动 5 项</summary><ul><li>财务三表页（含跨页后半张）优先占用摘录预算。原实现仅保留合并资产负债表首页，资产总计与负债合计位于后续页，全部丢失。</li><li>财汇检索改为一次宽查询、本地按标题分类，仅在某一类完全缺失时补查；实测 1 点取回 4 份募集说明书与 3 份评级报告。</li><li>用量统计由按月改为今日与累计两个口径，明细逐条记录时间、动作、主体与消耗。</li><li>新增生成历史：每次生成落一份记录，支持回看、恢复草稿与下载当次 Word。</li><li>网页楷体加粗以四向文字阴影补偿笔画厚度：楷体无第二档字重，font-weight:700 在浏览器中几乎不可见。</li></ul></details>
   <a class="open" href="./1023-1340/">打开这个版本 →</a>
-</div><div class="v">
-  <div class="hd"><span class="lab">v5</span><span class="at">2026-10-23 11:52</span>
+</div></div><div class="mj"><div class="hd"><span class="v">1.x</span><span class="t">可用性奠基</span><span class="p">2026-10-23 · 5 次改动</span></div><p class="s">把「取数—成稿—校验—导出」串成一条可重复执行的链路，并补齐材料获取、用量与交付三处空白。</p><div class="k c"><b>主要更新</b><ul><li>确立不绑定行业的四段式简评模板（摘要、基本情况、点评、财务表）</li><li>四步流程改为后台任务驱动，进度按实际阶段上报</li><li>材料范围收敛为跟踪评级报告与募集说明书两类，并支持本地上传</li><li>增加用量统计与报告、底稿打包下载</li></ul></div><div class="k f"><b>主要修复</b><ul><li>重复导语与 Word 版式偏差</li><li>财汇单次调用十余次、提示词长度达 14 万字符</li></ul></div></div><div class="grp"><div class="v">
+  <div class="hd"><span class="lab">v1.4</span>
+    <span class="at">10-23 11:52</span>
+    <span class="kind">小版本</span>
     </div>
-  <h2>报告和原底稿一起打包</h2>
-  <p class="sum">勾选要带的文件，一个 zip 里既有报告也有 PDF 底稿。</p>
-  <ul><li>纸面右上新增「打包下载」，分三组：报告（最近 4 份）、原底稿 PDF（标页数、大小、财汇下载还是本地上传）、草稿 JSON。</li><li>还没导出过 Word 也能打包，这一组显示「按当前内容现场排版」，打包时现生成。</li><li>底稿只认本次会话真正读过的——data 目录里没参与生成的年报不会被混进来。</li><li>中文文件名带 UTF-8 标记，Windows 解压不乱码；同一主体只留最近 3 个 zip，不撑爆目录。</li></ul>
-  
+  <h2>报告与原底稿打包下载</h2>
+  <p class="sum">支持勾选待打包文件并输出单个 zip，报告、PDF 底稿与草稿 JSON 可分别选取。</p>
+  <details><summary>具体改动 4 项</summary><ul><li>纸面工具条新增打包下载，分报告、原底稿 PDF、草稿 JSON 三组，底稿标注页数、大小与来源。</li><li>尚未导出 Word 时按当前内容现场排版后再打包。</li><li>底稿仅包含本次会话实际读取的文件，未参与生成的年报不会混入。</li><li>中文文件名写入 UTF-8 标记，避免 Windows 解压乱码；同一主体仅保留最近三个 zip。</li></ul></details>
   <a class="open" href="./1023-1152/">打开这个版本 →</a>
 </div><div class="v">
-  <div class="hd"><span class="lab">v4</span><span class="at">2026-10-23 11:41</span>
+  <div class="hd"><span class="lab">v1.3</span>
+    <span class="at">10-23 11:41</span>
+    <span class="kind">小版本</span>
     </div>
-  <h2>开始记用量</h2>
-  <p class="sum">页头显示生成次数与 token，点开看拆分与明细，统计重启不清零。</p>
-  <ul><li>页头右上角一行「N 次 · X token」，点开是明细：输入输出拆分、单次平均耗时、输入缓存命中率、按模型分布。</li><li>统计落 data/usage.json，重启不清零；端点没回 usage 时按字符估算并标注「含估算」。</li><li>（当时按「本月」统计，13:40 那版改成了今日 / 累计，并加了财汇点数。）</li></ul>
-  
+  <h2>增加生成用量统计</h2>
+  <p class="sum">页头显示调用次数与 token 消耗，可展开查看输入输出拆分与按模型分布，统计持久化保存。</p>
+  <details><summary>具体改动 3 项</summary><ul><li>页头显示「N 次 · X token」，展开可见输入输出拆分、单次平均耗时、输入缓存命中率与按模型分布。</li><li>统计写入 data/usage.json，重启不清零。</li><li>接口未返回 usage 时按字符估算，并标注「含估算」。</li></ul></details>
   <a class="open" href="./1023-1141/">打开这个版本 →</a>
 </div><div class="v">
-  <div class="hd"><span class="lab">v3</span><span class="at">2026-10-23 11:30</span>
+  <div class="hd"><span class="lab">v1.2</span>
+    <span class="at">10-23 11:30</span>
+    <span class="kind">小版本</span>
     </div>
-  <h2>财汇只查两类材料，也能自己上传</h2>
-  <p class="sum">检索从十余次调用降到两次，提示词从 14 万字符降到 5.9 万。</p>
-  <ul><li>材料只保留跟踪评级报告与募集说明书两类，其余工商、股权、评级历史、存量债券、财务指标、主营构成六个接口全部停用——单次返回体大、串起来要等十几秒，也把提示词撑得很大。</li><li>摘录预算按类别分配：评级报告 3.2 万字符、募集说明书 2.6 万，一次生成控制在 6 万上下。</li><li>新增上传入口，点选或拖入本机 PDF 即可，不连财汇也能生成。</li><li>财务表改由模型从材料原文的「主要财务数据」表整理，程序负责清洗、补千分位、限三期；之前 5 列时「2026年3月末」会换行、表格跨页断开。</li></ul>
-  
+  <h2>材料范围收敛为两类，增加本地上传</h2>
+  <p class="sum">财汇检索只取跟踪评级报告与募集说明书，单次调用次数与提示词长度均下降一个量级；新增本地 PDF 上传通道。</p>
+  <details><summary>具体改动 4 项</summary><ul><li>停用工商、股权、评级历史、存量债券、财务指标、主营构成六个接口，仅保留两类材料；单次调用由十余次降至两次，提示词由 14 万字符降至 5.9 万。</li><li>摘录预算按类别分配：评级报告 3.2 万字符、募集说明书 2.6 万，单次生成控制在 6 万字符上下。</li><li>新增上传入口，支持点选或拖入本机 PDF，不连接财汇亦可生成。</li><li>财务表改由模型从材料「主要财务数据」表整理，程序负责清洗、补千分位、限制三期。</li></ul></details>
   <a class="open" href="./1023-1130/">打开这个版本 →</a>
 </div><div class="v">
-  <div class="hd"><span class="lab">v2</span><span class="at">2026-10-23 10:54</span>
+  <div class="hd"><span class="lab">v1.1</span>
+    <span class="at">10-23 10:54</span>
+    <span class="kind">小版本</span>
     </div>
-  <h2>界面重做，四步都有真实进度</h2>
-  <p class="sum">白底两栏一纸面；进度不再是装饰，Word 版式照参考件重做。</p>
-  <ul><li>改成白底两栏：左边四步与材料清单，右边一张纸面，没开始的步骤整体灰掉。</li><li>四步都跑成后台任务，前端按 job_id 轮询真实百分比：检索显示在查哪个关键词，读材料显示每一份是在「下载 12.4MB」还是「解析 74/107 页」，生成显示已用时。</li><li>Word 版式照参考件的 XML 重做：外框上下 1.5pt、内部横竖线 0.5pt、左右不封口、行高 0.4cm、表头跨页重复。</li><li>段落之间补空段落（参考件就是这样分隔的），修掉「2）新材料业务方面，2）新材料业务方面，」这类重复导语。</li></ul>
-  
+  <h2>界面重构，进度改为真实阶段</h2>
+  <p class="sum">改为白底双栏与单页纸面；四步均由后台任务驱动，进度按实际阶段上报，不再依赖计时估算。</p>
+  <details><summary>具体改动 4 项</summary><ul><li>布局改为左侧四步与材料清单、右侧单页纸面，未开始的步骤整体置灰。</li><li>四步改为后台任务，前端按 job_id 轮询真实百分比：检索显示关键词，读材料显示下载大小与解析页数，生成显示已用时。</li><li>Word 版式按参考件 XML 重建：外框上下 1.5pt、内部横竖线 0.5pt、左右不封口、行高 0.4cm、表头跨页重复。</li><li>段落间距按参考件补空段；修复「2）新材料业务方面，」重复导语。</li></ul></details>
   <a class="open" href="./1023-1054/">打开这个版本 →</a>
 </div><div class="v">
-  <div class="hd"><span class="lab">v1</span><span class="at">2026-10-23 10:07</span>
+  <div class="hd"><span class="lab">v1.0</span>
+    <span class="at">10-23 10:07</span>
+    <span class="kind mj">大版本</span>
     </div>
-  <h2>第一版：能用的简评模板</h2>
-  <p class="sum">定下不绑行业的四段式模板，并把取数、成稿、导出、发布串成一条链。</p>
-  <ul><li>模板 v1.1 与方法论：摘要（正面 / 关注）、基本情况、点评（总述 / 分部 / 资产 / 债务 / 专题）、财务表，不预设行业。</li><li>链路跑通：财汇 MCP 取数 → PDF 按页摘录 → 模型成稿 → 校验 → Word 导出。</li><li>页面、模板与方法论一起发布到 GitHub Pages，随时可查。</li></ul>
-  
+  <h2>建立简评模板与端到端链路</h2>
+  <p class="sum">确立不绑定行业的四段式模板（摘要、基本情况、点评、财务表），并打通取数、成稿、校验、导出四个环节。</p>
+  <details><summary>具体改动 3 项</summary><ul><li>模板 v1.1 与方法论定稿：摘要分正面与关注，点评含总述、分部、资产、债务、专题，财务表独立成节，不预设行业口径。</li><li>链路打通：财汇 MCP 取数 → PDF 按页摘录 → 模型成稿 → 规则校验 → Word 导出。</li><li>页面、模板与方法论文档同步发布至 GitHub Pages。</li></ul></details>
   <a class="open" href="./1023-1007/">打开这个版本 →</a>
 </div></div>
   <div class="foot">快照由 <code>make_versions.py</code> 从 git 历史生成。清单在 <code>versions.json</code>，
