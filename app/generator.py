@@ -1693,17 +1693,19 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
                       "不另起一句点题）：" + "；".join(tagged[:3]))
         issue_items.append({"t": "还在给风险贴标签", "a": "d-doc", "d": tdets})
 
-    thin = [(s.get("name"), len((s.get("body") or "").strip()))
-            for s in (c.get("segments") or []) if 0 < len((s.get("body") or "").strip()) < 120]
+    # 偏薄板块：带上原段序号，前端才能正确定位到那一段（不能再用子集里的序号）
+    thin = [(i, s.get("name"), len((s.get("body") or "").strip()))
+            for i, s in enumerate(c.get("segments") or [], 1)
+            if 0 < len((s.get("body") or "").strip()) < 120]
     if thin:
         issues.append("以下板块段内容偏薄，补一句经营数据或制约条件（谁付钱、什么时候能回、"
                       "价格由谁定），或与同类小板块并为一段："
-                      + "、".join(f"{n}（{k} 字）" for n, k in thin))
+                      + "、".join(f"{n}（{k} 字）" for _i, n, k in thin))
         issue_items.append({
             "t": "板块段内容偏薄", "a": "blk-segments",
             "d": [{"num": f"{k} 字", "where": f"{i}）{n}", "full": "", "si": 0,
                    "kind": "篇幅", "anchor": "blk-segments", "field": "seg", "seg": i}
-                  for i, (n, k) in enumerate(thin, 1)]})
+                  for i, n, k in thin]})
 
     # 8) 结构检查
     if len(draft.get("positive") or []) < 3:

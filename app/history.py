@@ -150,6 +150,32 @@ def attach_mail(rid: str, to: list[str], subject: str):
         tmp.replace(path)
 
 
+def update_validation(rid: str, validation: dict):
+    """旧记录重算过校验后，把新的 validation 落盘，并同步索引里的待核对条数。
+
+    只换 validation 一个字段，draft 里的正文、用户改过的内容一概不动。
+    """
+    rec = get(rid)
+    if not rec:
+        return
+    draft = rec.get("draft") or {}
+    draft["validation"] = validation
+    rec["draft"] = draft
+    path = DIR / f"{rid}.json"
+    try:
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(rec, ensure_ascii=False), encoding="utf-8")
+        tmp.replace(path)
+    except OSError:
+        return
+    with LOCK:
+        items = _read_index()
+        hit = next((x for x in items if x.get("id") == rid), None)
+        if hit:
+            hit["issues"] = len(validation.get("issues") or [])
+            _write_index(items)
+
+
 def remove(rid: str) -> bool:
     safe = "".join(c for c in (rid or "") if c.isalnum() or c == "-")
     if not safe:

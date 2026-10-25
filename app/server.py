@@ -451,11 +451,69 @@ def api_history_list(payload: dict | None = None) -> dict:
     return {"items": history.list_records(int((payload or {}).get("limit") or 60))}
 
 
+# 旧记录的校验结果只到段落级（那时还没有 issue_items）。恢复时按记录里存的
+# 材料路径重新读一遍 PDF、重跑 validate，就能补上「哪一段 / 哪一句」的定位。
+# 读 PDF 一份约 0.6 秒，所以按「路径 + 修改时间」缓存，同一份材料只解析一次。
+_MAT_CACHE: dict[str, dict] = {}
+_MAT_LOCK = threading.Lock()
+
+
+def _reload_materials(mats: list[dict]) -> list[dict] | None:
+    out: list[dict] = []
+    for m in mats or []:
+        p = (m or {}).get("path") or ""
+        fp = Path(p)
+        if not p or not fp.exists():
+            return None
+        try:
+            key = f"{p}|{fp.stat().st_mtime_ns}"
+        except OSError:
+            return None
+        with _MAT_LOCK:
+            hit = _MAT_CACHE.get(key)
+        if hit is None:
+            try:
+                hit = pdf_text.load_file(str(fp), (m.get("title") or ""), budget=45000)
+            except Exception:                                  # noqa: BLE001 — 读不了就退回旧数据
+                return None
+            with _MAT_LOCK:
+                _MAT_CACHE[key] = hit
+        out.append(hit)
+    return out or None
+
+
+def _upgrade_record(rec: dict) -> dict:
+    """把旧记录的校验升到句级；材料不在或解析失败就原样返回，不阻断打开。"""
+    draft = rec.get("draft") or {}
+    val = draft.get("validation") or {}
+    if val.get("issue_items") is not None:      # 已经是新版格式
+        return rec
+    if rec.get("_reval") == "skip":             # 试过、材料已不在，别每次都试
+        return rec
+    mats = _reload_materials(rec.get("materials") or [])
+    if not mats:
+        rec["_reval"] = "skip"
+        return rec
+    try:
+        new_val = generator.validate(draft, {}, mats)
+    except Exception:                                       # noqa: BLE001
+        rec["_reval"] = "skip"
+        return rec
+    new_val["upgraded"] = True
+    draft["validation"] = new_val
+    rec["draft"] = draft
+    try:
+        history.update_validation(rec.get("id") or "", new_val)
+    except Exception:                                       # noqa: BLE001 — 落盘失败不影响本次使用
+        pass
+    return rec
+
+
 def api_history_get(rid: str) -> dict:
     rec = history.get(rid)
     if not rec:
         raise ValueError("记录不存在")
-    return rec
+    return _upgrade_record(rec)
 
 
 def api_history_delete(payload: dict) -> dict:

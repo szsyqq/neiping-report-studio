@@ -1939,9 +1939,10 @@ function ckPersist(set){
   const all = ckAll(); all[ckOwner()] = [...set];
   try{ localStorage.setItem("nr_ck_v1", JSON.stringify(all)); }catch(e){}
 }
-/* 一组内的每一行 = 一个待核对象。后端新给的 issue_items 已带定位
-   （anchor 段、field 输入框、seg 第几个板块、full 整句、si 第几句），
-   历史记录里没有这个字段，退回旧的文本解析，只落到段落一级。 */
+/* 一组内的每一行 = 一个待核对象。
+   新版后端给了完整定位（anchor 段、field 输入框、seg 第几个板块、full 整句、si 第几句）；
+   旧记录只有一段自然语言，这里把它拆成「数字 / 引文 / 段落」三样，
+   再由前端自己按引文在正文里找句——所以旧记录也能定位到句，不是只能到段落。 */
 function ckRowsFromItem(it){
   const rows = [];
   for(const d of (it.d || [])){
@@ -1954,15 +1955,50 @@ function ckRowsFromItem(it){
       sub: d.num ? head : "",
       formula: d.formula || "", note: d.note || "",
       anchor: d.anchor || it.a || "d-doc",
-      field: d.field || "", seg: d.seg || 0, full
+      field: d.field || "", seg: d.seg || 0, full,
+      num: d.num || "", quote: full
     });
   }
   if(!rows.length){
     // 没有明细的结构性问题（正面不足、财务表为空…）：整组就是一条
     rows.push({ k: ckHash([it.t, it.a].join("|")), main: it.t, pos: "",
-      sub: "", formula: "", note: "", anchor: it.a || "d-doc", field: "", seg: 0, full: "" });
+      sub: "", formula: "", note: "", anchor: it.a || "d-doc", field: "", seg: 0,
+      full: "", num: "", quote: "" });
   }
   return rows;
+}
+/* 旧记录的一行长这样：
+   「0.56%（疑似增速） —— 资产段：「…26年9月末，资产总额13,337.76亿元，增长0.56%。」」 */
+function parseLegacyLine(line){
+  const t = line.replace(/^[·•]\s*/, "").trim();
+  const m = t.match(/^(.*?)(?:（疑似([^）]*)）)?\s*——\s*([^：]+)[：:]\s*「([\s\S]*)」\s*$/);
+  if(m){
+    const num = (m[1] || "").trim();
+    const where = (m[3] || "").trim();
+    const quote = (m[4] || "").replace(/^…+/, "").replace(/…+$/, "").trim();
+    return { num, kind: (m[2] || "").trim(), where, quote };
+  }
+  // 「「…」在基本情况与总述段重复」这类没有 —— 分隔的
+  const q = t.match(/「([\s\S]*?)」/);
+  const w = t.match(/在(.+?)重复/);
+  return {
+    num: "", kind: "",
+    where: w ? w[1].trim() : "",
+    quote: q ? (q[1] || "").replace(/^…+/, "").replace(/…+$/, "").trim() : ""
+  };
+}
+/* 段落名 → 输入框键。查不到就空着，交给后面的全文搜 */
+const WHERE_FIELD = [
+  [/基本/, "basic"], [/总述|点评|概览/, "ov"], [/资产/, "as"], [/债务|负债|有息/, "db"],
+  [/分部|板块|业务/, "seg"], [/专题|或有/, "topic"],
+];
+function fieldForWhere(w){
+  for(const [re, f] of WHERE_FIELD) if(re.test(w || "")) return f;
+  return "";
+}
+function fieldForAnchor(a){
+  return { "blk-basic": "basic", "blk-overview": "ov", "blk-asset": "as",
+    "blk-debt": "db", "blk-segments": "seg", "blk-topics": "topic" }[a] || "";
 }
 function ckItems(v){
   if((v.issue_items || []).length){
@@ -1973,20 +2009,43 @@ function ckItems(v){
         rows, derived: true };
     });
   }
-  // 旧版记录：只从 issues 文本里拆，定位到段落
+  // 旧版记录：从 issues 文本里拆出「数字 / 引文 / 段落」，句级定位交给前端搜
   const out = [];
   for(const raw of (v.issues || [])){
     const lines = String(raw).split("\n").map(x => x.trim()).filter(Boolean);
     if(!lines.length) continue;
     const head = lines[0];
     const meta = ckHead(head);
-    const rows = lines.slice(1).map(x => {
-      const t = x.replace(/^[·•]\s*/, "").trim();
-      const m = t.match(/——\s*([^：]+)：/);
-      return { k: ckHash(head + "|" + t), main: t.slice(0, 46), pos: "",
-        sub: "", formula: "", note: "",
-        anchor: m ? whereAnchor(m[1]) : "d-doc", field: "", seg: 0, full: "" };
-    });
+    const body = lines.slice(1);
+    let rows;
+    if(body.length){
+      rows = body.map(x => {
+        const p = parseLegacyLine(x);
+        const field = fieldForWhere(p.where) || fieldForAnchor(meta.anchor);
+        const short = p.quote && p.quote.length > 40 ? p.quote.slice(0, 40) + "…" : p.quote;
+        return {
+          k: ckHash((meta.title || head) + "|" + x),
+          main: p.num || (p.where ? ckHead(p.where).title : meta.title),
+          pos: [p.where, p.kind].filter(Boolean).join(" · "),
+          sub: short || "", formula: "", note: "",
+          anchor: whereAnchor(p.where || ""), field, seg: 0,
+          full: p.quote || "", num: p.num || "", quote: p.quote || ""
+        };
+      });
+    }else{
+      // 只有一行、没有明细的（「同一表述在两处出现…」）：这一行本身就是那条，
+      // 标题用类型名，引文放进小字，别把整句话当标题。
+      const p = parseLegacyLine(head);
+      const field = fieldForWhere(p.where) || fieldForAnchor(meta.anchor);
+      const short = p.quote && p.quote.length > 44 ? p.quote.slice(0, 44) + "…" : p.quote;
+      rows = [{
+        k: ckHash((meta.title || head) + "|" + head),
+        main: meta.title, pos: "",
+        sub: short || "", formula: "", note: "",
+        anchor: meta.anchor, field, seg: 0,
+        full: p.quote || "", num: p.num || "", quote: p.quote || ""
+      }];
+    }
     out.push({ k: ckHash(head), title: meta.title,
       note: meta.derived ? head : "", anchor: meta.anchor, rows, derived: meta.derived });
   }
@@ -2024,7 +2083,8 @@ function ckHtml(v){
         const fm = r.formula ? `<span class="f">${esc(r.formula)}</span>` : "";
         const nt = r.note ? `<span class="f">${esc(r.note)}</span>` : "";
         return `<label class="ckr${d1 ? " done" : ""}" data-k="${r.k}" data-t="${r.anchor}"
-            data-f="${r.field}" data-g="${r.seg}" data-s="${esc(r.full)}">
+            data-f="${r.field}" data-g="${r.seg}" data-s="${esc(r.full)}"
+            data-n="${esc(r.num || "")}">
           <input type="checkbox"${d1 ? " checked" : ""} onchange="ckOne(this)"/>
           <span class="m" onclick="ckJump(this,event)" title="跳到正文里这一句并选中">
             <span class="k">${esc(r.main)}${r.pos ? `<span class="p">${esc(r.pos)}</span>` : ""}</span>
@@ -2159,37 +2219,204 @@ function placeRailR(){
   }
 }
 /* ── 跳转：落到「哪一段 → 哪个输入框 → 哪一句」 ───────────────────
-   只滚到段落还不够用：一段五六百字，眼睛还得自己找那个数。
-   这里把目标句子在文本框里选中，浏览器会连着色带光标一起标出来，
-   一眼就能看出是哪句、哪个数。 */
+   只滚到段落不够用：一段五六百字，眼睛还得自己找那个数。
+   这里把目标句子在文本框里选中，浏览器会连着色带光标一起标出来。
+
+   两条路：
+   ① 后端给了 field + 整句 → 直接在那一个输入框里选中，最准；
+   ② 没给（旧记录、或元数据缺）→ 自己搜：把这些正文框按段落线索排个序，
+      逐个切句，按「引文相似度 + 是否含该数字」打分，取最高那句选中。
+      所以旧记录也能精确到句，不会退化成「滚到这一大段」。 */
 function ckFieldEl(field, seg){
   if(!field) return null;
   if(field === "seg") return document.querySelectorAll("#d-segs .seg-line")[Math.max(0, seg - 1)] || null;
   if(field === "topic") return document.querySelectorAll("#d-topics .topic-body")[Math.max(0, seg - 1)] || null;
   if(field === "table") return document.getElementById("blk-fintable");
+  if(field === "ov") return document.querySelector(".ta.ov-body") || document.querySelector(".ta.ov-lead");
+  if(field === "as") return document.querySelector(".ta.as-body") || document.querySelector(".ta.as-lead");
+  if(field === "db") return document.querySelector(".ta.db-body") || document.querySelector(".ta.db-lead");
   return document.querySelector(".ta." + field);
 }
-/* 在 textarea 或 contenteditable 里选中某一句，返回是否选中 */
-function selectSentence(el, full){
-  if(!el || !full) return false;
-  const isArea = el.tagName === "TEXTAREA";
-  const text = isArea ? (el.value || "") : (el.innerText || "");
-  let i = text.indexOf(full);
-  if(i < 0 && full.length > 12) i = text.indexOf(full.slice(0, 12));
-  if(i < 0) return false;
-  const end = Math.min(text.length, i + full.length);
-  if(isArea){
+/* 正文里所有「能选中句子」的输入框，按阅读顺序。带 f（field 键）与 name（给人看的段名） */
+function ckTextFields(){
+  const out = [];
+  const push = (el, f, name) => { if(el) out.push({ el, f, name }); };
+  push(document.querySelector(".ta.basic"), "basic", "基本情况");
+  push(document.querySelector(".ta.ov-body"), "ov", "总述段");
+  push(document.querySelector(".ta.as-body"), "as", "资产段");
+  push(document.querySelector(".ta.db-body"), "db", "债务段");
+  document.querySelectorAll("#d-segs .seg-line").forEach((el, i) => {
+    const t = (el.innerText || "").trim();
+    const m = t.match(/^\s*\d+\s*[）)．.]?\s*([^，。；：\n]{1,16}?)(?:业务|板块|产品|服务|行业)?方面[，,]/);
+    push(el, "seg", `${i + 1}）${m ? m[1] : "板块"}`);
+  });
+  document.querySelectorAll("#d-topics .topic-body").forEach((el, i) =>
+    push(el, "topic", `专题段${i + 1}`));
+  return out;
+}
+/* 按句切开，保留句子本身。与后端 _sentences 同一个规则 */
+function splitSents(text){
+  const out = [];
+  let start = 0;
+  const s = text || "";
+  for(let i = 0; i < s.length; i++){
+    if("。！？".indexOf(s[i]) >= 0){
+      const piece = s.slice(start, i + 1);
+      if(piece.trim()) out.push({ text: piece, at: start });
+      start = i + 1;
+    }
+  }
+  const rest = s.slice(start);
+  if(rest.trim()) out.push({ text: rest, at: start });
+  return out;
+}
+/* 比较用：去掉空白与千分位，只比实质字符 */
+function normCmp(s){
+  return String(s || "").replace(/[\s,，]/g, "");
+}
+/* 最长公共子串长度：引文常被截断（带 …），只能按重合度认 */
+function lcsLen(a, b){
+  if(!a || !b) return 0;
+  const n = a.length, m = b.length;
+  if(n * m > 40000) return 0;              // 太长就不算，别卡页面
+  let prev = new Uint16Array(m + 1), cur = new Uint16Array(m + 1), best = 0;
+  for(let i = 1; i <= n; i++){
+    for(let j = 1; j <= m; j++){
+      cur[j] = a[i - 1] === b[j - 1] ? prev[j - 1] + 1 : 0;
+      if(cur[j] > best) best = cur[j];
+    }
+    const t = prev; prev = cur; cur = t;
+    cur.fill(0);
+  }
+  return best;
+}
+/* 数字要在「词边界」上匹配：'92 字' 不能因为正文里有 692.74 就算命中。
+   正文与目标都先归一化（去逗号、去空白），再要求前后不是数字或小数点。 */
+function numHit(text, num){
+  const n = normCmp(num);
+  if(!n) return false;
+  const esc = n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  try{
+    return new RegExp("(^|[^0-9.])" + esc + "([^0-9.]|$)").test(normCmp(text));
+  }catch(e){
+    return normCmp(text).indexOf(n) >= 0;
+  }
+}
+function scoreSent(sent, quote, num){
+  const s = normCmp(sent), q = normCmp(quote);
+  let sc = 0;
+  if(num){
+    if(numHit(sent, num)) sc += 4;                       // 这个数字就在这句里
+  }
+  if(q){
+    if(q && s.indexOf(q) >= 0) sc += 10;                 // 引文完整落在这句
+    else sc += Math.min(lcsLen(s, q), 24) / 3;           // 被截断过，按重合长度
+  }
+  return sc;
+}
+/* 在候选输入框里找「那句话」，返回 { el, name, si, at, text } */
+function findSentence(field, seg, full, num, label){
+  const quote = (full || "").replace(/^…+/, "").replace(/…+$/, "").trim();
+  // 「×× 字」这种不是数字，是篇幅统计，别拿去搜正文
+  const needle = /^\s*\d+\s*字\s*$/.test(num || "") ? "" : num;
+  if(!quote && !needle && !label) return null;
+  const list = ckTextFields();
+  if(!list.length) return null;
+  // 段落线索优先：先只在这个框里找，找不到（或分太低）才全篇搜
+  const hint = ckFieldEl(field, seg);
+  if(hint){
+    const own = list.find(x => x.el === hint);
+    const order = own ? [own].concat(list.filter(x => x.el !== hint)) : list;
+    const hit = bestIn(order, quote, needle, label);
+    if(hit && hit.score >= 4) return hit;
+  }
+  return bestIn(list, quote, needle, label);
+}
+function bestIn(list, quote, num, label){
+  let best = null;
+  const lab = normCmp(label).replace(/^\d+[）)]/, "");
+  for(const f of list){
+    const text = f.el.tagName === "TEXTAREA" ? (f.el.value || "") : (f.el.innerText || "");
+    if(!text) continue;
+    // 段落名对得上才加分：「其他业务（92 字）」这种没有数字也没有引文，
+    // 只能靠段名认。不能给无条件兜底分——那会让第一句永远胜出。
+    const nameHit = lab.length >= 2 &&
+      normCmp(f.name).replace(/^\d+[）)]/, "").indexOf(lab) >= 0;
+    const sents = splitSents(text);
+    for(let i = 0; i < sents.length; i++){
+      let sc = scoreSent(sents[i].text, quote, num);
+      if(nameHit) sc += 3;
+      if(sc <= 0) continue;
+      if(!best || sc > best.score){
+        best = { el: f.el, field: f.f, name: f.name, si: i + 1, at: sents[i].at,
+          text: sents[i].text, fullText: text, score: sc };
+      }
+    }
+  }
+  return best;
+}
+/* 句子太长（两百字一句的不少）时，把高亮收窄到「含这个数的那一小句」。
+   整句选中看着还是一大块，收窄到分句才一眼看到数字。
+   但两种情形必须保留整句：①目标就是整句（重复句、点题句，引文等于整句）；
+   ②句子本来就不长。否则会把「这一句」切成残缺的半截。 */
+function narrowHighlight(hit, num, quote){
+  const text = hit.fullText || "";
+  const at = hit.at;
+  const sent = hit.text || "";
+  const LIMIT = 64;
+  if(!text || sent.length <= LIMIT) return [at, at + sent.length];
+  const q = normCmp(quote), sn = normCmp(sent);
+  const parts = [];
+  let st = 0;
+  for(let i = 0; i < sent.length; i++){
+    if("，；,;".indexOf(sent[i]) >= 0){
+      parts.push({ t: sent.slice(st, i + 1), at: st });
+      st = i + 1;
+    }
+  }
+  if(st < sent.length) parts.push({ t: sent.slice(st), at: st });
+  // ① 有具体数字：先切到含它的那一小句——长句里这才是「定位」
+  const n = normCmp(num);
+  let ci = -1;
+  if(n && !/^\s*\d+\s*字\s*$/.test(num || "") && parts.length > 1){
+    ci = parts.findIndex(p => numHit(p.t, num));
+  }
+  if(ci < 0){
+    // ② 目标就是整句（重复句、点题句：引文等于整句），不要切
+    if(q && (q === sn || q.length >= sn.length - 2)) return [at, at + sent.length];
+    if(parts.length < 2) return [at, at + sent.length];
+    if(q){
+      let best = -1, bestSc = 0;
+      parts.forEach((p, i) => {
+        const sc = lcsLen(normCmp(p.t), q);
+        if(sc > bestSc){ bestSc = sc; best = i; }
+      });
+      ci = best;
+    }
+  }
+  if(ci < 0) return [at, at + sent.length];
+  let lo = ci, hi = ci;
+  const span = () => parts.slice(lo, hi + 1).reduce((a, p) => a + p.t.length, 0);
+  while(span() < 26 && (lo > 0 || hi < parts.length - 1)){
+    if(hi < parts.length - 1) hi++;
+    else lo--;
+  }
+  return [at + parts[lo].at, at + parts[hi].at + parts[hi].t.length];
+}
+/* 在 textarea 或 contenteditable 里选中一段，返回是否选中 */
+function selectRange(el, start, end){
+  if(!el) return false;
+  if(el.tagName === "TEXTAREA"){
     el.focus({ preventScroll: true });
-    try{ el.setSelectionRange(i, end); }catch(e){ return false; }
+    try{ el.setSelectionRange(start, end); }catch(e){ return false; }
     return true;
   }
-  // contenteditable：把字符偏移换算成 Range
   let pos = 0, startNode = null, startOff = 0, endNode = null, endOff = 0;
   const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
   let node;
   while((node = walker.nextNode())){
     const len = node.textContent.length;
-    if(startNode === null && pos + len > i){ startNode = node; startOff = i - pos; }
+    if(startNode === null && pos + len > start){ startNode = node; startOff = start - pos; }
     if(startNode !== null && pos + len >= end){ endNode = node; endOff = end - pos; break; }
     pos += len;
   }
@@ -2203,27 +2430,68 @@ function selectSentence(el, full){
   el.focus({ preventScroll: true });
   return true;
 }
+/* 按「整句原文」选中（新版记录带 full 时走这条，最准） */
+function selectSentence(el, full){
+  if(!el || !full) return false;
+  const text = el.tagName === "TEXTAREA" ? (el.value || "") : (el.innerText || "");
+  let i = text.indexOf(full);
+  if(i < 0 && full.length > 12) i = text.indexOf(full.slice(0, 12));
+  if(i < 0) return false;
+  return selectRange(el, i, Math.min(text.length, i + full.length));
+}
 function ckJump(el, ev){
   if(ev){ ev.stopPropagation(); ev.preventDefault(); }
   const row = el.closest && el.closest(".ckr");
   const anchor = row ? row.dataset.t : (el.dataset && el.dataset.t);
-  const field = row ? row.dataset.f : "";
+  const field = row ? (row.dataset.f || "") : "";
   const seg = row ? Number(row.dataset.g || 0) : 0;
   const full = row ? (row.dataset.s || "") : "";
+  const num = row ? (row.dataset.n || "") : "";
+  const label = (() => {
+    const p = row ? row.querySelector(".p") : null;
+    const t = p ? p.textContent.trim() : "";
+    return t.split("·")[0].trim();
+  })();
   const target = document.getElementById(anchor || "d-doc");
   if(!target) return;
-  target.scrollIntoView({ behavior: "smooth", block: "center" });
-  const fieldEl = ckFieldEl(field, seg);
-  let hit = false;
-  if(fieldEl){
-    // 等滚动落位再选，否则浏览器会把选区滚回它自己的位置
-    setTimeout(() => {
-      hit = selectSentence(fieldEl, full);
-      if(hit) flashEl(fieldEl.closest(".blk") || fieldEl);
-    }, 260);
-  }
   flashEl(target);
-  if(!field && !row) return;
+  // 表格类问题没有「句子」可选，滚到表就行
+  if(field === "table"){ target.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
+  const hint = ckFieldEl(field, seg);
+  (hint || target).scrollIntoView({ behavior: "smooth", block: "center" });
+  // 等滚动落位再选，否则浏览器会把选区滚回它自己原来的位置
+  clearTimeout(ckJump._t);
+  ckJump._t = setTimeout(() => {
+    const hit = findSentence(field, seg, full, num, label);
+    if(!hit){
+      // 没搜到具体句子（如「内容偏薄」这类只指段不指句的）：
+      // 至少落在那个输入框上并选中它的第一句，同时清掉上一次的残留选区——
+      // 不清的话，用户看到的还是上一处的高亮，会以为定错了地方。
+      const own = ckFieldEl(field, seg);
+      const sel = window.getSelection();
+      if(own && (field === "seg" || field === "topic")){
+        const t = own.tagName === "TEXTAREA" ? (own.value || "") : (own.innerText || "");
+        const s0 = splitSents(t)[0];
+        if(s0 && selectRange(own, s0.at, s0.at + s0.text.length)){
+          own.scrollIntoView({ behavior: "smooth", block: "center" });
+          flashEl(own.closest(".blk") || own);
+          toast("已定位到这一段（这段没有可指的单句）");
+          return;
+        }
+      }
+      if(sel) sel.removeAllRanges();
+      return;
+    }
+    const [s, e] = narrowHighlight(hit, num, full);
+    if(!selectRange(hit.el, s, e)) return;
+    // 选中的片段若在视口外（长段、手机上），把它带进来
+    const box = hit.el.getBoundingClientRect();
+    if(box.top < 70 || box.bottom > innerHeight - 40){
+      hit.el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    flashEl(hit.el.closest(".blk") || hit.el);
+    toast(`已定位：${hit.name} 第 ${hit.si} 句`);
+  }, 300);
 }
 function flashEl(el){
   if(!el) return;
