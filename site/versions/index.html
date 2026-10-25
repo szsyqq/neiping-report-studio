@@ -291,5 +291,21 @@ body{margin:0;background:#fff;color:var(--ink);
   <div class="foot">快照由 <code>make_versions.py</code> 从 git 历史生成。清单在 <code>versions.json</code>，
     改完重跑脚本即可。</div>
 </div>
+
+<script>
+(function () {
+  var sc = "";
+  try { sc = new URLSearchParams(location.search).get("sharecode") || ""; } catch (e) {}
+  if (!sc) return;
+  var as = document.querySelectorAll("a[href]");
+  for (var i = 0; i < as.length; i++) {
+    var a = as[i], h = a.getAttribute("href") || "";
+    if (!h || /^(?:[a-z]+:)?\/\//i.test(h) || h.charAt(0) === "#") continue;
+    if (h.indexOf("sharecode=") >= 0) continue;
+    a.setAttribute("href", h + (h.indexOf("?") >= 0 ? "&" : "?") + "sharecode=" + encodeURIComponent(sc));
+  }
+})();
+</script>
+
 </body>
 </html>

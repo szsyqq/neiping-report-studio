@@ -958,6 +958,24 @@ let API_BASE = (() => {
 })();
 const apiUrl = (p) => API_BASE + p;
 
+/* 站内相对链接要带上当前的 sharecode。
+   云端分享网关在缺 sharecode 时直接回 403，而版本面板、快照页里的链接
+   都是相对路径，点过去会把 ?sharecode=… 丢掉，看着就像「打不开」。
+   本地没有 sharecode 就原样返回，不影响自测。 */
+function withShare(href){
+  const raw = String(href || "");
+  if(/^(?:[a-z]+:)?\/\//i.test(raw) || raw.startsWith("#")) return raw;
+  let sc = "";
+  try{ sc = new URLSearchParams(location.search).get("sharecode") || ""; }catch(e){}
+  if(!sc) return raw;
+  const [path, hash = ""] = raw.split("#");
+  const [base, q] = path.split("?");
+  const qs = new URLSearchParams(q || "");
+  qs.set("sharecode", sc);
+  const out = base + "?" + qs.toString();
+  return out + (hash ? "#" + hash : "");
+}
+
 async function probeBase(base){
   try{
     const r = await fetch((base || "") + "/api/health", { cache: "no-store" });
@@ -3182,7 +3200,7 @@ function renderVersions(){
   const nMaj = ms.length || new Set(vs.map(v => v.major || "")).size;
   let h = `<div class="vh"><b>版本历史</b>
       <span class="n">${nMaj} 个大版本 · ${vs.length} 次改动 · 点开是当时的页面，能直接用</span>
-      <a href="versions/" target="_blank" style="font-size:11.5px;color:#2f5fd0;text-decoration:none;margin-left:2px">独立页 ↗</a>
+      <a href="${withShare("versions/")}" target="_blank" style="font-size:11.5px;color:#2f5fd0;text-decoration:none;margin-left:2px">独立页 ↗</a>
       <button class="x" onclick="closeVersions()">×</button></div>
     <div class="vlist">`;
 
@@ -3234,7 +3252,7 @@ function renderVersions(){
         <p class="sum">${esc(v.summary)}</p>
         <details><summary>具体改动 ${(v.items || []).length} 项</summary><ul>${items}</ul>
           ${v.note ? `<div class="note">${esc(v.note)}</div>` : ""}</details>
-        <a class="go" href="versions/${encodeURIComponent(v.id)}/${tk ? "?t=" + encodeURIComponent(tk) : ""}"
+        <a class="go" href="${withShare("versions/" + encodeURIComponent(v.id) + "/" + (tk ? "?t=" + encodeURIComponent(tk) : ""))}"
            target="_blank" rel="noopener">打开这个版本 ↗</a>
       </div>`;
     });

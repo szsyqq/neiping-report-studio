@@ -66,6 +66,21 @@ SHIM = """
 
   function setStat(text, cls) { if (stat) { stat.textContent = text; stat.className = "st " + (cls || ""); } }
 
+  // 横幅上的「全部版本」「回到最新版」是相对链接，云端分享网关缺 sharecode 会回 403。
+  // 这里把当前页面的 sharecode / t 参数补上去，点过去才不会失效。
+  (function () {
+    var q0;
+    try { q0 = new URLSearchParams(location.search); } catch (e) { return; }
+    var sc = q0.get("sharecode") || "";
+    if (!sc) return;
+    var links = document.querySelectorAll("#vbar a");
+    for (var i = 0; i < links.length; i++) {
+      var a = links[i], href = a.getAttribute("href") || "";
+      if (!href || /^(?:[a-z]+:)?\\/\\//i.test(href)) continue;
+      a.setAttribute("href", href + (href.indexOf("?") >= 0 ? "&" : "?") + "sharecode=" + encodeURIComponent(sc));
+    }
+  })();
+
   // 旧版页面没有登录概念：补一层请求头，让它们能用当前服务的数据接口。
   if (tok && window.fetch) {
     var raw = window.fetch;
@@ -189,6 +204,27 @@ body{margin:0;background:#fff;color:var(--ink);
 """
 
 
+# 时间线页与快照页都是相对链接；云端分享网关在缺 sharecode 时直接回 403，
+# 所以要在页面上把当前 sharecode 补到站内链接里，点过去才不会失效。
+# 单独放成常量：这段里有大量花括号，塞进 f-string 会被当成表达式解析。
+SHARE_FIX = """
+<script>
+(function () {
+  var sc = "";
+  try { sc = new URLSearchParams(location.search).get("sharecode") || ""; } catch (e) {}
+  if (!sc) return;
+  var as = document.querySelectorAll("a[href]");
+  for (var i = 0; i < as.length; i++) {
+    var a = as[i], h = a.getAttribute("href") || "";
+    if (!h || /^(?:[a-z]+:)?\\/\\//i.test(h) || h.charAt(0) === "#") continue;
+    if (h.indexOf("sharecode=") >= 0) continue;
+    a.setAttribute("href", h + (h.indexOf("?") >= 0 ? "&" : "?") + "sharecode=" + encodeURIComponent(sc));
+  }
+})();
+</script>
+"""
+
+
 def timeline_html(spec: dict) -> str:
     vs = spec["versions"]
     cur = spec["current"]
@@ -258,6 +294,7 @@ def timeline_html(spec: dict) -> str:
   <div class="foot">快照由 <code>make_versions.py</code> 从 git 历史生成。清单在 <code>versions.json</code>，
     改完重跑脚本即可。</div>
 </div>
+{SHARE_FIX}
 </body>
 </html>
 """
