@@ -74,6 +74,9 @@ def do_search(company: str, progress=None) -> dict:
     with LOCK:
         st = STATE.setdefault(_key(company), {"facts": {}, "materials": []})
         st["facts"] = facts
+        # 重新检索＝换一轮材料重来。上一轮读过的材料必须作废，否则同一进程里
+        # 第二次生成会把上一轮（甚至上一家）的 PDF 一起送进提示词、附件和邮件。
+        st["materials"] = []
     n = sum(len(v) for v in (facts.get("materials") or {}).values())
     calls = int(stats.get("calls") or 0)
     usage_mod.record("search", company=company, chars=n, mcp_calls=calls,
@@ -87,7 +90,14 @@ def _budget_for(title: str, remaining: int) -> int:
     return max(6000, min(want, remaining))
 
 
-def do_fetch(company: str, picks: list[dict], budget: int = 0, progress=None) -> dict:
+def do_fetch(company: str, picks: list[dict], budget: int = 0, progress=None,
+             replace: bool = False) -> dict:
+    """读材料。
+
+    replace=True 表示「本次勾选就是这一轮的全部材料」——界面上材料清单一次列全，
+    勾选结果就是完整集合，所以先清空再写入，避免上一轮的 PDF 留在 STATE 里
+    继续参与生成与附件。上传 PDF 是增量动作，保持 replace=False 追加。
+    """
     n = max(len(picks), 1)
     items = [{"title": m.get("title") or "", "state": "wait", "pct": 0, "detail": "等待"} for m in picks]
     loaded: list[dict] = []
@@ -123,22 +133,34 @@ def do_fetch(company: str, picks: list[dict], budget: int = 0, progress=None) ->
     with LOCK:
         st = STATE.setdefault(_key(company), {"facts": {}, "materials": []})
         titles = {m.get("title") for m in loaded}
-        st["materials"] = [x for x in st["materials"] if x.get("title") not in titles] \
-            + [x for x in loaded if x.get("text")]
+        prev = [] if replace else [x for x in st["materials"] if x.get("title") not in titles]
+        st["materials"] = prev + [x for x in loaded if x.get("text")]
+        all_titles = [x.get("title") for x in st["materials"] if x.get("title")]
     usage_mod.record("fetch", company=company or "本地材料",
                      chars=sum(m["chars"] for m in loaded),
                      note=f"{len(loaded)}/{len(picks)} 份 · "
                           f"{sum(m['pages'] for m in loaded)} 页")
     return {"materials": [{k: v for k, v in m.items() if k != "text"} for m in loaded],
             "loaded": [m.get("title") for m in loaded if m.get("text")],
+            # 这一轮之后该主体名下的材料全集：前端据此覆盖本地清单，
+            # 而不是把每次的结果并进一个只增不减的数组
+            "all": all_titles,
             "items": items}
 
 
-def do_generate(company: str, model: str | None, progress=None) -> dict:
+def do_generate(company: str, model: str | None, progress=None,
+                titles: list[str] | None = None) -> dict:
     with LOCK:
         st = STATE.get(_key(company)) or {}
         facts = st.get("facts") or {}
         materials = st.get("materials") or []
+    # 只写这一轮真正选中的材料：STATE 里可能还留着同一主体更早读过的几份，
+    # 不按标题过滤的话，第二次生成的正文会混进没勾选的旧材料。
+    if titles:
+        want = {t for t in titles if t}
+        picked = [m for m in materials if m.get("title") in want]
+        if picked:
+            materials = picked
     if not materials:
         raise ValueError("请先拉取材料，或上传评级报告/募集说明书 PDF")
     draft = generator.generate(facts or facts_mod.empty_facts(company), materials,
@@ -170,7 +192,8 @@ def api_fetch(payload: dict) -> dict:
         if not facts:
             raise ValueError("请先检索企业，或上传 PDF")
         picks = facts_mod.pick_materials(facts)
-    return do_fetch(company, picks, int(payload.get("budget") or 0))
+    return do_fetch(company, picks, int(payload.get("budget") or 0),
+                    replace=bool(payload.get("replace")))
 
 
 def save_upload(name: str, data: bytes) -> dict:
@@ -190,7 +213,8 @@ def save_upload(name: str, data: bytes) -> dict:
 
 def api_generate(payload: dict) -> dict:
     company = (payload.get("company") or "").strip()
-    return {"draft": do_generate(company, payload.get("model"))["draft"]}
+    return {"draft": do_generate(company, payload.get("model"),
+                                 titles=[t for t in (payload.get("titles") or []) if t])["draft"]}
 
 
 def api_export(payload: dict) -> dict:
@@ -483,12 +507,17 @@ def _reload_materials(mats: list[dict]) -> list[dict] | None:
 
 
 def _upgrade_record(rec: dict) -> dict:
-    """把旧记录的校验升到句级；材料不在或解析失败就原样返回，不阻断打开。"""
+    """把旧记录的校验重算到当前规则版本。
+
+    判据是「记录的校验版本」而不是「有没有 issue_items」：后者只在新增结构化
+    字段那一次有效，之后再加校验项，老记录永远不会重算，用户打开旧报告就
+    看不到新提示——这正是上一轮的教训。
+    """
     draft = rec.get("draft") or {}
     val = draft.get("validation") or {}
-    if val.get("issue_items") is not None:      # 已经是新版格式
+    if val.get("rev") == generator.VALIDATOR_REV:   # 已按当前规则算过
         return rec
-    if rec.get("_reval") == "skip":             # 试过、材料已不在，别每次都试
+    if rec.get("_reval") == "skip":                 # 试过、材料已不在，别每次都试
         return rec
     mats = _reload_materials(rec.get("materials") or [])
     if not mats:
@@ -529,6 +558,9 @@ def api_prompt(payload: dict) -> dict:
         materials = st.get("materials") or []
     if not materials:
         raise ValueError("请先拉取材料，或上传 PDF")
+    titles = {t for t in (payload.get("titles") or []) if t}
+    if titles:
+        materials = [m for m in materials if m.get("title") in titles] or materials
     prompt = generator.build_user_prompt(facts or facts_mod.empty_facts(company), materials)
     return {"prompt": prompt, "system": generator.SYSTEM_PROMPT,
             "traits": generator.describe_traits(facts or {})}
@@ -551,11 +583,13 @@ def api_job(kind: str, payload: dict) -> dict:
                 raise ValueError("请先检索企业，或上传 PDF")
             picks = facts_mod.pick_materials(facts)
         budget = int(payload.get("budget") or 0)
-        job = jobs.submit("fetch", lambda p: do_fetch(company, picks, budget, p))
+        replace = bool(payload.get("replace"))
+        job = jobs.submit("fetch", lambda p: do_fetch(company, picks, budget, p, replace))
     elif kind == "generate":
         company = (payload.get("company") or "").strip()
         model = payload.get("model")
-        job = jobs.submit("generate", lambda p: do_generate(company, model, p))
+        titles = [t for t in (payload.get("titles") or []) if t]
+        job = jobs.submit("generate", lambda p: do_generate(company, model, p, titles))
     else:
         raise ValueError("未知任务类型")
     return {"job": job["id"]}

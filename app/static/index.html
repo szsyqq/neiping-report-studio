@@ -946,6 +946,35 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
 const $ = (s) => document.querySelector(s);
 const S = { company: "", facts: null, uploads: [], mstate: {}, loaded: [], draft: null, stats: null };
 
+/* 当前主体：一律以输入框里的字为准，S.company 只是「上一轮检索过谁」的备份。
+   以前各处写 S.company || 输入框，用户改了企业名却没点检索时，检索、读取、
+   生成仍然落在上一家身上——正文、附件、邮件标题就都跟着串了。 */
+function curCo(){
+  const v = ($("#company").value || "").trim();
+  return v || S.company || "";
+}
+
+/* 换主体时要把上一家留下的东西全部作废：材料清单、已读材料、草稿、
+   邮件与打包缓存。只清界面不动服务端的话，下一次生成仍会带上旧材料。 */
+function resetSession(){
+  S.loaded = [];
+  S.mstate = {};
+  S.uploads = [];
+  S.facts = null;
+  S.keepChecked = null;
+  S.expand = {};
+  S.draft = null;
+  PKG.data = null; PKG.sel = {}; PKG.open = false;
+  MAIL.subject = undefined; MAIL.subjectFor = ""; MAIL.body = undefined;
+  MAIL.to = undefined; MAIL.cc = ""; MAIL.docx = ""; MAIL.withPdf = false;
+  if($("#upList")) $("#upList").innerHTML = "";
+  if($("#matList")) renderMaterials(null);
+  if($("#draftArea")){ $("#draftArea").innerHTML = ""; $("#draftArea").style.display = "none"; }
+  if($("#empty")){ $("#empty").style.display = ""; $("#empty").textContent = "检索公告或上传 PDF 后生成草稿"; }
+  resetStepsFrom("search");
+  syncButtons();
+}
+
 /* 后端在哪：三种情况都要能自己认出来
    1. 页面由后端自己发（本机 127.0.0.1 或云端域名）→ 同源，空串
    2. 页面在 GitHub Pages 这类静态站 → 要连本机 127.0.0.1:8770（可用 localStorage.apiBase 改）
@@ -1407,6 +1436,9 @@ async function restoreHistory(id){
     S.draft.history_id = rec.id;  // 再导出时回填到同一条记录
     S.company = rec.company || "";
     S.loaded = (rec.materials || []).map(m => m.title).filter(Boolean);
+    // 打开的是另一家的记录：邮件标题、正文草稿与文件清单缓存都不能沿用上一份
+    MAIL.subject = undefined; MAIL.subjectFor = ""; MAIL.body = undefined; MAIL.docx = "";
+    PKG.data = null; PKG.sel = {};
     if(S.company) $("#company").value = S.company;
     renderDraft();
     syncButtons();
@@ -1434,6 +1466,11 @@ async function doSearch(){
   const company = $("#company").value.trim();
   if(!company) return toast("请输入企业全称", true);
   $("#btnSearch").disabled = true;
+  // 新检索＝新的一轮：换主体就把上一家的材料、草稿、邮件与打包缓存全清掉；
+  // 同一主体重检索只清材料清单（草稿留着，免得误点一次丢了正在改的稿）。
+  // 服务端 do_search 无论哪种情况都会清掉该主体名下的材料。
+  if(S.company && S.company !== company) resetSession();
+  else { S.loaded = []; S.mstate = {}; S.keepChecked = null; S.expand = {}; PKG.data = null; PKG.sel = {}; }
   resetStepsFrom("search");
   setStep("search", { state: "run", pct: 0, detail: "检索公告库" });
   try{
@@ -1547,12 +1584,17 @@ async function doFetch(){
   paintMatStates();
   setStep("materials", { state: "run", pct: 0, detail: `0/${picks.length} 份` });
   try{
-    const j = await runJob("fetch", { company: S.company || $("#company").value.trim(), materials: picks }, j => {
+    // 界面上材料清单一次列全，勾选结果就是这一轮的完整材料集，
+    // 所以 replace=true：服务端先清空再写入，上一轮读过的 PDF 不再参与生成。
+    const j = await runJob("fetch", { company: curCo(), materials: picks, replace: true }, j => {
       setStep("materials", { state: "run", pct: j.pct, detail: j.detail || "" });
       if(j.items) onItems(j.items);
     });
     onItems(j.result.items || []);
-    S.loaded = [...new Set([...S.loaded, ...(j.result.loaded || [])])];
+    S.loaded = (j.result.all && j.result.all.length)
+      ? j.result.all.slice()
+      : [...new Set([...S.loaded, ...(j.result.loaded || [])])];
+    PKG.data = null; PKG.sel = {};
     markMaterialsDone(picks.length);
   }catch(e){
     setStep("materials", { state: "error", detail: e.message });
@@ -1650,12 +1692,16 @@ async function parseUploads(list){
   busy.fetch = true; syncButtons();
   setStep("materials", { state: "run", pct: 0, detail: `解析 0/${picks.length} 份` });
   try{
-    const j = await runJob("fetch", { company: S.company || $("#company").value.trim(), materials: picks }, j => {
+    // 上传是增量动作：不动已读的公告材料，只把这几份 PDF 追加进来
+    const j = await runJob("fetch", { company: curCo(), materials: picks }, j => {
       setStep("materials", { state: "run", pct: j.pct, detail: j.detail || "" });
       if(j.items) onItems(j.items);
     });
     onItems(j.result.items || []);
-    S.loaded = [...new Set([...S.loaded, ...(j.result.loaded || [])])];
+    S.loaded = (j.result.all && j.result.all.length)
+      ? j.result.all.slice()
+      : [...new Set([...S.loaded, ...(j.result.loaded || [])])];
+    PKG.data = null; PKG.sel = {};
     markMaterialsDone(picks.length);
   }catch(e){
     setStep("materials", { state: "error", detail: e.message });
@@ -1728,10 +1774,17 @@ async function doGenerate(){
   busy.gen = true; syncButtons();
   setStep("generate", { state: "run", pct: 0, detail: "准备提示词" });
   try{
-    const j = await runJob("generate", { company: S.company || $("#company").value.trim(), model: $("#model").value }, j => {
+    // titles 传本轮真正读进来的材料：服务端据此过滤，避免同主体早先读过的
+    // 旧材料混进这一次的提示词（表现为正文里出现上一轮的旧数据）
+    const j = await runJob("generate", { company: curCo(), model: $("#model").value,
+      titles: S.loaded.slice() }, j => {
       setStep("generate", { state: "run", pct: j.pct, detail: j.detail || j.stage });
     });
     S.draft = j.result.draft;
+    S.company = curCo() || S.company;
+    PKG.data = null; PKG.sel = {};
+    // 换了主体，邮件的标题与正文草稿也要跟着重来（见 renderMailPanel 的 subjectFor）
+    MAIL.subject = undefined; MAIL.subjectFor = ""; MAIL.body = undefined;
     setStep("generate", { state: "done", pct: 100, detail: "草稿已生成" });
     setStep("export", { state: "wait", pct: 0, detail: "可编辑后导出" });
     renderDraft();
@@ -1931,6 +1984,9 @@ function renderDraft(){
 const CK_RULES = [
   [/^关注.*含数据/, "关注条目混进了数字", "blk-con"],
   [/含数据.+摘要层应为纯定性/, "摘要层混进了数字", "blk-pos"],
+  [/摘要层措辞/, "摘要写了没有刻度的评价词", "blk-pos"],
+  [/摘要条目偏长|一条塞了两件事/, "摘要一条塞了两件事", "blk-pos"],
+  [/正面与关注重复/, "正面与关注说了同一件事", "blk-pos"],
   [/找不到直接出处|请复核算式/, "数字在材料里找不到出处", "d-doc"],
   [/data_notes 已声明为推算值/, "推算出来的数字要说清口径", "d-doc"],
   [/期次写法在台账与材料原文中找不到依据/, "期次写法没有依据", "blk-fintable"],
@@ -2271,6 +2327,8 @@ function ckFieldEl(field, seg){
   if(!field) return null;
   if(field === "seg") return document.querySelectorAll("#d-segs .seg-line")[Math.max(0, seg - 1)] || null;
   if(field === "topic") return document.querySelectorAll("#d-topics .topic-body")[Math.max(0, seg - 1)] || null;
+  if(field === "pos") return document.querySelectorAll("#d-pos .ta")[Math.max(0, seg - 1)] || null;
+  if(field === "con") return document.querySelectorAll("#d-con .ta")[Math.max(0, seg - 1)] || null;
   if(field === "table") return document.getElementById("blk-fintable");
   if(field === "ov") return document.querySelector(".ta.ov-body") || document.querySelector(".ta.ov-lead");
   if(field === "as") return document.querySelector(".ta.as-body") || document.querySelector(".ta.as-lead");
@@ -2292,6 +2350,9 @@ function ckTextFields(){
   });
   document.querySelectorAll("#d-topics .topic-body").forEach((el, i) =>
     push(el, "topic", `专题段${i + 1}`));
+  // 摘要层（正面／关注）：措辞类问题要点到具体第几条，所以也进可定位清单
+  document.querySelectorAll("#d-pos .ta").forEach((el, i) => push(el, "pos", `正面${i + 1}）`));
+  document.querySelectorAll("#d-con .ta").forEach((el, i) => push(el, "con", `关注${i + 1}）`));
   return out;
 }
 /* 按句切开，保留句子本身。与后端 _sentences 同一个规则 */
@@ -3000,7 +3061,7 @@ async function exportDocx(){
     const btns = [...document.querySelectorAll("[data-export]")];
     btns.forEach(b => b.disabled = true);
     setStep("export", { state: "run", pct: 60, detail: "排版中" });
-    const r = await api("/api/export", { draft: d, company: S.company });
+    const r = await api("/api/export", { draft: d, company: curCo() });
     setStep("export", { state: "done", pct: 100, detail: r.name });
     const a = document.createElement("a");
     a.href = dlUrl(r.url);
@@ -3020,7 +3081,7 @@ async function exportDocx(){
 
 async function copyPrompt(){
   try{
-    const r = await api("/api/prompt", { company: S.company });
+    const r = await api("/api/prompt", { company: curCo(), titles: S.loaded.slice() });
     await navigator.clipboard.writeText(`【系统提示】\n${r.system}\n\n【用户提示】\n${r.prompt}`);
     toast("提示词已复制");
   }catch(e){ toast(e.message, true); }
@@ -3273,7 +3334,7 @@ document.addEventListener("keydown", e => {
 });
 
 /* ---------------- 发送邮件 ---------------- */
-const MAIL = { open: false, cfg: null, busy: false, withPdf: false, docx: "" };
+const MAIL = { open: false, cfg: null, busy: false, withPdf: false, docx: "", subjectFor: "" };
 
 function mailCompany(){
   const el = $("#d-company");
@@ -3302,16 +3363,21 @@ async function loadMailPanel(){
   }catch(err){
     MAIL.cfg = { ready: false, default_to: "" };
   }
-  try{ await fetchFileList(); }catch(err){ /* 没有报告时也能发，附件现场排版 */ }
+  try{
+    // 文件清单必须重新取：缓存里可能还是上一家主体的报告与底稿，
+    // 直接拿来当附件就会把上一家的 PDF/Word 一起发出去。
+    PKG.data = null; PKG.sel = {};
+    await fetchFileList(true);
+  }catch(err){ /* 没有报告时也能发，附件现场排版 */ }
   renderMailPanel();
 }
 
 function mailDocxOption(){
   // 优先用已导出的最新一份；没有就现场排版
   const docs = (PKG.data && PKG.data.docx) || [];
-  if(MAIL.docx) return { name: MAIL.docx, live: false };
-  if(docs.length) return { name: docs[0].name, live: false };
-  return { name: "", live: true };
+  if(MAIL.docx) return { name: MAIL.docx, live: false, meta: "" };
+  if(docs.length) return { name: docs[0].name, live: false, meta: docs[0].mtime || "" };
+  return { name: "", live: true, meta: "" };
 }
 
 function renderMailPanel(){
@@ -3321,6 +3387,11 @@ function renderMailPanel(){
   const pdfs = (PKG.data && PKG.data.materials) || [];
   const to = (MAIL.to !== undefined ? MAIL.to : (cfg.default_to || ""));
   const from = cfg.user || "";
+  // 标题与正文只在「同一家主体」时沿用上次填的：换了主体还照抄，
+  // 邮件标题就是上一家的企业名，收件人看到的是错的报告名。
+  const same = MAIL.subjectFor && MAIL.subjectFor === co;
+  const subj = (same && MAIL.subject !== undefined) ? MAIL.subject : co;
+  const body = same ? (MAIL.body || "") : "";
 
   let h = `<div class="ml-h">发送邮件<span class="x" onclick="closeMail()">×</span></div>
     <div class="ml-sub">${cfg.ready
@@ -3332,14 +3403,14 @@ function renderMailPanel(){
       <label>抄送</label>
       <input id="mlCc" value="${esc(MAIL.cc || "")}" placeholder="可不填" spellcheck="false" />
       <label>标题</label>
-      <input id="mlSubject" value="${esc(MAIL.subject !== undefined ? MAIL.subject : co)}" spellcheck="false" />
+      <input id="mlSubject" value="${esc(subj)}" spellcheck="false" />
       <label>正文</label>
-      <textarea id="mlBody" rows="3" placeholder="留空则自动生成一句说明">${esc(MAIL.body || "")}</textarea>
+      <textarea id="mlBody" rows="3" placeholder="留空则自动生成一句说明">${esc(body)}</textarea>
     </div>
     <div class="mlatt">
       <label class="r"><input type="checkbox" checked disabled />
         <span class="n">${d.live ? (esc(co) || "报告") + "内评简评报告.docx" : esc(d.name)}
-          <i>${d.live ? "尚未导出，发送时现场排版" : "报告正文"}</i></span></label>`;
+          <i>${d.live ? "尚未导出，发送时现场排版" : "报告正文" + (d.meta ? " · 导出于 " + esc(d.meta) : "")}</i></span></label>`;
 
   if(pdfs.length){
     h += `<label class="r"><input type="checkbox" id="mlPdf" ${MAIL.withPdf ? "checked" : ""}
@@ -3395,6 +3466,7 @@ async function runMail(){
     st.textContent = `已发送 · ${r.attachments.length} 个附件 · ${fmtSize(r.size)}`;
     toast(`已发送给 ${r.to.join("、")}`);
     MAIL.to = payload.to; MAIL.subject = payload.subject; MAIL.body = payload.body;
+    MAIL.subjectFor = mailCompany() || (S.draft && S.draft.company_full_name) || "";
     refreshUsage();
     setTimeout(() => { if(MAIL.open) closeMail(); }, 1200);
   }catch(err){
@@ -3588,6 +3660,16 @@ function bootData(){
 }
 gateBoot();
 $("#company").addEventListener("keydown", e => { if(e.key === "Enter") doSearch(); });
+/* 改了企业名就当作换主体：上一家的材料、草稿、邮件与打包缓存全部作废，
+   否则第二次生成会沿用上一家的清单（附件多出来、标题还是上一家的）。 */
+$("#company").addEventListener("change", () => {
+  const v = ($("#company").value || "").trim();
+  if(!S.company || v === S.company) return;
+  const had = S.loaded.length || S.draft;
+  resetSession();
+  S.company = "";
+  if(had) toast("企业名已变更，已清空上一家的材料与草稿");
+});
 </script>
 </body>
 </html>
