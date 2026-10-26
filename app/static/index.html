@@ -967,7 +967,7 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
     <section class="wstep locked" id="ws-generate">
       <div class="whead" onclick="openStep('generate')">
         <span class="wdot">3</span>
-        <span class="wlabel">生成草稿</span>
+        <span class="wlabel" id="lblGen">生成草稿</span>
         <span class="wpct"></span>
         <span class="wchev"></span>
         <span class="wmeta"></span>
@@ -1047,6 +1047,7 @@ function paintMode(){
   const hint = $("#upHint");
   if(hint) hint.textContent = up ? "待修订的旧报告；外部依据用下面的 PDF" : "评级报告 / 募集说明书，也可拖进来";
   set("#btnGen", up ? "分析差异" : "生成草稿");
+  set("#lblGen", up ? "分析差异" : "生成草稿");
   set("#genHint", up ? "逐条比对，约 60–120 秒" : "约 30–60 秒，可先离开");
   set("#btnFetch", "读取选中材料");
   // 更新模式多一个「旧报告」入口：同一个上传区，两个按钮各自收对应格式
@@ -1111,7 +1112,12 @@ function resetSession(){
   if($("#upList")) $("#upList").innerHTML = "";
   if($("#matList")) renderMaterials(null);
   if($("#draftArea")){ $("#draftArea").innerHTML = ""; $("#draftArea").style.display = "none"; }
-  if($("#empty")){ $("#empty").style.display = ""; $("#empty").textContent = "检索公告或上传 PDF 后生成草稿"; }
+  if($("#empty")){
+    $("#empty").style.display = "";
+    $("#empty").textContent = S.mode === "update"
+      ? "先上传旧报告（.docx）与外部评级报告，再分析差异"
+      : "检索公告或上传 PDF 后生成草稿";
+  }
   resetStepsFrom("search");
   syncButtons();
 }
@@ -1767,11 +1773,23 @@ function onItems(items){
 
 function markMaterialsDone(n){
   const ok = S.loaded.length;
+  // 更新模式：底稿到位但还没外部材料，这是「还差一步」，不是「出错」。
+  // 标成 error 会在第 2 步挂个红叉，让人以为上传失败了。
+  if(S.mode === "update" && !ok && S.base){
+    setStep("materials", { state: "wait", pct: 0,
+      detail: "底稿已就绪，还需外部评级报告" });
+    if($("#empty")) $("#empty").textContent = "底稿已就绪，再上传一份外部评级报告（PDF）";
+    syncButtons();
+    refreshUsage();
+    return;
+  }
   setStep("materials", { state: ok ? "done" : "error", pct: 100,
     detail: ok ? `${ok} 份就绪` : "没有可用材料" });
   if(ok){
     setStep("generate", { state: "wait", pct: 0, detail: "" });
-    $("#empty").textContent = "材料已就绪，点左侧「生成草稿」";
+    $("#empty").textContent = S.mode === "update"
+      ? "材料与底稿已就绪，点左侧「分析差异」"
+      : "材料已就绪，点左侧「生成草稿」";
     openStep("generate");
   }
   syncButtons();
@@ -2060,7 +2078,6 @@ function renderActions(d){
   const acts = d.actions || [];
   const v = d.validation || {};
   const base = d.base || {};
-  const gaps = on => !(d.layout && d.layout.para_gap === false);
   const cnt = k => acts.filter(a => a.action === k).length;
   const sel = actSel();
   // 第一轮全选（待定的除外）：绝大多数的确要改，逐条勾是负担
@@ -2098,6 +2115,7 @@ function renderActions(d){
       </div>
     </div>
     <div class="doc" id="d-doc">
+      <div class="blk" id="blk-actions">
       <div class="acts-head">
         <div class="acts-tabs" id="actTabs">
           ${[["all", "全部"], ["yes", "已采纳"], ["no", "已排除"],
@@ -2108,6 +2126,7 @@ function renderActions(d){
         <span class="acts-sum" id="actSum"></span>
       </div>
       <div id="actList"></div>
+      </div>
     </div>
   </div>
   <aside class="rail rail-r" id="railR">${ckHtml(v)}</aside>
@@ -2149,6 +2168,16 @@ function actPaint(){
     ["需人工判断，保持原文", acts.filter(a => a.action === "REVIEW")],
   ];
   let html = "";
+  if(!acts.length){
+    html = `<div class="act-empty">
+      <b>没有找到可比对的改动</b><br>
+      常见原因：底稿与外部材料不是同一主体、外部材料是旧一期、或两者体例差异过大。<br>
+      请确认上传的旧报告与外部评级报告来自同一主体，再重新分析。
+    </div>`;
+    list.innerHTML = html;
+    actSumPaint();
+    return;
+  }
   if(!rows.length){
     html = `<div class="act-empty">这个筛选下没有条目</div>`;
   } else {
@@ -2970,6 +2999,17 @@ function ckJump(el, ev){
     return t.split("·")[0].trim();
   })();
   const target = document.getElementById(anchor || "d-doc");
+  // 更新模式没有段落输入框，一条待核对对应一张改动卡：滚到那张卡本身，
+  // 比滚到整块清单有用得多（清单二三十条，滚过去也还得自己找）。
+  if(field === "act"){
+    const card = num ? document.querySelector(`#actList .act[data-aid="${CSS.escape(num)}"]`) : null;
+    const box = card || target;
+    if(!box) return;
+    box.scrollIntoView({ behavior: "smooth", block: "center" });
+    flashEl(box);
+    if(card) toast(`已定位到 ${num}`);
+    return;
+  }
   if(!target) return;
   flashEl(target);
   // 表格类问题没有「句子」可选，滚到表就行
@@ -3478,7 +3518,17 @@ function collectDraft(){
 async function exportDocx(){
   try{
     const d = collectDraft();
-    if(!d.company_full_name) return toast("请填企业全称", true);
+    if((d.mode || "new") === "update" && !(d.actions || []).length){
+      toast("没有可执行的改动，无法生成修订版；先重新分析或确认材料主体一致", true);
+      return;
+    }
+    if(!d.company_full_name){
+      // 企业名是导出文件名与邮件标题的来源。没填就把光标放到那个框上，
+      // 光弹一句提示、框在页面另一头，用户还得自己找。
+      const box = $("#d-company");
+      if(box){ box.focus(); box.select(); box.scrollIntoView({ block: "center" }); }
+      return toast("请先在标题行填企业全称（导出文件名与邮件标题都用它）", true);
+    }
     const btns = [...document.querySelectorAll("[data-export]")];
     btns.forEach(b => b.disabled = true);
     setStep("export", { state: "run", pct: 60,
@@ -3984,7 +4034,7 @@ function renderBundle(){
     PKG.sel["docx:@new"] = PKG.sel["docx:@new"] !== false;
     b += pkgRow("docx:@new", "报告 Word（按当前内容现场排版）", "尚未导出，打包时自动生成");
   }else{
-    b += `<div class="pkrow none">还没有报告，先生成草稿</div>`;
+    b += `<div class="pkrow none">还没有报告，${S.mode === "update" ? "先生成修订版" : "先生成草稿"}</div>`;
   }
 
   const pdfOn = mats.every(x => PKG.sel["pdf:" + x.name]);

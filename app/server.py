@@ -184,6 +184,28 @@ def do_fetch(company: str, picks: list[dict], budget: int = 0, progress=None,
             "items": items}
 
 
+def _guess_company(base_title: str, materials: list[dict]) -> str:
+    """从底稿文件名或材料标题里认出主体全称。
+
+    底稿按交付约定命名为「公司全称 + 内评简评报告 + 日期」，直接去掉后两段即可；
+    认不出再看外部材料标题（「2026年度××公司信用评级报告」取中间那段）。
+    都不成立就返回空串，由调用方兜底，绝不凭空编一个名字。
+    """
+    t = re.sub(r"\.(docx|pdf)$", "", base_title or "", flags=re.I)
+    t = re.sub(r"内评简评报告.*$", "", t).strip(" _-")
+    if len(t) >= 4:
+        return t
+    for m in materials:
+        title = re.sub(r"\.(docx|pdf)$", "", m.get("title") or "", flags=re.I)
+        hit = re.search(r"\d{4}\s*年度?\s*(.{4,40}?)(?:信用评级报告|跟踪评级报告|评级报告)", title)
+        if hit:
+            return hit.group(1).strip()
+        hit = re.search(r"^(.{4,40}?)(?:信用评级报告|跟踪评级报告|募集说明书)", title)
+        if hit:
+            return hit.group(1).strip()
+    return ""
+
+
 def do_generate(company: str, model: str | None, progress=None,
                 titles: list[str] | None = None, mode: str = "new") -> dict:
     with LOCK:
@@ -208,8 +230,14 @@ def do_generate(company: str, model: str | None, progress=None,
         old = updater.load_docx(base["path"])
         result = updater.analyze(old, materials, model_id=model,
                                  progress=progress, facts=facts)
-        # 历史记录与导出都按这个名字找主体，缺了就会落成「未命名」
-        result["company_full_name"] = company
+        # 历史记录、导出文件名、邮件标题都按这个名字找主体。更新模式下用户
+        # 未必先去检索，企业名可能是空的——那就从底稿文件名或材料标题里认：
+        # 按交付约定，底稿名形如「××公司内评简评报告 25.8.14.docx」。
+        stem = re.sub(r"\.(docx|pdf)$", "", (base.get("title") or ""), flags=re.I).strip() \
+            or "未命名主体"
+        # 兜底链：用户填的 → 从文件名认出主体 → 至少用底稿文件名，别叫「未命名主体」：
+        # 后者落进文件名后，隔一天自己都认不出这是谁的稿子。
+        result["company_full_name"] = company or _guess_company(base.get("title") or "", materials) or stem
         result["base_title"] = base.get("title") or ""
         result["base_path"] = base["path"]
         rid = history.save(result, materials,
