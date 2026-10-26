@@ -1,0 +1,4204 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>内评简评报告</title>
+<style>
+:root{
+  --ink:#111418; --ink2:#4b5563; --muted:#9aa1ac; --line:#e6e8eb; --line2:#f1f2f4;
+  --bg:#fff; --hover:#f7f8f9; --red:#c0392b; --amber:#9a6700;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-size:13.5px;line-height:1.7;
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  -webkit-font-smoothing:antialiased}
+button{font:inherit;cursor:pointer}
+input,textarea,select{font:inherit;color:inherit}
+
+header{height:52px;display:flex;align-items:center;gap:14px;padding:0 20px;
+  border-bottom:1px solid var(--line);background:#fff}
+header .brand{font-size:14px;font-weight:600;letter-spacing:.2px}
+header .spacer{flex:1}
+header a{color:var(--muted);text-decoration:none;font-size:12.5px;padding:4px 2px}
+header a:hover{color:var(--ink)}
+header .sep{width:1px;height:14px;background:var(--line)}
+
+/* 用量统计：平时只是一行数字，点开才展开明细 */
+.usage{border:1px solid var(--line);background:#fff;border-radius:999px;padding:2px 10px;
+  font-size:11.5px;color:var(--ink2);font-variant-numeric:tabular-nums;white-space:nowrap}
+.usage:hover{border-color:#c9ced6;background:var(--hover)}
+.upanel{position:fixed;top:58px;right:18px;width:302px;background:#fff;border:1px solid var(--line);
+  border-radius:8px;box-shadow:0 12px 30px rgba(17,20,24,.10);padding:14px 16px 12px;z-index:50;
+  display:none;font-size:12px}
+.upanel.show{display:block}
+.upanel .uh{font-size:12.5px;font-weight:600}
+.upanel .usub{color:var(--muted);font-size:11px;margin:2px 0 10px}
+.upanel .uk{display:flex;justify-content:space-between;gap:10px;padding:3px 0}
+.upanel .uk .k{color:var(--muted)}
+.upanel .uk b{font-weight:500;font-variant-numeric:tabular-nums;text-align:right}
+.upanel .div{height:1px;background:var(--line2);margin:9px 0}
+.upanel .um{color:var(--muted);font-size:11px;margin:9px 0 3px;letter-spacing:.3px}
+.upanel .ur{display:flex;justify-content:space-between;gap:8px;font-size:11.5px;padding:2px 0;color:var(--ink2)}
+.upanel .ur span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.upanel .ur .n{color:var(--muted);font-variant-numeric:tabular-nums;flex:none}
+.upanel .acts4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:6px 0 2px}
+.upanel .acts4 .c{text-align:center;border:1px solid var(--line2);border-radius:6px;padding:5px 0 4px}
+.upanel .acts4 .c b{display:block;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.4}
+.upanel .acts4 .c span{color:var(--muted);font-size:10.5px}
+
+/* 历史记录：与用量面板同一层，列每次生成，可直接打开或下载成品 */
+.hpanel{position:fixed;top:58px;right:18px;width:432px;max-height:74vh;overflow-y:auto;
+  background:#fff;border:1px solid var(--line);border-radius:8px;
+  box-shadow:0 12px 30px rgba(17,20,24,.10);padding:14px 16px 10px;z-index:50;
+  display:none;font-size:12px}
+.hpanel.show{display:block}
+.hpanel .hh{font-size:12.5px;font-weight:600;display:flex;justify-content:space-between;gap:8px}
+.hpanel .hh .x{border:0;background:transparent;color:#c9ced5;font-size:13px;padding:0 2px;line-height:1}
+.hpanel .hh .x:hover{color:var(--red)}
+.hpanel .hsub{color:var(--muted);font-size:11px;margin:2px 0 6px}
+.hrow{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;
+  padding:8px 0;border-bottom:1px solid var(--line2)}
+.hrow:last-child{border-bottom:0}
+.hrow .co{font-size:12.5px;line-height:1.5;word-break:break-all}
+.hrow .mt{color:var(--muted);font-size:11px;margin-top:2px;font-variant-numeric:tabular-nums}
+.hrow .acts2{display:flex;gap:6px;flex:none}
+.hrow .btn-sm{padding:4px 9px;font-size:11.5px}
+.hempty{color:var(--muted);font-size:11.5px;padding:16px 0 12px;line-height:1.7}
+
+.wrap{display:grid;grid-template-columns:318px 1fr;height:calc(100vh - 52px)}
+aside{border-right:1px solid var(--line);overflow-y:auto;padding:16px 18px 96px}
+main{overflow-y:auto;padding:26px 40px 90px}
+/* 跳转落点：留一点上边距，别贴着顶栏 */
+.doc .blk,.doc .seg,#d-doc{scroll-margin-top:14px}
+
+.block{padding-bottom:14px;margin-bottom:14px;border-bottom:1px solid var(--line2)}
+.block:last-child{border-bottom:0}
+.row2{display:flex;gap:8px;margin-top:8px;align-items:center}
+.row2 select{flex:1;min-width:0}
+.row2 .btn{width:auto;flex:none;padding:8px 16px;white-space:nowrap}
+.block .title{font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.4px;margin-bottom:10px}
+
+.field{display:flex;gap:6px}
+.field input{flex:1;min-width:0;border:1px solid var(--line);border-radius:6px;padding:8px 10px;
+  background:#fff;outline:none;font-size:13px}
+.field input:focus{border-color:#c4c9d1}
+.field button{border:1px solid var(--ink);background:var(--ink);color:#fff;border-radius:6px;
+  padding:0 14px;font-size:13px;white-space:nowrap}
+.field button:hover{background:#000}
+.field button:disabled{background:#c9ccd1;border-color:#c9ccd1;cursor:not-allowed}
+
+/* 任务类型：新建 vs 更新。做成一体两段，不用下拉——两项就是全部选项，
+   常显比藏进下拉少一次点击，也让人一眼看到「这套流程两种活都能接」。 */
+.modesw{display:flex;gap:0;border:1px solid var(--line);border-radius:6px;overflow:hidden;
+  margin-bottom:7px;background:#fbfbfc}
+.modesw button{flex:1;border:0;background:transparent;color:var(--ink2);font-size:12px;
+  padding:6px 4px;cursor:pointer;transition:background .16s ease,color .16s ease;white-space:nowrap}
+.modesw button + button{border-left:1px solid var(--line)}
+.modesw button.on{background:var(--ink);color:#fff;font-weight:600}
+.modesw button:not(.on):hover{background:#f1f3f6;color:var(--ink)}
+
+/* 流程：四步手风琴
+   同一时刻只展开一个步骤，展开态本身就是「做到哪一步」的指示器。
+   折叠动画用 grid-template-rows:0fr→1fr，不写死高度——内容长短不一也不会跳；
+   折叠的步骤给一层浅底与软阴影，展开的反而去掉阴影，让「当前这一步」看着是平的、贴住的。 */
+.wiz{display:flex;flex-direction:column;gap:7px}
+/* 折叠态一律压平（浅底、无阴影），只有展开的那一张浮起来。
+   完成过的卡片用白底加一档边框，跟「还没开始」的浅底区分开——折叠成一排时也看得出进度。 */
+.wstep{border:1px solid var(--line2);border-radius:9px;background:#fbfbfc;overflow:hidden;
+  box-shadow:none;
+  transition:box-shadow .28s ease,border-color .28s ease,background .28s ease}
+.wstep.done{background:#fff;border-color:var(--line)}
+.wstep.open{background:#fff;border-color:#cfd4db;
+  box-shadow:0 1px 2px rgba(17,20,24,.04),0 12px 26px -20px rgba(17,20,24,.38)}
+.wstep.error{background:#fff;border-color:#f0d5d1}
+.whead{display:grid;grid-template-columns:19px 1fr auto 11px;gap:9px;padding:9px 11px 9px;
+  cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;
+  transition:background .2s ease}
+.whead:hover{background:#fcfcfd}
+.wstep.open .whead:hover{background:#fff}
+.wstep.locked .whead{cursor:default}
+.wstep.locked .whead:hover{background:transparent}
+.wdot{grid-column:1;grid-row:1;width:19px;height:19px;border-radius:50%;border:1px solid var(--line);
+  display:grid;place-items:center;font-size:10px;line-height:1;color:var(--muted);margin-top:1px;
+  transition:background .3s ease,color .3s ease,border-color .3s ease,transform .3s ease}
+.wstep.done .wdot{background:var(--ink);border-color:var(--ink);color:#fff;font-size:11px}
+.wstep.run .wdot{border-color:var(--ink);color:var(--ink);transform:scale(1.06)}
+.wstep.error .wdot{border-color:var(--red);color:var(--red)}
+.wstep.wait .wdot,.wstep.locked .wdot{border-color:#ebedf0;color:#cfd4db}
+.wstep.open .wdot{border-color:#cfd4db;color:var(--ink2);font-weight:500}
+.wstep.open.run .wdot{border-color:var(--ink);color:var(--ink)}
+.wlabel{grid-column:2;grid-row:1;font-size:13px;color:#b8bec7;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:color .28s ease}
+.wstep.done .wlabel{color:var(--ink2)}
+.wstep.locked .wlabel{color:#c8ccd3}
+.wstep.error .wlabel{color:var(--red)}
+/* 放在最后：展开态压过上面所有状态（否则「当前这一步」反而最浅） */
+.wstep.open .wlabel{color:var(--ink);font-weight:500}
+.wpct{grid-column:3;grid-row:1;font-size:11px;color:var(--muted);
+  font-variant-numeric:tabular-nums;margin-top:2px}
+/* 折角用两条边画，展开时转 90 度；比字符箭头锐利，也不会随字体变宽 */
+.wchev{grid-column:4;grid-row:1;width:8px;height:8px;margin-top:5px;
+  border-right:1.5px solid #c4c9d1;border-bottom:1.5px solid #c4c9d1;
+  transform:rotate(-45deg);transition:transform .3s cubic-bezier(.4,0,.2,1),border-color .3s}
+.wstep.open .wchev{transform:rotate(45deg);border-color:var(--ink2)}
+.wstep.locked .wchev{opacity:.3}
+.wmeta{grid-column:2 / -1;grid-row:2;font-size:11px;color:var(--muted);margin-top:2px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:color .28s}
+.wmeta:empty{display:none}
+.wstep.open .wmeta{color:#6f7681}
+.wbar{grid-column:2 / -1;grid-row:3;height:2px;background:var(--line2);border-radius:2px;
+  overflow:hidden;margin-top:6px;display:none}
+.wstep.run .wbar{display:block}
+.wbar i{display:block;height:100%;background:var(--ink);width:0;transition:width .45s ease}
+
+/* 折叠/展开：外层 0fr，展开 1fr；内层 overflow:hidden 负责裁切 */
+.wbody{display:grid;grid-template-rows:0fr;transition:grid-template-rows .32s cubic-bezier(.4,0,.2,1)}
+.wstep.open .wbody{grid-template-rows:1fr}
+.winner{overflow:hidden;min-height:0}
+.wpad{padding:0 11px 11px;opacity:0;transform:translateY(-3px);
+  transition:opacity .2s ease,transform .24s ease}
+.wstep.open .wpad{opacity:1;transform:none;transition-delay:.07s}
+.wpad .field{margin-top:0}
+.wpad .up{margin-top:0}
+.wfoot{display:flex;align-items:center;gap:8px;margin-top:9px;flex-wrap:nowrap}
+/* 两个子元素各就各位：说明可缩可省、按钮按内容宽。
+   少了 min-width:0 与 ellipsis，说明文字会被挤成一条竖排的窄柱（实测被压到 0 宽、撑高 153px）。 */
+.wfoot .grow{flex:1 1 auto;min-width:0}
+.wfoot .whint{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wfoot .btn{flex:0 0 auto;width:auto}
+.wfoot .ghost{flex:0 0 auto}
+.whint{font-size:11px;color:var(--muted);line-height:1.55}
+.ghost{border:0;background:transparent;color:var(--ink2);font-size:11.5px;padding:5px 2px;
+  white-space:nowrap;transition:color .2s}
+.ghost:hover:not(:disabled){color:var(--ink)}
+.ghost:disabled{color:#d3d7dd;cursor:default}
+/* 清单自己滚，别把下面的「读取」按钮挤出屏幕 */
+.uptxt{display:flex;flex-direction:column;line-height:1.35;min-width:0}
+.hide{display:none !important}
+#upBox button + button{margin-left:0}
+.uptxt .hint{font-size:11px;color:var(--muted)}
+#matList{max-height:min(40vh,320px);overflow-y:auto;overscroll-behavior:contain;
+  margin-right:-4px;padding-right:4px}
+
+/* 材料清单 */
+.mat{display:grid;grid-template-columns:14px 1fr;gap:8px;align-items:start;
+  padding:6px 0;border-bottom:1px solid var(--line2)}
+.mat:last-child{border-bottom:0}
+.mat input{margin:3px 0 0;width:13px;height:13px;accent-color:var(--ink);flex:none}
+.mat .t{min-width:0;font-size:12.5px;line-height:1.5}
+.mat .t .nm{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.mat .t .meta{color:var(--muted);font-size:11px;margin-top:2px}
+.mat .bar{display:block;height:2px;background:var(--line2);border-radius:2px;overflow:hidden;margin-top:5px}
+.mat .bar i{display:block;height:100%;background:var(--ink);transition:width .4s ease}
+.mat.done .meta{color:var(--ink2)}
+.mat.error .meta{color:var(--red)}
+.mat.wait{opacity:.5}
+.matwrap{margin-top:8px}
+.more{border:0;background:transparent;color:var(--muted);font-size:11.5px;padding:2px 0}
+.more:hover{color:var(--ink)}
+.grp{font-size:11.5px;color:var(--muted);margin:10px 0 2px}
+.grp:first-child{margin-top:0}
+
+/* 上传 */
+.up{display:flex;align-items:center;gap:8px;padding:9px 10px;margin-top:12px;
+  border:1px dashed #d8dce2;border-radius:6px;background:#fdfdfe;font-size:12.5px;color:var(--ink2)}
+.up.hot{border-color:var(--ink);background:#f7f8f9}
+.up .grow{flex:1;min-width:0}
+.up .hint{color:var(--muted);font-size:11px;display:block;margin-top:1px}
+.up button{border:1px solid var(--line);background:#fff;border-radius:5px;padding:4px 10px;font-size:12px}
+.up button:hover{border-color:#c4c9d1}
+.upfile{display:grid;grid-template-columns:14px 1fr 16px;gap:8px;align-items:start;
+  padding:6px 0;border-bottom:1px solid var(--line2);font-size:12.5px}
+.upfile .ico{color:var(--muted);font-size:11px;line-height:1.6;text-align:center}
+.upfile .t{min-width:0}
+.upfile .nm{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.upfile .meta{color:var(--muted);font-size:11px;margin-top:2px}
+.upfile .bar{display:block;height:2px;background:var(--line2);border-radius:2px;overflow:hidden;margin-top:5px}
+.upfile .bar i{display:block;height:100%;background:var(--ink);transition:width .3s ease}
+.upfile.done .meta{color:var(--ink2)}
+.upfile.error .meta{color:var(--red)}
+.upfile .x{border:0;background:transparent;color:#c9ced5;font-size:12px;padding:0;line-height:1.5}
+.upfile .x:hover{color:var(--red)}
+.btn{width:100%;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:6px;
+  padding:8px 12px;font-size:13px}
+.btn:hover{border-color:#c4c9d1;background:var(--hover)}
+.btn:disabled{color:#c2c7cf;border-color:var(--line2);background:#fff;cursor:not-allowed}
+.btn.primary{background:var(--ink);border-color:var(--ink);color:#fff}
+.btn.primary:hover{background:#000}
+.btn.primary:disabled{background:#c9ccd1;border-color:#c9ccd1;color:#fff}
+select{width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 8px;background:#fff;
+  font-size:12.5px;outline:none}
+
+/* 文档区：正文与附加内容分栏
+   正文始终是一列窄版心，左栏放候选观点、右栏放待核对——
+   附加的东西有了自己的位置，就不再和正文抢同一行：按钮不会把企业名挤掉，
+   正文也不会因为多一条提示而变窄。宽屏用三栏，窄屏退回一栏、依序落到正文下面。 */
+.docgrid{display:grid;grid-template-columns:minmax(0,1fr);gap:0}
+.doccol{min-width:0;width:100%;max-width:756px;margin:0 auto}
+.docbar{display:block;margin-bottom:16px}
+.docbar .acts{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.docbar .acts .end{margin-left:auto;display:flex;align-items:center;gap:8px}
+.btn-sm{border:1px solid var(--line);background:#fff;border-radius:6px;padding:6px 12px;font-size:12.5px}
+.btn-sm:hover{border-color:#c4c9d1;background:var(--hover)}
+.btn-sm.solid{background:var(--ink);border-color:var(--ink);color:#fff}
+.btn-sm.solid:hover{background:#000}
+.btn-sm:disabled{color:#c2c7cf;border-color:var(--line2);cursor:not-allowed;background:#fff}
+/* 图标只用描边、跟着字色走，深浅两档按钮都不用另配一套 */
+.btn-sm .ic{width:13px;height:13px;flex:none;display:block;fill:none;stroke:currentColor;
+  stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.btn-sm.ico{display:inline-flex;align-items:center;gap:5px}
+
+/* 标题两行：企业名独占一行，主体代码与字数挪到第二行小字 */
+.doc-head{display:block;margin:0}
+.in-company{display:block;width:100%;font-size:17px;padding:2px 4px;margin:0 -4px}
+.doc-sub{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;margin-top:3px;
+  font-family:-apple-system,"PingFang SC",sans-serif;font-size:11.5px;color:var(--muted);
+  font-variant-numeric:tabular-nums}
+.doc-sub .subj{display:inline-flex;align-items:baseline;gap:1px;color:var(--ink);
+  font-family:"Kaiti SC","KaiTi","STKaiti","Songti SC","SimSun",serif;font-size:14px;font-weight:700}
+.doc-sub .subj .in-code{width:72px;font-size:14px}
+.doc-sub .sep2{color:#d5d9de}
+
+/* 宽屏：正文居中，两侧留白拿来做侧栏。
+   中间那栏是 1fr + 整体限宽：屏幕窄于设计宽度时先收窄正文，侧栏保持宽度，
+   三栏加起来不会超过视口，也就不出横向滚动条。
+   侧栏跟着 main 一起粘住，勾到第 8 条时还能看见正文同一处。
+   （这条必须写在上面基础规则之后，否则被同权重的单栏规则盖掉。） */
+@media(min-width:1500px){
+  main{padding-left:28px;padding-right:28px}
+  .docgrid{grid-template-columns:190px minmax(0,1fr) 214px;gap:18px;
+    max-width:1196px;margin:0 auto;align-items:start}
+  .doccol{max-width:none}
+  .docgrid.nol{grid-template-columns:minmax(0,1fr) 214px;max-width:970px}
+  .docgrid.nor{grid-template-columns:190px minmax(0,1fr);max-width:946px}
+  .docgrid.nol.nor{grid-template-columns:minmax(0,1fr);max-width:756px}
+  .rail{position:sticky;top:6px;max-height:calc(100vh - 52px - 18px);overflow-y:auto;
+    overscroll-behavior:contain;padding:3px 2px 26px;scrollbar-width:thin}
+  .rail::-webkit-scrollbar{width:6px}
+  .rail::-webkit-scrollbar-thumb{background:#e3e6ea;border-radius:3px}
+  /* 右栏与正文首段对齐：让过工具条与企业名两行 */
+  .rail-r{padding-top:120px}
+}
+@media(min-width:1780px){
+  .docgrid{grid-template-columns:212px minmax(0,1fr) 238px;gap:24px;max-width:1278px}
+  .docgrid.nol{grid-template-columns:minmax(0,1fr) 238px;max-width:1042px}
+  .docgrid.nor{grid-template-columns:212px minmax(0,1fr);max-width:1016px}
+  .docgrid.nol.nor{grid-template-columns:minmax(0,1fr);max-width:780px}
+}
+
+/* 打包下载：按钮下挂一层勾选面板，白底、细线，不遮挡正文 */
+.pkgwrap{position:relative;display:inline-block}
+.pkgpanel{position:absolute;right:0;top:calc(100% + 8px);width:356px;background:#fff;
+  border:1px solid var(--line);border-radius:8px;box-shadow:0 14px 34px rgba(17,20,24,.12);
+  padding:13px 14px 11px;display:none;z-index:45;text-align:left;white-space:normal;cursor:default}
+.pkgpanel.show{display:block}
+.pkgpanel .pk-h{font-size:12.5px;font-weight:600;display:flex;justify-content:space-between;gap:8px}
+.pkgpanel .pk-h .x{border:0;background:transparent;color:#c9ced5;font-size:13px;padding:0 2px;line-height:1}
+.pkgpanel .pk-h .x:hover{color:var(--red)}
+.pkgpanel .pk-sub{color:var(--muted);font-size:11px;margin:2px 0 4px}
+.pkgpanel .pk-body{max-height:min(58vh,420px);overflow-y:auto;padding-right:4px;margin-right:-4px}
+.pkgpanel .pkgrp{font-size:11px;color:var(--muted);letter-spacing:.3px;margin:10px 0 2px;
+  display:flex;justify-content:space-between;gap:8px}
+.pkgpanel .pkgrp button{border:0;background:transparent;color:var(--muted);font-size:11px;padding:0}
+.pkgpanel .pkgrp button:hover{color:var(--ink)}
+.pkrow{display:grid;grid-template-columns:14px 1fr;gap:8px;align-items:start;
+  padding:5px 0;border-bottom:1px solid var(--line2);font-size:12px;cursor:pointer}
+.pkrow:last-child{border-bottom:0}
+.pkrow input{margin:3px 0 0;width:13px;height:13px;accent-color:var(--ink);flex:none}
+.pkrow .nm{display:block;line-height:1.5;word-break:break-all;color:var(--ink2)}
+.pkrow .meta{color:var(--muted);font-size:11px;display:block}
+.pkrow.none{color:var(--muted);font-size:11.5px;display:block;border:0;padding:2px 0 4px;cursor:default}
+.pk-foot{display:flex;align-items:center;gap:8px;margin-top:11px}
+.pk-foot .sum{flex:1;color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums}
+.pk-foot .btn-sm{flex:none}
+
+/* ── 发送邮件面板 ───────────────────────────────────────────── */
+.mlpanel{position:absolute;right:0;top:calc(100% + 8px);width:392px;background:#fff;
+  border:1px solid var(--line);border-radius:8px;box-shadow:0 14px 34px rgba(17,20,24,.12);
+  padding:13px 14px 12px;display:none;z-index:46;text-align:left;white-space:normal;cursor:default}
+.mlpanel.show{display:block}
+.mlpanel .ml-h{font-size:12.5px;font-weight:600;display:flex;justify-content:space-between;gap:8px}
+.mlpanel .ml-h .x{border:0;background:transparent;color:#c9ced5;font-size:13px;padding:0 2px;line-height:1}
+.mlpanel .ml-h .x:hover{color:var(--red)}
+.mlpanel .ml-sub{color:var(--muted);font-size:11px;margin:2px 0 8px}
+.mlf{display:grid;grid-template-columns:44px 1fr;gap:6px 8px;align-items:center;margin-bottom:7px}
+.mlf label{font-size:11.5px;color:var(--muted);text-align:right}
+.mlf input,.mlf textarea{width:100%;font-family:inherit;font-size:12px;color:var(--ink);
+  border:1px solid var(--line);border-radius:4px;padding:4px 7px;outline:none;background:#fff}
+.mlf input:focus,.mlf textarea:focus{border-color:#cfd4dc}
+.mlf textarea{resize:vertical;min-height:52px;line-height:1.6}
+.mlf .full{grid-column:2}
+.mlatt{font-size:12px;border-top:1px solid var(--line2);padding-top:8px;margin-top:2px}
+.mlatt .r{display:flex;align-items:flex-start;gap:7px;padding:3px 0;cursor:pointer}
+.mlatt input{width:13px;height:13px;margin:2px 0 0;accent-color:var(--ink);flex:none}
+.mlatt .n{line-height:1.5;color:var(--ink2);word-break:break-all}
+.mlatt .n i{display:block;color:var(--muted);font-size:10.5px;font-style:normal}
+.ml-foot{display:flex;align-items:center;gap:8px;margin-top:10px}
+.ml-foot .st{flex:1;font-size:10.5px;color:var(--muted);line-height:1.4}
+.ml-foot .st.err{color:var(--red)}
+.ml-cfg{border-top:1px dashed var(--line);margin-top:9px;padding-top:9px}
+.ml-cfg .t{font-size:11px;color:var(--muted);margin-bottom:6px}
+.ml-cfg .hint{font-size:10.5px;color:var(--muted);line-height:1.6;margin-top:6px}
+
+.doc{font-family:"Kaiti SC","KaiTi","STKaiti","Songti SC","SimSun",serif;
+  font-size:15.5px;line-height:1.82;color:#1b1f24;
+  /* 两端对齐：中文正文的右边缘要齐，否则满行参差、读起来乱。
+     不能加在 body 上——标题、按钮、表格数字都要各自的对齐方式。 */
+  text-align:justify;text-justify:inter-ideograph}
+.doc-head input{border:0;background:transparent;outline:none;font-family:inherit;font-weight:700}
+.in-code{font-size:16.5px;padding:1px 2px;border:0;border-bottom:1px solid var(--line)!important;
+  background:transparent;outline:none;font-family:inherit;
+  text-align:center;font-weight:400!important}
+/* ── 版式：块间一个空行，块内不留 ───────────────────────────────
+   --pgap 就是「一个空行」的高度（等于正文字号）。所有块间距都取这一个值，
+   所以「各板块空行多少」不再是各处手调的 8/12/22/26，只有一处。
+   工具条上的「空行」开关只是把它切成 0，页面与导出 Word 一起吃这个开关。 */
+.doc{--pgap:1.05em}
+.doc.tight{--pgap:0px}
+.doc .blk+.blk{margin-top:var(--pgap)}
+.doc .blk>*+*{margin-top:0}
+.doc-h{font-weight:700;font-size:15.5px;margin:0}
+.doc-h+.items,.doc-h+textarea{margin-top:2px}
+/* 楷体本身没有第二档字重，font-weight:700 在浏览器里几乎看不出粗细，
+   和导出 Word 的加粗对不上。用四向文字阴影补一点笔画厚度，只加在正文楷体区。 */
+.doc .doc-h,.doc .ta.lead{
+  -webkit-text-stroke:.3px currentColor;
+  text-shadow:.42px 0 0 currentColor,-.42px 0 0 currentColor,0 .42px 0 currentColor,0 -.42px 0 currentColor}
+
+.ta{display:block;width:100%;border:1px solid transparent;border-radius:4px;background:transparent;
+  text-align:justify;
+  padding:1px 4px;margin:0 -4px;line-height:inherit;font-family:inherit;font-size:inherit;
+  resize:none;overflow:hidden;outline:none;color:inherit;text-indent:0}
+.ta:hover{border-color:var(--line2);background:#fcfcfd}
+.ta:focus{border-color:#cfd4dc;background:#fff}
+.ta.lead{font-weight:700}
+/* ── 正面 / 关注 的条目 ──────────────────────────────────────────
+   一行 = 序号（兼作拖动把手）＋ 正文 ＋ 右上角删除圈。
+   删除圈平时不显形，鼠标移到这一行才浮出来；右侧留一条空槽给它，
+   所以出现时正文不会重排（叠在字上会挡住最后一两个字，重排又会让整段跳）。
+   触屏没有 hover，手机上一律显示。 */
+.items{display:flex;flex-direction:column;gap:1px}
+.item{position:relative;display:flex;gap:2px;align-items:flex-start;padding-right:24px;
+  border-radius:5px}
+.item>.num{white-space:nowrap;padding:1px 2px 1px 0;cursor:grab;touch-action:none;
+  border-radius:3px;transition:background .14s ease,color .14s ease}
+.item>.num:hover{background:#f1f3f6;color:var(--ink)}
+.item>.num:active{cursor:grabbing}
+.item>.ta{flex:1;min-width:0}
+.item .del{position:absolute;right:0;top:2px;width:18px;height:18px;padding:0;border-radius:50%;
+  display:grid;place-items:center;border:1px solid #e4e7ec;background:#fff;color:#a9b0ba;
+  opacity:0;transform:scale(.86);pointer-events:none;z-index:2;
+  box-shadow:0 1px 2px rgba(17,20,24,.05);
+  transition:opacity .14s ease,transform .14s ease,background .14s ease,border-color .14s ease,
+    color .14s ease}
+.item:hover .del,.item:focus-within .del{opacity:1;transform:none;pointer-events:auto}
+.item .del:hover{background:var(--red);border-color:var(--red);color:#fff}
+.item .del:active{transform:scale(.92)}
+.item .del svg{width:9px;height:9px;fill:none;stroke:currentColor;stroke-width:2.1;
+  stroke-linecap:round}
+.item.gone{opacity:0;transform:translateX(4px);transition:opacity .13s ease,transform .13s ease}
+/* 落位后回一下底色，确认它停在这儿了 */
+.item.settle{animation:settleRow .85s ease-out}
+@keyframes settleRow{0%{background:#eff3f8}70%{background:#f7f9fc}100%{background:transparent}}
+/* 拖动：原位留虚线占位，跟着走的是浮起的影子 */
+.item.drag-src{display:none}
+.item.ph{background:#f5f7fa;border:1px dashed #ccd3dc;border-radius:5px}
+body.dragging{cursor:grabbing;user-select:none;-webkit-user-select:none}
+body.dragging .item-ghost{display:flex}
+.item-ghost{position:fixed;left:0;top:0;z-index:120;display:none;align-items:flex-start;gap:2px;
+  padding-right:24px;overflow:hidden;pointer-events:none;background:#fff;border-radius:6px;
+  will-change:transform;
+  box-shadow:0 12px 30px rgba(17,20,24,.16),0 0 0 1px rgba(17,20,24,.06)}
+.item-ghost>.num{white-space:nowrap;padding:1px 2px 1px 0;color:var(--ink2)}
+.item-ghost>.ta{flex:1;min-width:0;border-color:transparent;background:transparent}
+.item-ghost .del{display:none}
+.pool{margin:6px 0 0}
+.pool-t{font-size:11px;color:var(--muted);margin-bottom:4px}
+.chip{display:block;width:100%;text-align:left;font-family:inherit;font-size:11.5px;
+  color:var(--ink2);background:#fbfcfd;border:1px solid var(--line2);border-radius:4px;
+  padding:3px 8px;margin:3px 0;cursor:pointer;line-height:1.55;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.chip:hover{background:#f4f7fc;border-color:#d6ddea;color:var(--ink)}
+.tool{border:0;background:transparent;color:#c2c7cf;font-size:12px;padding:0 3px;line-height:1.9;
+  opacity:0;transition:opacity .15s}
+.item:hover .tool,.seg:hover .tool,.topic:hover .tool{opacity:1}
+.tool:hover{color:var(--red)}
+.add{border:0;background:transparent;color:var(--muted);font-size:12px;padding:2px 4px}
+.add:hover{color:var(--ink)}
+/* 拖动是把序号当把手，不说一句没人会去试；只有一条时没必要提 */
+.addhint{font-family:-apple-system,"PingFang SC",sans-serif;font-size:10.5px;
+  color:#c3c8d0;margin-left:6px;letter-spacing:.01em}
+.addhint.off{display:none}
+.unit{text-align:right;color:var(--ink2);font-size:13.5px;margin:6px 0 2px}
+.doc-table{width:100%;border-collapse:collapse;font-size:13.5px;
+  border-top:1.5px solid #111;border-bottom:1.5px solid #111;margin-bottom:4px}
+.doc-table th,.doc-table td{padding:3px 8px;border-right:.5px solid #c9ccd1;
+  border-bottom:.5px solid #c9ccd1;font-weight:400;text-align:right;vertical-align:middle}
+.doc-table th{font-weight:700;text-align:center}
+.doc-table th:first-child,.doc-table td:first-child{text-align:left}
+.doc-table tr>*:last-child{border-right:0}
+.doc-table tbody tr:last-child>*{border-bottom:0}
+.seg{position:relative}
+.seg+.seg{margin-top:var(--pgap)}
+.seg-line{line-height:1.85;padding:1px 16px 1px 0;border-radius:4px;outline:none;
+  white-space:pre-wrap;word-break:break-word;text-align:justify;text-justify:inter-ideograph}
+.seg-line:hover{background:#fcfcfd}
+.seg-line:focus{background:#fff;box-shadow:0 0 0 1px #e6e9ee inset}
+.seg .tool{position:absolute;right:0;top:4px}
+.topic+.topic{margin-top:var(--pgap)}
+.tp-add{position:relative;display:inline-block}
+.tpmenu{position:absolute;left:0;top:calc(100% + 4px);min-width:176px;background:#fff;
+  border:1px solid var(--line);border-radius:7px;box-shadow:0 10px 26px rgba(17,20,24,.12);
+  padding:4px;display:none;z-index:30}
+.tpmenu.show{display:block}
+.tpmenu button{display:block;width:100%;text-align:left;border:0;background:transparent;
+  font-family:inherit;font-size:12px;color:var(--ink2);padding:6px 9px;border-radius:5px;cursor:pointer}
+.tpmenu button:hover{background:var(--hover);color:var(--ink)}
+/* ── 侧栏：候选观点（左）／待核对（右） ───────────────────────────
+   两栏只在宽屏出现，位置在正文版心之外的留白里，与正文各自独立滚动。
+   窄屏时退回正文内部：候选观点回到各自的板块下面，待核对落到正文之后。 */
+.rail{min-width:0;font-family:-apple-system,"PingFang SC",sans-serif;font-size:12px}
+.rail-h{display:flex;align-items:baseline;gap:6px;font-size:11px;color:var(--muted);
+  letter-spacing:.06em;margin:0 0 8px}
+.rail-h::after{content:"";flex:1;height:1px;background:var(--line2);transform:translateY(-4px)}
+.rail-l .pool+.pool{margin-top:14px}
+.rail-l .pool-t{font-size:10.5px;letter-spacing:.04em;color:var(--muted);margin-bottom:5px}
+.rail-l .chip{white-space:normal;line-height:1.55;padding:5px 8px;font-size:11.5px}
+
+/* ── 修订清单（更新模式）─────────────────────────────────────────
+   更新既有报告时，正文区不是「一份可编辑的全文」，而是「这次要改哪些地方」。
+   每条把改动拆成三段摆开：原文、改后、凭什么改——审阅时看的就是这三样。
+   与新建模式共用外层的 .docgrid 三栏，只是中间那栏换了内容。 */
+.acts-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 12px}
+.acts-tabs{display:flex;gap:2px;background:var(--line2);border-radius:6px;padding:2px}
+.acts-tabs button{border:0;background:transparent;color:var(--ink2);font-size:11.5px;
+  padding:4px 9px;border-radius:4px;white-space:nowrap}
+.acts-tabs button.on{background:#fff;color:var(--ink);font-weight:600;
+  box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.acts-sum{font-size:11.5px;color:var(--muted);margin-left:auto;white-space:nowrap}
+.acts-grp{margin:16px 0 6px;font-size:11px;font-weight:600;color:var(--muted);
+  letter-spacing:.06em;display:flex;align-items:center;gap:7px}
+.acts-grp::after{content:"";flex:1;height:1px;background:var(--line2)}
+.act{border:1px solid var(--line);border-radius:8px;background:#fff;padding:10px 11px;
+  margin-bottom:8px;transition:border-color .16s ease,opacity .16s ease}
+.act:hover{border-color:#d8dce2}
+.act.off{opacity:.5;background:#fbfbfc}
+.act.review{border-left:3px solid var(--amber)}
+.act.failed{border-left:3px solid var(--red)}
+.act-h{display:flex;align-items:baseline;gap:7px;flex-wrap:wrap}
+.act-ck{width:14px;height:14px;flex:none;margin:2px 0 0;accent-color:var(--ink);cursor:pointer}
+.act-id{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;flex:none}
+.act-k{font-size:10px;font-weight:600;letter-spacing:.04em;border-radius:3px;padding:0 5px;
+  line-height:16px;flex:none;border:1px solid transparent}
+.act-k.rp{background:#eef3fd;color:#2f5fd0;border-color:#d6e0f7}
+.act-k.in{background:#eef8ef;color:#2e7d32;border-color:#cfe7d1}
+.act-k.dl{background:#fdf0ee;color:#b4402f;border-color:#f6d8d2}
+.act-k.rv{background:#fdf6e7;color:var(--amber);border-color:#f0e2bd}
+.act-loc{font-size:11.5px;color:var(--ink2);min-width:0;overflow-wrap:break-word}
+.act-body{margin-top:7px;margin-left:21px}
+.act-o,.act-n{font-size:12.5px;line-height:1.7;border-radius:5px;padding:5px 8px;
+  overflow-wrap:break-word;white-space:pre-wrap}
+.act-o{background:#fafafa;border:1px solid var(--line2);color:#8a8f98}
+.act-o b,.act-n b{display:block;font-size:10px;font-weight:600;letter-spacing:.05em;
+  margin-bottom:1px}
+.act-o b{color:var(--muted)}
+.act-n{margin-top:5px;background:#f4faf5;border:1px solid #d8ecd9;color:var(--ink)}
+.act-n b{color:#4f8a55}
+.act-n textarea{width:100%;border:0;background:transparent;font:inherit;color:inherit;
+  resize:none;outline:none;padding:0;line-height:1.7}
+.act-meta{margin-top:6px;font-size:11px;color:var(--muted);line-height:1.65}
+.act-note{margin-top:5px;font-size:11px;color:var(--amber);background:#fffbf0;
+  border:1px solid #f0e0b8;border-radius:4px;padding:3px 7px;line-height:1.6}
+.act.failed .act-note{color:#a3352a;background:#fdf4f2;border-color:#f2d5cf}
+.act-tools{display:flex;gap:10px;margin-top:7px}
+.act-tools button{border:0;background:none;color:#9aa1ac;font-size:11px;padding:0}
+.act-tools button:hover{color:var(--ink2)}
+.act-empty{padding:40px 0;text-align:center;color:var(--muted);font-size:12.5px}
+
+/* 待核对：按「一类问题」分组，一组一卡。
+   一个数目类问题常有十来个待核数，逐条打勾等于点十几次——所以组头带一个全选框，
+   勾一次把整组销账；单条要单独确认时，再点行首那个框。
+   行本身点一下会跳到正文里那句话并把它选中，勾选框自己吃掉点击，两者不冲突。 */
+.ck-h{display:flex;align-items:baseline;gap:6px;margin:0 0 6px}
+.ck-h b{font-size:11px;color:var(--muted);letter-spacing:.06em;font-weight:600}
+.ck-h .n{font-size:11px;color:var(--ink2);margin-left:auto;font-variant-numeric:tabular-nums}
+.ck-h button{border:0;background:none;font-size:11px;padding:0 0 0 6px;cursor:pointer;color:#c6cbd2}
+.ck-h button:hover{color:var(--ink2)}
+.ck-h button.ck-all{color:#2f5fd0}
+.ck-h button.ck-all:hover{color:#1d47a8}
+/* 折起：手机上十几条核对项会占掉半屏，默认折成一行，点开展开 */
+.ck-fold{border:0;background:none;color:#b9bfc8;font-size:9px;padding:0 1px;line-height:1;
+  cursor:pointer;transform:translateY(-1px)}
+.ck-fold:hover{color:var(--ink2)}
+.rail-r.collapsed .ck-list,.rail-r.collapsed .ck-bar,.rail-r.collapsed .ck-auto{display:none}
+.rail-r.collapsed .ck-h{margin-bottom:0}
+.ck-bar{height:2px;background:var(--line2);border-radius:2px;margin:0 0 9px;overflow:hidden}
+.ck-bar i{display:block;height:100%;width:0;background:var(--ink);transition:width .25s ease}
+
+/* 一组一卡 */
+.ckg{border:1px solid var(--line);border-radius:7px;background:#fff;margin-bottom:7px;
+  transition:border-color .16s ease,background .16s ease}
+.ckg:hover{border-color:#d3d8de}
+.ckg-h{display:flex;align-items:flex-start;gap:7px;padding:8px 9px}
+.ckg-h input{width:14px;height:14px;flex:none;margin:2px 0 0;accent-color:var(--ink);cursor:pointer}
+.ckg-h .t{flex:1;min-width:0;font-size:12px;font-weight:600;color:var(--ink);line-height:1.55;
+  cursor:pointer;overflow-wrap:break-word}
+.ckg-h .c{flex:none;font-size:10.5px;color:var(--muted);font-variant-numeric:tabular-nums;
+  padding-top:2px}
+.ckg-h .ckg-all{flex:none;border:0;background:none;color:#2f5fd0;font-size:10.5px;padding:1px 0 0;
+  cursor:pointer}
+.ckg-h .ckg-all:hover{text-decoration:underline}
+.ckg-b{border-top:1px dashed var(--line2);padding:4px 9px 7px}
+.ckg.done{background:#fafbfc;border-color:var(--line2)}
+.ckg.done .ckg-h .t{color:#9aa1ac}
+
+/* 组内一行 = 一个待核对象 */
+.ckr{display:flex;align-items:flex-start;gap:6px;padding:3px 0;cursor:pointer;border-radius:4px}
+.ckr:hover{background:#f7f9fc}
+.ckr input{width:13px;height:13px;flex:none;margin:3px 0 0;accent-color:var(--ink);cursor:pointer}
+.ckr .m{flex:1;min-width:0;line-height:1.55}
+.ckr .k{font-size:11.5px;color:var(--ink);font-variant-numeric:tabular-nums;
+  overflow-wrap:break-word}
+.ckr .p{font-size:10.5px;color:#b0b6bf;margin-left:5px;white-space:nowrap}
+.ckr .s{display:block;font-size:10.5px;color:var(--muted);line-height:1.5;margin-top:1px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ckr .f{display:block;font-size:10.5px;color:#7a828c;line-height:1.5;margin-top:1px;
+  font-variant-numeric:tabular-nums}
+.ckr.done .k,.ckr.done .s{color:#b6bcc4;text-decoration:line-through}
+.ckr.done .f{color:#cfd4da}
+.ckr .go{flex:none;color:#d3d8de;font-size:10px;padding-top:2px}
+.ckr:hover .go{color:var(--ink2)}
+
+/* 机器自己核对过的：默认收起，点开看算式——不然用户会以为数字凭空少了 */
+.ck-auto{margin-top:8px;border-top:1px solid var(--line2);padding-top:7px}
+.ck-auto summary{cursor:pointer;font-size:10.5px;color:#5b7a2e;list-style:none;outline:none}
+.ck-auto summary::-webkit-details-marker{display:none}
+.ck-auto summary::before{content:"▸ ";color:var(--muted)}
+.ck-auto[open] summary::before{content:"▾ "}
+.ck-auto .lst{margin:5px 0 0;font-size:10.5px;color:var(--ink2);line-height:1.6;
+  max-height:180px;overflow-y:auto}
+.ck-auto .lst div{padding:2px 0;border-bottom:1px solid #f4f6f8;overflow-wrap:break-word}
+.ck-auto .lst div:last-child{border-bottom:0}
+.ck-auto .lst b{font-weight:500;color:var(--ink)}
+/* 勾完的整块换个颜色，剩下的自然浮上来 */
+.rail-r.all-done .ck-h b{color:#2e7d32}
+/* 跳到正文时的落点提示：底色与左侧竖条闪一下，两秒后自己退掉 */
+.flash{animation:ckflash 1.9s ease-out;border-radius:4px}
+@keyframes ckflash{
+  0%,45%{background:#fffaf0;box-shadow:inset 3px 0 0 #d9a441}
+  100%{background:transparent;box-shadow:inset 0 0 0 rgba(0,0,0,0)}
+}
+.empty{color:#c2c7cf;font-size:13px;text-align:center;padding:120px 0;
+  font-family:-apple-system,"PingFang SC",sans-serif}
+
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(8px);
+  background:#111418;color:#fff;font-size:12.5px;padding:8px 16px;border-radius:6px;
+  opacity:0;pointer-events:none;transition:.2s;max-width:80vw;
+  display:flex;align-items:center;gap:12px}
+/* 删了能撤回：删的是一条完整观点，没有撤销就太脆了 */
+#toast .undo{flex:none;border:0;background:transparent;color:#8fc7ff;font:inherit;font-size:12.5px;
+  padding:0;text-decoration:underline;text-underline-offset:2px}
+#toast .undo:hover{color:#cfe4ff}
+
+/* ── 口令闸门：没进来之前，整页糊在毛玻璃后面 ───────────────────── */
+#gate{position:fixed;inset:0;z-index:80;display:none;align-items:center;justify-content:center;
+  background:rgba(255,255,255,.5);
+  -webkit-backdrop-filter:blur(16px) saturate(.8);backdrop-filter:blur(16px) saturate(.8)}
+#gate.show{display:flex}
+
+/* ── 设置（模型 API / 邮件 SMTP / 财汇 / 口令，统一一处） ─────────── */
+#setMask{position:fixed;inset:0;z-index:70;display:none;background:rgba(17,20,24,.28);
+  -webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)}
+#setMask.show{display:flex;align-items:center;justify-content:center}
+.setbox{width:560px;max-height:82vh;overflow:auto;background:#fff;border-radius:10px;
+  box-shadow:0 20px 60px rgba(17,20,24,.20);padding:0;text-align:left}
+.setbox .sh{display:flex;align-items:center;gap:8px;padding:16px 20px 12px;
+  border-bottom:1px solid var(--line);position:sticky;top:0;background:#fff;z-index:2}
+.setbox .sh b{font-size:14px}
+.setbox .sh .x{margin-left:auto;border:0;background:transparent;color:#b9bfc8;font-size:16px;
+  cursor:pointer;line-height:1;padding:2px 4px}
+.setbox .sh .x:hover{color:var(--red)}
+.sets{padding:6px 20px 20px}
+.setsec{border-bottom:1px solid var(--line2);padding:14px 0}
+.setsec:last-child{border-bottom:0}
+.setsec .st{font-size:12.5px;font-weight:600;margin-bottom:2px;display:flex;align-items:center;gap:6px}
+.setsec .sd{font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:8px}
+.setsec .badge{font-size:10px;font-weight:400;padding:1px 6px;border-radius:9px;
+  border:1px solid var(--line);color:var(--muted);background:#fafbfc}
+.setsec .badge.ok{color:#2e7d32;border-color:#c8e6c9;background:#f1f8f1}
+.setsec .badge.warn{color:#9a6700;border-color:#f0e0b8;background:#fffbf0}
+.setgrid{display:grid;grid-template-columns:66px 1fr;gap:7px 10px;align-items:center}
+.setgrid label{font-size:11.5px;color:var(--muted);text-align:right}
+.setgrid input,.setgrid select{width:100%;font-family:inherit;font-size:12.5px;color:var(--ink);
+  border:1px solid var(--line);border-radius:5px;padding:5px 8px;outline:none;background:#fff}
+.setgrid input:focus,.setgrid select:focus{border-color:#cfd4dc}
+.setgrid .wide{grid-column:1 / -1}
+.setact{display:flex;align-items:center;gap:8px;margin-top:9px}
+.setact .msg{flex:1;font-size:11px;color:var(--muted)}
+.setact .msg.err{color:var(--red)}
+.setact .msg.ok{color:#2e7d32}
+
+/* ── 版本历史（每次改动一份可运行的快照） ───────────────────────── */
+#verMask{position:fixed;inset:0;z-index:71;display:none;background:rgba(17,20,24,.28);
+  -webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)}
+#verMask.show{display:flex;align-items:center;justify-content:center}
+.verbox{width:640px;max-height:82vh;overflow:auto;background:#fff;border-radius:10px;
+  box-shadow:0 20px 60px rgba(17,20,24,.20);text-align:left}
+.verbox .vh{display:flex;align-items:center;gap:8px;padding:15px 20px 12px;
+  border-bottom:1px solid var(--line);position:sticky;top:0;background:#fff;z-index:2}
+.verbox .vh b{font-size:14px}
+.verbox .vh .n{font-size:11.5px;color:var(--muted)}
+.verbox .vh .x{margin-left:auto;border:0;background:transparent;color:#b9bfc8;
+  font-size:16px;cursor:pointer;line-height:1;padding:2px 4px}
+.verbox .vh .x:hover{color:var(--red)}
+.vlist{position:relative;padding:4px 20px 16px}
+/* 两层结构：大版本是分组标题（带主要更新与主要修复），小版本挂在它下面。
+   时间线竖线只在组内画，组与组之间留白断开，视觉上「五代」比「二十四条」好认。 */
+.vm{margin:14px 0 2px}
+.vm:first-child{margin-top:4px}
+.vm-h{display:flex;align-items:baseline;gap:8px;padding:7px 10px;border-radius:6px;
+  background:#f6f7f9;border:1px solid var(--line)}
+.vm-h .v{font-size:13px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
+.vm-h .t{font-size:12.5px;font-weight:600;color:var(--ink)}
+.vm-h .p{margin-left:auto;font-size:10.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.vm-s{font-size:11.5px;color:var(--ink2);line-height:1.6;margin:5px 2px 0}
+.vm-k{display:flex;gap:7px;margin:5px 2px 0;font-size:11.5px;line-height:1.62}
+.vm-k b{flex:none;font-weight:600;color:var(--muted);letter-spacing:.04em}
+.vm-k.c b{color:#2f6b3a}
+.vm-k.f b{color:#9a6700}
+.vm-k span{flex:1;min-width:0;color:var(--ink2)}
+.vm-k ul{margin:0;padding-left:14px}
+.vm-k li{margin:1px 0}
+.vlist .vl-grp{position:relative;padding-left:22px;margin-top:6px}
+.vlist .vl-grp::before{content:"";position:absolute;left:4px;top:2px;bottom:8px;width:1px;
+  background:var(--line)}
+.vi{position:relative;padding:9px 0 9px 0;border-bottom:1px solid var(--line2)}
+.vi:last-child{border-bottom:0}
+.vi::before{content:"";position:absolute;left:-21px;top:14px;width:7px;height:7px;border-radius:50%;
+  background:#fff;border:1.5px solid #c3c9d2}
+.vi.cur::before{background:#16191d;border-color:#16191d}
+.vi .meta{display:flex;align-items:baseline;gap:8px;font-size:11px;color:var(--muted)}
+.vi .meta .lab{font-weight:600;color:var(--ink2);letter-spacing:.03em;font-variant-numeric:tabular-nums}
+.vi .meta .kind{font-size:10px;padding:0 5px;border-radius:8px;border:1px solid var(--line);
+  color:var(--muted);line-height:15px}
+.vi .meta .kind.mj{color:#1f4e79;border-color:#cfe0ef;background:#f4f9fd}
+.vi .meta .now{color:#2e7d32}
+.vi h3{margin:2px 0 3px;font-size:13px;font-weight:600;line-height:1.55}
+.vi .sum{font-size:11.5px;color:var(--ink2);margin:0 0 4px;line-height:1.65}
+.vi details summary{cursor:pointer;font-size:11px;color:#2f5fd0;list-style:none;outline:none;
+  display:inline-block}
+.vi details summary::-webkit-details-marker{display:none}
+.vi details summary::before{content:"▸ ";color:var(--muted)}
+.vi details[open] summary::before{content:"▾ "}
+.vi ul{margin:5px 0 0;padding-left:16px}
+.vi li{font-size:11.5px;color:var(--ink2);margin:3px 0;line-height:1.7}
+.vi .note{font-size:11px;color:#8a6d1f;background:#fffbf0;border:1px solid #f0e0b8;
+  border-radius:4px;padding:4px 8px;margin-top:6px;line-height:1.6}
+.vi .go{display:inline-block;margin-top:6px;font-size:11px;color:#2f5fd0;text-decoration:none;
+  border:1px solid #d6ddea;border-radius:4px;padding:2px 9px;background:#fbfcfe}
+.vi .go:hover{background:#f1f5fd;border-color:#bccbe6}
+body.locked{overflow:hidden}
+body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
+.gcard{width:330px;padding:26px 24px 20px;background:#fff;border:1px solid var(--line);
+  border-radius:10px;box-shadow:0 12px 40px rgba(17,20,24,.10),0 2px 8px rgba(17,20,24,.04);
+  text-align:center}
+.gcard .gt{font-size:15px;font-weight:700;letter-spacing:.5px}
+.gcard .gs{font-size:11.5px;color:var(--muted);margin:6px 0 16px;line-height:1.6}
+.gcard input{width:100%;height:34px;padding:0 10px;font-size:13.5px;font-family:inherit;
+  border:1px solid var(--line);border-radius:5px;outline:none;text-align:center;
+  letter-spacing:2px;background:#fff}
+.gcard input:focus{border-color:#cfd4dc;box-shadow:0 0 0 3px rgba(17,20,24,.04)}
+.gcard button{width:100%;height:34px;margin-top:10px;border:0;border-radius:5px;
+  background:#111418;color:#fff;font-size:13px;font-family:inherit;cursor:pointer}
+.gcard button:hover{background:#000}
+.gcard button:disabled{background:#c2c7cf;cursor:not-allowed}
+.gcard .gerr{min-height:16px;margin-top:8px;font-size:11.5px;color:var(--red)}
+.gcard .ghint{margin-top:12px;font-size:11px;color:var(--muted);line-height:1.6}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
+#toast.err{background:var(--red)}
+#conn{display:none;padding:8px 20px;font-size:12.5px;color:var(--amber);background:#fffbf0;
+  border-bottom:1px solid #f3e6c8}
+#conn.show{display:block}
+#conn code{background:#f6f0e2;padding:1px 5px;border-radius:3px;font-size:11.5px}
+@media(max-width:980px){
+  .wrap{grid-template-columns:1fr;height:auto}
+  aside{border-right:0;border-bottom:1px solid var(--line)}
+  main{padding:20px 18px 80px}
+}
+
+#fabNav{display:none;position:fixed;right:12px;bottom:calc(16px + env(safe-area-inset-bottom,0px));
+  z-index:55;flex-direction:column;gap:8px}
+#fabNav.show{display:flex}
+#fabNav button{border:1px solid var(--line);background:#fff;color:var(--ink2);
+  border-radius:999px;padding:8px 14px;font-size:12px;
+  box-shadow:0 6px 18px rgba(17,20,24,.12)}
+
+/* ── 手机（≤640px）────────────────────────────────────────────────
+   四条原则：
+   1. 不再让两栏各自滚动——手机上只有一条滚动轴，否则手指一动就滚错层；
+   2. 悬浮面板一律改成底部抽屉（bottom sheet），因为顶栏会折成两行、锚点算不准；
+   3. 输入框全部 16px，低于这个值 iOS 会在聚焦时自动放大页面，且退不回去；
+   4. 触屏没有 hover，删除按钮不能靠悬停才显形。 */
+@media(max-width:640px){
+  html{-webkit-text-size-adjust:100%}
+
+  /* 顶栏：一条横向滑动的动作带。
+     折行会吃掉 88px（390 宽）到 126px（320 宽），手机上这相当于少看半屏正文；
+     给它一条横向滚动轴，高度就固定在 52px。 */
+  header{height:52px;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;gap:8px;
+    padding:0 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  header::-webkit-scrollbar{display:none}
+  header .brand{font-size:14.5px;flex:none}
+  header .spacer{display:none}
+  header .sep{display:none}
+  header>*{flex:none}
+  header::after{content:"";flex:none;width:2px}
+  header a{font-size:12px;padding:6px 4px;min-height:32px;display:inline-flex;align-items:center}
+  .usage{padding:5px 11px;font-size:12px;min-height:32px}
+
+  /* 单栏单滚动 */
+  .wrap{display:block;height:auto}
+  aside{overflow:visible;padding:14px 14px 8px;border-bottom:1px solid var(--line)}
+  main{overflow:visible;padding:14px 14px calc(80px + env(safe-area-inset-bottom,0px))}
+
+
+  /* 底部抽屉：用量、历史、打包、发信、设置、版本 */
+  .upanel,.hpanel{position:fixed;left:10px;right:10px;width:auto;top:auto;bottom:10px;
+    max-height:72vh;overflow-y:auto;z-index:60}
+  .pkgpanel,.mlpanel{position:fixed;left:10px;right:10px;width:auto;top:auto;
+    bottom:calc(10px + env(safe-area-inset-bottom,0px));max-height:76vh;overflow-y:auto;
+    overscroll-behavior:contain;z-index:60}
+  .pkgpanel .pk-body{max-height:none;overflow:visible}
+  /* 发送 / 打包的确认按钮同样粘在抽屉底部：抽屉是内部滚动的，
+     按钮原本在流末尾，手机上得先滚到底才看得见。 */
+  .ml-foot,.pk-foot{position:sticky;bottom:0;z-index:3;margin-top:10px;
+    padding:8px 0 calc(8px + env(safe-area-inset-bottom,0px) * 0);
+    background:linear-gradient(to bottom,rgba(255,255,255,0),#fff 26%)}
+  .ml-foot .st{font-size:11px}
+  .ml-foot .btn-sm,.pk-foot .btn-sm{padding:9px 14px;font-size:13px}
+  .setbox,.verbox{width:calc(100% - 20px);max-height:88vh;
+    overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+  .setgrid{grid-template-columns:1fr;gap:4px}
+  .setgrid label{text-align:left;font-size:11px;margin-top:4px}
+  .setgrid .wide{grid-column:1}
+
+  /* 保存按钮必须自己粘在面板底部。
+     四个分区合计约 1500px，而手机面板只有 88vh 高——按钮原本落在第 935px，
+     屏幕根本到不了那里；手指滑的是背后的页面，面板内部不动，看着就是「点不到保存」。
+     sticky bottom 让它停留在所属分区的可视底部，滚到哪一段就能存哪一段。 */
+  .setsec{padding-bottom:6px}
+  .setact{position:sticky;bottom:0;z-index:3;margin:8px -4px 0;
+    padding:8px 4px calc(8px + env(safe-area-inset-bottom,0px) * 0);
+    background:linear-gradient(to bottom,rgba(255,255,255,0),#fff 26%);
+    align-items:center}
+  .setact .msg{font-size:11.5px}
+  .setact .btn-sm{flex:none;padding:9px 14px;font-size:13px}
+  /* 说明文字占高度，手机上折成三行就够，剩下的要留给字段 */
+  .setsec .sd{font-size:11px;line-height:1.55;margin-bottom:6px}
+  .gcard{width:calc(100% - 40px);padding:22px 18px 18px}
+  /* 登录框同样要 16px：iOS 在聚焦时会为 <16px 的输入框自动放大整页 */
+  .gcard input{font-size:16px;padding:10px 12px}
+  .gcard button{min-height:42px}
+  #toast{max-width:92vw;bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+
+  /* 字号：正文与输入框都提到 16px，既好读也避开 iOS 自动缩放 */
+  .doc{font-size:16px;line-height:1.9}
+  .field input,#company,select,.setgrid input,.mlpanel input,.mlpanel textarea{font-size:16px}
+  .ta{font-size:16px}
+
+  /* 工具条：按钮换行，不再挤成一条 */
+  /* 步骤卡：标题行 44px 起，拇指好点；辅助说明在窄屏省掉，宽度让给按钮 */
+  .whead{padding:11px 11px;min-height:44px;align-items:center}
+  .wdot{margin-top:0}
+  .wchev{margin-top:0}
+  .wmeta{grid-row:2}
+  .wstep .wfoot .whint{display:none}
+  .wfoot{flex-wrap:wrap;row-gap:8px}
+  .wfoot .btn{flex:1 1 120px;min-width:0}
+  .wfoot .ghost{min-height:38px;padding:8px 4px}
+  .wpad{padding:0 11px 12px}
+
+  /* 单栏：两侧栏退回正文内部（候选观点回各自板块，待核对排在工具条下面） */
+  .docgrid{display:block}
+  .rail{position:static;max-height:none;overflow:visible;padding:0}
+  .doccol{max-width:none}
+  .docbar{margin-bottom:12px}
+  .docbar .acts{gap:6px}
+  .docbar .acts .end{margin-left:0;flex-wrap:wrap}
+  .in-company{font-size:16px}
+  .doc-sub .subj .in-code{width:84px}
+  /* 触屏上的核对项：勾选框与整张卡片都要够大 */
+  .ckg-h{padding:10px}
+  .ckg-h input{width:19px;height:19px;margin-top:1px}
+  .ckg-h .t{font-size:13px}
+  .ckg-b{padding:4px 10px 9px}
+  .ckr{padding:6px 0}
+  .ckr input{width:18px;height:18px;margin-top:2px}
+  .ckr .k{font-size:12.5px}
+  .ckr .p,.ckr .s,.ckr .f{font-size:11px}
+  .ckr .go{display:none}
+  .rail-r{margin:2px 0 16px}
+
+  /* 表格：整表横向滑动，单元格不折行，否则「-10.66%」会被拆成两行看错 */
+  .tscroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -14px;padding:0 14px}
+  .doc-table{min-width:100%;width:auto}
+  .doc-table th,.doc-table td{white-space:nowrap;padding:4px 10px;font-size:14px}
+  .doc-table th:first-child,.doc-table td:first-child{position:sticky;left:0;background:#fff;z-index:1}
+
+  /* 触屏没有 hover：删除按钮与候选条常显，且加大点击区 */
+  .item .tool,.seg .tool,.topic .tool{opacity:1;font-size:15px;
+    min-width:32px;min-height:32px;display:inline-flex;align-items:center;justify-content:center}
+  .seg .tool{top:0}
+  /* 条目上的删除圈同理：常显，并且放大到 24px 好按；右侧空槽跟着加宽 */
+  .item{padding-right:30px}
+  .item .del{width:24px;height:24px;opacity:1;transform:none;pointer-events:auto;top:0}
+  .item .del svg{width:10px;height:10px}
+  .item>.num{padding:2px 3px 2px 0}
+  .chip{padding:8px 10px;font-size:12.5px;white-space:normal;line-height:1.5}
+  .add{padding:8px 4px;font-size:13px}
+  .pkgpanel .pkrow,.mlpanel .mlatt label.r{min-height:34px}
+  /* 勾选框 13px 在手机上按不准 */
+  input[type=checkbox]{width:18px;height:18px}
+  .mat,.upfile,.pkrow,.mlatt label.r{align-items:center}
+
+  /* 专题菜单贴右边，免得被屏幕切掉 */
+  .tpmenu{left:auto;right:0}
+
+  /* 手机上给两个跳转键：长报告里很难再滚回顶部的流程区。
+     显隐由 syncFab() 按「正文是否进入视野」控制，不在这里常显。 */
+}
+
+
+</style>
+</head>
+<body class="locked">
+
+<style id="vbar-css">
+/* 用文档流而不是 fixed：旧版页面自带 sticky header，fixed 会把它们压住 32px。
+   横幅跟着滚走也无妨——用户是从「版本」面板点进来的，本来就知道自己在看旧版。 */
+#vbar{position:relative;z-index:9;display:flex;align-items:center;
+  gap:10px;padding:0 14px;height:32px;background:#1b1f24;color:#e8ebef;
+  font:12px/32px -apple-system,"PingFang SC","Helvetica Neue",Arial,sans-serif;
+  box-shadow:0 1px 0 rgba(255,255,255,.06);box-sizing:border-box}
+#vbar .tag{flex:none;font-weight:600;font-size:11px;letter-spacing:.02em;
+  color:#111418;background:#e8ebef;border-radius:3px;padding:1px 6px;line-height:17px}
+#vbar .tt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#c8ced6}
+#vbar .tt b{color:#fff;font-weight:600}
+#vbar .st{flex:none;color:#8b939d;font-size:11px}
+#vbar .st.ok{color:#7fd0a2}
+#vbar .st.bad{color:#f0a6a6}
+#vbar a{flex:none;color:#cfe2ff;text-decoration:none;font-size:11.5px;
+  border:1px solid rgba(255,255,255,.22);border-radius:4px;padding:0 8px;line-height:20px;height:20px}
+#vbar a:hover{background:rgba(255,255,255,.10)}
+</style>
+
+<div id="vbar">
+  <span class="tag">v7.1 · 10-26 19:20</span>
+  <span class="tt"><b>表格期次方向、正文两端对齐、摘要主语</b>　三处都按跟踪评级报告的体例校准：财务表由新到旧排列，正文右边缘齐，摘要的判断落在受评主体上。前两项由程序保证，第三项给出写法与统计提示。</span>
+  <span class="st" id="vstat">正在连接…</span>
+  <a href="../">全部版本</a>
+  <a href="../../">回到最新版</a>
+</div>
+
+<script id="vbar-js">
+(function () {
+  var stat = document.getElementById("vstat");
+  var tok = "";
+  try { tok = localStorage.getItem("nrToken") || ""; } catch (e) {}
+  try {
+    var q = new URLSearchParams(location.search);
+    if (q.get("t")) { tok = q.get("t"); localStorage.setItem("nrToken", tok); }
+  } catch (e) {}
+
+  function setStat(text, cls) { if (stat) { stat.textContent = text; stat.className = "st " + (cls || ""); } }
+
+  // 横幅上的「全部版本」「回到最新版」是相对链接，云端分享网关缺 sharecode 会回 403。
+  // 这里把当前页面的 sharecode / t 参数补上去，点过去才不会失效。
+  (function () {
+    var q0;
+    try { q0 = new URLSearchParams(location.search); } catch (e) { return; }
+    var sc = q0.get("sharecode") || "";
+    if (!sc) return;
+    var links = document.querySelectorAll("#vbar a");
+    for (var i = 0; i < links.length; i++) {
+      var a = links[i], href = a.getAttribute("href") || "";
+      if (!href || /^(?:[a-z]+:)?\/\//i.test(href)) continue;
+      a.setAttribute("href", href + (href.indexOf("?") >= 0 ? "&" : "?") + "sharecode=" + encodeURIComponent(sc));
+    }
+  })();
+
+  // 旧版页面没有登录概念：补一层请求头，让它们能用当前服务的数据接口。
+  if (tok && window.fetch) {
+    var raw = window.fetch;
+    window.fetch = function (u, o) {
+      o = o || {};
+      try {
+        var h = new Headers(o.headers || {});
+        if (!h.has("Authorization")) h.set("Authorization", "Bearer " + tok);
+        o.headers = h;
+      } catch (e) {}
+      return raw.call(window, u, o).then(function (r) {
+        if (r.status === 401) setStat("登录已失效", "bad");
+        return r;
+      });
+    };
+    var xo = XMLHttpRequest.prototype.open,
+        xs = XMLHttpRequest.prototype.send,
+        xh = XMLHttpRequest.prototype.setRequestHeader;
+    XMLHttpRequest.prototype.open = function () { this.__vbody = 1; return xo.apply(this, arguments); };
+    XMLHttpRequest.prototype.setRequestHeader = function (k) {
+      if (String(k).toLowerCase() === "authorization") this.__vauth = 1;
+      return xh.apply(this, arguments);
+    };
+    XMLHttpRequest.prototype.send = function () {
+      if (!this.__vauth) { try { xh.call(this, "Authorization", "Bearer " + tok); } catch (e) {} }
+      return xs.apply(this, arguments);
+    };
+  }
+
+  // 探活要校验内容：网关爱用 200 + 错误页，只看状态码会误判。
+  if (window.fetch) {
+    fetch("/api/health", { cache: "no-store" })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d || !d.ok) throw new Error("bad");
+        setStat(tok ? "数据接口已连接" : "已连接，未登录", tok ? "ok" : "");
+      })
+      .catch(function () { setStat("连不上服务 · 需配合本机或云端服务运行", "bad"); });
+  }
+})();
+</script>
+
+<div id="gate" class="show">
+  <div class="gcard">
+    <div class="gt">内评简评报告</div>
+    <div class="gs">请输入访问口令</div>
+    <input id="gatePw" type="password" autocomplete="current-password" placeholder="口令"
+      onkeydown="if(event.key==='Enter')doLogin()" />
+    <button id="gateGo" onclick="doLogin()">进入</button>
+    <div class="gerr" id="gateErr"></div>
+    <div class="ghint" id="gateHint"></div>
+  </div>
+</div>
+<div id="setMask"><div class="setbox" id="setBox"></div></div>
+<div id="verMask"><div class="verbox" id="verBox"></div></div>
+<div id="fabNav">
+  <button id="fabFlow" onclick="jumpTo('flow')" title="回到上方：检索、读材料、生成">↑ 流程</button>
+  <button id="fabDoc" onclick="jumpTo('doc')" title="跳到正文">正文 ↓</button>
+</div>
+<div id="conn"></div>
+<header>
+  <div class="brand">内评简评报告</div>
+  <div class="spacer"></div>
+  <button class="usage" id="usageBtn" onclick="toggleUsage(event)" title="点击查看调用明细">累计 0 次 · 财汇 0 点</button>
+  <span class="sep"></span>
+  <button class="usage" id="histBtn" onclick="toggleHistory(event)" title="查看生成过的报告">历史</button>
+  <span class="sep"></span>
+  <button class="usage" id="verBtn" onclick="openVersions()" title="版本历史：每次改了什么都留了一份当时的页面">版本</button>
+  <span class="sep"></span>
+  <button class="usage" id="setBtn" onclick="openSettings()" title="模型 API、邮件 SMTP、财汇、口令">设置</button>
+  <span class="sep"></span>
+  <button class="usage" id="lockBtn" onclick="logout()" title="退出，重新需要口令">锁定</button>
+  <span class="sep"></span>
+  <a href="docs/template-v1.1.html" target="_blank">模板</a>
+  <span class="sep"></span>
+  <a href="docs/method-v1.1.html" target="_blank">方法论</a>
+</header>
+
+<div class="wrap">
+<aside>
+  <div class="wiz" id="wiz">
+
+    <section class="wstep open" id="ws-search">
+      <div class="whead" onclick="openStep('search')">
+        <span class="wdot">1</span>
+        <span class="wlabel">检索主体</span>
+        <span class="wpct"></span>
+        <span class="wchev"></span>
+        <span class="wmeta"></span>
+        <div class="wbar"><i></i></div>
+      </div>
+      <div class="wbody"><div class="winner"><div class="wpad">
+        <div class="modesw" id="modeSw">
+          <button class="on" data-mode="new" onclick="setMode('new')">新建报告</button>
+          <button data-mode="update" onclick="setMode('update')">更新既有报告</button>
+        </div>
+        <div class="field">
+          <input id="company" placeholder="企业全称" autocomplete="off" />
+          <button id="btnSearch" onclick="doSearch()">检索</button>
+        </div>
+        <div class="wfoot">
+          <span class="whint grow" id="modeHint">简称也能命中，只查公告库一次</span>
+        </div>
+      </div></div></div>
+    </section>
+
+    <section class="wstep locked" id="ws-materials">
+      <div class="whead" onclick="openStep('materials')">
+        <span class="wdot">2</span>
+        <span class="wlabel">读取材料</span>
+        <span class="wpct"></span>
+        <span class="wchev"></span>
+        <span class="wmeta"></span>
+        <div class="wbar"><i></i></div>
+      </div>
+      <div class="wbody"><div class="winner"><div class="wpad">
+        <div class="up" id="upBox">
+          <input type="file" id="files" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple hidden onchange="onPick(this)"/>
+          <input type="file" id="fileBase" accept=".docx" hidden onchange="onPickBase(this)"/>
+          <span class="grow uptxt"><span id="upTitle">上传 PDF</span><span class="hint" id="upHint">评级报告 / 募集说明书，也可拖进来</span></span>
+          <button id="btnUpBase" class="hide" onclick="document.getElementById('fileBase').click()">旧报告</button>
+          <button id="btnUpGo" onclick="document.getElementById('files').click()">选择</button>
+        </div>
+        <div id="upList"></div>
+        <div class="matwrap" id="matList"><div style="font-size:12px;color:var(--muted);padding-top:8px">检索后显示评级报告与募集说明书</div></div>
+        <div class="wfoot">
+          <span class="whint grow" id="matHint"></span>
+          <button class="btn" id="btnFetch" onclick="doFetch()">读取选中材料</button>
+        </div>
+      </div></div></div>
+    </section>
+
+    <section class="wstep locked" id="ws-generate">
+      <div class="whead" onclick="openStep('generate')">
+        <span class="wdot">3</span>
+        <span class="wlabel">生成草稿</span>
+        <span class="wpct"></span>
+        <span class="wchev"></span>
+        <span class="wmeta"></span>
+        <div class="wbar"><i></i></div>
+      </div>
+      <div class="wbody"><div class="winner"><div class="wpad">
+        <select id="model"></select>
+        <div class="wfoot">
+          <span class="whint grow" id="genHint">约 30–60 秒，可先离开</span>
+          <button class="btn primary" id="btnGen" onclick="doGenerate()">生成草稿</button>
+        </div>
+      </div></div></div>
+    </section>
+
+    <section class="wstep locked" id="ws-export">
+      <div class="whead" onclick="openStep('export')">
+        <span class="wdot">4</span>
+        <span class="wlabel">导出报告</span>
+        <span class="wpct"></span>
+        <span class="wchev"></span>
+        <span class="wmeta"></span>
+        <div class="wbar"><i></i></div>
+      </div>
+      <div class="wbody"><div class="winner"><div class="wpad">
+        <div class="whint" id="expHint">改完再导出。发送、下载、导出在正文上方一排；右侧待核对点一条就跳到对应段落。</div>
+        <div class="wfoot">
+          <span class="whint grow" id="expName">文件名带日期，落在 output/</span>
+          <button class="btn" data-export onclick="exportDocx()" id="btnExport2">导出 Word</button>
+        </div>
+      </div></div></div>
+    </section>
+
+  </div>
+</aside>
+
+<main>
+  <div id="empty" class="empty">检索公告或上传 PDF 后生成草稿</div>
+  <div id="draftArea" style="display:none"></div>
+</main>
+</div>
+
+<div id="toast"></div>
+<div class="upanel" id="usagePanel"></div>
+<div class="hpanel" id="histPanel"></div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const S = { company: "", facts: null, uploads: [], mstate: {}, loaded: [], draft: null,
+            stats: null, mode: "new", base: null };
+
+/* 两种任务：新建（从材料写一份新报告）与更新（在旧报告上按新依据改）。
+   步骤、材料区、待核对侧栏共用同一套，只在三处分叉：材料区要一份底稿、
+   生成动作叫「分析差异」、产物是带修订标记的 docx 而不是重新排一份。 */
+function setMode(m){
+  if(S.mode === m) return;
+  S.mode = m;
+  document.querySelectorAll("#modeSw button").forEach(b =>
+    b.classList.toggle("on", b.dataset.mode === m));
+  const hint = $("#modeHint");
+  if(hint) hint.textContent = m === "update"
+    ? "以旧报告为底稿，按外部材料逐条改"
+    : "简称也能命中，只查公告库一次";
+  paintMode();
+  // 换任务类型等于换一轮活：上一轮的材料、草稿、产物全部作废
+  clearRound();
+  syncButtons();
+  if(m === "update") openStep("materials");
+  else openStep("search");
+}
+
+/* 文案跟着模式走：同样几个按钮，两种活的说法不一样。
+   不换控件、不换布局，只换字——这是「一套流程两种任务」最省心的实现。 */
+function paintMode(){
+  const up = S.mode === "update";
+  const set = (sel, txt) => { const el = $(sel); if(el) el.textContent = txt; };
+  set("#upTitle", up ? "上传旧报告（.docx）" : "上传 PDF");
+  const hint = $("#upHint");
+  if(hint) hint.textContent = up ? "待修订的旧报告；外部依据用下面的 PDF" : "评级报告 / 募集说明书，也可拖进来";
+  set("#btnGen", up ? "分析差异" : "生成草稿");
+  set("#genHint", up ? "逐条比对，约 60–120 秒" : "约 30–60 秒，可先离开");
+  set("#btnFetch", "读取选中材料");
+  // 更新模式多一个「旧报告」入口：同一个上传区，两个按钮各自收对应格式
+  const bb = $("#btnUpBase"), bg = $("#btnUpGo");
+  if(bb) bb.classList.toggle("hide", !up);
+  if(bg) bg.textContent = up ? "外部材料" : "选择";
+  set("#btnExport2", up ? "生成修订版 Word" : "导出 Word");
+  set("#expName", up ? "带 Word 修订标记，落在 output/" : "文件名带日期，落在 output/");
+  const eh = $("#expHint");
+  if(eh) eh.textContent = up
+    ? "右侧待核对汇总了定位不到、已校正与需人工判断的条目；生成的 docx 在 Word 里可逐条接受或拒绝。"
+    : "改完再导出。发送、下载、导出在正文上方一排；右侧待核对点一条就跳到对应段落。";
+  const mt = $("#matList");
+  if(mt && !S.facts && !S.loaded.length){
+    mt.innerHTML = `<div style="font-size:12px;color:var(--muted);padding-top:8px">`
+      + (up ? "检索后可选外部评级报告；旧报告走上面的上传" : "检索后显示评级报告与募集说明书") + `</div>`;
+  }
+}
+
+/* 清掉本轮的中间物，保留企业名。与 resetSession 的区别：这个只清「这一轮的活」，
+   不动上传队列，便于同一主体连着试。 */
+function clearRound(){
+  S.loaded = []; S.mstate = {}; S.base = null; S.draft = null;
+  S.actSel = new Set(); S.actInit = false; S.actFilter = "all";
+  S.keepChecked = null; S.expand = {};
+  PKG.data = null; PKG.sel = {}; PKG.open = false;
+  MAIL.subject = undefined; MAIL.subjectFor = ""; MAIL.body = undefined; MAIL.docx = "";
+  if($("#draftArea")){ $("#draftArea").innerHTML = ""; $("#draftArea").style.display = "none"; }
+  if($("#empty")){
+    $("#empty").style.display = "";
+    $("#empty").textContent = S.mode === "update"
+      ? "先上传旧报告（.docx）与外部评级报告，再分析差异"
+      : "检索公告或上传 PDF 后生成草稿";
+  }
+  STEPS.forEach(s => { ST[s.key] = { state: "wait", pct: 0, detail: "" }; });
+  paintSteps();
+  syncButtons();
+}
+
+/* 当前主体：一律以输入框里的字为准，S.company 只是「上一轮检索过谁」的备份。
+   以前各处写 S.company || 输入框，用户改了企业名却没点检索时，检索、读取、
+   生成仍然落在上一家身上——正文、附件、邮件标题就都跟着串了。 */
+function curCo(){
+  const v = ($("#company").value || "").trim();
+  return v || S.company || "";
+}
+
+/* 换主体时要把上一家留下的东西全部作废：材料清单、已读材料、草稿、
+   邮件与打包缓存。只清界面不动服务端的话，下一次生成仍会带上旧材料。 */
+function resetSession(){
+  S.actSel = new Set(); S.actInit = false; S.actFilter = "all";
+  S.loaded = [];
+  S.mstate = {};
+  S.uploads = [];
+  S.facts = null;
+  S.keepChecked = null;
+  S.expand = {};
+  S.draft = null;
+  PKG.data = null; PKG.sel = {}; PKG.open = false;
+  MAIL.subject = undefined; MAIL.subjectFor = ""; MAIL.body = undefined;
+  MAIL.to = undefined; MAIL.cc = ""; MAIL.docx = ""; MAIL.withPdf = false;
+  if($("#upList")) $("#upList").innerHTML = "";
+  if($("#matList")) renderMaterials(null);
+  if($("#draftArea")){ $("#draftArea").innerHTML = ""; $("#draftArea").style.display = "none"; }
+  if($("#empty")){ $("#empty").style.display = ""; $("#empty").textContent = "检索公告或上传 PDF 后生成草稿"; }
+  resetStepsFrom("search");
+  syncButtons();
+}
+
+/* 后端在哪：三种情况都要能自己认出来
+   1. 页面由后端自己发（本机 127.0.0.1 或云端域名）→ 同源，空串
+   2. 页面在 GitHub Pages 这类静态站 → 要连本机 127.0.0.1:8770（可用 localStorage.apiBase 改）
+   3. 用户在页面上手填过地址 → 以填的为准
+   靠「同源能不能打通」来判断，比按域名硬编码稳——换域名、换部署方式都不用改代码。 */
+let API_BASE = (() => {
+  const custom = (localStorage.getItem("apiBase") || "").trim();
+  if (custom) return custom.replace(/\/+$/, "");
+  return (location.protocol === "file:") ? "" : "";
+})();
+const apiUrl = (p) => API_BASE + p;
+
+/* 站内相对链接要带上当前的 sharecode。
+   云端分享网关在缺 sharecode 时直接回 403，而版本面板、快照页里的链接
+   都是相对路径，点过去会把 ?sharecode=… 丢掉，看着就像「打不开」。
+   本地没有 sharecode 就原样返回，不影响自测。 */
+function withShare(href){
+  const raw = String(href || "");
+  if(/^(?:[a-z]+:)?\/\//i.test(raw) || raw.startsWith("#")) return raw;
+  let sc = "";
+  try{ sc = new URLSearchParams(location.search).get("sharecode") || ""; }catch(e){}
+  if(!sc) return raw;
+  const [path, hash = ""] = raw.split("#");
+  const [base, q] = path.split("?");
+  const qs = new URLSearchParams(q || "");
+  qs.set("sharecode", sc);
+  const out = base + "?" + qs.toString();
+  return out + (hash ? "#" + hash : "");
+}
+
+async function probeBase(base){
+  try{
+    const r = await fetch((base || "") + "/api/health", { cache: "no-store" });
+    if(!r.ok) return false;
+    // 分享链接的网关在缺 sharecode 时会回一个 200 的 HTML 提示页，
+    // 只看状态码会误判成「后端在」。必须确认回的是 JSON 且 ok:true。
+    const d = await r.json().catch(() => null);
+    return !!(d && d.ok);
+  }catch(e){ return false; }
+}
+
+async function resolveApiBase(){
+  if((localStorage.getItem("apiBase") || "").trim()) return;   // 用户手填的优先
+  if(await probeBase(API_BASE)) return;                        // 同源即可
+  if(!API_BASE && await probeBase("")){
+    API_BASE = "";                        // 静态站 → 回落本机
+  }
+}
+
+/* ── 访问口令 ──────────────────────────────────────────────────
+   服务端每个接口都要 token；token 放 localStorage，随请求头带过去。
+   下载走浏览器直接跳转（a[href]），带不了头，改用 ?t= 传。 */
+let TOKEN = localStorage.getItem("nrToken") || "";
+const authHead = () => TOKEN ? { Authorization: "Bearer " + TOKEN } : {};
+const dlUrl = (p) => apiUrl(p) + (TOKEN ? (p.includes("?") ? "&" : "?") + "t=" + encodeURIComponent(TOKEN) : "");
+
+const _fetch = window.fetch.bind(window);
+window.fetch = (u, o) => {
+  const opt = Object.assign({}, o || {});
+  opt.headers = Object.assign({}, (o && o.headers) || {}, authHead());
+  return _fetch(u, opt).then(r => {
+    if(r.status === 401) lockUI("登录已过期，请重新输入口令");
+    return r;
+  });
+};
+
+function lockUI(msg){
+  document.body.classList.add("locked");
+  $("#gate").classList.add("show");
+  $("#gateErr").textContent = msg || "";
+  setTimeout(() => { const el = $("#gatePw"); if(el) el.focus(); }, 60);
+}
+function unlockUI(){
+  document.body.classList.remove("locked");
+  $("#gate").classList.remove("show");
+  $("#gateErr").textContent = "";
+  const el = $("#gatePw"); if(el) el.value = "";
+}
+async function doLogin(){
+  const pw = ($("#gatePw").value || "").trim();
+  const btn = $("#gateGo");
+  if(!pw){ $("#gateErr").textContent = "请输入口令"; return; }
+  btn.disabled = true; $("#gateErr").textContent = "";
+  try{
+    const r = await _fetch(apiUrl("/api/login"), {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: pw }) });
+    const d = await r.json().catch(() => ({}));
+    if(!r.ok || !d.token) throw new Error(d.error || "口令不对");
+    TOKEN = d.token;
+    localStorage.setItem("nrToken", TOKEN);
+    unlockUI();
+    if(d.default_password) toast("当前仍是默认口令，建议在「设置」里改成自己的");
+    bootData();
+  }catch(e){
+    $("#gateErr").textContent = (API_BASE && /Failed to fetch|NetworkError/i.test(e.message))
+      ? "连不上本机服务，先运行 app/server.py"
+      : (e.message || "登录失败");
+  }finally{ btn.disabled = false; }
+}
+async function logout(){
+  try{ await api("/api/logout", {}); }catch(e){}
+  TOKEN = ""; localStorage.removeItem("nrToken");
+  lockUI("已退出");
+}
+async function gateBoot(){
+  // 页面本身是静态的，先定后端地址，再问服务端这个 token 还作不作数。
+  // 注意别在登录页上提示默认口令——那是给所有人看的。
+  await resolveApiBase();
+  try{
+    const r = await _fetch(apiUrl("/api/session"), { headers: authHead() });
+    const d = await r.json().catch(() => ({}));
+    if(d.authed){ unlockUI(); bootData(); return; }
+  }catch(e){
+    $("#gateErr").textContent = API_BASE ? "连不上本机服务，先运行 app/server.py" : "";
+  }
+  lockUI("");
+}
+
+const STEPS = [
+  { key: "search", label: "检索主体" },
+  { key: "materials", label: "读取材料" },
+  { key: "generate", label: "生成草稿" },
+  { key: "export", label: "导出报告" },
+];
+const ST = {};
+STEPS.forEach(s => ST[s.key] = { state: "wait", pct: 0, detail: "" });
+
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+
+/* 手风琴：同一时刻只展开一步。
+   OPEN_STEP 是唯一的状态源，其余靠给 .wstep 挂类名（open / done / run / error / locked）
+   让 CSS 自己过渡，所以「回到上一步」不需要记额外的收起动作——开新的，旧的自动折叠。 */
+let OPEN_STEP = "search";
+
+function stepEl(key){ return document.getElementById("ws-" + key); }
+
+function reached(key){
+  const i = STEPS.findIndex(s => s.key === key);
+  if(i < 0) return false;
+  const st = ST[key] || {};
+  if(st.state === "done" || st.state === "run" || st.state === "error") return true;
+  // 更新既有报告时手上的材料是现成的（旧报告 docx + 外部评级报告 pdf），
+  // 不一定要先去公告库检索，所以第 2 步直接放开；检索只作为可选帮手。
+  if(S.mode === "update" && key === "materials") return true;
+  return i === 0 || STEPS.slice(0, i).every(x => (ST[x.key] || {}).state === "done");
+}
+
+function openStep(key){
+  if(!reached(key)) return;          // 没走到的步骤点不动，避免跳步
+  const prev = OPEN_STEP;
+  OPEN_STEP = key;
+  paintSteps();
+  if(prev !== key){
+    // 展开后把它滚进视野：手机上第 2 步内容较长，不滚一下看不到刚展开的那一步
+    const el = stepEl(key);
+    if(el) setTimeout(() => {
+      try{ el.scrollIntoView({ behavior: "smooth", block: "nearest" }); }catch(e){}
+    }, 120);
+  }
+}
+
+
+function paintSteps(){
+  if(!reached(OPEN_STEP)){
+    const fallback = STEPS.find(x => (ST[x.key] || {}).state !== "done");
+    OPEN_STEP = fallback ? fallback.key : STEPS[STEPS.length - 1].key;
+  }
+  STEPS.forEach((s, i) => {
+    const st = ST[s.key] || { state: "wait", pct: 0, detail: "" };
+    const el = stepEl(s.key);
+    if(!el) return;
+    const cls = ["wstep", st.state];
+    if(OPEN_STEP === s.key) cls.push("open");
+    if(!reached(s.key)) cls.push("locked");
+    el.className = cls.join(" ");
+    const dot = el.querySelector(".wdot");
+    if(dot) dot.textContent = st.state === "done" ? "✓" : (st.state === "error" ? "!" : String(i + 1));
+    const pct = el.querySelector(".wpct");
+    if(pct) pct.textContent = st.state === "run" ? st.pct + "%" : "";
+    const meta = el.querySelector(".wmeta");
+    if(meta) meta.textContent = st.detail || "";
+    const bar = el.querySelector(".wbar i");
+    if(bar) bar.style.width = Math.max(2, st.pct || 0) + "%";
+  });
+  syncButtons();
+}
+function setStep(key, patch){ Object.assign(ST[key], patch); paintSteps(); }
+function resetStepsFrom(key){
+  const i = STEPS.findIndex(s => s.key === key);
+  STEPS.slice(i).forEach(s => ST[s.key] = { state: "wait", pct: 0, detail: "" });
+  OPEN_STEP = key;
+  paintSteps();
+}
+
+
+let toastTimer = null;
+function toast(msg, isErr){
+  const el = $("#toast");
+  el.textContent = msg;
+  el.className = "show" + (isErr ? " err" : "");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.className = ""; }, isErr ? 8000 : 4000);
+}
+/* 带「撤销」的提示：删除是即时生效的，给一次后悔的机会 */
+let toastUndo = null;
+function toastWithUndo(msg, onUndo){
+  const el = $("#toast");
+  el.textContent = "";
+  const span = document.createElement("span");
+  span.textContent = msg;
+  const btn = document.createElement("button");
+  btn.className = "undo";
+  btn.textContent = "撤销";
+  btn.onclick = () => {
+    el.className = "";
+    clearTimeout(toastTimer);
+    toastUndo = null;
+    onUndo();
+  };
+  el.append(span, btn);
+  el.className = "show";
+  clearTimeout(toastTimer);
+  toastUndo = onUndo;
+  toastTimer = setTimeout(() => { el.className = ""; toastUndo = null; }, 6000);
+}
+/* ⌘/Ctrl+Z 接上「撤销删除」：习惯用键盘的人不必去点那一行提示。
+   只看当前焦点在哪：焦点在正在改字的输入框里，⌘Z 归输入框自己。 */
+document.addEventListener("keydown", e => {
+  if(!toastUndo) return;
+  if(!((e.metaKey || e.ctrlKey) && !e.shiftKey && (e.key === "z" || e.key === "Z"))) return;
+  const a = document.activeElement;
+  if(a && (a.tagName === "TEXTAREA" || a.tagName === "INPUT") && a.value) return;
+  e.preventDefault();
+  const fn = toastUndo;
+  toastUndo = null;
+  clearTimeout(toastTimer);
+  $("#toast").className = "";
+  fn();
+});
+
+async function api(path, body){
+  const r = await fetch(apiUrl(path), { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body || {}) });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok || data.error) throw new Error(data.error || ("HTTP " + r.status));
+  return data;
+}
+
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+async function runJob(kind, body, onTick){
+  const { job } = await api("/api/jobs/" + kind, body);
+  for(;;){
+    await sleep(600);
+    const r = await fetch(apiUrl("/api/jobs/" + job));
+    const j = await r.json().catch(() => ({}));
+    if(!r.ok) throw new Error(j.error || "任务状态读取失败");
+    if(onTick) onTick(j);
+    if(j.state === "done") return j;
+    if(j.state === "error") throw new Error(j.error || "任务失败");
+  }
+}
+
+async function pingConn(){
+  if(!API_BASE) return;
+  try{
+    const r = await fetch(apiUrl("/api/health"), { mode: "cors" });
+    if(!r.ok) throw new Error();
+  }catch(e){
+    const el = $("#conn");
+    el.className = "show";
+    el.innerHTML = `未连上本机服务。取数与生成需要本机运行后端：<code>python app/server.py</code>
+      <a href="" style="color:inherit;margin-left:8px">改用本机地址打开</a>`;
+  }
+}
+
+async function loadModels(){
+  try{
+    const d = await (await fetch(apiUrl("/api/models"))).json();
+    if(!(d.models || []).length){
+      $("#model").innerHTML = `<option>没有可用模型</option>`;
+      return;
+    }
+    let h = d.models.map(m =>
+      `<option value="${esc(m.id)}" ${m.id === d.default ? "selected" : ""}>${esc(m.name)}</option>`).join("");
+    if(d.skipped) h += `<option disabled>另有 ${d.skipped} 个模型未通过验证</option>`;
+    $("#model").innerHTML = h;
+    const why = Object.entries(d.reasons || {});
+    $("#model").title = why.length
+      ? "未通过验证：\n" + why.map(([k, v]) => `${k} — ${v}`).join("\n")
+      : "";
+  }catch(e){
+    $("#model").innerHTML = `<option>未连接服务</option>`;
+  }
+}
+
+/* ---------------- 用量统计 ---------------- */
+let statsOpen = false;
+
+function fmtNum(n){ return (n || 0).toLocaleString("en-US"); }
+function fmtTok(n){
+  n = n || 0;
+  if(n >= 1e8) return (n / 1e8).toFixed(2) + " 亿";
+  if(n >= 1e4) return (n / 1e4).toFixed(1) + " 万";
+  return fmtNum(n);
+}
+function fmtSec(s){
+  s = Math.round(s || 0);
+  if(s >= 3600) return (s / 3600).toFixed(1) + " 小时";
+  return s >= 60 ? (s / 60).toFixed(1) + " 分" : s + " 秒";
+}
+
+async function refreshUsage(){
+  try{
+    const s = await (await fetch(apiUrl("/api/stats"))).json();
+    S.stats = s;
+    const t = s.total || {}, mcp = s.mcp || {};
+    $("#usageBtn").textContent = `累计 ${t.calls || 0} 次 · 财汇 ${mcp.total || 0} 点`;
+    $("#usageBtn").title = `累计生成 ${t.calls || 0} 次、${fmtNum(t.total_tokens)} token；财汇接口调用 ${mcp.total || 0} 次；点击看明细`;
+    if(statsOpen) renderUsage();
+  }catch(e){ /* 没连上服务时不打扰 */ }
+}
+
+const KIND_CN = { search: "检索", fetch: "读取", generate: "生成", export: "导出" };
+
+function fmtTs(s){
+  s = String(s || "");
+  return s.length >= 16 ? s.slice(5, 16).replace("T", " ") : s;
+}
+
+function renderUsage(){
+  const s = S.stats || {};
+  const t = s.total || {}, d = s.today || {}, k = s.kinds || {};
+  const mcp = s.mcp || {}, acts = s.actions || {};
+  const est = t.estimated ? `<span style="color:var(--amber)">· 含估算</span>` : "";
+  const per = t.calls ? `${fmtTok(Math.round(t.total_tokens / t.calls))} · ${fmtSec(t.seconds / t.calls)}` : "—";
+  const hit = t.prompt_tokens ? Math.round((t.cached_tokens || 0) / t.prompt_tokens * 100) + "%" : "—";
+  let h = `<div class="uh">调用统计</div>
+    <div class="usub">${s.since ? "自 " + esc(String(s.since).slice(0, 10)) + " 起累计 " + est : "还没有记录"}</div>
+    <div class="uk"><span class="k">今日</span><b>${d.calls || 0} 次生成 · 财汇 ${mcp.today || 0} 点</b></div>
+    <div class="uk"><span class="k">累计</span><b>${t.calls || 0} 次生成 · 财汇 ${mcp.total || 0} 点</b></div>
+    <div class="uk"><span class="k">今日 token</span><b>${fmtTok(d.total_tokens)}</b></div>
+    <div class="uk"><span class="k">累计 token</span><b>${fmtTok(t.total_tokens)}</b></div>
+    <div class="div"></div>
+    <div class="uk"><span class="k">输入 / 输出</span><b>${fmtTok(t.prompt_tokens)} / ${fmtTok(t.completion_tokens)}</b></div>
+    <div class="uk"><span class="k">单次平均</span><b>${per}</b></div>
+    <div class="uk"><span class="k">输入缓存命中</span><b>${hit}</b></div>
+    <div class="um">动作次数（累计 ${(k.search || 0) + (k.fetch || 0) + (k.generate || 0) + (k.export || 0)} 次）</div>
+    <div class="acts4">
+      <div class="c"><b>${k.search || 0}</b><span>检索</span></div>
+      <div class="c"><b>${k.fetch || 0}</b><span>读取</span></div>
+      <div class="c"><b>${k.generate || 0}</b><span>生成</span></div>
+      <div class="c"><b>${k.export || 0}</b><span>导出</span></div>
+    </div>`;
+
+  const tl = (s.timeline || []).slice(0, 8);
+  if(tl.length){
+    h += `<div class="um">最近调用</div>` + tl.map(x => {
+      const right = x.kind === "generate"
+        ? `${fmtTok(x.total_tokens)} token`
+        : (x.mcp_calls ? `财汇 ${x.mcp_calls} 点` : "—");
+      return `<div class="ur"><span>${esc(fmtTs(x.ts))} ${esc(KIND_CN[x.kind] || x.kind)} · ${esc(String(x.company || "未命名").slice(0, 10))}</span>
+        <span class="n">${esc(right)}</span></div>`;
+    }).join("");
+  }
+  if((s.by_model || []).length > 1){
+    h += `<div class="um">按模型</div>` + s.by_model.map(x =>
+      `<div class="ur"><span>${esc(x.model)}</span><span class="n">${x.calls} 次 · ${fmtTok(x.total_tokens)}</span></div>`).join("");
+  }
+  $("#usagePanel").innerHTML = h;
+}
+
+function toggleUsage(e){
+  if(e) e.stopPropagation();
+  statsOpen = !statsOpen;
+  $("#usagePanel").classList.toggle("show", statsOpen);
+  if(statsOpen) renderUsage();
+}
+
+document.addEventListener("click", e => {
+  if(statsOpen){
+    if(!e.target.closest("#usagePanel") && !e.target.closest("#usageBtn")){
+      statsOpen = false;
+      $("#usagePanel").classList.remove("show");
+    }
+  }
+  if(HIST.open){
+    if(!e.target.closest("#histPanel") && !e.target.closest("#histBtn")) closeHistory();
+  }
+});
+
+/* ---------------- 生成历史 ---------------- */
+const HIST = { open: false, items: [] };
+
+async function toggleHistory(e){
+  if(e) e.stopPropagation();
+  if(HIST.open){ closeHistory(); return; }
+  HIST.open = true;
+  $("#histPanel").classList.add("show");
+  $("#histPanel").innerHTML = `<div class="hh">历史记录<span class="x" onclick="closeHistory()">×</span></div>
+    <div class="hsub">读取中…</div>`;
+  await loadHistory();
+}
+
+function closeHistory(){
+  HIST.open = false;
+  $("#histPanel").classList.remove("show");
+}
+
+async function loadHistory(){
+  try{
+    const r = await (await fetch(apiUrl("/api/history"))).json();
+    if(r.error) throw new Error(r.error);
+    HIST.items = r.items || [];
+    renderHistory();
+  }catch(err){
+    $("#histPanel").innerHTML = `<div class="hh">历史记录<span class="x" onclick="closeHistory()">×</span></div>
+      <div class="hsub">${esc(err.message)}</div>`;
+  }
+}
+
+function renderHistory(){
+  const head = `<div class="hh">历史记录<span class="x" onclick="closeHistory()">×</span></div>
+    <div class="hsub">每次生成自动留一份草稿，可打开继续改或直接下 Word</div>`;
+  if(!HIST.items.length){
+    $("#histPanel").innerHTML = head + `<div class="hempty">还没有记录。生成一份草稿后，
+      它的正文、用的材料与 token 都会留在这里。</div>`;
+    return;
+  }
+  $("#histPanel").innerHTML = head + HIST.items.map(x => {
+    const meta = [fmtTs(x.ts), x.tokens ? fmtTok(x.tokens) + " token" : "",
+                  (x.materials || []).length + " 份材料",
+                  x.issues ? `待核对 ${x.issues} 项` : "",
+                  x.docx ? "已导出" : ""].filter(Boolean).join(" · ");
+    return `<div class="hrow">
+      <div class="hmain">
+        <div class="co">${esc(x.company || "未命名")}</div>
+        <div class="mt">${esc(meta)}</div>
+      </div>
+      <div class="acts2">
+        <button class="btn-sm" onclick="restoreHistory('${esc(x.id)}')">打开</button>
+        ${x.docx ? `<button class="btn-sm" onclick="histDocx('${encodeURIComponent(x.docx)}')">Word</button>` : ""}
+      </div>
+    </div>`;
+  }).join("");
+}
+
+async function restoreHistory(id){
+  try{
+    const rec = await (await fetch(apiUrl("/api/history/" + encodeURIComponent(id)))).json();
+    if(rec.error) throw new Error(rec.error);
+    S.draft = rec.draft;
+    S.draft.history_id = rec.id;  // 再导出时回填到同一条记录
+    S.company = rec.company || "";
+    S.loaded = (rec.materials || []).map(m => m.title).filter(Boolean);
+    // 打开的是另一家的记录：邮件标题、正文草稿与文件清单缓存都不能沿用上一份
+    MAIL.subject = undefined; MAIL.subjectFor = ""; MAIL.body = undefined; MAIL.docx = "";
+    PKG.data = null; PKG.sel = {};
+    S.actSel = new Set(); S.actInit = false; S.actFilter = "all";
+    // 打开的是哪一类记录，就把页面切到哪一类：否则清单会被当成正文渲染
+    const m = (rec.draft && rec.draft.mode) || "new";
+    S.mode = m; S.base = null;
+    document.querySelectorAll("#modeSw button").forEach(b =>
+      b.classList.toggle("on", b.dataset.mode === m));
+    paintMode();
+    if(S.company) $("#company").value = S.company;
+    renderDraft();
+    syncButtons();
+    // 恢复的是一份已经成稿的记录：前三步都算走过，直接把展开态放到第 4 步
+    const nMat = (rec.materials || []).length;
+    setStep("search", { state: "done", pct: 100, detail: S.company || "历史记录" });
+    setStep("materials", { state: "done", pct: 100, detail: nMat ? `${nMat} 份` : "已恢复" });
+    setStep("generate", { state: "done", pct: 100, detail: "已恢复 " + fmtTs(rec.ts) + " 的记录" });
+    setStep("export", { state: "wait", pct: 0, detail: "可继续编辑后导出" });
+    openStep("export");
+    closeHistory();
+    toast("已打开 " + (rec.company || "历史记录"));
+  }catch(e){ toast(e.message, true); }
+}
+
+function histDocx(encoded){
+  const a = document.createElement("a");
+  a.href = dlUrl("/download/" + encoded);
+  a.download = decodeURIComponent(encoded);
+  a.click();
+}
+
+/* ---------------- 检索 ---------------- */
+async function doSearch(){
+  const company = $("#company").value.trim();
+  if(!company) return toast("请输入企业全称", true);
+  $("#btnSearch").disabled = true;
+  // 新检索＝新的一轮：换主体就把上一家的材料、草稿、邮件与打包缓存全清掉；
+  // 同一主体重检索只清材料清单（草稿留着，免得误点一次丢了正在改的稿）。
+  // 服务端 do_search 无论哪种情况都会清掉该主体名下的材料。
+  if(S.company && S.company !== company) resetSession();
+  else { S.loaded = []; S.mstate = {}; S.keepChecked = null; S.expand = {}; PKG.data = null; PKG.sel = {}; }
+  resetStepsFrom("search");
+  setStep("search", { state: "run", pct: 0, detail: "检索公告库" });
+  try{
+    const j = await runJob("search", { company }, j => {
+      setStep("search", { state: "run", pct: j.pct, detail: j.detail || j.stage });
+    });
+    S.company = company;
+    S.facts = j.result.facts;
+    S.keepChecked = null;
+    S.expand = {};
+    const calls = j.result.mcp_calls || 0;
+    setStep("search", { state: "done", pct: 100,
+      detail: calls ? `清单已取 · 财汇 ${calls} 点` : "清单已取" });
+    renderMaterials(S.facts);
+    const kinds = ["跟踪评级报告", "募集说明书"];
+    const n = kinds.reduce((a, k) => a + ((S.facts.materials || {})[k] || []).length, 0);
+    setStep("materials", { state: "wait", pct: 0,
+      detail: n ? `${n} 份待读取` : "未检索到，可上传 PDF" });
+    toast(n ? `检索到 ${n} 份材料${calls ? " · 财汇 " + calls + " 点" : ""}`
+            : "未检索到公告，可在下方上传 PDF");
+    openStep("materials");   // 读到清单就把这一步展开，不必再点一次
+  }catch(e){
+    setStep("search", { state: "error", detail: e.message });
+    toast(e.message, true);
+  }finally{
+    $("#btnSearch").disabled = false;
+  }
+}
+
+/* ---------------- 材料 ---------------- */
+const MAT_ORDER = ["跟踪评级报告", "募集说明书"];
+const busy = { fetch: false, gen: false };
+S.expand = {};
+
+function toggleGrp(k){
+  S.keepChecked = new Set([...document.querySelectorAll(".mchk:checked")].map(c => c.dataset.title));
+  S.expand[k] = !S.expand[k];
+  renderMaterials(S.facts);
+}
+
+function syncButtons(){
+  const has = document.querySelectorAll("#matList .mchk").length > 0;
+  const bf = $("#btnFetch"), bg = $("#btnGen");
+  if(bf) bf.disabled = busy.fetch || !has;
+  if(bg) bg.disabled = busy.gen || !S.loaded.length;
+  const hint = $("#matHint");
+  if(hint){
+    const picked = document.querySelectorAll(".mchk:checked").length;
+    hint.textContent = !has ? "" : (picked ? `已选 ${picked} 份` : "先勾选材料");
+  }
+}
+
+function setMS(title, patch){
+  S.mstate[title] = Object.assign(S.mstate[title] || { state: "wait", pct: 0, detail: "" }, patch);
+}
+
+function renderMaterials(f){
+  const ms = (f && f.materials) || {};
+  let html = "";
+  for(const k of MAT_ORDER){
+    const arr = ms[k] || [];
+    const open = !!S.expand[k];
+    const show = open ? arr : arr.slice(0, 2);
+    html += `<div class="grp">${esc(k)}${arr.length ? "（" + arr.length + "）" : ""}</div>`;
+    if(!arr.length){
+      html += `<div style="font-size:12px;color:var(--muted);padding:2px 0 4px">未检索到</div>`;
+      continue;
+    }
+    show.forEach((m, i) => {
+      setMS(m.title, S.mstate[m.title] || { state: "wait", pct: 0, detail: m.date || "" });
+      html += `<label class="mat">
+        <input type="checkbox" class="mchk" data-url="${esc(m.url)}" data-title="${esc(m.title)}" ${(S.keepChecked ? S.keepChecked.has(m.title) : i === 0) ? "checked" : ""}/>
+        <span class="t"><span class="nm">${esc(m.title)}</span>
+        <span class="meta">${esc(m.date || "")}</span></span>
+      </label>`;
+    });
+    if(arr.length > 2){
+      html += `<button class="more" onclick="toggleGrp('${esc(k)}')">${open ? "收起" : `显示全部 ${arr.length} 条`}</button>`;
+    }
+  }
+  $("#matList").innerHTML = html;
+  paintMatStates();
+  syncButtons();
+}
+
+function paintMatStates(){
+  document.querySelectorAll("#matList .mat").forEach(el => {
+    const cb = el.querySelector(".mchk");
+    const st = S.mstate[cb.dataset.title];
+    if(!st) return;
+    el.classList.toggle("wait", st.state === "wait" || st.state === "saved");
+    el.classList.toggle("done", st.state === "done");
+    el.classList.toggle("error", st.state === "error");
+    let bar = el.querySelector(".bar");
+    if(st.state === "run"){
+      if(!bar){ bar = document.createElement("span"); bar.className = "bar"; bar.innerHTML = "<i></i>";
+        el.querySelector(".t").appendChild(bar); }
+      bar.querySelector("i").style.width = Math.max(3, st.pct) + "%";
+    }else if(bar){ bar.remove(); }
+    let meta = el.querySelector(".meta");
+    if(st.detail) meta.textContent = st.detail;
+  });
+}
+
+async function doFetch(){
+  const picks = [...document.querySelectorAll(".mchk:checked")].map(el => ({ url: el.dataset.url, title: el.dataset.title }));
+  if(!picks.length) return toast("请先勾选材料，或上传 PDF", true);
+  busy.fetch = true; syncButtons();
+  document.querySelectorAll(".mchk").forEach(c => c.disabled = true);
+  picks.forEach(p => setMS(p.title, { state: "wait", pct: 0, detail: "等待" }));
+  paintMatStates();
+  setStep("materials", { state: "run", pct: 0, detail: `0/${picks.length} 份` });
+  try{
+    // 界面上材料清单一次列全，勾选结果就是这一轮的完整材料集，
+    // 所以 replace=true：服务端先清空再写入，上一轮读过的 PDF 不再参与生成。
+    const j = await runJob("fetch", { company: curCo(), materials: picks, replace: true }, j => {
+      setStep("materials", { state: "run", pct: j.pct, detail: j.detail || "" });
+      if(j.items) onItems(j.items);
+    });
+    onItems(j.result.items || []);
+    captureBase(j.result);
+    S.loaded = (j.result.all && j.result.all.length)
+      ? j.result.all.slice()
+      : [...new Set([...S.loaded, ...(j.result.loaded || [])])];
+    PKG.data = null; PKG.sel = {};
+    markMaterialsDone(picks.length);
+  }catch(e){
+    setStep("materials", { state: "error", detail: e.message });
+    toast(e.message, true);
+  }finally{
+    busy.fetch = false; syncButtons();
+    document.querySelectorAll(".mchk").forEach(c => c.disabled = false);
+  }
+}
+
+/* 后端把 docx 认成底稿、PDF 认成材料。底稿单独存一份：
+   它是修订对象，不是提示词里的材料，混在一起会让模型以为旧报告也是依据。 */
+function captureBase(res){
+  if(res && res.base){
+    S.base = res.base;
+    setMS(res.base.title, { state: "done", pct: 100,
+      detail: `底稿 · ${res.base.paras} 段` });
+  }
+}
+
+function onItems(items){
+  items.forEach(it => setMS(it.title, { state: it.state, pct: it.pct, detail: it.detail }));
+  paintMatStates();
+  renderUploads();
+}
+
+function markMaterialsDone(n){
+  const ok = S.loaded.length;
+  setStep("materials", { state: ok ? "done" : "error", pct: 100,
+    detail: ok ? `${ok} 份就绪` : "没有可用材料" });
+  if(ok){
+    setStep("generate", { state: "wait", pct: 0, detail: "" });
+    $("#empty").textContent = "材料已就绪，点左侧「生成草稿」";
+    openStep("generate");
+  }
+  syncButtons();
+  refreshUsage();
+}
+
+/* ---------------- 上传 ---------------- */
+function fmtSize(n){
+  if(n > 1048576) return (n / 1048576).toFixed(1) + " MB";
+  return Math.max(1, Math.round(n / 1024)) + " KB";
+}
+
+async function onPick(input){
+  const files = [...(input.files || [])];
+  input.value = "";
+  // 更新模式下这个入口给的是外部依据，docx 也不能被当成底稿
+  if(files.length) await uploadAll(files, S.mode === "update" ? "material" : "");
+}
+
+/* 底稿入口只收 docx：旧报告是修订的对象，格式错了后面整条链都落不了地 */
+async function onPickBase(input){
+  const files = [...(input.files || [])];
+  input.value = "";
+  const bad = files.filter(f => !/\.docx$/i.test(f.name));
+  if(bad.length) toast("旧报告需要 Word（.docx）：" + bad[0].name, true);
+  const ok = files.filter(f => /\.docx$/i.test(f.name));
+  if(ok.length) await uploadAll(ok, "base");
+}
+
+async function uploadAll(files, role){
+  for(const f of files){
+    const isPdf = /\.pdf$/i.test(f.name);
+    const isDocx = /\.docx$/i.test(f.name);
+    if(!(isPdf || isDocx)){ toast("只支持 PDF 与 Word（.docx）：" + f.name, true); continue; }
+    // 角色没指定时按扩展名兜底；更新模式下底稿走 role=base 的那个入口。
+    // 传进 picks 之后，服务端据此决定这份文件是「被改的对象」还是「依据」。
+    const wantRole = role || (isDocx ? "base" : "material");
+    const u = { title: f.name.replace(/\.(pdf|docx)$/i, ""), size: f.size, state: "run",
+                pct: 0, detail: "上传中", role: wantRole, docx: isDocx };
+    S.uploads.push(u);
+    renderUploads();
+    const r = await uploadOne(f, u);
+    if(!r) continue;
+    u.title = r.title; u.path = r.path; u.state = "wait"; u.pct = 0; u.detail = "待读取";
+    u.role = r.kind === "docx" ? (u.role === "material" ? "material" : "base") : "material";
+    setMS(u.title, { state: "run", pct: 0, detail: "待读取" });
+    renderUploads();
+  }
+  const ready = S.uploads.filter(u => u.path && u.state !== "error");
+  if(ready.length){
+    // 上传等于「拿到了材料」，第 1 步（检索）可以跳过：标成完成，直接放开第 2 步
+    if(ST.search.state !== "done"){
+      setStep("search", { state: "done", pct: 100,
+        detail: `用本地上传的 ${ready.length} 份 PDF` });
+    }
+    openStep("materials");
+  }
+  const pending = ready.filter(u => S.mstate[u.title] && S.mstate[u.title].state !== "done");
+  if(pending.length) await parseUploads(pending);
+}
+
+function uploadOne(file, u){
+  return new Promise(resolve => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", apiUrl("/api/upload?name=" + encodeURIComponent(file.name)));
+    xhr.setRequestHeader("Content-Type", "application/pdf");
+    if(TOKEN) xhr.setRequestHeader("Authorization", "Bearer " + TOKEN);
+    xhr.upload.onprogress = e => {
+      if(!e.lengthComputable) return;
+      u.pct = Math.round(e.loaded / e.total * 100);
+      u.detail = "上传 " + u.pct + "%";
+      renderUploads();
+    };
+    xhr.onload = () => {
+      try{
+        const r = JSON.parse(xhr.responseText || "{}");
+        if(r.error) throw new Error(r.error);
+        resolve(r);
+      }catch(e){
+        u.state = "error"; u.detail = e.message; renderUploads(); resolve(null);
+      }
+    };
+    xhr.onerror = () => { u.state = "error"; u.detail = "上传失败，检查本机服务"; renderUploads(); resolve(null); };
+    xhr.send(file);
+  });
+}
+
+async function parseUploads(list){
+  const picks = list.map(u => ({ path: u.path, title: u.title, role: u.role || "" }));
+  busy.fetch = true; syncButtons();
+  setStep("materials", { state: "run", pct: 0, detail: `解析 0/${picks.length} 份` });
+  try{
+    // 上传是增量动作：不动已读的公告材料，只把这几份 PDF 追加进来
+    const j = await runJob("fetch", { company: curCo(), materials: picks }, j => {
+      setStep("materials", { state: "run", pct: j.pct, detail: j.detail || "" });
+      if(j.items) onItems(j.items);
+    });
+    onItems(j.result.items || []);
+    captureBase(j.result);
+    S.loaded = (j.result.all && j.result.all.length)
+      ? j.result.all.slice()
+      : [...new Set([...S.loaded, ...(j.result.loaded || [])])];
+    PKG.data = null; PKG.sel = {};
+    markMaterialsDone(picks.length);
+  }catch(e){
+    setStep("materials", { state: "error", detail: e.message });
+    toast(e.message, true);
+  }finally{
+    busy.fetch = false; syncButtons();
+  }
+}
+
+function renderUploads(){
+  $("#upList").innerHTML = S.uploads.map((u, i) => {
+    const st = S.mstate[u.title] || {};
+    const state = u.state === "error" ? "error" : (st.state || u.state);
+    const pct = state === "done" ? 100 : Math.max(u.pct || 0, st.pct || 0);
+    const detail = u.state === "error" ? u.detail : (st.detail || u.detail || "");
+    const bar = (state === "run" || state === "upload")
+      ? `<span class="bar"><i style="width:${Math.max(3, pct)}%"></i></span>` : "";
+    return `<div class="upfile ${state === "done" ? "done" : ""} ${state === "error" ? "error" : ""}">
+      <span class="ico">${state === "done" ? "✓" : (state === "error" ? "!" : "·")}</span>
+      <span class="t"><span class="nm">${esc(u.title)}</span>
+      <span class="meta">${esc(fmtSize(u.size))}${detail ? " · " + esc(detail) : ""}</span>${bar}</span>
+      <button class="x" title="移除" onclick="dropUpload(${i})">×</button>
+    </div>`;
+  }).join("");
+}
+
+function dropUpload(i){
+  const u = S.uploads[i];
+  if(!u) return;
+  S.uploads.splice(i, 1);
+  delete S.mstate[u.title];
+  renderUploads();
+}
+
+const upBox = $("#upBox");
+["dragenter", "dragover"].forEach(ev => upBox.addEventListener(ev, e => {
+  e.preventDefault(); upBox.classList.add("hot");
+}));
+["dragleave", "drop"].forEach(ev => upBox.addEventListener(ev, e => {
+  e.preventDefault(); upBox.classList.remove("hot");
+}));
+upBox.addEventListener("drop", e => {
+  const files = [...(e.dataTransfer.files || [])];
+  if(files.length) uploadAll(files);
+});
+/* 手机上顶栏与流程区会滚出屏幕，留两个跳转键。
+   只在窄屏出现（CSS 控制），且正文没生成时不显示「正文」。 */
+function isPhone(){ return window.matchMedia("(max-width: 640px)").matches; }
+function jumpTo(where){
+  const el = where === "doc" ? document.querySelector(".doccol") : document.querySelector("aside");
+  if(el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+function syncFab(){
+  const fab = $("#fabNav");
+  if(!fab) return;
+  const hasDoc = !!S.draft;
+  $("#fabDoc").style.display = hasDoc ? "" : "none";
+  if(!isPhone() || !hasDoc){ fab.classList.remove("show"); return; }
+  // 只在正文进入视野时浮出来：生成区吸在底部，常显会把它压住
+  const mainEl = document.querySelector("main");
+  const inDoc = mainEl ? mainEl.getBoundingClientRect().top < window.innerHeight * 0.8 : false;
+  fab.classList.toggle("show", inDoc);
+}
+window.addEventListener("scroll", () => syncFab(), { passive: true });
+window.addEventListener("resize", () => syncFab());
+
+/* ---------------- 生成 ---------------- */
+async function doGenerate(){
+  if(S.mode === "update" && !S.base) return toast("请先上传待修订的旧报告（.docx）", true);
+  if(!S.loaded.length) return toast("请先读取材料，或上传 PDF", true);
+  busy.gen = true; syncButtons();
+  setStep("generate", { state: "run", pct: 0, detail: "准备提示词" });
+  try{
+    // titles 传本轮真正读进来的材料：服务端据此过滤，避免同主体早先读过的
+    // 旧材料混进这一次的提示词（表现为正文里出现上一轮的旧数据）。
+    // mode 决定服务端走哪条路：新建写正文，更新产出 Action List。
+    const j = await runJob("generate", { company: curCo(), model: $("#model").value,
+      titles: S.loaded.slice(), mode: S.mode }, j => {
+      setStep("generate", { state: "run", pct: j.pct, detail: j.detail || j.stage });
+    });
+    S.draft = j.result.draft;
+    S.company = curCo() || S.company;
+    PKG.data = null; PKG.sel = {};
+    // 换了主体，邮件的标题与正文草稿也要跟着重来（见 renderMailPanel 的 subjectFor）
+    MAIL.subject = undefined; MAIL.subjectFor = ""; MAIL.body = undefined;
+    setStep("generate", {
+      state: "done", pct: 100,
+      detail: S.mode === "update"
+        ? `已比对 ${(S.draft.actions || []).length} 条`
+        : "草稿已生成" });
+    setStep("export", { state: "wait", pct: 0, detail: "可编辑后导出" });
+    renderDraft();
+    const u = S.draft.usage || {};
+    const heads = S.mode === "update"
+      ? `差异已列出 · ${(S.draft.actions || []).length} 条`
+      : "草稿已生成";
+    toast(u.total_tokens ? `${heads} · 本次 ${fmtTok(u.total_tokens)} token` : `${heads}，可直接修改`);
+    syncFab();
+    openStep("export");
+    if(isPhone()) setTimeout(() => jumpTo("doc"), 420);   // 手机上流程区很长，不滚一下看不到结果
+    refreshUsage();
+    if(HIST.open) loadHistory();
+  }catch(e){
+    setStep("generate", { state: "error", detail: e.message });
+    toast(e.message, true);
+  }finally{
+    busy.gen = false; syncButtons();
+  }
+}
+
+/* ---------------- 草稿 ---------------- */
+function ta(cls, val){
+  // rows 只作为最小高度，一律给 1，真实高度由 autoGrow 按内容算。
+  // 给 2 的话，一行的短句也会占两行，看起来就是「加粗句后面多了一个空行」。
+  return `<textarea class="ta ${cls}" rows="1">${esc(val || "")}</textarea>`;
+}
+function segSuffix(name){
+  const n = (name || "").trim();
+  if(!n) return "业务方面，";
+  return /(业务|板块|产品|服务|行业)$/.test(n) ? "方面，" : "业务方面，";
+}
+function fitSegName(el){
+  let w = 0;
+  for(const ch of (el.value || "")) w += /[\u2e80-\u9fff\uff00-\uffef]/.test(ch) ? 2 : 1;
+  el.style.width = Math.max(2, w + 1) + "ch";
+}
+/* 分部段是整段可编辑：粘贴一律转纯文本，编辑后顺手记住板块名 */
+document.addEventListener("input", e => {
+  const line = e.target && e.target.closest && e.target.closest(".seg-line");
+  if(!line) return;
+  const p = parseSeg(line.innerText || line.textContent || "", line.dataset.name);
+  if(p.name) line.dataset.name = p.name;
+});
+document.addEventListener("paste", e => {
+  const line = e.target && e.target.closest && e.target.closest(".seg-line");
+  if(!line) return;
+  e.preventDefault();
+  const txt = (e.clipboardData || window.clipboardData).getData("text/plain")
+    .replace(/\s*\n+\s*/g, "");
+  document.execCommand("insertText", false, txt);
+});
+function tableHtml(t){
+  if(!t || !t.rows) return "";
+  const head = t.periods ? ["项目", ...t.periods] : (t.header || []);
+  let h = `<div class="unit">${esc(t.unit_line || "单位：亿元")}</div><div class="tscroll"><table class="doc-table"><thead><tr>` +
+    head.map(x => `<th>${esc(x)}</th>`).join("") + `</tr></thead><tbody>`;
+  for(const r of t.rows) h += `<tr>` + r.map(c => `<td>${esc(c)}</td>`).join("") + `</tr>`;
+  return h + `</tbody></table></div>`;
+}
+
+/* 按钮图标：只描边，颜色跟 currentColor，深浅两档按钮共用一套 */
+const ICON = {
+  mail: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.7" y="3.2" width="12.6" height="9.6" rx="1.5"/><path d="M2.4 4.3 8 8.5l5.6-4.2"/></svg>',
+  dl: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.6v7.2"/><path d="M5.3 7.4 8 10.1l2.7-2.7"/><path d="M2.9 12.5h10.2"/></svg>'
+};
+/* 宽屏三栏的断点，与 CSS 里的 1500px 同一个数 */
+const WIDE_MQ = window.matchMedia("(min-width:1500px)");
+const PHONE_MQ = window.matchMedia("(max-width:640px)");
+function isWide(){ return WIDE_MQ.matches; }
+
+/* 左栏只放候选观点；窄屏时这两个容器缩回各自的板块里 */
+function poolRail(){
+  return `<div class="rail-h">候选观点</div>
+    <div class="pool" id="p-pos"></div>
+    <div class="pool" id="p-con"></div>`;
+}
+
+/* ══ 修订清单（更新模式）════════════════════════════════════════
+   为什么不是「合入后的全文」：这份报告的价值在于「哪几处改了、凭什么」，
+   逐条列出来才能被逐条审阅；合成全文之后就只剩一份新文档，改动痕迹丢了。
+   勾选决定这一条要不要执行，textarea 里可以直接改措辞，导出时以页面为准。 */
+
+const ACT_KIND = { REPLACE: ["rp", "替换"], INSERT: ["in", "新增"],
+                   DELETE: ["dl", "删除"], REVIEW: ["rv", "待定"] };
+S.actFilter = "all";
+
+function actSel(){
+  if(!S.actSel) S.actSel = new Set();
+  return S.actSel;
+}
+
+function renderActions(d){
+  const acts = d.actions || [];
+  const v = d.validation || {};
+  const base = d.base || {};
+  const gaps = on => !(d.layout && d.layout.para_gap === false);
+  const cnt = k => acts.filter(a => a.action === k).length;
+  const sel = actSel();
+  // 第一轮全选（待定的除外）：绝大多数的确要改，逐条勾是负担
+  if(!S.actInit){
+    S.actInit = true;
+    acts.forEach(a => { if(a.action !== "REVIEW" && a.status !== "failed") sel.add(a.action_id); });
+  }
+
+  let h = `<div class="docgrid">
+  <aside class="rail rail-l" id="railL"></aside>
+  <div class="doccol">
+    <div class="docbar">
+      <div class="acts">
+        <button class="btn-sm" onclick="copyPrompt()" title="复制本次用的提示词">提示词</button>
+        <div class="end">
+          <div class="pkgwrap">
+            <button class="btn-sm ico" id="btnMail" onclick="toggleMail(event)" title="把修订版发到邮箱">${ICON.mail}发送</button>
+            <div class="mlpanel" id="mailPanel"></div>
+          </div>
+          <div class="pkgwrap">
+            <button class="btn-sm ico" id="btnPkg" onclick="toggleBundle(event)" title="底稿与成品打包下载">${ICON.dl}下载</button>
+            <div class="pkgpanel" id="pkgPanel"></div>
+          </div>
+          <button class="btn-sm solid" id="btnExport" data-export onclick="exportDocx()">生成修订版</button>
+        </div>
+      </div>
+      <div class="doc-head">
+        <input class="in-company" id="d-company" value="${esc(d.company_full_name)}" placeholder="企业全称" spellcheck="false"/>
+      </div>
+      <div class="doc-sub">
+        <span>底稿：${esc(d.base_title || (base.path || "").split("/").pop() || "—")}</span>
+        <span class="sep2">·</span><span>${acts.length} 处改动</span>
+        <span class="sep2">·</span><span>替换 ${cnt("REPLACE")} · 新增 ${cnt("INSERT")} · 删除 ${cnt("DELETE")} · 待定 ${cnt("REVIEW")}</span>
+        ${d.usage && d.usage.total_tokens ? `<span class="sep2">·</span><span>本次 ${fmtTok(d.usage.total_tokens)} token</span>` : ""}
+      </div>
+    </div>
+    <div class="doc" id="d-doc">
+      <div class="acts-head">
+        <div class="acts-tabs" id="actTabs">
+          ${[["all", "全部"], ["yes", "已采纳"], ["no", "已排除"],
+             ["review", "待人工"], ["failed", "要处理"]].map(([k, label]) =>
+            `<button data-f="${k}" class="${S.actFilter === k ? "on" : ""}"
+              onclick="actTab('${k}')">${label}</button>`).join("")}
+        </div>
+        <span class="acts-sum" id="actSum"></span>
+      </div>
+      <div id="actList"></div>
+    </div>
+  </div>
+  <aside class="rail rail-r" id="railR">${ckHtml(v)}</aside>
+</div>`;
+
+  $("#draftArea").innerHTML = h;
+  $("#draftArea").style.display = "block";
+  $("#empty").style.display = "none";
+  PKG.open = false; PKG.data = null; PKG.sel = {};
+  $("#pkgPanel").classList.remove("show");
+  actPaint();
+  syncRails();
+  placeRailR();
+  ckApplyFold();
+  ckPaint();
+  syncFab();
+}
+
+function actPaint(){
+  const list = $("#actList");
+  if(!list) return;
+  const acts = (S.draft.actions || []);
+  const sel = actSel();
+  const f = S.actFilter || "all";
+  const keep = a => {
+    if(f === "yes") return sel.has(a.action_id);
+    if(f === "no") return !sel.has(a.action_id);
+    if(f === "review") return a.action === "REVIEW";
+    if(f === "failed") return a.status === "failed" || a.status === "conflict";
+    return true;
+  };
+  const rows = acts.filter(keep);
+
+  // 分组：先按能不能执行分开，组内保持模型给的顺序（大致等于章节顺序）
+  const wait = a => a.action !== "REVIEW" && (a.status === "failed" || a.status === "conflict");
+  const groups = [
+    ["可执行的改动", acts.filter(a => a.action !== "REVIEW" && !wait(a))],
+    ["要先处理这几条", acts.filter(wait)],
+    ["需人工判断，保持原文", acts.filter(a => a.action === "REVIEW")],
+  ];
+  let html = "";
+  if(!rows.length){
+    html = `<div class="act-empty">这个筛选下没有条目</div>`;
+  } else {
+    groups.forEach(([title, arr]) => {
+      const shown = arr.filter(keep);
+      if(!shown.length) return;
+      const picked = shown.filter(a => sel.has(a.action_id)).length;
+      html += `<div class="acts-grp">${title}（${shown.length}${title === "可执行的改动" ? ` · 采纳 ${picked}` : ""}）</div>`;
+      html += shown.map(actHtml).join("");
+    });
+  }
+  list.innerHTML = html;
+  autoGrowAll();
+  actSumPaint();
+}
+
+function actHtml(a){
+  const [cls, label] = ACT_KIND[a.action] || ["rp", a.action || ""];
+  const sel = actSel();
+  const on = sel.has(a.action_id);
+  const bad = a.status === "failed" || a.status === "conflict";
+  const rv = a.action === "REVIEW";
+  const newBox = (a.action === "REPLACE" || a.action === "INSERT")
+    ? `<div class="act-n"><b>改后</b><textarea class="act-new" rows="1"
+         oninput="autoGrow(this);actSumPaint()">${esc(a.new_text || "")}</textarea></div>`
+    : "";
+  const note = a.note ? `<div class="act-note">${esc(a.note)}</div>` : "";
+  const meta = [a.reason ? `理由：${esc(a.reason)}` : "",
+                a.evidence ? `依据：${esc(a.evidence)}` : "",
+                a.source ? `出处：${esc(a.source)}` : ""]
+               .filter(Boolean).map(x => `<div>${x}</div>`).join("");
+  return `<div class="act ${rv ? "review" : ""} ${bad ? "failed" : ""} ${on ? "" : "off"}"
+      data-aid="${esc(a.action_id)}" data-kind="${esc(a.action)}" data-status="${esc(a.status || "")}">
+    <div class="act-h">
+      <input type="checkbox" class="act-ck" ${on ? "checked" : ""} ${rv || bad ? "disabled" : ""}
+        onchange="actToggle(this)" aria-label="采纳这条改动"/>
+      <span class="act-id">${esc(a.action_id)}</span>
+      <span class="act-k ${cls}">${label}</span>
+      <span class="act-loc">${esc(a.location || "")}${a.serial ? ` · ${esc(a.serial)}` : ""}</span>
+    </div>
+    <div class="act-body">
+      ${a.original_text ? `<div class="act-o"><b>原文</b>${esc(a.original_text)}</div>` : ""}
+      ${newBox}
+      ${note}
+      ${meta ? `<div class="act-meta">${meta}</div>` : ""}
+      ${rv || bad ? "" : `<div class="act-tools">
+        <button onclick="actOnly(this)">只看这条</button>
+        <button onclick="actFold(this)">收起原文</button></div>`}
+    </div>
+  </div>`;
+}
+
+function actToggle(el){
+  const box = el.closest(".act");
+  const id = box.dataset.aid;
+  const sel = actSel();
+  if(el.checked) sel.add(id); else sel.delete(id);
+  box.classList.toggle("off", !el.checked);
+  actSumPaint();
+}
+
+function actTab(f){
+  S.actFilter = f;
+  document.querySelectorAll("#actTabs button").forEach(b =>
+    b.classList.toggle("on", b.dataset.f === f));
+  actPaint();
+}
+
+function actOnly(btn){
+  const aid = btn.closest(".act").dataset.aid;
+  document.querySelectorAll("#actList .act").forEach(el => {
+    el.style.display = el.dataset.aid === aid ? "" : "none";
+  });
+  const bar = document.querySelector(".acts-head");
+  if(bar && !$("#actBack")){
+    const b = document.createElement("button");
+    b.id = "actBack"; b.className = "btn-sm"; b.textContent = "显示全部";
+    b.onclick = () => { $("#actBack").remove(); actPaint(); };
+    bar.appendChild(b);
+  }
+}
+
+function actFold(btn){
+  const box = btn.closest(".act");
+  const o = box.querySelector(".act-o");
+  const m = box.querySelector(".act-meta");
+  const hide = o && o.style.display !== "none";
+  if(o) o.style.display = hide ? "none" : "";
+  if(m) m.style.display = hide ? "none" : "";
+  btn.textContent = hide ? "展开原文" : "收起原文";
+}
+
+function actSumPaint(){
+  const acts = (S.draft && S.draft.actions) || [];
+  const sel = actSel();
+  const ok = acts.filter(a => sel.has(a.action_id)).length;
+  const el = $("#actSum");
+  if(el) el.textContent = `采纳 ${ok} / ${acts.length}`;
+}
+
+/* 导出前把页面状态收回：勾选决定执不执行，改后的文字以 textarea 为准 */
+function collectActions(){
+  const src = (S.draft && S.draft.actions) || [];
+  const sel = actSel();
+  const byId = {};
+  document.querySelectorAll("#actList .act").forEach(el => {
+    const id = el.dataset.aid;
+    const ta = el.querySelector(".act-new");
+    byId[id] = { selected: el.querySelector(".act-ck") ? el.querySelector(".act-ck").checked : false,
+                 new_text: ta ? ta.value : null };
+  });
+  return src.map(a => {
+    const st = byId[a.action_id] || {};
+    const out = Object.assign({}, a);
+    // 未勾选的改成 REVIEW 交给后端跳过，而不是直接丢掉：
+    // 交付说明里要能看到「这几条是我决定不改的」。
+    if(a.action !== "REVIEW" && a.status !== "failed" && st.selected === false){
+      out.action = "REVIEW";
+      out.reason = "本次未采纳：" + (a.reason || "");
+    }
+    if(st.new_text !== null && st.new_text !== undefined) out.new_text = st.new_text;
+    return out;
+  });
+}
+
+function renderDraft(){
+  if((S.draft.mode || "new") === "update") return renderActions(S.draft);
+  const d = S.draft, c = d.commentary || {}, v = d.validation || {};
+  const gapOn = !(d.layout && d.layout.para_gap === false);
+  const wide = isWide();
+  const finRows = ((c.financial_table || {}).rows || []).length;
+  let h = `<div class="docgrid">
+  <aside class="rail rail-l" id="railL">${wide ? poolRail() : ""}</aside>
+  <div class="doccol">
+    <div class="docbar">
+      <div class="acts">
+        <button class="btn-sm" onclick="copyPrompt()" title="复制本次用的提示词">提示词</button>
+        <button class="btn-sm" id="btnGap" onclick="toggleParaGap()"
+          title="段与段之间是否空一行（加粗句与它的正文始终连着）">${gapOn ? "段落空行：有" : "段落空行：无"}</button>
+        <div class="end">
+          <div class="pkgwrap">
+            <button class="btn-sm ico" id="btnMail" onclick="toggleMail(event)" title="把正文当附件发到邮箱">${ICON.mail}发送</button>
+            <div class="mlpanel" id="mailPanel"></div>
+          </div>
+          <div class="pkgwrap">
+            <button class="btn-sm ico" id="btnPkg" onclick="toggleBundle(event)" title="底稿、材料与成品打包下载">${ICON.dl}下载</button>
+            <div class="pkgpanel" id="pkgPanel"></div>
+          </div>
+          <button class="btn-sm solid" id="btnExport" data-export onclick="exportDocx()">导出 Word</button>
+        </div>
+      </div>
+      <div class="doc-head">
+        <input class="in-company" id="d-company" value="${esc(d.company_full_name)}" placeholder="企业全称" spellcheck="false"/>
+      </div>
+      <div class="doc-sub">
+        <span class="subj">主体：【<input class="in-code" id="d-code" value="${esc(d.internal_rating_code)}" placeholder="—" spellcheck="false"/>】</span>
+        <span class="sep2">·</span><span>正文 ${v.body_chars || 0} 字</span>
+        <span class="sep2">·</span><span>财务表 ${finRows} 行${(c.financial_table || {}).from_materials ? "（取自材料原文）" : ""}</span>${d.usage && d.usage.total_tokens ? `<span class="sep2">·</span><span>本次 ${fmtTok(d.usage.total_tokens)} token</span>` : ""}
+      </div>
+    </div>`;
+
+  // 版式：一块一个 .blk。块与块之间恰好一个空行，块内（加粗句 + 它的正文）不留空。
+  // 空行值只由 CSS 变量 --pgap 决定，页面与导出的 Word 用同一个开关（正文工具条「空行」）。
+  // 每个块带 id，待核对里点一条就跳到对应的块。
+  h += `<div class="doc${gapOn ? "" : " tight"}" id="d-doc">
+    <div class="blk" id="blk-pos">
+      <div class="doc-h first">正面：</div>
+      <div class="items" id="d-pos"></div>
+      <button class="add" onclick="addItem('pos')">+ 条目</button>
+      <span class="addhint" id="h-pos">按住序号可上下拖动换位置</span>
+      ${wide ? "" : '<div class="pool" id="p-pos"></div>'}
+    </div>
+    <div class="blk" id="blk-con">
+      <div class="doc-h">关注：</div>
+      <div class="items" id="d-con"></div>
+      <button class="add" onclick="addItem('con')">+ 条目</button>
+      <span class="addhint" id="h-con">按住序号可上下拖动换位置</span>
+      ${wide ? "" : '<div class="pool" id="p-con"></div>'}
+    </div>
+    <div class="blk" id="blk-basic">
+      <div class="doc-h first">1、基本情况</div>
+      ${ta("basic", d.basic_info)}
+    </div>
+    <div class="blk" id="blk-overview">
+      <div class="doc-h first">2、点评</div>
+      ${ta("ov-lead lead", c.overview && c.overview.lead)}
+      ${ta("ov-body", c.overview && c.overview.body)}`;
+
+  if(c.segment_table && c.segment_table.rows) h += tableHtml(c.segment_table);
+
+  h += `</div>
+    <div class="blk" id="blk-segments">
+      <div id="d-segs"></div>
+      <button class="add" onclick="addSeg()">+ 板块</button>
+    </div>
+    <div class="blk" id="blk-asset">
+      ${ta("as-lead lead", c.asset && c.asset.lead)}
+      ${ta("as-body", c.asset && c.asset.body)}`;
+
+  if(finRows){
+    h += `<div id="blk-fintable"><div style="text-align:center;font-weight:700">${esc(c.financial_table.caption || "公司主要财务数据和财务指标（合并口径）")}</div>`;
+    h += tableHtml(c.financial_table) + `</div>`;
+  }
+  h += `</div>
+    <div class="blk" id="blk-debt">
+      ${ta("db-lead lead", c.debt && c.debt.lead)}
+      ${ta("db-body", c.debt && c.debt.body)}
+    </div>
+    <div class="blk" id="blk-topics">
+      <div id="d-topics"></div>
+      <div class="tp-add">
+        <button class="add" onclick="topicMenu()">+ 专题段（可选）</button>
+        <div class="tpmenu" id="topicMenu">
+          ${TOPIC_PRESETS.map(p => `<button onclick="addTopicPreset('${p.key}')">${esc(p.label)}</button>`).join("")}
+        </div>
+      </div>
+    </div>
+  </div></div>
+  <aside class="rail rail-r" id="railR">${ckHtml(v)}</aside>
+</div>`;
+
+  $("#draftArea").innerHTML = h;
+  $("#draftArea").style.display = "block";
+  $("#empty").style.display = "none";
+  PKG.open = false; PKG.data = null; PKG.sel = {};
+  $("#pkgPanel").classList.remove("show");
+
+  renderItems("pos", d.positive || []);
+  renderItems("con", d.concern || []);
+  renderPool("pos", d.positive_pool || []);
+  renderPool("con", d.concern_pool || []);
+  renderSegs(c.segments || []);
+  renderTopics(c.special_topics || []);
+  syncRails();
+  placeRailR();
+  ckApplyFold();
+  ckPaint();
+  autoGrowAll();
+  syncFab();
+}
+
+/* ── 待核对事项 ────────────────────────────────────────────────
+   后端给回来的 issues 是一串自然语言：有的一句话，有的首行是汇总、后面跟明细。
+   这里做三件事：
+   ① 拆成一条一张卡，配一句短标题（标题按问题类型取名，原句放进小字里，不重复）；
+   ② 勾选状态按「企业+主体代码」存本地，同一份报告重开还是勾过的样子；
+   ③ 每条挂一个正文锚点，点一下滚过去闪一下，不用自己在两千字里找位置。 */
+const CK_RULES = [
+  [/^关注.*含数据/, "关注条目混进了数字", "blk-con"],
+  [/含数据.+摘要层应为纯定性/, "摘要层混进了数字", "blk-pos"],
+  [/摘要层措辞/, "摘要写了没有刻度的评价词", "blk-pos"],
+  [/摘要条目偏长|一条塞了两件事/, "摘要一条塞了两件事", "blk-pos"],
+  [/正面与关注重复/, "正面与关注说了同一件事", "blk-pos"],
+  [/找不到直接出处|请复核算式/, "数字在材料里找不到出处", "d-doc"],
+  [/data_notes 已声明为推算值/, "推算出来的数字要说清口径", "d-doc"],
+  [/期次写法在台账与材料原文中找不到依据/, "期次写法没有依据", "blk-fintable"],
+  [/资产总额与负债加权益相差/, "资产负债表不平", "blk-fintable"],
+  [/整列写「未披露」/, "写了未披露，材料里其实有", "blk-fintable"],
+  [/财务指标表为空|财务表.*为空/, "财务表是空的", "blk-fintable"],
+  [/财务表/, "财务表要核", "blk-fintable"],
+  [/交代资料来源的表述/, "还有交代来源的句子", "d-doc"],
+  [/同一表述在两处出现/, "同一句话出现了两遍", "d-doc"],
+  [/不可核实的程度词/, "程度词要换成数据", "d-doc"],
+  [/板块段内容偏薄/, "板块段内容偏薄", "blk-segments"],
+  [/正面不足/, "正面不足 3 条", "blk-pos"],
+  [/关注不足/, "关注不足 3 条", "blk-con"],
+  [/总述段缺加粗汇总句/, "总述段缺加粗句", "blk-overview"],
+  [/正文偏短/, "正文偏短", "d-doc"],
+  [/正文偏长/, "正文偏长", "d-doc"],
+];
+/* 明细行形如「· 12.34（疑似占比）—— 3、点评：「…」」，按 —— 后面的段名找落点 */
+const WHERE_RULES = [
+  [/关注/, "blk-con"], [/正面/, "blk-pos"], [/点评|总述/, "blk-overview"],
+  [/分部|板块|业务/, "blk-segments"], [/资产/, "blk-asset"],
+  [/债务|负债|有息/, "blk-debt"], [/基本/, "blk-basic"],
+  [/专题/, "blk-topics"], [/财务|表/, "blk-fintable"],
+];
+function whereAnchor(w){
+  for(const [re, a] of WHERE_RULES) if(re.test(w)) return a;
+  return "d-doc";
+}
+function ckHead(text){
+  for(const [re, t, a] of CK_RULES) if(re.test(text)) return { title: t, anchor: a, derived: true };
+  const first = (text.split("\n")[0] || "").replace(/[：:]\s*$/, "").trim();
+  return { title: first.length > 24 ? first.slice(0, 24) + "…" : first, anchor: "d-doc", derived: false };
+}
+function ckHash(s){
+  let h = 5381;
+  for(let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
+  return h.toString(36);
+}
+function ckOwner(){
+  const d = S.draft || {};
+  return (d.company_full_name || "") + "|" + (d.internal_rating_code || "");
+}
+function ckAll(){ try{ return JSON.parse(localStorage.getItem("nr_ck_v1") || "{}"); }catch(e){ return {}; } }
+function ckDoneSet(){ return new Set(ckAll()[ckOwner()] || []); }
+function ckPersist(set){
+  const all = ckAll(); all[ckOwner()] = [...set];
+  try{ localStorage.setItem("nr_ck_v1", JSON.stringify(all)); }catch(e){}
+}
+/* 一组内的每一行 = 一个待核对象。
+   新版后端给了完整定位（anchor 段、field 输入框、seg 第几个板块、full 整句、si 第几句）；
+   旧记录只有一段自然语言，这里把它拆成「数字 / 引文 / 段落」三样，
+   再由前端自己按引文在正文里找句——所以旧记录也能定位到句，不是只能到段落。 */
+function ckRowsFromItem(it){
+  const rows = [];
+  for(const d of (it.d || [])){
+    const full = d.full || "";
+    const head = full ? (full.length > 46 ? full.slice(0, 46) + "…" : full) : (d.where || "");
+    const pos = [d.where, d.si ? `第 ${d.si} 句` : ""].filter(Boolean).join(" · ");
+    const key = ckHash([it.t, d.num, d.where, full].join("|"));
+    rows.push({
+      k: key, main: d.num || it.t, pos,
+      sub: d.num ? head : "",
+      formula: d.formula || "", note: d.note || "",
+      anchor: d.anchor || it.a || "d-doc",
+      field: d.field || "", seg: d.seg || 0, full,
+      num: d.num || "", quote: full
+    });
+  }
+  if(!rows.length){
+    // 没有明细的结构性问题（正面不足、财务表为空…）：整组就是一条
+    rows.push({ k: ckHash([it.t, it.a].join("|")), main: it.t, pos: "",
+      sub: "", formula: "", note: "", anchor: it.a || "d-doc", field: "", seg: 0,
+      full: "", num: "", quote: "" });
+  }
+  return rows;
+}
+/* 旧记录的一行长这样：
+   「0.56%（疑似增速） —— 资产段：「…26年9月末，资产总额13,337.76亿元，增长0.56%。」」 */
+function parseLegacyLine(line){
+  const t = line.replace(/^[·•]\s*/, "").trim();
+  const m = t.match(/^(.*?)(?:（疑似([^）]*)）)?\s*——\s*([^：]+)[：:]\s*「([\s\S]*)」\s*$/);
+  if(m){
+    const num = (m[1] || "").trim();
+    const where = (m[3] || "").trim();
+    const quote = (m[4] || "").replace(/^…+/, "").replace(/…+$/, "").trim();
+    return { num, kind: (m[2] || "").trim(), where, quote };
+  }
+  // 「「…」在基本情况与总述段重复」这类没有 —— 分隔的
+  const q = t.match(/「([\s\S]*?)」/);
+  const w = t.match(/在(.+?)重复/);
+  return {
+    num: "", kind: "",
+    where: w ? w[1].trim() : "",
+    quote: q ? (q[1] || "").replace(/^…+/, "").replace(/…+$/, "").trim() : ""
+  };
+}
+/* 段落名 → 输入框键。查不到就空着，交给后面的全文搜 */
+const WHERE_FIELD = [
+  [/基本/, "basic"], [/总述|点评|概览/, "ov"], [/资产/, "as"], [/债务|负债|有息/, "db"],
+  [/分部|板块|业务/, "seg"], [/专题|或有/, "topic"],
+];
+function fieldForWhere(w){
+  for(const [re, f] of WHERE_FIELD) if(re.test(w || "")) return f;
+  return "";
+}
+function fieldForAnchor(a){
+  return { "blk-basic": "basic", "blk-overview": "ov", "blk-asset": "as",
+    "blk-debt": "db", "blk-segments": "seg", "blk-topics": "topic" }[a] || "";
+}
+function ckItems(v){
+  if((v.issue_items || []).length){
+    return v.issue_items.map(it => {
+      const rows = ckRowsFromItem(it);
+      return { k: ckHash(it.t + "|" + rows.map(r => r.k).join(",")),
+        title: it.t, note: it.note || "", anchor: it.a || "d-doc",
+        rows, derived: true };
+    });
+  }
+  // 旧版记录：从 issues 文本里拆出「数字 / 引文 / 段落」，句级定位交给前端搜
+  const out = [];
+  for(const raw of (v.issues || [])){
+    const lines = String(raw).split("\n").map(x => x.trim()).filter(Boolean);
+    if(!lines.length) continue;
+    const head = lines[0];
+    const meta = ckHead(head);
+    const body = lines.slice(1);
+    let rows;
+    if(body.length){
+      rows = body.map(x => {
+        const p = parseLegacyLine(x);
+        const field = fieldForWhere(p.where) || fieldForAnchor(meta.anchor);
+        const short = p.quote && p.quote.length > 40 ? p.quote.slice(0, 40) + "…" : p.quote;
+        return {
+          k: ckHash((meta.title || head) + "|" + x),
+          main: p.num || (p.where ? ckHead(p.where).title : meta.title),
+          pos: [p.where, p.kind].filter(Boolean).join(" · "),
+          sub: short || "", formula: "", note: "",
+          anchor: whereAnchor(p.where || ""), field, seg: 0,
+          full: p.quote || "", num: p.num || "", quote: p.quote || ""
+        };
+      });
+    }else{
+      // 只有一行、没有明细的（「同一表述在两处出现…」）：这一行本身就是那条，
+      // 标题用类型名，引文放进小字，别把整句话当标题。
+      const p = parseLegacyLine(head);
+      const field = fieldForWhere(p.where) || fieldForAnchor(meta.anchor);
+      const short = p.quote && p.quote.length > 44 ? p.quote.slice(0, 44) + "…" : p.quote;
+      rows = [{
+        k: ckHash((meta.title || head) + "|" + head),
+        main: meta.title, pos: "",
+        sub: short || "", formula: "", note: "",
+        anchor: meta.anchor, field, seg: 0,
+        full: p.quote || "", num: p.num || "", quote: p.quote || ""
+      }];
+    }
+    out.push({ k: ckHash(head), title: meta.title,
+      note: meta.derived ? head : "", anchor: meta.anchor, rows, derived: meta.derived });
+  }
+  return out;
+}
+function ckHtml(v){
+  const items = ckItems(v);
+  const auto = (v.auto_checks || []);
+  if(!items.length && !auto.length) return "";
+  const done = ckDoneSet();
+  const allRows = items.reduce((a, x) => a.concat(x.rows), []);
+  const n = allRows.filter(r => done.has(r.k)).length;
+  const pct = allRows.length ? (n / allRows.length * 100).toFixed(1) : 0;
+  let h = `<div class="ck-h"><button class="ck-fold" onclick="ckFold(this)" title="收起核对项">▾</button><b>待核对</b>
+      <span class="n"><i id="ckDoneN">${n}</i>/${allRows.length}</span>
+      <button class="ck-all" onclick="ckAllDone()" title="把所有待核对都标为已核对">全勾</button>
+      <button class="ck-reset" onclick="ckReset()" title="清空勾选">清空</button></div>
+    <div class="ck-bar"><i id="ckBar" style="width:${pct}%"></i></div>
+    <div class="ck-list">`;
+  h += items.map(it => {
+    const on = it.rows.filter(r => done.has(r.k)).length;
+    const full = on === it.rows.length;
+    const part = on > 0 && !full;
+    return `<div class="ckg${full ? " done" : ""}" data-k="${it.k}">
+      <div class="ckg-h">
+        <input type="checkbox"${full ? " checked" : ""} data-part="${part ? 1 : 0}"
+          aria-label="整组标为已核对" onchange="ckGroup(this)"/>
+        <span class="t">${esc(it.title)}${it.note ? `<i style="font-style:normal;color:#b0b6bf;font-weight:400"> · ${esc(it.note)}</i>` : ""}</span>
+        <span class="c">${on}/${it.rows.length}</span>
+        <button class="ckg-all" onclick="ckGroupAll(this)" title="这一组全部标为已核对">全勾</button>
+      </div>
+      <div class="ckg-b">` + it.rows.map(r => {
+        const d1 = done.has(r.k);
+        const sub = r.sub ? `<span class="s">${esc(r.sub)}</span>` : "";
+        const fm = r.formula ? `<span class="f">${esc(r.formula)}</span>` : "";
+        const nt = r.note ? `<span class="f">${esc(r.note)}</span>` : "";
+        return `<label class="ckr${d1 ? " done" : ""}" data-k="${r.k}" data-t="${r.anchor}"
+            data-f="${r.field}" data-g="${r.seg}" data-s="${esc(r.full)}"
+            data-n="${esc(r.num || "")}">
+          <input type="checkbox"${d1 ? " checked" : ""} onchange="ckOne(this)"/>
+          <span class="m" onclick="ckJump(this,event)" title="跳到正文里这一句并选中">
+            <span class="k">${esc(r.main)}${r.pos ? `<span class="p">${esc(r.pos)}</span>` : ""}</span>
+            ${sub}${fm}${nt}
+          </span>
+          <span class="go">↗</span>
+        </label>`;
+      }).join("") + `</div></div>`;
+  }).join("") + `</div>`;
+  // 机器已经自己核对过的：默认收起，点开能看算式，避免「数字怎么少了」的疑虑
+  if(auto.length){
+    const lines = auto.join("\n").split("\n").filter(x => x.trim());
+    h += `<details class="ck-auto"><summary>机器已自动核对 ${v.auto_count || 0} 项</summary>
+      <div class="lst">` + lines.map(x => `<div>${esc(x.replace(/^[·•]\s*/, ""))}</div>`).join("") + `</div></details>`;
+  }
+  return h;
+}
+function ckPaint(){
+  const rows = [...document.querySelectorAll(".ckr")];
+  const done = rows.filter(x => x.classList.contains("done")).length;
+  const n = $("#ckDoneN"), bar = $("#ckBar"), rail = $("#railR");
+  if(n) n.textContent = done;
+  if(bar) bar.style.width = (rows.length ? done / rows.length * 100 : 0) + "%";
+  if(rail) rail.classList.toggle("all-done", rows.length > 0 && done === rows.length);
+  // 组状态：全勾 / 部分（半选要靠 indeterminate，HTML 属性给不了）
+  document.querySelectorAll(".ckg").forEach(g => {
+    const rs = [...g.querySelectorAll(".ckr")];
+    const on = rs.filter(x => x.classList.contains("done")).length;
+    const box = g.querySelector(".ckg-h input");
+    if(box){
+      box.checked = on === rs.length && rs.length > 0;
+      box.indeterminate = on > 0 && on < rs.length;
+    }
+    g.classList.toggle("done", on === rs.length && rs.length > 0);
+    const c = g.querySelector(".c");
+    if(c) c.textContent = `${on}/${rs.length}`;
+  });
+}
+function ckOne(input){
+  const row = input.closest(".ckr");
+  if(!row) return;
+  const set = ckDoneSet(), k = row.dataset.k;
+  if(input.checked) set.add(k); else set.delete(k);
+  ckPersist(set);
+  row.classList.toggle("done", input.checked);
+  ckPaint();
+}
+function ckGroup(input){
+  const g = input.closest(".ckg");
+  if(!g) return;
+  const want = input.checked;
+  const set = ckDoneSet();
+  g.querySelectorAll(".ckr").forEach(r => {
+    if(want) set.add(r.dataset.k); else set.delete(r.dataset.k);
+    r.classList.toggle("done", want);
+    const b = r.querySelector("input");
+    if(b) b.checked = want;
+  });
+  ckPersist(set);
+  ckPaint();
+}
+function ckGroupAll(btn){
+  const g = btn.closest(".ckg");
+  if(!g) return;
+  // 已经全勾的再点一次就取消，省得只能逐条撤
+  const rs = [...g.querySelectorAll(".ckr")];
+  const want = !rs.every(r => r.classList.contains("done"));
+  const set = ckDoneSet();
+  rs.forEach(r => {
+    if(want) set.add(r.dataset.k); else set.delete(r.dataset.k);
+    r.classList.toggle("done", want);
+    const b = r.querySelector("input");
+    if(b) b.checked = want;
+  });
+  ckPersist(set);
+  ckPaint();
+  toast(want ? "这一组已标为核对完成" : "这一组已取消勾选");
+}
+function ckAllDone(){
+  const rows = [...document.querySelectorAll(".ckr")];
+  if(!rows.length) return;
+  const want = !rows.every(r => r.classList.contains("done"));
+  const set = ckDoneSet();
+  rows.forEach(r => {
+    if(want) set.add(r.dataset.k); else set.delete(r.dataset.k);
+    r.classList.toggle("done", want);
+    const b = r.querySelector("input");
+    if(b) b.checked = want;
+  });
+  ckPersist(set);
+  ckPaint();
+  toast(want ? `${rows.length} 项已全部标为核对完成` : "已清空勾选");
+}
+function ckMore(btn, ev){
+  if(ev) ev.stopPropagation();
+  const item = btn.closest(".ck");
+  const box = item && item.querySelector(".ck-d");
+  if(!box) return;
+  const show = !box.classList.contains("show");
+  box.classList.toggle("show", show);
+  btn.textContent = show ? "收起明细" : `看 ${box.children.length} 条明细`;
+}
+/* 折起/展开核对项。手动开过关过就记住，不再跟着断点走 */
+let ckFoldManual = null;
+function ckFold(btn){
+  const rail = btn.closest(".rail-r");
+  if(!rail) return;
+  const off = rail.classList.toggle("collapsed");
+  ckFoldManual = off;
+  btn.textContent = off ? "▸" : "▾";
+  btn.title = off ? "展开核对项" : "收起核对项";
+}
+function ckApplyFold(){
+  const rail = $("#railR");
+  if(!rail) return;
+  const btn = rail.querySelector(".ck-fold");
+  if(!btn) return;
+  const off = ckFoldManual === null ? PHONE_MQ.matches : ckFoldManual;
+  rail.classList.toggle("collapsed", off);
+  btn.textContent = off ? "▸" : "▾";
+  btn.title = off ? "展开核对项" : "收起核对项";
+}
+/* 手机上待核对排到工具条下面：正文很长，放在文末等于找不到；
+   宽屏回三栏时再挂回网格。挪的是同一个节点，勾过的状态不会丢。 */
+function placeRailR(){
+  const rail = $("#railR"), bar = document.querySelector(".docbar"), grid = document.querySelector(".docgrid");
+  if(!rail || !bar || !grid) return;
+  if(PHONE_MQ.matches){
+    if(rail.previousElementSibling !== bar) bar.after(rail);
+  }else if(rail.parentNode !== grid){
+    grid.appendChild(rail);
+  }
+}
+/* ── 跳转：落到「哪一段 → 哪个输入框 → 哪一句」 ───────────────────
+   只滚到段落不够用：一段五六百字，眼睛还得自己找那个数。
+   这里把目标句子在文本框里选中，浏览器会连着色带光标一起标出来。
+
+   两条路：
+   ① 后端给了 field + 整句 → 直接在那一个输入框里选中，最准；
+   ② 没给（旧记录、或元数据缺）→ 自己搜：把这些正文框按段落线索排个序，
+      逐个切句，按「引文相似度 + 是否含该数字」打分，取最高那句选中。
+      所以旧记录也能精确到句，不会退化成「滚到这一大段」。 */
+function ckFieldEl(field, seg){
+  if(!field) return null;
+  if(field === "seg") return document.querySelectorAll("#d-segs .seg-line")[Math.max(0, seg - 1)] || null;
+  if(field === "topic") return document.querySelectorAll("#d-topics .topic-body")[Math.max(0, seg - 1)] || null;
+  if(field === "act") return document.querySelector("#actList") || null;
+  if(field === "pos") return document.querySelectorAll("#d-pos .ta")[Math.max(0, seg - 1)] || null;
+  if(field === "con") return document.querySelectorAll("#d-con .ta")[Math.max(0, seg - 1)] || null;
+  if(field === "table") return document.getElementById("blk-fintable");
+  if(field === "ov") return document.querySelector(".ta.ov-body") || document.querySelector(".ta.ov-lead");
+  if(field === "as") return document.querySelector(".ta.as-body") || document.querySelector(".ta.as-lead");
+  if(field === "db") return document.querySelector(".ta.db-body") || document.querySelector(".ta.db-lead");
+  return document.querySelector(".ta." + field);
+}
+/* 正文里所有「能选中句子」的输入框，按阅读顺序。带 f（field 键）与 name（给人看的段名） */
+function ckTextFields(){
+  const out = [];
+  const push = (el, f, name) => { if(el) out.push({ el, f, name }); };
+  push(document.querySelector(".ta.basic"), "basic", "基本情况");
+  push(document.querySelector(".ta.ov-body"), "ov", "总述段");
+  push(document.querySelector(".ta.as-body"), "as", "资产段");
+  push(document.querySelector(".ta.db-body"), "db", "债务段");
+  document.querySelectorAll("#d-segs .seg-line").forEach((el, i) => {
+    const t = (el.innerText || "").trim();
+    const m = t.match(/^\s*\d+\s*[）)．.]?\s*([^，。；：\n]{1,16}?)(?:业务|板块|产品|服务|行业)?方面[，,]/);
+    push(el, "seg", `${i + 1}）${m ? m[1] : "板块"}`);
+  });
+  document.querySelectorAll("#d-topics .topic-body").forEach((el, i) =>
+    push(el, "topic", `专题段${i + 1}`));
+  // 摘要层（正面／关注）：措辞类问题要点到具体第几条，所以也进可定位清单
+  document.querySelectorAll("#d-pos .ta").forEach((el, i) => push(el, "pos", `正面${i + 1}）`));
+  document.querySelectorAll("#d-con .ta").forEach((el, i) => push(el, "con", `关注${i + 1}）`));
+  return out;
+}
+/* 按句切开，保留句子本身。与后端 _sentences 同一个规则 */
+function splitSents(text){
+  const out = [];
+  let start = 0;
+  const s = text || "";
+  for(let i = 0; i < s.length; i++){
+    if("。！？".indexOf(s[i]) >= 0){
+      const piece = s.slice(start, i + 1);
+      if(piece.trim()) out.push({ text: piece, at: start });
+      start = i + 1;
+    }
+  }
+  const rest = s.slice(start);
+  if(rest.trim()) out.push({ text: rest, at: start });
+  return out;
+}
+/* 比较用：去掉空白与千分位，只比实质字符 */
+function normCmp(s){
+  return String(s || "").replace(/[\s,，]/g, "");
+}
+/* 最长公共子串长度：引文常被截断（带 …），只能按重合度认 */
+function lcsLen(a, b){
+  if(!a || !b) return 0;
+  const n = a.length, m = b.length;
+  if(n * m > 40000) return 0;              // 太长就不算，别卡页面
+  let prev = new Uint16Array(m + 1), cur = new Uint16Array(m + 1), best = 0;
+  for(let i = 1; i <= n; i++){
+    for(let j = 1; j <= m; j++){
+      cur[j] = a[i - 1] === b[j - 1] ? prev[j - 1] + 1 : 0;
+      if(cur[j] > best) best = cur[j];
+    }
+    const t = prev; prev = cur; cur = t;
+    cur.fill(0);
+  }
+  return best;
+}
+/* 数字要在「词边界」上匹配：'92 字' 不能因为正文里有 692.74 就算命中。
+   正文与目标都先归一化（去逗号、去空白），再要求前后不是数字或小数点。 */
+function numHit(text, num){
+  const n = normCmp(num);
+  if(!n) return false;
+  const esc = n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  try{
+    return new RegExp("(^|[^0-9.])" + esc + "([^0-9.]|$)").test(normCmp(text));
+  }catch(e){
+    return normCmp(text).indexOf(n) >= 0;
+  }
+}
+function scoreSent(sent, quote, num){
+  const s = normCmp(sent), q = normCmp(quote);
+  let sc = 0;
+  if(num){
+    if(numHit(sent, num)) sc += 4;                       // 这个数字就在这句里
+  }
+  if(q){
+    if(q && s.indexOf(q) >= 0) sc += 10;                 // 引文完整落在这句
+    else sc += Math.min(lcsLen(s, q), 24) / 3;           // 被截断过，按重合长度
+  }
+  return sc;
+}
+/* 在候选输入框里找「那句话」，返回 { el, name, si, at, text } */
+function findSentence(field, seg, full, num, label){
+  const quote = (full || "").replace(/^…+/, "").replace(/…+$/, "").trim();
+  // 「×× 字」这种不是数字，是篇幅统计，别拿去搜正文
+  const needle = /^\s*\d+\s*字\s*$/.test(num || "") ? "" : num;
+  if(!quote && !needle && !label) return null;
+  const list = ckTextFields();
+  if(!list.length) return null;
+  // 段落线索优先：先只在这个框里找，找不到（或分太低）才全篇搜
+  const hint = ckFieldEl(field, seg);
+  if(hint){
+    const own = list.find(x => x.el === hint);
+    const order = own ? [own].concat(list.filter(x => x.el !== hint)) : list;
+    const hit = bestIn(order, quote, needle, label);
+    if(hit && hit.score >= 4) return hit;
+  }
+  return bestIn(list, quote, needle, label);
+}
+function bestIn(list, quote, num, label){
+  let best = null;
+  const lab = normCmp(label).replace(/^\d+[）)]/, "");
+  for(const f of list){
+    const text = f.el.tagName === "TEXTAREA" ? (f.el.value || "") : (f.el.innerText || "");
+    if(!text) continue;
+    // 段落名对得上才加分：「其他业务（92 字）」这种没有数字也没有引文，
+    // 只能靠段名认。不能给无条件兜底分——那会让第一句永远胜出。
+    const nameHit = lab.length >= 2 &&
+      normCmp(f.name).replace(/^\d+[）)]/, "").indexOf(lab) >= 0;
+    const sents = splitSents(text);
+    for(let i = 0; i < sents.length; i++){
+      let sc = scoreSent(sents[i].text, quote, num);
+      if(nameHit) sc += 3;
+      if(sc <= 0) continue;
+      if(!best || sc > best.score){
+        best = { el: f.el, field: f.f, name: f.name, si: i + 1, at: sents[i].at,
+          text: sents[i].text, fullText: text, score: sc };
+      }
+    }
+  }
+  return best;
+}
+/* 句子太长（两百字一句的不少）时，把高亮收窄到「含这个数的那一小句」。
+   整句选中看着还是一大块，收窄到分句才一眼看到数字。
+   但两种情形必须保留整句：①目标就是整句（重复句、点题句，引文等于整句）；
+   ②句子本来就不长。否则会把「这一句」切成残缺的半截。 */
+function narrowHighlight(hit, num, quote){
+  const text = hit.fullText || "";
+  const at = hit.at;
+  const sent = hit.text || "";
+  const LIMIT = 64;
+  if(!text || sent.length <= LIMIT) return [at, at + sent.length];
+  const q = normCmp(quote), sn = normCmp(sent);
+  const parts = [];
+  let st = 0;
+  for(let i = 0; i < sent.length; i++){
+    if("，；,;".indexOf(sent[i]) >= 0){
+      parts.push({ t: sent.slice(st, i + 1), at: st });
+      st = i + 1;
+    }
+  }
+  if(st < sent.length) parts.push({ t: sent.slice(st), at: st });
+  // ① 有具体数字：先切到含它的那一小句——长句里这才是「定位」
+  const n = normCmp(num);
+  let ci = -1;
+  if(n && !/^\s*\d+\s*字\s*$/.test(num || "") && parts.length > 1){
+    ci = parts.findIndex(p => numHit(p.t, num));
+  }
+  if(ci < 0){
+    // ② 目标就是整句（重复句、点题句：引文等于整句），不要切
+    if(q && (q === sn || q.length >= sn.length - 2)) return [at, at + sent.length];
+    if(parts.length < 2) return [at, at + sent.length];
+    if(q){
+      let best = -1, bestSc = 0;
+      parts.forEach((p, i) => {
+        const sc = lcsLen(normCmp(p.t), q);
+        if(sc > bestSc){ bestSc = sc; best = i; }
+      });
+      ci = best;
+    }
+  }
+  if(ci < 0) return [at, at + sent.length];
+  let lo = ci, hi = ci;
+  const span = () => parts.slice(lo, hi + 1).reduce((a, p) => a + p.t.length, 0);
+  while(span() < 26 && (lo > 0 || hi < parts.length - 1)){
+    if(hi < parts.length - 1) hi++;
+    else lo--;
+  }
+  return [at + parts[lo].at, at + parts[hi].at + parts[hi].t.length];
+}
+/* 在 textarea 或 contenteditable 里选中一段，返回是否选中 */
+function selectRange(el, start, end){
+  if(!el) return false;
+  if(el.tagName === "TEXTAREA"){
+    el.focus({ preventScroll: true });
+    try{ el.setSelectionRange(start, end); }catch(e){ return false; }
+    return true;
+  }
+  let pos = 0, startNode = null, startOff = 0, endNode = null, endOff = 0;
+  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
+  let node;
+  while((node = walker.nextNode())){
+    const len = node.textContent.length;
+    if(startNode === null && pos + len > start){ startNode = node; startOff = start - pos; }
+    if(startNode !== null && pos + len >= end){ endNode = node; endOff = end - pos; break; }
+    pos += len;
+  }
+  if(!startNode || !endNode) return false;
+  const range = document.createRange();
+  range.setStart(startNode, startOff);
+  range.setEnd(endNode, endOff);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+  el.focus({ preventScroll: true });
+  return true;
+}
+/* 按「整句原文」选中（新版记录带 full 时走这条，最准） */
+function selectSentence(el, full){
+  if(!el || !full) return false;
+  const text = el.tagName === "TEXTAREA" ? (el.value || "") : (el.innerText || "");
+  let i = text.indexOf(full);
+  if(i < 0 && full.length > 12) i = text.indexOf(full.slice(0, 12));
+  if(i < 0) return false;
+  return selectRange(el, i, Math.min(text.length, i + full.length));
+}
+function ckJump(el, ev){
+  if(ev){ ev.stopPropagation(); ev.preventDefault(); }
+  const row = el.closest && el.closest(".ckr");
+  const anchor = row ? row.dataset.t : (el.dataset && el.dataset.t);
+  const field = row ? (row.dataset.f || "") : "";
+  const seg = row ? Number(row.dataset.g || 0) : 0;
+  const full = row ? (row.dataset.s || "") : "";
+  const num = row ? (row.dataset.n || "") : "";
+  const label = (() => {
+    const p = row ? row.querySelector(".p") : null;
+    const t = p ? p.textContent.trim() : "";
+    return t.split("·")[0].trim();
+  })();
+  const target = document.getElementById(anchor || "d-doc");
+  if(!target) return;
+  flashEl(target);
+  // 表格类问题没有「句子」可选，滚到表就行
+  if(field === "table"){ target.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
+  const hint = ckFieldEl(field, seg);
+  (hint || target).scrollIntoView({ behavior: "smooth", block: "center" });
+  // 等滚动落位再选，否则浏览器会把选区滚回它自己原来的位置
+  clearTimeout(ckJump._t);
+  ckJump._t = setTimeout(() => {
+    const hit = findSentence(field, seg, full, num, label);
+    if(!hit){
+      // 没搜到具体句子（如「内容偏薄」这类只指段不指句的）：
+      // 至少落在那个输入框上并选中它的第一句，同时清掉上一次的残留选区——
+      // 不清的话，用户看到的还是上一处的高亮，会以为定错了地方。
+      const own = ckFieldEl(field, seg);
+      const sel = window.getSelection();
+      if(own && (field === "seg" || field === "topic")){
+        const t = own.tagName === "TEXTAREA" ? (own.value || "") : (own.innerText || "");
+        const s0 = splitSents(t)[0];
+        if(s0 && selectRange(own, s0.at, s0.at + s0.text.length)){
+          own.scrollIntoView({ behavior: "smooth", block: "center" });
+          flashEl(own.closest(".blk") || own);
+          toast("已定位到这一段（这段没有可指的单句）");
+          return;
+        }
+      }
+      if(sel) sel.removeAllRanges();
+      return;
+    }
+    const [s, e] = narrowHighlight(hit, num, full);
+    if(!selectRange(hit.el, s, e)) return;
+    // 选中的片段若在视口外（长段、手机上），把它带进来
+    const box = hit.el.getBoundingClientRect();
+    if(box.top < 70 || box.bottom > innerHeight - 40){
+      hit.el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    flashEl(hit.el.closest(".blk") || hit.el);
+    toast(`已定位：${hit.name} 第 ${hit.si} 句`);
+  }, 300);
+}
+function flashEl(el){
+  if(!el) return;
+  el.classList.remove("flash");
+  void el.offsetWidth;
+  el.classList.add("flash");
+  clearTimeout(el._fl);
+  el._fl = setTimeout(() => el.classList.remove("flash"), 1900);
+}
+function ckReset(){
+  const rows = [...document.querySelectorAll(".ckr")];
+  if(!rows.length) return;
+  if(!confirm("清空这份报告的全部勾选？")) return;
+  ckPersist(new Set());
+  rows.forEach(r => {
+    r.classList.remove("done");
+    const i = r.querySelector("input");
+    if(i) i.checked = false;
+  });
+  ckPaint();
+}
+/* 侧栏空着就整栏收掉，正文跟着居中；有内容才占位 */
+function syncRails(){
+  const g = document.querySelector(".docgrid");
+  if(!g) return;
+  const l = $("#railL"), r = $("#railR");
+  const hasL = !!(l && l.querySelector(".chip"));
+  const hasR = !!(r && (r.querySelector(".ckr") || r.querySelector(".ck-auto")));
+  if(l) l.style.display = hasL ? "" : "none";
+  if(r) r.style.display = hasR ? "" : "none";
+  g.classList.toggle("nol", !hasL);
+  g.classList.toggle("nor", !hasR);
+}
+/* 跨过 1500px 时重排一次：候选观点要在「板块内」与「左栏」之间换位置 */
+let _wideNow = WIDE_MQ.matches;
+function onWideChange(){
+  if(WIDE_MQ.matches === _wideNow) return;
+  _wideNow = WIDE_MQ.matches;
+  if(!S.draft || !$("#d-company")) return;
+  const main = document.querySelector("main");
+  const y = main ? main.scrollTop : 0;
+  try{ S.draft = collectDraft(); }catch(e){ return; }
+  renderDraft();
+  if(main) main.scrollTop = y;
+}
+if(WIDE_MQ.addEventListener) WIDE_MQ.addEventListener("change", onWideChange);
+/* 跨过手机断点：待核对在「工具条下」与「文末」之间换位，再决定折起与否 */
+if(PHONE_MQ.addEventListener) PHONE_MQ.addEventListener("change", () => {
+  if(!S.draft) return;
+  placeRailR();
+  ckApplyFold();
+});
+
+function toggleParaGap(){
+  // 先把页面上的改动收进草稿，再切开关重画，否则改了半天的段会被覆盖
+  S.draft = collectDraft();
+  S.draft.layout = S.draft.layout || {};
+  S.draft.layout.para_gap = S.draft.layout.para_gap === false;   // 取反
+  renderDraft();
+  toast(S.draft.layout.para_gap ? "段与段之间空一行" : "段落紧排，不留空行");
+}
+
+/* 候选观点：正文倒抽出来的判断句，点一条就加进上面的列表，加过的不再出现。
+   定了稿但没被选中过的条目（模型给回池里的）也可以再挑回来。 */
+function renderPool(kind, pool){
+  const box = $("#" + (kind === "pos" ? "p-pos" : "p-con"));
+  if(!box) return;
+  const cur = [...document.querySelectorAll(kind === "pos" ? ".it-pos" : ".it-con")].map(t => t.value.trim());
+  const rest = (pool || []).filter(t => t && !cur.includes(t));
+  if(!rest.length){ box.innerHTML = ""; syncRails(); return; }
+  // 在左栏时有的是竖着的地方，整句铺出来；在板块里就压成一行，免得把正文顶下去
+  const inRail = !!(box.closest && box.closest("#railL"));
+  const cut = inRail ? 999 : 42;
+  box.innerHTML = `<div class="pool-t">${kind === "pos" ? "正面" : "关注"} · 候选 ${rest.length} 条，点一条加进去</div>` +
+    rest.map((t, i) => `<button class="chip" title="${esc(t)}" onclick="usePool('${kind}',${i})">${esc(t.slice(0, cut))}${t.length > cut ? "…" : ""}</button>`).join("");
+  syncRails();
+  box.dataset.pool = JSON.stringify(rest);
+}
+
+function usePool(kind, i){
+  const box = $("#" + (kind === "pos" ? "p-pos" : "p-con"));
+  const rest = JSON.parse(box.dataset.pool || "[]");
+  const text = rest[i];
+  if(!text) return;
+  addItem(kind, text);                       // 加进列表
+  rest.splice(i, 1);                         // 从候选里拿掉
+  renderPool(kind, rest);
+  renumber();
+  // 左栏和正文隔着一条街：加进去的条目在视野外就滚过去闪一下，
+  // 否则点了没反应，会以为没加上
+  const items = document.querySelectorAll(kind === "pos" ? ".it-pos" : ".it-con");
+  const last = items[items.length - 1];
+  if(!last) return;
+  const r = last.getBoundingClientRect();
+  if(r.top < 70 || r.bottom > innerHeight - 40) last.scrollIntoView({ behavior: "smooth", block: "center" });
+  const blk = last.closest(".blk");
+  if(blk){
+    blk.classList.remove("flash");
+    void blk.offsetWidth;
+    blk.classList.add("flash");
+    clearTimeout(blk._fl);
+    blk._fl = setTimeout(() => blk.classList.remove("flash"), 1900);
+  }
+}
+
+/* 条目 markup：序号兼作拖动把手，删除做成右上角一个圈 */
+function itemHtml(kind, text, n){
+  return `<span class="num" title="按住拖动，可调整这条的先后">${n}）</span>` +
+    `<textarea class="ta it-${kind}" rows="1">${esc(text || "")}</textarea>` +
+    `<button class="del" onclick="delItem(this)" title="删除这条" aria-label="删除这条">` +
+    `<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M2.4 2.4 7.6 7.6M7.6 2.4 2.4 7.6"/></svg></button>`;
+}
+function renderItems(kind, items){
+  const box = $("#" + (kind === "pos" ? "d-pos" : "d-con"));
+  box.innerHTML = items.map((t, i) => `<div class="item">${itemHtml(kind, t, i + 1)}</div>`).join("");
+  renumber();
+}
+function addItem(kind, text){
+  const box = $("#" + (kind === "pos" ? "d-pos" : "d-con"));
+  const div = document.createElement("div");
+  div.className = "item";
+  div.innerHTML = itemHtml(kind, text, box.children.length + 1);
+  box.appendChild(div);
+  renumber();
+  div.querySelector("textarea").focus();
+  autoGrow(div.querySelector("textarea"));
+}
+/* 删除：先淡出再摘掉，同时留一个「撤销」。
+   删的是一条完整观点，误点一下就没了的代价太大，所以给六秒后悔期（⌘/Ctrl+Z 也认）。 */
+function delItem(btn){
+  const el = btn && btn.closest && btn.closest(".item");
+  if(!el || el.classList.contains("ph")) return;
+  const list = el.parentNode;
+  const text = (el.querySelector("textarea") || {}).value || "";
+  const idx = [...list.children].indexOf(el);
+  const kind = list.id === "d-pos" ? "pos" : "con";
+  el.classList.add("gone");
+  setTimeout(() => {
+    if(el.parentNode) el.remove();
+    renumber();
+    toastWithUndo("已删除一条", () => {
+      const sibs = [...list.children];
+      const div = document.createElement("div");
+      div.className = "item";
+      div.innerHTML = itemHtml(kind, text, idx + 1);
+      if(sibs[idx]) list.insertBefore(div, sibs[idx]); else list.appendChild(div);
+      renumber();
+      autoGrow(div.querySelector("textarea"));
+      div.classList.add("settle");
+      setTimeout(() => div.classList.remove("settle"), 900);
+    });
+  }, 130);
+}
+function renumber(){
+  [["#d-pos", "#h-pos"], ["#d-con", "#h-con"]].forEach(([sel, hint]) => {
+    const items = [...$(sel).querySelectorAll(".item")];
+    items.forEach((el, i) => {
+      const n = el.querySelector(".num");
+      if(n) n.textContent = (i + 1) + "）";
+    });
+    // 只有一条时「换位置」无从谈起，把提示收起来
+    const h = $(hint);
+    if(h) h.classList.toggle("off", items.length < 2);
+  });
+}
+
+/* ── 拖动排序 ──────────────────────────────────────────────────
+   按住前面的序号（1）2）…）就能拖，松手落位；拖的是整条，文字不会丢。
+   用 pointer 事件而不是 HTML5 拖放：后者在触屏上不触发，而这份报告手机上也要改。
+   拖动期间原位留一个虚线占位、其余条目跟着让位，落点看得见；
+   中途按 Esc 或指针被系统收走，就退回原来的位置。 */
+const DRAG = { on: false, started: false, el: null, list: null, ph: null, ghost: null,
+  sp: null, x0: 0, y0: 0, lastY: 0, offX: 0, offY: 0, w: 0, h: 0,
+  anchor: null, raf: 0, v: 0 };
+
+function dragBegin(e){
+  if(e.button) return;                       // 只认左键/单指
+  const num = e.target.closest && e.target.closest(".item>.num");
+  if(!num) return;
+  const el = num.closest(".item");
+  if(!el || el.classList.contains("ph")) return;
+  const r = el.getBoundingClientRect();
+  Object.assign(DRAG, {
+    on: true, started: false, cancel: false, el, list: el.parentNode, ph: null, ghost: null, sp: null,
+    x0: e.clientX, y0: e.clientY, lastY: e.clientY,
+    offX: e.clientX - r.left, offY: e.clientY - r.top, w: r.width, h: r.height,
+    anchor: el.nextElementSibling, v: 0
+  });
+  try{ num.setPointerCapture(e.pointerId); }catch(err){}
+  document.addEventListener("pointermove", dragMove, { passive: false });
+  document.addEventListener("pointerup", dragEnd);
+  document.addEventListener("pointercancel", dragEnd);
+  document.addEventListener("keydown", dragKey);
+}
+
+function dragLift(){
+  const d = DRAG;
+  d.started = true;
+  document.body.classList.add("dragging");
+  // 占位：高度与原条目一致，位置就是它现在的位置
+  const ph = document.createElement("div");
+  ph.className = "item ph";
+  ph.style.height = d.h + "px";
+  d.list.insertBefore(ph, d.el);
+  d.ph = ph;
+  // 影子：克隆一份浮起来跟着指针，宽度锁定，避免拖到空格里忽然变形
+  const g = d.el.cloneNode(true);
+  g.className = "item item-ghost";
+  g.style.width = d.w + "px";
+  g.style.height = d.h + "px";
+  // textarea 的当前内容是 value，不在子节点里：克隆之后要把值补过去，
+  // 否则刚改过的那句在影子里还是旧文字。
+  const src = d.el.querySelectorAll("textarea"), dst = g.querySelectorAll("textarea");
+  src.forEach((t, i) => { if(dst[i]) dst[i].value = t.value; });
+  g.style.transform = `translate(${d.x0 - d.offX}px,${d.y0 - d.offY}px)`;
+  document.body.appendChild(g);
+  d.ghost = g;
+  d.el.classList.add("drag-src");
+}
+
+function dragPlace(y){
+  const d = DRAG;
+  if(!d.ph) return;
+  let before = null;
+  for(const k of d.list.children){
+    if(!k.classList.contains("item") || k === d.ph || k === d.el) continue;
+    const r = k.getBoundingClientRect();
+    if(y < r.top + r.height / 2){ before = k; break; }
+  }
+  if(before){ if(d.ph.nextElementSibling !== before) d.list.insertBefore(d.ph, before); }
+  else if(d.list.lastElementChild !== d.ph) d.list.appendChild(d.ph);
+}
+
+function dragMove(e){
+  const d = DRAG;
+  if(!d.on) return;
+  if(!d.started){
+    if(Math.abs(e.clientY - d.y0) < 4 && Math.abs(e.clientX - d.x0) < 4) return;
+    dragLift();
+  }
+  if(e.cancelable) e.preventDefault();
+  d.lastY = e.clientY;
+  if(d.ghost) d.ghost.style.transform = `translate(${e.clientX - d.offX}px,${e.clientY - d.offY}px)`;
+  dragPlace(e.clientY);
+  dragScroll(e.clientY);
+}
+
+/* 拖到视口上下沿附近就自己滚，长列表不用先滚到位置再拖 */
+function dragScroll(y){
+  const d = DRAG;
+  if(!d.sp) d.sp = scrollHost(d.list);
+  const isDoc = d.sp === document.scrollingElement;
+  const top = isDoc ? 0 : d.sp.getBoundingClientRect().top;
+  const bottom = isDoc ? innerHeight : d.sp.getBoundingClientRect().bottom;
+  const edge = 54;
+  let v = 0;
+  if(y < top + edge) v = -(top + edge - y) / 4;
+  else if(y > bottom - edge) v = (y - (bottom - edge)) / 4;
+  d.v = Math.max(-15, Math.min(15, Math.round(v)));
+  if(d.v && !d.raf) d.raf = requestAnimationFrame(dragScrollStep);
+  if(!d.v && d.raf){ cancelAnimationFrame(d.raf); d.raf = 0; }
+}
+function dragScrollStep(){
+  const d = DRAG;
+  d.raf = 0;
+  if(!d.started || !d.v) return;
+  d.sp.scrollTop += d.v;
+  dragPlace(d.lastY);
+  d.raf = requestAnimationFrame(dragScrollStep);
+}
+function scrollHost(el){
+  let p = el && el.parentNode;
+  while(p && p !== document.body && p.nodeType === 1){
+    const s = getComputedStyle(p);
+    if(/(auto|scroll)/.test(s.overflowY) && p.scrollHeight > p.clientHeight + 4) return p;
+    p = p.parentNode;
+  }
+  return document.scrollingElement || document.documentElement;
+}
+
+function dragEnd(ev){
+  const d = DRAG;
+  document.removeEventListener("pointermove", dragMove);
+  document.removeEventListener("pointerup", dragEnd);
+  document.removeEventListener("pointercancel", dragEnd);
+  document.removeEventListener("keydown", dragKey);
+  if(d.raf){ cancelAnimationFrame(d.raf); d.raf = 0; }
+  d.v = 0;
+  if(d.on && d.started && d.el){
+    if(d.cancel){
+      // 撤：先把占位拿掉，再把原条目插回它原来的后面那一条前面。
+      // 顺序不能反——占位还在时插回去，replaceChild 又会把它挪到占位的落点。
+      if(d.ph && d.ph.parentNode) d.ph.remove();
+      if(d.anchor && d.anchor.parentNode === d.list) d.list.insertBefore(d.el, d.anchor);
+      else if(d.list) d.list.appendChild(d.el);
+    }else if(d.ph && d.ph.parentNode){
+      d.ph.parentNode.replaceChild(d.el, d.ph);
+    }
+    d.el.classList.remove("drag-src");
+    if(d.ghost) d.ghost.remove();
+    document.body.classList.remove("dragging");
+    renumber();
+    if(!d.cancel){
+      d.el.classList.remove("settle");
+      void d.el.offsetWidth;
+      d.el.classList.add("settle");
+      const el = d.el;
+      setTimeout(() => el.classList.remove("settle"), 900);
+    }
+  }else{
+    if(d.el) d.el.classList.remove("drag-src");
+    if(d.ghost) d.ghost.remove();
+    document.body.classList.remove("dragging");
+  }
+  Object.assign(d, { on: false, started: false, cancel: false, el: null, list: null, ph: null,
+    ghost: null, sp: null, anchor: null });
+}
+
+/* Esc 撤掉这次拖动，回到原位 */
+function dragKey(e){
+  const d = DRAG;
+  if(e.key !== "Escape" || !d.on) return;
+  d.cancel = true;
+  dragEnd(e);
+}
+function flashBlk(el){
+  const blk = el && el.closest && el.closest(".blk");
+  if(!blk) return;
+  blk.classList.remove("flash");
+  void blk.offsetWidth;
+  blk.classList.add("flash");
+  clearTimeout(blk._fl);
+  blk._fl = setTimeout(() => blk.classList.remove("flash"), 1500);
+}
+document.addEventListener("pointerdown", dragBegin);
+
+/* 分部段：编号、板块名、正文在同一段里，像 Word 那样整段编辑 */
+function segText(name, body){
+  const n = (name || "").trim();
+  return (n ? n + segSuffix(n) : "") + (body || "").trim();
+}
+function parseSeg(raw, lastName){
+  const t = (raw || "").replace(/\u00a0/g, " ").trim();
+  const m = t.match(/^\s*\d+\s*[）)．.]?\s*([\s\S]*)$/);
+  let rest = m ? m[1] : t;
+  const d = rest.match(/^([^，。；：\n]{1,24}?)((?:业务|板块|产品|服务|行业)?方面[，,、：:])\s*/);
+  if(d) return { name: d[1].trim(), body: rest.slice(d[0].length).trim() };
+  return { name: (lastName || "").trim(), body: rest.trim() };
+}
+function renderSegs(segs){
+  $("#d-segs").innerHTML = segs.map(s => `<div class="seg">
+    <div class="seg-line" contenteditable="plaintext-only" spellcheck="false"
+      data-name="${esc(s.name)}"></div>
+    <button class="tool" onclick="this.closest('.seg').remove();renumberSegs()">×</button>
+  </div>`).join("");
+  [...document.querySelectorAll("#d-segs .seg")].forEach((el, i) => {
+    const s = segs[i] || {};
+    el.querySelector(".seg-line").textContent = `${i + 1}）${segText(s.name, s.body)}`;
+  });
+}
+function addSeg(){
+  const div = document.createElement("div");
+  div.className = "seg";
+  div.innerHTML = `<div class="seg-line" contenteditable="plaintext-only" spellcheck="false"
+    data-name=""></div>
+    <button class="tool" onclick="this.closest('.seg').remove();renumberSegs()">×</button>`;
+  $("#d-segs").appendChild(div);
+  renumberSegs();
+  const line = div.querySelector(".seg-line");
+  line.focus();
+}
+function renumberSegs(){
+  [...document.querySelectorAll("#d-segs .seg")].forEach((el, i) => {
+    const line = el.querySelector(".seg-line");
+    if(document.activeElement === line) return;   // 正在编辑的不动，免得光标跳走
+    const t = (line.textContent || "").replace(/^\s*\d+\s*[）)．.]?\s*/, "");
+    line.textContent = `${i + 1}）${t}`;
+  });
+}
+
+function renderTopics(ts){
+  $("#d-topics").innerHTML = ts.map(t => `<div class="topic">
+    <textarea class="ta topic-lead lead" rows="1" placeholder="加粗总起句：先给判断">${esc(t.lead)}</textarea>
+    <textarea class="ta topic-body" rows="1" placeholder="正文">${esc(t.body)}</textarea>
+    <button class="tool" onclick="this.parentNode.remove()">× 删除本段</button>
+  </div>`).join("");
+}
+function addTopic(lead, body){
+  const div = document.createElement("div");
+  div.className = "topic";
+  div.innerHTML = `<textarea class="ta topic-lead lead" rows="1" placeholder="加粗总起句：先给判断">${esc(lead || "")}</textarea>
+    <textarea class="ta topic-body" rows="1" placeholder="正文">${esc(body || "")}</textarea>
+    <button class="tool" onclick="this.parentNode.remove()">× 删除本段</button>`;
+  $("#d-topics").appendChild(div);
+  const boxes = div.querySelectorAll("textarea");
+  boxes.forEach(autoGrow);
+  (body ? boxes[1] : boxes[0]).focus();
+}
+
+/* 专题段预设：用户自己决定要不要、要几条。都不点就没有这一段。 */
+const TOPIC_PRESETS = [
+  { key: "contingent", label: "或有事项",
+    lead: "公司对外担保与未决诉讼规模可控，但担保对象集中于区域内国企，存在代偿的尾部风险。",
+    body: "截至最新期末，公司对外担保余额＿亿元，占净资产的＿%；被担保对象主要为区域内国有企业，互保特征明显。同期无重大未决诉讼。需关注被担保方偿付能力变化带来的代偿风险。" },
+  { key: "capex", label: "在建工程与资本支出",
+    lead: "公司在建项目投资规模较大，后续资本支出压力集中于未来两年，资金来源依赖再融资。",
+    body: "截至最新期末，公司在建工程＿亿元，计划总投资＿亿元，已累计投资＿亿元，剩余投资＿亿元；同期货币资金＿亿元，无法完全覆盖剩余投资，需依靠经营性回款与新增融资补足。" },
+  { key: "subsidy", label: "政府补助依赖",
+    lead: "公司利润对政府补助依赖度较高，剔除补助后经营性盈利薄弱。",
+    body: "报告期内公司其他收益中的政府补助分别为＿亿元，同期净利润分别为＿亿元，补助规模接近或超过净利润；若补助退坡，利润将明显承压。" },
+  { key: "restricted", label: "受限资产",
+    lead: "公司受限资产占有一定比重，对资产变现能力形成约束。",
+    body: "截至最新期末，公司受限资产账面价值＿亿元，占总资产的＿%，主要为用于借款抵押的土地与房产；扣除受限部分后，可自由处置的资产规模有限。" },
+  { key: "custom", label: "空白一段", lead: "", body: "" },
+];
+
+function topicMenu(){
+  const m = $("#topicMenu");
+  if(!m) return;
+  m.classList.toggle("show");
+}
+function addTopicPreset(key){
+  const p = TOPIC_PRESETS.find(x => x.key === key) || { lead: "", body: "" };
+  addTopic(p.lead, p.body);
+  TOAST_TOPIC = key;
+  const m = $("#topicMenu");
+  if(m) m.classList.remove("show");
+  toast(key === "custom" ? "已加一段空白专题" : `已加「${p.label}」，把＿处换成材料里的数字`);
+}
+let TOAST_TOPIC = "";
+
+function autoGrow(el){
+  el.style.height = "auto";
+  el.style.height = (el.scrollHeight + 2) + "px";
+}
+function autoGrowAll(){ document.querySelectorAll("textarea.ta").forEach(autoGrow); }
+document.addEventListener("input", e => {
+  if(e.target && e.target.classList && e.target.classList.contains("ta")) autoGrow(e.target);
+});
+
+function collectDraft(){
+  const d = JSON.parse(JSON.stringify(S.draft));
+  d.company_full_name = $("#d-company").value.trim();
+  // 修订清单在页面上改过、勾过：以页面状态为准，否则导出还是模型初稿
+  if((d.mode || "new") === "update"){
+    d.actions = collectActions();
+    return d;
+  }
+  d.internal_rating_code = $("#d-code").value.trim();
+  d.positive = [...document.querySelectorAll(".it-pos")].map(t => t.value.trim()).filter(Boolean);
+  d.concern = [...document.querySelectorAll(".it-con")].map(t => t.value.trim()).filter(Boolean);
+  d.basic_info = $(".ta.basic").value.trim();
+  d.commentary.overview = { lead: $(".ta.ov-lead").value.trim(), body: $(".ta.ov-body").value.trim() };
+  d.commentary.segments = [...document.querySelectorAll("#d-segs .seg")].map(s => {
+    const line = s.querySelector(".seg-line");
+    return parseSeg(line.innerText || line.textContent || "", line.dataset.name);
+  }).filter(s => s.body);
+  d.commentary.asset = { lead: $(".ta.as-lead").value.trim(), body: $(".ta.as-body").value.trim() };
+  d.commentary.debt = { lead: $(".ta.db-lead").value.trim(), body: $(".ta.db-body").value.trim() };
+  d.commentary.special_topics = [...document.querySelectorAll("#d-topics .topic")].map(t => ({
+    lead: t.querySelector(".topic-lead").value.trim(),
+    body: t.querySelector(".topic-body").value.trim()
+  })).filter(t => t.body);
+  return d;
+}
+
+async function exportDocx(){
+  try{
+    const d = collectDraft();
+    if(!d.company_full_name) return toast("请填企业全称", true);
+    const btns = [...document.querySelectorAll("[data-export]")];
+    btns.forEach(b => b.disabled = true);
+    setStep("export", { state: "run", pct: 60,
+      detail: S.mode === "update" ? "写入修订标记" : "排版中" });
+    const r = await api("/api/export", { draft: d, company: curCo() });
+    setStep("export", { state: "done", pct: 100, detail: r.name });
+    const a = document.createElement("a");
+    a.href = dlUrl(r.url);
+    a.download = r.name;
+    a.click();
+    if((r.mode || "") === "update"){
+      const c = r.counts || {};
+      const tail = [
+        c.reviewed ? `待人工 ${c.reviewed} 条保持原文` : "",
+        c.failed ? `定位失败 ${c.failed} 条已跳过` : "",
+      ].filter(Boolean).join("，");
+      toast(`已生成 ${r.name}（应用 ${c.applied || 0} 条${tail ? "，" + tail : ""}）`);
+    }else{
+      toast("已导出 " + r.name + (r.cleaned ? `（导出前清理 ${r.cleaned} 处重复或来源表述）` : ""));
+    }
+    refreshUsage();
+    btns.forEach(b => b.disabled = false);
+    if(HIST.open) loadHistory();  // 记录里的「已导出」状态跟着更新
+    if(PKG.open) loadBundle();  // 清单里补上刚落盘的这份
+  }catch(e){
+    setStep("export", { state: "error", detail: e.message });
+    toast(e.message, true);
+    document.querySelectorAll("[data-export]").forEach(b => b.disabled = false);
+  }
+}
+
+async function copyPrompt(){
+  try{
+    const r = await api("/api/prompt", { company: curCo(), titles: S.loaded.slice() });
+    await navigator.clipboard.writeText(`【系统提示】\n${r.system}\n\n【用户提示】\n${r.prompt}`);
+    toast("提示词已复制");
+  }catch(e){ toast(e.message, true); }
+}
+
+/* ---------------- 设置中心 ---------------- */
+const SET = { open: false, data: null };
+
+async function openSettings(){
+  SET.open = true;
+  $("#setMask").classList.add("show");
+  $("#setBox").innerHTML = `<div class="sh"><b>设置</b><button class="x" onclick="closeSettings()">×</button></div>
+    <div class="sets"><div class="sd">正在读取配置…</div></div>`;
+  await reloadSettings();
+}
+
+function closeSettings(){
+  SET.open = false;
+  $("#setMask").classList.remove("show");
+}
+
+async function reloadSettings(){
+  try{
+    SET.data = await (await fetch(apiUrl("/api/settings"))).json();
+  }catch(e){
+    SET.data = null;
+  }
+  renderSettings();
+}
+
+function badge(ok, okText, badText){
+  return `<span class="badge ${ok ? "ok" : "warn"}">${esc(ok ? okText : badText)}</span>`;
+}
+
+function renderSettings(){
+  const d = SET.data || {};
+  const pw = d.password || {}, llm = d.llm || {}, mail = d.mail || {}, ch = d.caihui || {};
+
+  let h = `<div class="sh"><b>设置</b><button class="x" onclick="closeSettings()">×</button></div><div class="sets">`;
+
+  // 模型 API
+  h += `<div class="setsec">
+    <div class="st">模型 API ${badge(llm.ready, "已配置", "未配置")}
+      ${llm.source ? `<span class="badge">${llm.source === "env" ? "来自环境变量" : llm.source === "workbuddy" ? "用 WorkBuddy 已配模型" : "页面填写"}</span>` : ""}</div>
+    <div class="sd">生成报告用的模型。默认沿用 WorkBuddy 已配的模型；想换别的就填任意 OpenAI 兼容端点，
+      存本机 <code>data/llm.json</code>（改完会自动测连通）。环境变量 <code>LLM_BASE_URL/LLM_API_KEY/LLM_MODEL</code> 优先级最高。</div>
+    <div class="setgrid">
+      <label>接口地址</label>
+      <input id="stLlmUrl" value="${esc(llm.url || "")}" placeholder="https://api.deepseek.com/chat/completions" spellcheck="false"/>
+      <label>模型名</label>
+      <input id="stLlmModel" value="${esc(llm.model || "")}" placeholder="deepseek-v4-flash" spellcheck="false"/>
+      <label>API Key</label>
+      <input id="stLlmKey" type="password" placeholder="${llm.has_key ? "已保存，留空表示不改" : "sk-..."}" spellcheck="false"/>
+    </div>
+    <div class="setact"><span class="msg" id="msgLlm">${llm.models && llm.models.length ? "可用：" + esc(llm.models.join("、")) : ""}</span>
+      <button class="btn-sm solid" onclick="saveSettings('llm')">保存并测连通</button></div>
+  </div>`;
+
+  // 邮件 SMTP
+  h += `<div class="setsec">
+    <div class="st">发件邮箱（SMTP） ${badge(mail.ready, "已配置", "未配置")}</div>
+    <div class="sd">「发送邮件」用的发件通道。需要邮箱的<b>客户端授权码</b>，不是登录密码。
+      QQ 邮箱：设置→账号→开启 SMTP→生成授权码；服务器 <code>smtp.qq.com</code>、端口 465、SSL。</div>
+    <div class="setgrid">
+      <label>服务器</label>
+      <input id="stMailHost" value="${esc(mail.host || "")}" placeholder="smtp.qq.com" spellcheck="false"/>
+      <label>端口</label>
+      <input id="stMailPort" value="${esc(mail.port || "")}" placeholder="465" spellcheck="false"/>
+      <label>加密</label>
+      <select id="stMailTls">
+        <option value="ssl" ${mail.tls === "ssl" ? "selected" : ""}>SSL（465）</option>
+        <option value="starttls" ${mail.tls === "starttls" ? "selected" : ""}>STARTTLS（587）</option>
+        <option value="none" ${mail.tls === "none" ? "selected" : ""}>不加密（25，内网）</option>
+      </select>
+      <label>账号</label>
+      <input id="stMailUser" value="${esc(mail.user || "")}" placeholder="你@qq.com" spellcheck="false"/>
+      <label>授权码</label>
+      <input id="stMailPass" type="password" placeholder="${mail.has_password ? "已保存，留空表示不改" : "16 位授权码"}" spellcheck="false"/>
+    </div>
+    <div class="setact"><span class="msg" id="msgMail">默认收件人 ${esc(mail.default_to || "")}</span>
+      <button class="btn-sm solid" onclick="saveSettings('mail')">保存</button></div>
+  </div>`;
+
+  // 财汇
+  h += `<div class="setsec">
+    <div class="st">财汇 MCP ${badge(ch.ready, "已连接", "未配置")}
+      ${ch.source ? `<span class="badge">${ch.source === "env" ? "来自环境变量" : ch.source === "workbuddy" ? "读本机 mcp.json" : "页面填写"}</span>` : ""}</div>
+    <div class="sd">检索公告、下载评级报告与募集说明书用。留空则读本机 <code>~/.workbuddy/mcp.json</code>。</div>
+    <div class="setgrid">
+      <label>地址</label>
+      <input id="stChUrl" value="${esc(ch.url || "")}" placeholder="https://mcp.finchina.com/..." spellcheck="false"/>
+      <label>API Key</label>
+      <input id="stChKey" type="password" placeholder="${ch.has_key ? "已保存，留空表示不改" : "ak_..."}" spellcheck="false"/>
+    </div>
+    <div class="setact"><span class="msg" id="msgCh"></span>
+      <button class="btn-sm solid" onclick="saveSettings('caihui')">保存</button></div>
+  </div>`;
+
+  // 口令
+  h += `<div class="setsec">
+    <div class="st">访问口令 ${badge(!pw.is_default, "已自定义", "仍是默认口令")}</div>
+    <div class="sd">别人打开这个网址要先输口令。改完所有旧登录立即失效。</div>
+    <div class="setgrid">
+      <label>当前口令</label>
+      <input id="stPwOld" type="password" placeholder="现在用的口令" spellcheck="false"/>
+      <label>新口令</label>
+      <input id="stPwNew" type="password" placeholder="至少 4 位" spellcheck="false"/>
+    </div>
+    <div class="setact"><span class="msg" id="msgPw"></span>
+      <button class="btn-sm solid" onclick="saveSettings('password')">改口令</button></div>
+  </div>`;
+
+  h += `</div>`;
+  $("#setBox").innerHTML = h;
+}
+
+function _val(id){ const el = $("#"+id); return el ? el.value.trim() : ""; }
+
+async function saveSettings(section){
+  const msgId = { llm: "msgLlm", mail: "msgMail", caihui: "msgCh", password: "msgPw" }[section];
+  const msg = msgId ? $("#"+msgId) : null;
+  const say = (t, kind) => { if(msg){ msg.className = "msg" + (kind ? " " + kind : ""); msg.textContent = t; } };
+  const body = { section };
+  if(section === "llm"){ body.url = _val("stLlmUrl"); body.model = _val("stLlmModel"); body.apiKey = _val("stLlmKey"); }
+  if(section === "caihui"){ body.url = _val("stChUrl"); body.key = _val("stChKey"); }
+  if(section === "mail"){ body.host = _val("stMailHost"); body.port = _val("stMailPort");
+    body.tls = _val("stMailTls"); body.user = _val("stMailUser"); body.password = _val("stMailPass"); }
+  if(section === "password"){ body.old = _val("stPwOld"); body.new = _val("stPwNew"); }
+  say("保存中…");
+  try{
+    const r = await api("/api/settings", body);
+    if(section === "password" && r.token){
+      TOKEN = r.token;
+      localStorage.setItem("nrToken", TOKEN);
+    }
+    SET.data = r.settings || SET.data;
+    renderSettings();
+    const m2 = $("#" + msgId);
+    if(m2){ m2.className = "msg ok"; m2.textContent = section === "password" ? "已改口令，旧登录已失效" : "已保存"; }
+    if(section === "llm" || section === "mail"){
+      loadModels();
+      MAIL.cfg = null;
+      if(MAIL.open) loadMailPanel();
+    }
+    toast("设置已保存");
+  }catch(e){
+    say(e.message || "保存失败", "err");
+  }
+}
+
+/* ---------------- 版本历史 ---------------- */
+const VER = { data: null };
+
+async function openVersions(){
+  $("#verMask").classList.add("show");
+  $("#verBox").innerHTML = `<div class="vh"><b>版本历史</b><span class="n">读取中…</span>
+    <button class="x" onclick="closeVersions()">×</button></div>`;
+  try{
+    VER.data = await (await fetch(apiUrl("/api/versions"))).json();
+  }catch(e){
+    $("#verBox").innerHTML = `<div class="vh"><b>版本历史</b><span class="n">读不到版本清单</span>
+      <button class="x" onclick="closeVersions()">×</button></div>
+      <div class="vlist"><div class="vi"><p class="sum">${esc(e.message || "服务未响应")}</p></div></div>`;
+    return;
+  }
+  renderVersions();
+}
+
+function closeVersions(){ $("#verMask").classList.remove("show"); }
+
+function renderVersions(){
+  const d = VER.data || {};
+  const vs = d.versions || [];
+  const ms = d.majors || [];
+  const cur = d.current;
+  const tk = (typeof TOKEN === "string" && TOKEN) ? TOKEN : "";
+  const nMaj = ms.length || new Set(vs.map(v => v.major || "")).size;
+  let h = `<div class="vh"><b>版本历史</b>
+      <span class="n">${nMaj} 个大版本 · ${vs.length} 次改动 · 点开是当时的页面，能直接用</span>
+      <a href="${withShare("versions/")}" target="_blank" style="font-size:11.5px;color:#2f5fd0;text-decoration:none;margin-left:2px">独立页 ↗</a>
+      <button class="x" onclick="closeVersions()">×</button></div>
+    <div class="vlist">`;
+
+  // 按大版本分组。组的顺序取 versions 的自然顺序（新的在前）去重，
+  // 这样最新的大版本置顶；不要按 majors 的声明顺序，否则 1.x 永远在最上面。
+  const order = [];
+  vs.forEach(v => {
+    const id = v.major || "m?";
+    if(!order.includes(id)) order.push(id);
+  });
+  const groups = order.map(id => {
+    const meta = ms.find(m => m.id === id) || {};
+    const rows = vs.filter(v => (v.major || "m?") === id);
+    return { meta, rows, id };
+  }).filter(g => g.rows.length);
+
+  groups.forEach(g => {
+    const m = g.meta || {};
+    const ver = m.ver || String(g.rows[0].ver || "").split(".")[0] || "?";
+    h += `<div class="vm">
+      <div class="vm-h">
+        <span class="v">${esc(ver)}.x</span>
+        <span class="t">${esc(m.title || "未分类")}</span>
+        <span class="p">${esc(m.period || "")} · ${g.rows.length} 次改动</span>
+      </div>`;
+    if(m.summary) h += `<div class="vm-s">${esc(m.summary)}</div>`;
+    if((m.core || []).length){
+      h += `<div class="vm-k c"><b>主要更新</b><span><ul>` +
+        m.core.map(x => `<li>${esc(x)}</li>`).join("") + `</ul></span></div>`;
+    }
+    if((m.fixed || []).length){
+      h += `<div class="vm-k f"><b>主要修复</b><span><ul>` +
+        m.fixed.map(x => `<li>${esc(x)}</li>`).join("") + `</ul></span></div>`;
+    }
+    h += `</div><div class="vl-grp">`;
+
+    g.rows.forEach(v => {
+      const isCur = v.id === cur;
+      const items = (v.items || []).map(i => `<li>${esc(i)}</li>`).join("");
+      const isMajor = v.kind === "major";
+      h += `<div class="vi ${isCur ? "cur" : ""}">
+        <div class="meta">
+          <span class="lab">v${esc(v.ver || v.label || "")}</span>
+          <span>${esc((v.at || "").slice(5))}</span>
+          <span class="kind${isMajor ? " mj" : ""}">${isMajor ? "大版本" : "小版本"}</span>
+          ${isCur ? `<span class="now">当前</span>` : ""}
+        </div>
+        <h3>${esc(v.title)}</h3>
+        <p class="sum">${esc(v.summary)}</p>
+        <details><summary>具体改动 ${(v.items || []).length} 项</summary><ul>${items}</ul>
+          ${v.note ? `<div class="note">${esc(v.note)}</div>` : ""}</details>
+        <a class="go" href="${withShare("versions/" + encodeURIComponent(v.id) + "/" + (tk ? "?t=" + encodeURIComponent(tk) : ""))}"
+           target="_blank" rel="noopener">打开这个版本 ↗</a>
+      </div>`;
+    });
+    h += `</div>`;
+  });
+
+  h += `</div>`;
+  $("#verBox").innerHTML = h;
+}
+
+$("#verMask").addEventListener("click", e => { if(e.target.id === "verMask") closeVersions(); });
+
+$("#setMask").addEventListener("click", e => { if(e.target.id === "setMask") closeSettings(); });
+document.addEventListener("keydown", e => {
+  if(e.key !== "Escape") return;
+  if(SET.open) closeSettings();
+  if($("#verMask").classList.contains("show")) closeVersions();
+});
+
+/* ---------------- 发送邮件 ---------------- */
+const MAIL = { open: false, cfg: null, busy: false, withPdf: false, docx: "", subjectFor: "" };
+
+function mailCompany(){
+  const el = $("#d-company");
+  return (el ? el.value.trim() : "") || S.company || $("#company").value.trim();
+}
+
+async function toggleMail(e){
+  if(e) e.stopPropagation();
+  if(MAIL.open){ closeMail(); return; }
+  MAIL.open = true;
+  $("#mailPanel").classList.add("show");
+  await loadMailPanel();
+}
+
+function closeMail(){
+  MAIL.open = false;
+  $("#mailPanel").classList.remove("show");
+}
+
+async function loadMailPanel(){
+  const panel = $("#mailPanel");
+  panel.innerHTML = `<div class="ml-h">发送邮件<span class="x" onclick="closeMail()">×</span></div>
+    <div class="ml-sub">正在读取发件配置…</div>`;
+  try{
+    MAIL.cfg = await (await fetch(apiUrl("/api/mail/config"))).json();
+  }catch(err){
+    MAIL.cfg = { ready: false, default_to: "" };
+  }
+  try{
+    // 文件清单必须重新取：缓存里可能还是上一家主体的报告与底稿，
+    // 直接拿来当附件就会把上一家的 PDF/Word 一起发出去。
+    PKG.data = null; PKG.sel = {};
+    await fetchFileList(true);
+  }catch(err){ /* 没有报告时也能发，附件现场排版 */ }
+  renderMailPanel();
+}
+
+function mailDocxOption(){
+  // 优先用已导出的最新一份；没有就现场排版
+  const docs = (PKG.data && PKG.data.docx) || [];
+  if(MAIL.docx) return { name: MAIL.docx, live: false, meta: "" };
+  if(docs.length) return { name: docs[0].name, live: false, meta: docs[0].mtime || "" };
+  return { name: "", live: true, meta: "" };
+}
+
+function renderMailPanel(){
+  const cfg = MAIL.cfg || {};
+  const co = mailCompany() || (S.draft && S.draft.company_full_name) || "";
+  const d = mailDocxOption();
+  const pdfs = (PKG.data && PKG.data.materials) || [];
+  const to = (MAIL.to !== undefined ? MAIL.to : (cfg.default_to || ""));
+  const from = cfg.user || "";
+  // 标题与正文只在「同一家主体」时沿用上次填的：换了主体还照抄，
+  // 邮件标题就是上一家的企业名，收件人看到的是错的报告名。
+  const same = MAIL.subjectFor && MAIL.subjectFor === co;
+  const subj = (same && MAIL.subject !== undefined) ? MAIL.subject : co;
+  const body = same ? (MAIL.body || "") : "";
+
+  let h = `<div class="ml-h">发送邮件<span class="x" onclick="closeMail()">×</span></div>
+    <div class="ml-sub">${cfg.ready
+      ? `发件人 ${esc(from)}${cfg.host ? " · " + esc(cfg.host) : ""}`
+      : "还没配置发件邮箱，先填下面的 SMTP 信息"}</div>
+    <div class="mlf">
+      <label>收件人</label>
+      <input id="mlTo" value="${esc(to)}" placeholder="多个邮箱用逗号分隔" spellcheck="false" />
+      <label>抄送</label>
+      <input id="mlCc" value="${esc(MAIL.cc || "")}" placeholder="可不填" spellcheck="false" />
+      <label>标题</label>
+      <input id="mlSubject" value="${esc(subj)}" spellcheck="false" />
+      <label>正文</label>
+      <textarea id="mlBody" rows="3" placeholder="留空则自动生成一句说明">${esc(body)}</textarea>
+    </div>
+    <div class="mlatt">
+      <label class="r"><input type="checkbox" checked disabled />
+        <span class="n">${d.live ? (esc(co) || "报告") + "内评简评报告.docx" : esc(d.name)}
+          <i>${d.live ? "尚未导出，发送时现场排版" : "报告正文" + (d.meta ? " · 导出于 " + esc(d.meta) : "")}</i></span></label>`;
+
+  if(pdfs.length){
+    h += `<label class="r"><input type="checkbox" id="mlPdf" ${MAIL.withPdf ? "checked" : ""}
+        onchange="MAIL.withPdf=this.checked" />
+      <span class="n">原底稿 ${pdfs.length} 份 PDF<i>${pdfs.map(x => fmtSize(x.size || 0)).join(" · ")}</i></span></label>`;
+  }
+  h += `</div>`;   // 必须闭合 .mlatt：不闭合的话下面的 SMTP 表单会被 .mlatt input{width:13px} 命中，框缩成 16px 点不到
+
+  if(!cfg.ready){
+    h += `<div class="ml-cfg">
+      <div class="hint">还没配发件邮箱。发件服务器与授权码在「设置」里统一填写，填完这里就能发。</div>
+      <div style="margin-top:7px"><button class="btn-sm" onclick="closeMail();openSettings()">去设置里配发件邮箱</button></div>
+    </div>`;
+  }
+
+  h += `<div class="ml-foot">
+      <span class="st" id="mlSt">${cfg.ready ? `将由 ${esc(cfg.user || "已配置邮箱")} 发出` : "先在设置里配发件邮箱"}</span>
+      <button class="btn-sm solid" id="mlGo" onclick="runMail()" ${cfg.ready ? "" : "disabled"}>发送</button>
+    </div>`;
+
+  $("#mailPanel").innerHTML = h;
+}
+
+async function runMail(){
+  const go = $("#mlGo"), st = $("#mlSt");
+  const cfg = MAIL.cfg || {};
+  const payload = {
+    company: mailCompany(),
+    to: ($("#mlTo").value || "").trim(),
+    cc: ($("#mlCc").value || "").trim(),
+    subject: ($("#mlSubject").value || "").trim(),
+    body: $("#mlBody") ? $("#mlBody").value : "",
+    with_materials: !!($("#mlPdf") && $("#mlPdf").checked),
+    materials: ((PKG.data && PKG.data.materials) || []).map(x => x.name),
+    history_id: (S.draft && S.draft.history_id) || "",
+  };
+  if(!payload.to) return toast("请填收件人", true);
+  if(!payload.subject) return toast("请填邮件标题", true);
+  go.disabled = true;
+  const old = go.textContent;
+  go.textContent = "发送中…";
+  st.className = "st";
+  st.textContent = "正在连接邮件服务器…";
+  try{
+    if(!cfg.ready) throw new Error("还没配发件邮箱：点「设置」填 SMTP 服务器与授权码");
+    // 没导出过就现场排版：把草稿带上，服务端会先出 docx 再发
+    if(!MAIL.docx && !((PKG.data && PKG.data.docx) || []).length && S.draft){
+      payload.draft = collectDraft();
+    }else{
+      payload.docx = MAIL.docx || (((PKG.data && PKG.data.docx) || [])[0] || {}).name || "";
+    }
+    const r = await api("/api/mail", payload);
+    st.textContent = `已发送 · ${r.attachments.length} 个附件 · ${fmtSize(r.size)}`;
+    toast(`已发送给 ${r.to.join("、")}`);
+    MAIL.to = payload.to; MAIL.subject = payload.subject; MAIL.body = payload.body;
+    MAIL.subjectFor = mailCompany() || (S.draft && S.draft.company_full_name) || "";
+    refreshUsage();
+    setTimeout(() => { if(MAIL.open) closeMail(); }, 1200);
+  }catch(err){
+    st.className = "st err";
+    st.textContent = err.message;
+  }finally{
+    go.disabled = false;
+    go.textContent = old;
+  }
+}
+
+document.addEventListener("click", e => {
+  const m = $("#topicMenu");
+  if(m && m.classList.contains("show") && !e.target.closest(".tp-add")) m.classList.remove("show");
+  if(!MAIL.open) return;
+  if(e.target.closest("#mailPanel") || e.target.closest("#btnMail")) return;
+  closeMail();
+});
+
+/* ---------------- 打包下载 ---------------- */
+const PKG = { open: false, data: null, sel: {}, busy: false, loading: false };
+
+function pkgCompany(){
+  const el = $("#d-company");
+  return (el ? el.value.trim() : "") || S.company || $("#company").value.trim();
+}
+
+async function toggleBundle(e){
+  if(e) e.stopPropagation();
+  if(PKG.open){ closeBundle(); return; }
+  PKG.open = true;
+  await loadBundle();
+}
+
+async function fetchFileList(force){
+  // 报告与底稿清单：打包和发邮件都要用，取一次存 PKG.data
+  if(PKG.data && !force) return PKG.data;
+  const q = new URLSearchParams();
+  q.set("company", pkgCompany());
+  (S.loaded || []).forEach(t => q.append("title", t));
+  const r = await (await fetch(apiUrl("/api/bundle?" + q.toString()))).json();
+  if(r.error) throw new Error(r.error);
+  PKG.data = r;
+  return r;
+}
+
+async function loadBundle(){
+  PKG.sel = {};
+  $("#pkgPanel").classList.add("show");
+  $("#pkgPanel").innerHTML = `<div class="pk-h">打包下载<span class="x" onclick="closeBundle()">×</span></div>
+    <div class="pk-sub">正在读取文件清单…</div>`;
+  try{
+    const r = await fetchFileList(true);
+    (r.docx || []).forEach((x, i) => { if(i === 0) PKG.sel["docx:" + x.name] = true; });
+    (r.materials || []).forEach(x => { PKG.sel["pdf:" + x.name] = true; });
+    renderBundle();
+  }catch(err){
+    $("#pkgPanel").innerHTML = `<div class="pk-h">打包下载<span class="x" onclick="closeBundle()">×</span></div>
+      <div class="pk-sub">${esc(err.message)}</div>`;
+  }
+}
+
+function closeBundle(){
+  PKG.open = false;
+  $("#pkgPanel").classList.remove("show");
+}
+
+function pkgRow(key, name, meta){
+  return `<label class="pkrow">
+    <input type="checkbox" data-key="${esc(key)}" ${PKG.sel[key] ? "checked" : ""} onchange="pkgToggle(this)"/>
+    <span><span class="nm">${esc(name)}</span>${meta ? `<span class="meta">${esc(meta)}</span>` : ""}</span>
+  </label>`;
+}
+
+function renderBundle(){
+  const d = PKG.data || {};
+  const docs = d.docx || [], mats = d.materials || [];
+  let b = "";
+
+  b += `<div class="pkgrp"><span>报告</span></div>`;
+  if(docs.length){
+    docs.forEach(x => { b += pkgRow("docx:" + x.name, x.name, `${fmtSize(x.size)} · ${x.mtime}`); });
+  }else if(S.draft){
+    PKG.sel["docx:@new"] = PKG.sel["docx:@new"] !== false;
+    b += pkgRow("docx:@new", "报告 Word（按当前内容现场排版）", "尚未导出，打包时自动生成");
+  }else{
+    b += `<div class="pkrow none">还没有报告，先生成草稿</div>`;
+  }
+
+  const pdfOn = mats.every(x => PKG.sel["pdf:" + x.name]);
+  b += `<div class="pkgrp"><span>原底稿（${mats.length} 份）</span>${mats.length > 1
+    ? `<button onclick="pkgAll('pdf:', ${!pdfOn})">${pdfOn ? "取消全选" : "全选"}</button>` : ""}</div>`;
+  if(mats.length){
+    mats.forEach(x => {
+      const meta = [x.pages ? x.pages + " 页" : "", fmtSize(x.size),
+                    x.source === "upload" ? "本地上传" : "财汇下载"].filter(Boolean).join(" · ");
+      b += pkgRow("pdf:" + x.name, x.title || x.name, meta);
+    });
+  }else{
+    b += `<div class="pkrow none">本次没有读取过 PDF</div>`;
+  }
+
+  b += `<div class="pkgrp"><span>附加</span></div>`;
+  PKG.sel["json:1"] = !!PKG.sel["json:1"];
+  b += pkgRow("json:1", "草稿数据.json", "正文与表格的结构化数据，便于下次接着改");
+
+  $("#pkgPanel").innerHTML = `<div class="pk-h">打包下载<span class="x" onclick="closeBundle()">×</span></div>
+    <div class="pk-sub">勾选要放进压缩包的文件</div>
+    <div class="pk-body">${b}</div>
+    <div class="pk-foot"><span class="sum" id="pkSum"></span>
+      <button class="btn-sm solid" id="pkGo" onclick="runBundle()">打包下载</button></div>`;
+  bundleSum();
+}
+
+function pkgAll(prefix, on){
+  Object.keys(PKG.sel).forEach(k => { if(k.indexOf(prefix) === 0) PKG.sel[k] = on; });
+  renderBundle();
+}
+
+function pkgToggle(el){
+  PKG.sel[el.dataset.key] = el.checked;
+  bundleSum();
+}
+
+function bundleSum(){
+  const d = PKG.data || {};
+  const keys = Object.keys(PKG.sel).filter(k => PKG.sel[k]);
+  let bytes = 0;
+  keys.forEach(k => {
+    const [kind, name] = [k.slice(0, k.indexOf(":")), k.slice(k.indexOf(":") + 1)];
+    const pool = kind === "docx" ? (d.docx || []) : kind === "pdf" ? (d.materials || []) : [];
+    const hit = pool.find(x => x.name === name);
+    if(hit) bytes += hit.size || 0;
+  });
+  const sum = $("#pkSum");
+  if(!sum) return;
+  sum.textContent = keys.length
+    ? `已选 ${keys.length} 项${bytes ? " · " + fmtSize(bytes) : ""}`
+    : "未选择文件";
+  const go = $("#pkGo");
+  if(go) go.disabled = !keys.length || PKG.busy;
+}
+
+async function runBundle(){
+  const keys = Object.keys(PKG.sel).filter(k => PKG.sel[k]);
+  if(!keys.length) return toast("请勾选要打包的文件", true);
+  const docxKey = keys.find(k => k.indexOf("docx:") === 0) || "";
+  const docxName = docxKey && docxKey !== "docx:@new" ? docxKey.slice(5) : "";
+  const body = {
+    company: pkgCompany(),
+    docx: docxName,
+    materials: keys.filter(k => k.indexOf("pdf:") === 0).map(k => k.slice(4)),
+    with_json: keys.indexOf("json:1") >= 0
+  };
+  if(!docxName && S.draft) body.draft = collectDraft();
+
+  PKG.busy = true;
+  const go = $("#pkGo");
+  if(go){ go.disabled = true; go.textContent = "打包中…"; }
+  try{
+    const r = await api("/api/bundle", body);
+    const a = document.createElement("a");
+    a.href = dlUrl(r.url);
+    a.download = r.name;
+    a.click();
+    closeBundle();
+    toast(`已打包 ${r.files.length} 个文件 · ${fmtSize(r.size)}`);
+  }catch(e){
+    toast(e.message, true);
+    PKG.busy = false;
+    if(go){ go.disabled = false; go.textContent = "打包下载"; }
+    bundleSum();
+  }
+}
+
+document.addEventListener("click", e => {
+  if(!PKG.open) return;
+  if(e.target.closest("#pkgPanel") || e.target.closest("#btnPkg")) return;
+  closeBundle();
+});
+
+// 口令校验通过后才去拉数据：没进来之前不发任何要 token 的请求
+let booted = false;
+function bootData(){
+  if(booted) return;
+  booted = true;
+  loadModels();
+  pingConn();
+  refreshUsage();
+  paintMode();     // 初始模式(new)的文案
+  syncButtons();  // 初始状态：无材料时两个动作都灰着
+}
+gateBoot();
+$("#company").addEventListener("keydown", e => { if(e.key === "Enter") doSearch(); });
+/* 改了企业名就当作换主体：上一家的材料、草稿、邮件与打包缓存全部作废，
+   否则第二次生成会沿用上一家的清单（附件多出来、标题还是上一家的）。 */
+$("#company").addEventListener("change", () => {
+  const v = ($("#company").value || "").trim();
+  if(!S.company || v === S.company) return;
+  const had = S.loaded.length || S.draft;
+  resetSession();
+  S.company = "";
+  if(had) toast("企业名已变更，已清空上一家的材料与草稿");
+});
+</script>
+</body>
+</html>
