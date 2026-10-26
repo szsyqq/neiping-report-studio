@@ -69,8 +69,9 @@ def _fmt_paragraph(paragraph, align=None):
     pf.line_spacing = 1.15
     pf.space_before = Pt(0)
     pf.space_after = Pt(0)
-    if align is not None:
-        paragraph.alignment = align
+    # 正文默认两端对齐：中文段落右边缘必须齐，否则满行参差。
+    # 标题、表格数字等由调用方显式传 align 覆盖，不受影响。
+    paragraph.alignment = align if align is not None else WD_ALIGN_PARAGRAPH.JUSTIFY
     _indent_two_chars(paragraph)
 
 

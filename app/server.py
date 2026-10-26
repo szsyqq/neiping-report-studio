@@ -634,6 +634,15 @@ def _upgrade_record(rec: dict) -> dict:
     if not mats:
         rec["_reval"] = "skip"
         return rec
+    # 存量记录的期次列多半是时间正序（旧代码没有重排），重算时一并纠正，
+    # 这样打开旧报告看到的表序与新生成的报告一致。
+    c = dict(draft.get("commentary") or {})
+    for k in ("financial_table", "segment_table"):
+        if isinstance(c.get(k), dict):
+            c[k] = generator.reorder_table(c[k])
+    if c:
+        draft["commentary"] = c
+        rec["draft"] = draft
     try:
         new_val = generator.validate(draft, {}, mats)
     except Exception:                                       # noqa: BLE001

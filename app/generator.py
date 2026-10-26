@@ -142,6 +142,69 @@ PERIOD_WORDS = {
 }
 
 
+def _period_key(label: str) -> tuple[int, int]:
+    """把期次写法换算成可比较的键：先年、再月。
+
+    财主要指标表的期次写法就那几种：「2024年」「2026年3月末」「2026年1-9月」
+    「2025年6月末」。取年份与「截至月」，区间取期末月；认不出的按年中排，
+    保证不会因为一个怪写法把整张表打乱。
+    """
+    t = (label or "").strip()
+    y = re.search(r"(\d{4})\s*年", t) or re.search(r"^(\d{4})$", t)
+    year = int(y.group(1)) if y else 0
+    # 期末月：3月末 / 6月末 / 9月末 / 12月末；区间 1-3月 取 3
+    m = re.search(r"(\d{1,2})\s*月末", t)
+    if m:
+        month = int(m.group(1))
+    else:
+        m = re.search(r"1\s*-\s*(\d{1,2})\s*月", t)
+        if m:
+            month = int(m.group(1))
+        elif re.search(r"年度?$", t):
+            month = 12
+        else:
+            month = 6
+    return (year, month)
+
+
+def sort_periods_desc(labels: list[str]) -> list[str]:
+    """新一期在左、旧一期在右。评级报告的表一律这样排，程序统一兜住，
+    不指望每个模型每次都记得。"""
+    return sorted(labels or [], key=_period_key, reverse=True)
+
+
+def reorder_table(table: dict) -> dict:
+    """把财务表／业务表的期次列改成「最近一期在最左」，数值列跟着一起换位。
+
+    只动列顺序，不动行与内容：periods 与每行的 values 用同一套下标重排，
+    所以不会出现「表头换了、数字没换」的错位。
+    """
+    if not isinstance(table, dict):
+        return table
+    periods = list(table.get("periods") or [])
+    if len(periods) < 2:
+        return table
+    order = sorted(range(len(periods)), key=lambda i: _period_key(periods[i]), reverse=True)
+    if order == list(range(len(periods))):
+        return table
+    out = dict(table)
+    out["periods"] = [periods[i] for i in order]
+    rows = []
+    for r in table.get("rows") or []:
+        r = list(r)
+        if not r:
+            rows.append(r)
+            continue
+        head, rest = r[:1], r[1:]
+        # rest 比 periods 短时（缺列的旧数据）按原样补齐，宁可不排序也不越界
+        if len(rest) == len(periods):
+            rows.append(head + [rest[i] for i in order])
+        else:
+            rows.append(r)
+    out["rows"] = rows
+    return out
+
+
 def period_labels(facts: dict) -> dict[str, dict[str, str]]:
     """给模型一份期次写法对照表。
 
@@ -204,7 +267,8 @@ def build_financial_table(facts: dict) -> dict:
     tpl = _load_template()
     layers = tpl.get("indicator_layers") or {}
     fin = facts.get("financials") or {}
-    periods = list(fin.get("periods") or [])[:3]
+    # 先按新→旧排再取前三：台账若按时间正序给，直接 [:3] 会拿到最早三期
+    periods = sort_periods_desc([p for p in (fin.get("periods") or []) if p])[:3]
     data = fin.get("data") or {}
     empty = {"caption": "公司主要财务数据和财务指标（合并口径）",
              "unit_line": "单位：亿元", "periods": [], "rows": []}
@@ -307,7 +371,7 @@ SYSTEM_PROMPT = """你是信用评级机构的分析员，负责撰写内部「�
 1. 摘要层是定性概括，除判断核心依赖量级外不得出现金额、百分比、倍数、占比。判定口径：删掉这个数字，这条判断是否仍成立？成立就删掉数字。
 2. 摘要一条只讲一件事，正面与关注不得重复同一事实，不得互相矛盾。
 3. 正文每段以一句加粗汇总句开篇（总述段、资产段、债务段、专题段），汇总句带判断不带数字；分部业务段不加段首加粗。
-4. 金额统一亿元、两位小数、带千分位；比率两位小数加百分号；倍数两位小数。期次写明「2025年」「2026年9月末」「2026年1-9月」。原始表格多以万元计（也有以元、美元计的），先换算再写，不得把万元数直接当亿元；同段落里的量级要能相互印证——按总资产规模判断，货币资金、有息债务不可能是差着两三个数量级的数。
+4. 金额统一亿元、两位小数、带千分位；比率两位小数加百分号；倍数两位小数。期次写明「2025年」「2026年9月末」「2026年1-9月」。**表格的期次列一律由新到旧排列，最近一期在最左、最旧的在最右**（与跟踪评级报告同款），不要按时间正序。原始表格多以万元计（也有以元、美元计的），先换算再写，不得把万元数直接当亿元；同段落里的量级要能相互印证——按总资产规模判断，货币资金、有息债务不可能是差着两三个数量级的数。
 5. 不得虚构任何数字、项目、名称。材料里没有的信息就不写，不得推算、不得用行业均值替代；也不要在正文里交代「哪一项没拿到」——规则 9 的某一拍缺数据就整拍跳过，不要写成「××方面，材料未披露」。财务指标表单元格确实无值的填「—」。
 6. 不得照抄评级机构的结论句作为自己的判断；可复算的要用自己的口径重述。不得出现「中诚信国际认为」「评级时应注意到」这类元话语。
 7. 业务分部段六拍：业务模式与产出能力 → 报告期的产出量 → 价格或费率与收入 → 成本结构与毛利率变动原因 → 项目或订单储备 → 这一块受什么制约。产出量的计量单位按业务性质选（取该公司连续披露、可跨期比较、且与收入同向的那一个量），不同板块不必统一；找不到就跳过这一拍，不拿无关指标充数。单个板块的正文至少三句：做的是什么、当期经营数据、制约条件，各占一句以上；收入占比不足 5% 的板块并成一段「其他业务」写，不要为凑板块数量把一句话拆成一段。
@@ -344,6 +408,10 @@ SYSTEM_PROMPT = """你是信用评级机构的分析员，负责撰写内部「�
 正例：「水泥、混凝土与石膏板产能分布于全国二十余个省份，单一区域需求下滑对收入的冲击相对可控。」
 反例：「公司债务规模持续扩张，短期债务占比较高，债务期限结构有待优化。」
 正例：「有息债务连续三年增长，短期债务占比偏高，非受限货币资金不足以覆盖一年内到期部分。」
+21.3 每条都要有主语，不能写成没有主语的判断句。主语用「公司」，需要点名身份时写成「公司为……」或「公司作为……」：正面最常见的主语脱落是「区域专营地位较强」「股权关系清晰稳定」这类——读的人不知道说的是谁，也不符合评级报告「对受评主体作出判断」的语体。
+反例：「区域专营地位较强，外部支持力度大。」
+正例：「公司为天心区政府全资持有的城市建设主体，区域专营地位较强，资产注入与政府补助构成外部支持的主要来源。」
+主语不必每条都重复堆在句首：前一条已明确是公司，后一条可以承接省略；但只要这条单独拎出来读不出主体，就要补上。
 22. 专题段（special_topics）默认输出空数组。只有材料里存在「非报不可」的重大事项（大额对外担保且被担保方已出现风险、重大未决诉讼、股东出资未到位、在建项目投资缺口远超货币资金）才写，且最多一条。写的时候必须带一句独立的加粗判断句作 lead（先说结论，不带数字），body 再摆数据；不要用「或有事项方面，」这种引子开头。用户在页面上可自行增删专题段，你不必为了完整而补。
 19. 两类专项按条件触发，不按行业标签触发。（1）收入主要来自政府结算（土地整理、代建、特许经营、购买服务）的，总述段交代「钱从谁来」时就要带上区域财力的实数——地区 GDP 与增速、一般公共预算收入、政府性债务余额或债务率，各一句、写明年份，并点明公司在这套结算体系里的层级与回款路径；不要只写「区域财力持续增长」这种不带数的判断，也不要把区域情况另起一段展开。（2）在建工程占非流动资产比重较高的，写清计划总投资、已累计投资、剩余投资，并与货币资金对照说明缺口。材料没有这些数据就整段不写，不许用「预计」「大致」补位。
 
@@ -928,6 +996,12 @@ def polish_draft(draft: dict) -> dict:
     if isinstance(c.get("special_topics"), list):
         c["special_topics"] = [p for p in (para(t) for t in c["special_topics"]
                                           if isinstance(t, dict)) if p["body"]]
+    # 期次列统一改成「最近一期在最左」。放在这里而不是只写在提示词里：
+    # 模型十次有两次仍按时间正序给，而错位很难在两千字里被肉眼发现，
+    # 程序按同一套下标重排表头与数值，成本几乎为零。
+    for key in ("financial_table", "segment_table"):
+        if isinstance(c.get(key), dict):
+            c[key] = reorder_table(c[key])
     d["commentary"] = c
     n = changed + len(_DEDUP_LOG)
     d["_cleaned"] = n
@@ -1320,10 +1394,23 @@ def _index_of_sent(text: str, sent: str) -> int:
 
 
 
+def _subj_ratio(items: list[str]) -> tuple[int, int]:
+    """统计有多少条以「公司／发行人／集团」起头，返回 (命中的, 总数)。
+
+    只做统计、不逐条裁决：句法主语是不是被省略，规则判不准，硬判必然误伤
+    （「区域专营地位较强」是省了主语，「对外担保对象集中于区属国企」是完整句，
+    机器分不出来）。所以只提示「整体上有多少条把主体写在了句首」，
+    让人自己扫一眼，不指名道姓地猜。
+    """
+    rows = [x for x in (items or []) if (x or "").strip()]
+    hit = sum(1 for x in rows if x.strip().startswith(("公司", "发行人", "集团")))
+    return hit, len(rows)
+
+
 # 校验规则的版本号。规则一改就加一，存量记录据此判断要不要重算——
 # 只看「有没有 issue_items」是不够的：新加的校验项不会进到老记录里，
 # 用户打开旧报告就看不到新提示，等于没上。
-VALIDATOR_REV = 2
+VALIDATOR_REV = 3
 
 
 def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
@@ -1439,6 +1526,24 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
             "流动性、覆盖用充足／尚可／承压／不足，占比、杠杆用偏高／合理。"
             "「显著」「突出」「良好」「充裕」这类词换个人写就落在另一档，读者无法据此比较主体。")
         issue_items.append({"t": "摘要层措辞没有刻度", "a": "blk-pos", "d": hype_rows[:8]})
+
+    # 1.15) 摘要主语覆盖率：判断要落在受评主体上
+    for key, label in (("positive", "正面"), ("concern", "关注")):
+        hit, tot = _subj_ratio(draft.get(key) or [])
+        if tot >= 3 and hit * 2 < tot:
+            issues.append(f"{label}里只有 {hit}/{tot} 条把主体写在句首，其余读起来像"
+                          "没有主语的判断（如「区域专营地位较强」）。适当改成"
+                          "「公司为……」「公司作为……」开头，读的人才知道说的是谁。")
+            issue_items.append({
+                "t": f"{label}条目主语提示", "a": "blk-pos" if key == "positive" else "blk-con",
+                "d": [{"num": "", "where": f"{label}{i}）", "kind": "主语",
+                       "full": (x or "")[:160], "si": 0, "seg": i,
+                       "anchor": "blk-pos" if key == "positive" else "blk-con",
+                       "field": "pos" if key == "positive" else "con",
+                       "note": "建议补主语：公司为……／公司作为……"}
+                      for i, x in enumerate(draft.get(key) or [], 1)
+                      if (x or "").strip()
+                      and not x.strip().startswith(("公司", "发行人", "集团"))][:8]})
 
     if long_rows:
         issues.append(
@@ -1881,6 +1986,12 @@ def generate(facts: dict, materials: list[dict], model_id: str | None = None,
     if isinstance(draft, list):
         draft = draft[0] if draft else {}
     draft = _ensure_structure(draft, facts)
+    # 期次列在这里就排好，而不是等到导出才排：页面上看到的表必须和 Word 里一致，
+    # 否则用户改的是「2024年那一列」，导出后它会跑到最右边。
+    draft["commentary"] = dict(draft.get("commentary") or {})
+    for _k in ("financial_table", "segment_table"):
+        if isinstance(draft["commentary"].get(_k), dict):
+            draft["commentary"][_k] = reorder_table(draft["commentary"][_k])
     _p(progress, 96, "校验", "数字溯源、期次写法、财务表自洽")
     draft["validation"] = validate(draft, facts, materials)
 

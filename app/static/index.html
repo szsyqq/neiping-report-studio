@@ -343,7 +343,10 @@ select{width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 8px
 .ml-cfg .hint{font-size:10.5px;color:var(--muted);line-height:1.6;margin-top:6px}
 
 .doc{font-family:"Kaiti SC","KaiTi","STKaiti","Songti SC","SimSun",serif;
-  font-size:15.5px;line-height:1.82;color:#1b1f24}
+  font-size:15.5px;line-height:1.82;color:#1b1f24;
+  /* 两端对齐：中文正文的右边缘要齐，否则满行参差、读起来乱。
+     不能加在 body 上——标题、按钮、表格数字都要各自的对齐方式。 */
+  text-align:justify;text-justify:inter-ideograph}
 .doc-head input{border:0;background:transparent;outline:none;font-family:inherit;font-weight:700}
 .in-code{font-size:16.5px;padding:1px 2px;border:0;border-bottom:1px solid var(--line)!important;
   background:transparent;outline:none;font-family:inherit;
@@ -365,6 +368,7 @@ select{width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 8px
   text-shadow:.42px 0 0 currentColor,-.42px 0 0 currentColor,0 .42px 0 currentColor,0 -.42px 0 currentColor}
 
 .ta{display:block;width:100%;border:1px solid transparent;border-radius:4px;background:transparent;
+  text-align:justify;
   padding:1px 4px;margin:0 -4px;line-height:inherit;font-family:inherit;font-size:inherit;
   resize:none;overflow:hidden;outline:none;color:inherit;text-indent:0}
 .ta:hover{border-color:var(--line2);background:#fcfcfd}
@@ -439,7 +443,7 @@ body.dragging .item-ghost{display:flex}
 .seg{position:relative}
 .seg+.seg{margin-top:var(--pgap)}
 .seg-line{line-height:1.85;padding:1px 16px 1px 0;border-radius:4px;outline:none;
-  white-space:pre-wrap;word-break:break-word}
+  white-space:pre-wrap;word-break:break-word;text-align:justify;text-justify:inter-ideograph}
 .seg-line:hover{background:#fcfcfd}
 .seg-line:focus{background:#fff;box-shadow:0 0 0 1px #e6e9ee inset}
 .seg .tool{position:absolute;right:0;top:4px}
