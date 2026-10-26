@@ -43,6 +43,7 @@ def _write_index(items: list[dict]):
 
 def _summary(rec: dict) -> dict:
     d = rec.get("draft") or {}
+    mode = d.get("mode") or "new"
     return {
         "id": rec.get("id", ""),
         "ts": rec.get("ts", ""),
@@ -55,6 +56,11 @@ def _summary(rec: dict) -> dict:
         "docx": rec.get("docx", ""),
         "mail": rec.get("mail") or {},
         "issues": len(((d.get("validation") or {}).get("issues")) or []),
+        # 两种模式在列表里要一眼分得开：更新模式的「字数」其实是改动量，
+        # 不标出来会让人以为那是一条很短的报告。
+        "mode": mode,
+        "actions": len(d.get("actions") or []) if mode == "update" else 0,
+        "base": d.get("base_title") or "",
     }
 
 

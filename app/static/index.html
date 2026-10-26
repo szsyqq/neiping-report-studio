@@ -89,6 +89,16 @@ main{overflow-y:auto;padding:26px 40px 90px}
 .field button:hover{background:#000}
 .field button:disabled{background:#c9ccd1;border-color:#c9ccd1;cursor:not-allowed}
 
+/* 任务类型：新建 vs 更新。做成一体两段，不用下拉——两项就是全部选项，
+   常显比藏进下拉少一次点击，也让人一眼看到「这套流程两种活都能接」。 */
+.modesw{display:flex;gap:0;border:1px solid var(--line);border-radius:6px;overflow:hidden;
+  margin-bottom:7px;background:#fbfbfc}
+.modesw button{flex:1;border:0;background:transparent;color:var(--ink2);font-size:12px;
+  padding:6px 4px;cursor:pointer;transition:background .16s ease,color .16s ease;white-space:nowrap}
+.modesw button + button{border-left:1px solid var(--line)}
+.modesw button.on{background:var(--ink);color:#fff;font-weight:600}
+.modesw button:not(.on):hover{background:#f1f3f6;color:var(--ink)}
+
 /* 流程：四步手风琴
    同一时刻只展开一个步骤，展开态本身就是「做到哪一步」的指示器。
    折叠动画用 grid-template-rows:0fr→1fr，不写死高度——内容长短不一也不会跳；
@@ -153,7 +163,7 @@ main{overflow-y:auto;padding:26px 40px 90px}
 .wpad .field{margin-top:0}
 .wpad .up{margin-top:0}
 .wfoot{display:flex;align-items:center;gap:8px;margin-top:9px;flex-wrap:nowrap}
-/* 三个子元素各就各位：说明可缩可省、按钮按内容宽、下一步只占自己那点。
+/* 两个子元素各就各位：说明可缩可省、按钮按内容宽。
    少了 min-width:0 与 ellipsis，说明文字会被挤成一条竖排的窄柱（实测被压到 0 宽、撑高 153px）。 */
 .wfoot .grow{flex:1 1 auto;min-width:0}
 .wfoot .whint{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -165,6 +175,10 @@ main{overflow-y:auto;padding:26px 40px 90px}
 .ghost:hover:not(:disabled){color:var(--ink)}
 .ghost:disabled{color:#d3d7dd;cursor:default}
 /* 清单自己滚，别把下面的「读取」按钮挤出屏幕 */
+.uptxt{display:flex;flex-direction:column;line-height:1.35;min-width:0}
+.hide{display:none !important}
+#upBox button + button{margin-left:0}
+.uptxt .hint{font-size:11px;color:var(--muted)}
 #matList{max-height:min(40vh,320px);overflow-y:auto;overscroll-behavior:contain;
   margin-right:-4px;padding-right:4px}
 
@@ -448,6 +462,56 @@ body.dragging .item-ghost{display:flex}
 .rail-l .pool+.pool{margin-top:14px}
 .rail-l .pool-t{font-size:10.5px;letter-spacing:.04em;color:var(--muted);margin-bottom:5px}
 .rail-l .chip{white-space:normal;line-height:1.55;padding:5px 8px;font-size:11.5px}
+
+/* ── 修订清单（更新模式）─────────────────────────────────────────
+   更新既有报告时，正文区不是「一份可编辑的全文」，而是「这次要改哪些地方」。
+   每条把改动拆成三段摆开：原文、改后、凭什么改——审阅时看的就是这三样。
+   与新建模式共用外层的 .docgrid 三栏，只是中间那栏换了内容。 */
+.acts-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 12px}
+.acts-tabs{display:flex;gap:2px;background:var(--line2);border-radius:6px;padding:2px}
+.acts-tabs button{border:0;background:transparent;color:var(--ink2);font-size:11.5px;
+  padding:4px 9px;border-radius:4px;white-space:nowrap}
+.acts-tabs button.on{background:#fff;color:var(--ink);font-weight:600;
+  box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.acts-sum{font-size:11.5px;color:var(--muted);margin-left:auto;white-space:nowrap}
+.acts-grp{margin:16px 0 6px;font-size:11px;font-weight:600;color:var(--muted);
+  letter-spacing:.06em;display:flex;align-items:center;gap:7px}
+.acts-grp::after{content:"";flex:1;height:1px;background:var(--line2)}
+.act{border:1px solid var(--line);border-radius:8px;background:#fff;padding:10px 11px;
+  margin-bottom:8px;transition:border-color .16s ease,opacity .16s ease}
+.act:hover{border-color:#d8dce2}
+.act.off{opacity:.5;background:#fbfbfc}
+.act.review{border-left:3px solid var(--amber)}
+.act.failed{border-left:3px solid var(--red)}
+.act-h{display:flex;align-items:baseline;gap:7px;flex-wrap:wrap}
+.act-ck{width:14px;height:14px;flex:none;margin:2px 0 0;accent-color:var(--ink);cursor:pointer}
+.act-id{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;flex:none}
+.act-k{font-size:10px;font-weight:600;letter-spacing:.04em;border-radius:3px;padding:0 5px;
+  line-height:16px;flex:none;border:1px solid transparent}
+.act-k.rp{background:#eef3fd;color:#2f5fd0;border-color:#d6e0f7}
+.act-k.in{background:#eef8ef;color:#2e7d32;border-color:#cfe7d1}
+.act-k.dl{background:#fdf0ee;color:#b4402f;border-color:#f6d8d2}
+.act-k.rv{background:#fdf6e7;color:var(--amber);border-color:#f0e2bd}
+.act-loc{font-size:11.5px;color:var(--ink2);min-width:0;overflow-wrap:break-word}
+.act-body{margin-top:7px;margin-left:21px}
+.act-o,.act-n{font-size:12.5px;line-height:1.7;border-radius:5px;padding:5px 8px;
+  overflow-wrap:break-word;white-space:pre-wrap}
+.act-o{background:#fafafa;border:1px solid var(--line2);color:#8a8f98}
+.act-o b,.act-n b{display:block;font-size:10px;font-weight:600;letter-spacing:.05em;
+  margin-bottom:1px}
+.act-o b{color:var(--muted)}
+.act-n{margin-top:5px;background:#f4faf5;border:1px solid #d8ecd9;color:var(--ink)}
+.act-n b{color:#4f8a55}
+.act-n textarea{width:100%;border:0;background:transparent;font:inherit;color:inherit;
+  resize:none;outline:none;padding:0;line-height:1.7}
+.act-meta{margin-top:6px;font-size:11px;color:var(--muted);line-height:1.65}
+.act-note{margin-top:5px;font-size:11px;color:var(--amber);background:#fffbf0;
+  border:1px solid #f0e0b8;border-radius:4px;padding:3px 7px;line-height:1.6}
+.act.failed .act-note{color:#a3352a;background:#fdf4f2;border-color:#f2d5cf}
+.act-tools{display:flex;gap:10px;margin-top:7px}
+.act-tools button{border:0;background:none;color:#9aa1ac;font-size:11px;padding:0}
+.act-tools button:hover{color:var(--ink2)}
+.act-empty{padding:40px 0;text-align:center;color:var(--muted);font-size:12.5px}
 
 /* 待核对：按「一类问题」分组，一组一卡。
    一个数目类问题常有十来个待核数，逐条打勾等于点十几次——所以组头带一个全选框，
@@ -856,13 +920,16 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
         <div class="wbar"><i></i></div>
       </div>
       <div class="wbody"><div class="winner"><div class="wpad">
+        <div class="modesw" id="modeSw">
+          <button class="on" data-mode="new" onclick="setMode('new')">新建报告</button>
+          <button data-mode="update" onclick="setMode('update')">更新既有报告</button>
+        </div>
         <div class="field">
           <input id="company" placeholder="企业全称" autocomplete="off" />
           <button id="btnSearch" onclick="doSearch()">检索</button>
         </div>
         <div class="wfoot">
-          <span class="whint grow">简称也能命中，只查公告库一次</span>
-          <button class="ghost wnext" onclick="nextStep('search')" disabled>下一步 →</button>
+          <span class="whint grow" id="modeHint">简称也能命中，只查公告库一次</span>
         </div>
       </div></div></div>
     </section>
@@ -878,16 +945,17 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
       </div>
       <div class="wbody"><div class="winner"><div class="wpad">
         <div class="up" id="upBox">
-          <input type="file" id="files" accept="application/pdf,.pdf" multiple hidden onchange="onPick(this)"/>
-          <span class="grow">上传 PDF<span class="hint">评级报告 / 募集说明书，也可拖进来</span></span>
-          <button onclick="document.getElementById('files').click()">选择</button>
+          <input type="file" id="files" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple hidden onchange="onPick(this)"/>
+          <input type="file" id="fileBase" accept=".docx" hidden onchange="onPickBase(this)"/>
+          <span class="grow uptxt"><span id="upTitle">上传 PDF</span><span class="hint" id="upHint">评级报告 / 募集说明书，也可拖进来</span></span>
+          <button id="btnUpBase" class="hide" onclick="document.getElementById('fileBase').click()">旧报告</button>
+          <button id="btnUpGo" onclick="document.getElementById('files').click()">选择</button>
         </div>
         <div id="upList"></div>
         <div class="matwrap" id="matList"><div style="font-size:12px;color:var(--muted);padding-top:8px">检索后显示评级报告与募集说明书</div></div>
         <div class="wfoot">
           <span class="whint grow" id="matHint"></span>
           <button class="btn" id="btnFetch" onclick="doFetch()">读取选中材料</button>
-          <button class="ghost wnext" onclick="nextStep('materials')" disabled>下一步 →</button>
         </div>
       </div></div></div>
     </section>
@@ -904,9 +972,8 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
       <div class="wbody"><div class="winner"><div class="wpad">
         <select id="model"></select>
         <div class="wfoot">
-          <span class="whint grow">约 30–60 秒，可先离开</span>
+          <span class="whint grow" id="genHint">约 30–60 秒，可先离开</span>
           <button class="btn primary" id="btnGen" onclick="doGenerate()">生成草稿</button>
-          <button class="ghost wnext" onclick="nextStep('generate')" disabled>下一步 →</button>
         </div>
       </div></div></div>
     </section>
@@ -921,10 +988,10 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
         <div class="wbar"><i></i></div>
       </div>
       <div class="wbody"><div class="winner"><div class="wpad">
-        <div class="whint">改完再导出。发送、下载、导出在正文上方一排；右侧待核对点一条就跳到对应段落。</div>
+        <div class="whint" id="expHint">改完再导出。发送、下载、导出在正文上方一排；右侧待核对点一条就跳到对应段落。</div>
         <div class="wfoot">
-          <span class="whint grow">文件名带日期，落在 output/</span>
-          <button class="btn" data-export onclick="exportDocx()">导出 Word</button>
+          <span class="whint grow" id="expName">文件名带日期，落在 output/</span>
+          <button class="btn" data-export onclick="exportDocx()" id="btnExport2">导出 Word</button>
         </div>
       </div></div></div>
     </section>
@@ -944,7 +1011,76 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
 
 <script>
 const $ = (s) => document.querySelector(s);
-const S = { company: "", facts: null, uploads: [], mstate: {}, loaded: [], draft: null, stats: null };
+const S = { company: "", facts: null, uploads: [], mstate: {}, loaded: [], draft: null,
+            stats: null, mode: "new", base: null };
+
+/* 两种任务：新建（从材料写一份新报告）与更新（在旧报告上按新依据改）。
+   步骤、材料区、待核对侧栏共用同一套，只在三处分叉：材料区要一份底稿、
+   生成动作叫「分析差异」、产物是带修订标记的 docx 而不是重新排一份。 */
+function setMode(m){
+  if(S.mode === m) return;
+  S.mode = m;
+  document.querySelectorAll("#modeSw button").forEach(b =>
+    b.classList.toggle("on", b.dataset.mode === m));
+  const hint = $("#modeHint");
+  if(hint) hint.textContent = m === "update"
+    ? "以旧报告为底稿，按外部材料逐条改"
+    : "简称也能命中，只查公告库一次";
+  paintMode();
+  // 换任务类型等于换一轮活：上一轮的材料、草稿、产物全部作废
+  clearRound();
+  syncButtons();
+  if(m === "update") openStep("materials");
+  else openStep("search");
+}
+
+/* 文案跟着模式走：同样几个按钮，两种活的说法不一样。
+   不换控件、不换布局，只换字——这是「一套流程两种任务」最省心的实现。 */
+function paintMode(){
+  const up = S.mode === "update";
+  const set = (sel, txt) => { const el = $(sel); if(el) el.textContent = txt; };
+  set("#upTitle", up ? "上传旧报告（.docx）" : "上传 PDF");
+  const hint = $("#upHint");
+  if(hint) hint.textContent = up ? "待修订的旧报告；外部依据用下面的 PDF" : "评级报告 / 募集说明书，也可拖进来";
+  set("#btnGen", up ? "分析差异" : "生成草稿");
+  set("#genHint", up ? "逐条比对，约 60–120 秒" : "约 30–60 秒，可先离开");
+  set("#btnFetch", "读取选中材料");
+  // 更新模式多一个「旧报告」入口：同一个上传区，两个按钮各自收对应格式
+  const bb = $("#btnUpBase"), bg = $("#btnUpGo");
+  if(bb) bb.classList.toggle("hide", !up);
+  if(bg) bg.textContent = up ? "外部材料" : "选择";
+  set("#btnExport2", up ? "生成修订版 Word" : "导出 Word");
+  set("#expName", up ? "带 Word 修订标记，落在 output/" : "文件名带日期，落在 output/");
+  const eh = $("#expHint");
+  if(eh) eh.textContent = up
+    ? "右侧待核对汇总了定位不到、已校正与需人工判断的条目；生成的 docx 在 Word 里可逐条接受或拒绝。"
+    : "改完再导出。发送、下载、导出在正文上方一排；右侧待核对点一条就跳到对应段落。";
+  const mt = $("#matList");
+  if(mt && !S.facts && !S.loaded.length){
+    mt.innerHTML = `<div style="font-size:12px;color:var(--muted);padding-top:8px">`
+      + (up ? "检索后可选外部评级报告；旧报告走上面的上传" : "检索后显示评级报告与募集说明书") + `</div>`;
+  }
+}
+
+/* 清掉本轮的中间物，保留企业名。与 resetSession 的区别：这个只清「这一轮的活」，
+   不动上传队列，便于同一主体连着试。 */
+function clearRound(){
+  S.loaded = []; S.mstate = {}; S.base = null; S.draft = null;
+  S.actSel = new Set(); S.actInit = false; S.actFilter = "all";
+  S.keepChecked = null; S.expand = {};
+  PKG.data = null; PKG.sel = {}; PKG.open = false;
+  MAIL.subject = undefined; MAIL.subjectFor = ""; MAIL.body = undefined; MAIL.docx = "";
+  if($("#draftArea")){ $("#draftArea").innerHTML = ""; $("#draftArea").style.display = "none"; }
+  if($("#empty")){
+    $("#empty").style.display = "";
+    $("#empty").textContent = S.mode === "update"
+      ? "先上传旧报告（.docx）与外部评级报告，再分析差异"
+      : "检索公告或上传 PDF 后生成草稿";
+  }
+  STEPS.forEach(s => { ST[s.key] = { state: "wait", pct: 0, detail: "" }; });
+  paintSteps();
+  syncButtons();
+}
 
 /* 当前主体：一律以输入框里的字为准，S.company 只是「上一轮检索过谁」的备份。
    以前各处写 S.company || 输入框，用户改了企业名却没点检索时，检索、读取、
@@ -957,6 +1093,7 @@ function curCo(){
 /* 换主体时要把上一家留下的东西全部作废：材料清单、已读材料、草稿、
    邮件与打包缓存。只清界面不动服务端的话，下一次生成仍会带上旧材料。 */
 function resetSession(){
+  S.actSel = new Set(); S.actInit = false; S.actFilter = "all";
   S.loaded = [];
   S.mstate = {};
   S.uploads = [];
@@ -1117,6 +1254,9 @@ function reached(key){
   if(i < 0) return false;
   const st = ST[key] || {};
   if(st.state === "done" || st.state === "run" || st.state === "error") return true;
+  // 更新既有报告时手上的材料是现成的（旧报告 docx + 外部评级报告 pdf），
+  // 不一定要先去公告库检索，所以第 2 步直接放开；检索只作为可选帮手。
+  if(S.mode === "update" && key === "materials") return true;
   return i === 0 || STEPS.slice(0, i).every(x => (ST[x.key] || {}).state === "done");
 }
 
@@ -1134,12 +1274,6 @@ function openStep(key){
   }
 }
 
-function nextStep(from){
-  const i = STEPS.findIndex(s => s.key === from);
-  const nx = STEPS[i + 1];
-  if(!nx) return;
-  openStep(nx.key);
-}
 
 function paintSteps(){
   if(!reached(OPEN_STEP)){
@@ -1162,8 +1296,6 @@ function paintSteps(){
     if(meta) meta.textContent = st.detail || "";
     const bar = el.querySelector(".wbar i");
     if(bar) bar.style.width = Math.max(2, st.pct || 0) + "%";
-    const nx = el.querySelector(".wnext");
-    if(nx) nx.disabled = st.state !== "done";
   });
   syncButtons();
 }
@@ -1439,6 +1571,13 @@ async function restoreHistory(id){
     // 打开的是另一家的记录：邮件标题、正文草稿与文件清单缓存都不能沿用上一份
     MAIL.subject = undefined; MAIL.subjectFor = ""; MAIL.body = undefined; MAIL.docx = "";
     PKG.data = null; PKG.sel = {};
+    S.actSel = new Set(); S.actInit = false; S.actFilter = "all";
+    // 打开的是哪一类记录，就把页面切到哪一类：否则清单会被当成正文渲染
+    const m = (rec.draft && rec.draft.mode) || "new";
+    S.mode = m; S.base = null;
+    document.querySelectorAll("#modeSw button").forEach(b =>
+      b.classList.toggle("on", b.dataset.mode === m));
+    paintMode();
     if(S.company) $("#company").value = S.company;
     renderDraft();
     syncButtons();
@@ -1491,7 +1630,7 @@ async function doSearch(){
       detail: n ? `${n} 份待读取` : "未检索到，可上传 PDF" });
     toast(n ? `检索到 ${n} 份材料${calls ? " · 财汇 " + calls + " 点" : ""}`
             : "未检索到公告，可在下方上传 PDF");
-    openStep("materials");   // 读到清单就自动进入下一步
+    openStep("materials");   // 读到清单就把这一步展开，不必再点一次
   }catch(e){
     setStep("search", { state: "error", detail: e.message });
     toast(e.message, true);
@@ -1591,6 +1730,7 @@ async function doFetch(){
       if(j.items) onItems(j.items);
     });
     onItems(j.result.items || []);
+    captureBase(j.result);
     S.loaded = (j.result.all && j.result.all.length)
       ? j.result.all.slice()
       : [...new Set([...S.loaded, ...(j.result.loaded || [])])];
@@ -1602,6 +1742,16 @@ async function doFetch(){
   }finally{
     busy.fetch = false; syncButtons();
     document.querySelectorAll(".mchk").forEach(c => c.disabled = false);
+  }
+}
+
+/* 后端把 docx 认成底稿、PDF 认成材料。底稿单独存一份：
+   它是修订对象，不是提示词里的材料，混在一起会让模型以为旧报告也是依据。 */
+function captureBase(res){
+  if(res && res.base){
+    S.base = res.base;
+    setMS(res.base.title, { state: "done", pct: 100,
+      detail: `底稿 · ${res.base.paras} 段` });
   }
 }
 
@@ -1633,18 +1783,36 @@ function fmtSize(n){
 async function onPick(input){
   const files = [...(input.files || [])];
   input.value = "";
-  if(files.length) await uploadAll(files);
+  // 更新模式下这个入口给的是外部依据，docx 也不能被当成底稿
+  if(files.length) await uploadAll(files, S.mode === "update" ? "material" : "");
 }
 
-async function uploadAll(files){
+/* 底稿入口只收 docx：旧报告是修订的对象，格式错了后面整条链都落不了地 */
+async function onPickBase(input){
+  const files = [...(input.files || [])];
+  input.value = "";
+  const bad = files.filter(f => !/\.docx$/i.test(f.name));
+  if(bad.length) toast("旧报告需要 Word（.docx）：" + bad[0].name, true);
+  const ok = files.filter(f => /\.docx$/i.test(f.name));
+  if(ok.length) await uploadAll(ok, "base");
+}
+
+async function uploadAll(files, role){
   for(const f of files){
-    if(!/\.pdf$/i.test(f.name)){ toast("只支持 PDF：" + f.name, true); continue; }
-    const u = { title: f.name.replace(/\.pdf$/i, ""), size: f.size, state: "run", pct: 0, detail: "上传中" };
+    const isPdf = /\.pdf$/i.test(f.name);
+    const isDocx = /\.docx$/i.test(f.name);
+    if(!(isPdf || isDocx)){ toast("只支持 PDF 与 Word（.docx）：" + f.name, true); continue; }
+    // 角色没指定时按扩展名兜底；更新模式下底稿走 role=base 的那个入口。
+    // 传进 picks 之后，服务端据此决定这份文件是「被改的对象」还是「依据」。
+    const wantRole = role || (isDocx ? "base" : "material");
+    const u = { title: f.name.replace(/\.(pdf|docx)$/i, ""), size: f.size, state: "run",
+                pct: 0, detail: "上传中", role: wantRole, docx: isDocx };
     S.uploads.push(u);
     renderUploads();
     const r = await uploadOne(f, u);
     if(!r) continue;
     u.title = r.title; u.path = r.path; u.state = "wait"; u.pct = 0; u.detail = "待读取";
+    u.role = r.kind === "docx" ? (u.role === "material" ? "material" : "base") : "material";
     setMS(u.title, { state: "run", pct: 0, detail: "待读取" });
     renderUploads();
   }
@@ -1688,7 +1856,7 @@ function uploadOne(file, u){
 }
 
 async function parseUploads(list){
-  const picks = list.map(u => ({ path: u.path, title: u.title }));
+  const picks = list.map(u => ({ path: u.path, title: u.title, role: u.role || "" }));
   busy.fetch = true; syncButtons();
   setStep("materials", { state: "run", pct: 0, detail: `解析 0/${picks.length} 份` });
   try{
@@ -1698,6 +1866,7 @@ async function parseUploads(list){
       if(j.items) onItems(j.items);
     });
     onItems(j.result.items || []);
+    captureBase(j.result);
     S.loaded = (j.result.all && j.result.all.length)
       ? j.result.all.slice()
       : [...new Set([...S.loaded, ...(j.result.loaded || [])])];
@@ -1770,14 +1939,16 @@ window.addEventListener("resize", () => syncFab());
 
 /* ---------------- 生成 ---------------- */
 async function doGenerate(){
+  if(S.mode === "update" && !S.base) return toast("请先上传待修订的旧报告（.docx）", true);
   if(!S.loaded.length) return toast("请先读取材料，或上传 PDF", true);
   busy.gen = true; syncButtons();
   setStep("generate", { state: "run", pct: 0, detail: "准备提示词" });
   try{
     // titles 传本轮真正读进来的材料：服务端据此过滤，避免同主体早先读过的
-    // 旧材料混进这一次的提示词（表现为正文里出现上一轮的旧数据）
+    // 旧材料混进这一次的提示词（表现为正文里出现上一轮的旧数据）。
+    // mode 决定服务端走哪条路：新建写正文，更新产出 Action List。
     const j = await runJob("generate", { company: curCo(), model: $("#model").value,
-      titles: S.loaded.slice() }, j => {
+      titles: S.loaded.slice(), mode: S.mode }, j => {
       setStep("generate", { state: "run", pct: j.pct, detail: j.detail || j.stage });
     });
     S.draft = j.result.draft;
@@ -1785,11 +1956,18 @@ async function doGenerate(){
     PKG.data = null; PKG.sel = {};
     // 换了主体，邮件的标题与正文草稿也要跟着重来（见 renderMailPanel 的 subjectFor）
     MAIL.subject = undefined; MAIL.subjectFor = ""; MAIL.body = undefined;
-    setStep("generate", { state: "done", pct: 100, detail: "草稿已生成" });
+    setStep("generate", {
+      state: "done", pct: 100,
+      detail: S.mode === "update"
+        ? `已比对 ${(S.draft.actions || []).length} 条`
+        : "草稿已生成" });
     setStep("export", { state: "wait", pct: 0, detail: "可编辑后导出" });
     renderDraft();
     const u = S.draft.usage || {};
-    toast(u.total_tokens ? `草稿已生成 · 本次 ${fmtTok(u.total_tokens)} token` : "草稿已生成，可直接修改");
+    const heads = S.mode === "update"
+      ? `差异已列出 · ${(S.draft.actions || []).length} 条`
+      : "草稿已生成";
+    toast(u.total_tokens ? `${heads} · 本次 ${fmtTok(u.total_tokens)} token` : `${heads}，可直接修改`);
     syncFab();
     openStep("export");
     if(isPhone()) setTimeout(() => jumpTo("doc"), 420);   // 手机上流程区很长，不滚一下看不到结果
@@ -1860,7 +2038,240 @@ function poolRail(){
     <div class="pool" id="p-con"></div>`;
 }
 
+/* ══ 修订清单（更新模式）════════════════════════════════════════
+   为什么不是「合入后的全文」：这份报告的价值在于「哪几处改了、凭什么」，
+   逐条列出来才能被逐条审阅；合成全文之后就只剩一份新文档，改动痕迹丢了。
+   勾选决定这一条要不要执行，textarea 里可以直接改措辞，导出时以页面为准。 */
+
+const ACT_KIND = { REPLACE: ["rp", "替换"], INSERT: ["in", "新增"],
+                   DELETE: ["dl", "删除"], REVIEW: ["rv", "待定"] };
+S.actFilter = "all";
+
+function actSel(){
+  if(!S.actSel) S.actSel = new Set();
+  return S.actSel;
+}
+
+function renderActions(d){
+  const acts = d.actions || [];
+  const v = d.validation || {};
+  const base = d.base || {};
+  const gaps = on => !(d.layout && d.layout.para_gap === false);
+  const cnt = k => acts.filter(a => a.action === k).length;
+  const sel = actSel();
+  // 第一轮全选（待定的除外）：绝大多数的确要改，逐条勾是负担
+  if(!S.actInit){
+    S.actInit = true;
+    acts.forEach(a => { if(a.action !== "REVIEW" && a.status !== "failed") sel.add(a.action_id); });
+  }
+
+  let h = `<div class="docgrid">
+  <aside class="rail rail-l" id="railL"></aside>
+  <div class="doccol">
+    <div class="docbar">
+      <div class="acts">
+        <button class="btn-sm" onclick="copyPrompt()" title="复制本次用的提示词">提示词</button>
+        <div class="end">
+          <div class="pkgwrap">
+            <button class="btn-sm ico" id="btnMail" onclick="toggleMail(event)" title="把修订版发到邮箱">${ICON.mail}发送</button>
+            <div class="mlpanel" id="mailPanel"></div>
+          </div>
+          <div class="pkgwrap">
+            <button class="btn-sm ico" id="btnPkg" onclick="toggleBundle(event)" title="底稿与成品打包下载">${ICON.dl}下载</button>
+            <div class="pkgpanel" id="pkgPanel"></div>
+          </div>
+          <button class="btn-sm solid" id="btnExport" data-export onclick="exportDocx()">生成修订版</button>
+        </div>
+      </div>
+      <div class="doc-head">
+        <input class="in-company" id="d-company" value="${esc(d.company_full_name)}" placeholder="企业全称" spellcheck="false"/>
+      </div>
+      <div class="doc-sub">
+        <span>底稿：${esc(d.base_title || (base.path || "").split("/").pop() || "—")}</span>
+        <span class="sep2">·</span><span>${acts.length} 处改动</span>
+        <span class="sep2">·</span><span>替换 ${cnt("REPLACE")} · 新增 ${cnt("INSERT")} · 删除 ${cnt("DELETE")} · 待定 ${cnt("REVIEW")}</span>
+        ${d.usage && d.usage.total_tokens ? `<span class="sep2">·</span><span>本次 ${fmtTok(d.usage.total_tokens)} token</span>` : ""}
+      </div>
+    </div>
+    <div class="doc" id="d-doc">
+      <div class="acts-head">
+        <div class="acts-tabs" id="actTabs">
+          ${[["all", "全部"], ["yes", "已采纳"], ["no", "已排除"],
+             ["review", "待人工"], ["failed", "要处理"]].map(([k, label]) =>
+            `<button data-f="${k}" class="${S.actFilter === k ? "on" : ""}"
+              onclick="actTab('${k}')">${label}</button>`).join("")}
+        </div>
+        <span class="acts-sum" id="actSum"></span>
+      </div>
+      <div id="actList"></div>
+    </div>
+  </div>
+  <aside class="rail rail-r" id="railR">${ckHtml(v)}</aside>
+</div>`;
+
+  $("#draftArea").innerHTML = h;
+  $("#draftArea").style.display = "block";
+  $("#empty").style.display = "none";
+  PKG.open = false; PKG.data = null; PKG.sel = {};
+  $("#pkgPanel").classList.remove("show");
+  actPaint();
+  syncRails();
+  placeRailR();
+  ckApplyFold();
+  ckPaint();
+  syncFab();
+}
+
+function actPaint(){
+  const list = $("#actList");
+  if(!list) return;
+  const acts = (S.draft.actions || []);
+  const sel = actSel();
+  const f = S.actFilter || "all";
+  const keep = a => {
+    if(f === "yes") return sel.has(a.action_id);
+    if(f === "no") return !sel.has(a.action_id);
+    if(f === "review") return a.action === "REVIEW";
+    if(f === "failed") return a.status === "failed" || a.status === "conflict";
+    return true;
+  };
+  const rows = acts.filter(keep);
+
+  // 分组：先按能不能执行分开，组内保持模型给的顺序（大致等于章节顺序）
+  const wait = a => a.action !== "REVIEW" && (a.status === "failed" || a.status === "conflict");
+  const groups = [
+    ["可执行的改动", acts.filter(a => a.action !== "REVIEW" && !wait(a))],
+    ["要先处理这几条", acts.filter(wait)],
+    ["需人工判断，保持原文", acts.filter(a => a.action === "REVIEW")],
+  ];
+  let html = "";
+  if(!rows.length){
+    html = `<div class="act-empty">这个筛选下没有条目</div>`;
+  } else {
+    groups.forEach(([title, arr]) => {
+      const shown = arr.filter(keep);
+      if(!shown.length) return;
+      const picked = shown.filter(a => sel.has(a.action_id)).length;
+      html += `<div class="acts-grp">${title}（${shown.length}${title === "可执行的改动" ? ` · 采纳 ${picked}` : ""}）</div>`;
+      html += shown.map(actHtml).join("");
+    });
+  }
+  list.innerHTML = html;
+  autoGrowAll();
+  actSumPaint();
+}
+
+function actHtml(a){
+  const [cls, label] = ACT_KIND[a.action] || ["rp", a.action || ""];
+  const sel = actSel();
+  const on = sel.has(a.action_id);
+  const bad = a.status === "failed" || a.status === "conflict";
+  const rv = a.action === "REVIEW";
+  const newBox = (a.action === "REPLACE" || a.action === "INSERT")
+    ? `<div class="act-n"><b>改后</b><textarea class="act-new" rows="1"
+         oninput="autoGrow(this);actSumPaint()">${esc(a.new_text || "")}</textarea></div>`
+    : "";
+  const note = a.note ? `<div class="act-note">${esc(a.note)}</div>` : "";
+  const meta = [a.reason ? `理由：${esc(a.reason)}` : "",
+                a.evidence ? `依据：${esc(a.evidence)}` : "",
+                a.source ? `出处：${esc(a.source)}` : ""]
+               .filter(Boolean).map(x => `<div>${x}</div>`).join("");
+  return `<div class="act ${rv ? "review" : ""} ${bad ? "failed" : ""} ${on ? "" : "off"}"
+      data-aid="${esc(a.action_id)}" data-kind="${esc(a.action)}" data-status="${esc(a.status || "")}">
+    <div class="act-h">
+      <input type="checkbox" class="act-ck" ${on ? "checked" : ""} ${rv || bad ? "disabled" : ""}
+        onchange="actToggle(this)" aria-label="采纳这条改动"/>
+      <span class="act-id">${esc(a.action_id)}</span>
+      <span class="act-k ${cls}">${label}</span>
+      <span class="act-loc">${esc(a.location || "")}${a.serial ? ` · ${esc(a.serial)}` : ""}</span>
+    </div>
+    <div class="act-body">
+      ${a.original_text ? `<div class="act-o"><b>原文</b>${esc(a.original_text)}</div>` : ""}
+      ${newBox}
+      ${note}
+      ${meta ? `<div class="act-meta">${meta}</div>` : ""}
+      ${rv || bad ? "" : `<div class="act-tools">
+        <button onclick="actOnly(this)">只看这条</button>
+        <button onclick="actFold(this)">收起原文</button></div>`}
+    </div>
+  </div>`;
+}
+
+function actToggle(el){
+  const box = el.closest(".act");
+  const id = box.dataset.aid;
+  const sel = actSel();
+  if(el.checked) sel.add(id); else sel.delete(id);
+  box.classList.toggle("off", !el.checked);
+  actSumPaint();
+}
+
+function actTab(f){
+  S.actFilter = f;
+  document.querySelectorAll("#actTabs button").forEach(b =>
+    b.classList.toggle("on", b.dataset.f === f));
+  actPaint();
+}
+
+function actOnly(btn){
+  const aid = btn.closest(".act").dataset.aid;
+  document.querySelectorAll("#actList .act").forEach(el => {
+    el.style.display = el.dataset.aid === aid ? "" : "none";
+  });
+  const bar = document.querySelector(".acts-head");
+  if(bar && !$("#actBack")){
+    const b = document.createElement("button");
+    b.id = "actBack"; b.className = "btn-sm"; b.textContent = "显示全部";
+    b.onclick = () => { $("#actBack").remove(); actPaint(); };
+    bar.appendChild(b);
+  }
+}
+
+function actFold(btn){
+  const box = btn.closest(".act");
+  const o = box.querySelector(".act-o");
+  const m = box.querySelector(".act-meta");
+  const hide = o && o.style.display !== "none";
+  if(o) o.style.display = hide ? "none" : "";
+  if(m) m.style.display = hide ? "none" : "";
+  btn.textContent = hide ? "展开原文" : "收起原文";
+}
+
+function actSumPaint(){
+  const acts = (S.draft && S.draft.actions) || [];
+  const sel = actSel();
+  const ok = acts.filter(a => sel.has(a.action_id)).length;
+  const el = $("#actSum");
+  if(el) el.textContent = `采纳 ${ok} / ${acts.length}`;
+}
+
+/* 导出前把页面状态收回：勾选决定执不执行，改后的文字以 textarea 为准 */
+function collectActions(){
+  const src = (S.draft && S.draft.actions) || [];
+  const sel = actSel();
+  const byId = {};
+  document.querySelectorAll("#actList .act").forEach(el => {
+    const id = el.dataset.aid;
+    const ta = el.querySelector(".act-new");
+    byId[id] = { selected: el.querySelector(".act-ck") ? el.querySelector(".act-ck").checked : false,
+                 new_text: ta ? ta.value : null };
+  });
+  return src.map(a => {
+    const st = byId[a.action_id] || {};
+    const out = Object.assign({}, a);
+    // 未勾选的改成 REVIEW 交给后端跳过，而不是直接丢掉：
+    // 交付说明里要能看到「这几条是我决定不改的」。
+    if(a.action !== "REVIEW" && a.status !== "failed" && st.selected === false){
+      out.action = "REVIEW";
+      out.reason = "本次未采纳：" + (a.reason || "");
+    }
+    if(st.new_text !== null && st.new_text !== undefined) out.new_text = st.new_text;
+    return out;
+  });
+}
+
 function renderDraft(){
+  if((S.draft.mode || "new") === "update") return renderActions(S.draft);
   const d = S.draft, c = d.commentary || {}, v = d.validation || {};
   const gapOn = !(d.layout && d.layout.para_gap === false);
   const wide = isWide();
@@ -2327,6 +2738,7 @@ function ckFieldEl(field, seg){
   if(!field) return null;
   if(field === "seg") return document.querySelectorAll("#d-segs .seg-line")[Math.max(0, seg - 1)] || null;
   if(field === "topic") return document.querySelectorAll("#d-topics .topic-body")[Math.max(0, seg - 1)] || null;
+  if(field === "act") return document.querySelector("#actList") || null;
   if(field === "pos") return document.querySelectorAll("#d-pos .ta")[Math.max(0, seg - 1)] || null;
   if(field === "con") return document.querySelectorAll("#d-con .ta")[Math.max(0, seg - 1)] || null;
   if(field === "table") return document.getElementById("blk-fintable");
@@ -3036,6 +3448,11 @@ document.addEventListener("input", e => {
 function collectDraft(){
   const d = JSON.parse(JSON.stringify(S.draft));
   d.company_full_name = $("#d-company").value.trim();
+  // 修订清单在页面上改过、勾过：以页面状态为准，否则导出还是模型初稿
+  if((d.mode || "new") === "update"){
+    d.actions = collectActions();
+    return d;
+  }
   d.internal_rating_code = $("#d-code").value.trim();
   d.positive = [...document.querySelectorAll(".it-pos")].map(t => t.value.trim()).filter(Boolean);
   d.concern = [...document.querySelectorAll(".it-con")].map(t => t.value.trim()).filter(Boolean);
@@ -3060,14 +3477,24 @@ async function exportDocx(){
     if(!d.company_full_name) return toast("请填企业全称", true);
     const btns = [...document.querySelectorAll("[data-export]")];
     btns.forEach(b => b.disabled = true);
-    setStep("export", { state: "run", pct: 60, detail: "排版中" });
+    setStep("export", { state: "run", pct: 60,
+      detail: S.mode === "update" ? "写入修订标记" : "排版中" });
     const r = await api("/api/export", { draft: d, company: curCo() });
     setStep("export", { state: "done", pct: 100, detail: r.name });
     const a = document.createElement("a");
     a.href = dlUrl(r.url);
     a.download = r.name;
     a.click();
-    toast("已导出 " + r.name + (r.cleaned ? `（导出前清理 ${r.cleaned} 处重复或来源表述）` : ""));
+    if((r.mode || "") === "update"){
+      const c = r.counts || {};
+      const tail = [
+        c.reviewed ? `待人工 ${c.reviewed} 条保持原文` : "",
+        c.failed ? `定位失败 ${c.failed} 条已跳过` : "",
+      ].filter(Boolean).join("，");
+      toast(`已生成 ${r.name}（应用 ${c.applied || 0} 条${tail ? "，" + tail : ""}）`);
+    }else{
+      toast("已导出 " + r.name + (r.cleaned ? `（导出前清理 ${r.cleaned} 处重复或来源表述）` : ""));
+    }
     refreshUsage();
     btns.forEach(b => b.disabled = false);
     if(HIST.open) loadHistory();  // 记录里的「已导出」状态跟着更新
@@ -3656,6 +4083,7 @@ function bootData(){
   loadModels();
   pingConn();
   refreshUsage();
+  paintMode();     // 初始模式(new)的文案
   syncButtons();  // 初始状态：无材料时两个动作都灰着
 }
 gateBoot();

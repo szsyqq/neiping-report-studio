@@ -36,6 +36,7 @@ import llm  # noqa: E402
 import mailer  # noqa: E402
 import settings_store  # noqa: E402
 import pdf_text  # noqa: E402
+import updater  # noqa: E402
 import usage as usage_mod  # noqa: E402
 from mcp_client import CaihuiClient, MCPError  # noqa: E402
 
@@ -101,6 +102,7 @@ def do_fetch(company: str, picks: list[dict], budget: int = 0, progress=None,
     n = max(len(picks), 1)
     items = [{"title": m.get("title") or "", "state": "wait", "pct": 0, "detail": "等待"} for m in picks]
     loaded: list[dict] = []
+    bases: list[dict] = []
     left = budget or BUDGET_TOTAL
     for i, m in enumerate(picks):
         title = m.get("title") or "material"
@@ -114,16 +116,42 @@ def do_fetch(company: str, picks: list[dict], budget: int = 0, progress=None,
 
         try:
             one = _budget_for(title, left)
-            if m.get("path"):  # 本地上传
-                item = pdf_text.load_file(m["path"], title, budget=one, progress=cb)
+            path = (m.get("path") or "")
+            is_docx = path.lower().endswith(".docx")
+            # 谁能当底稿不能只看扩展名：外部评级报告也常是 docx。
+            # 前端在更新模式下会明说这一份是「底稿」还是「外部材料」；
+            # 没说的话按扩展名兜底（docx 视作底稿），保持新建模式的老行为。
+            role = (m.get("role") or "").strip().lower()
+            if not role:
+                role = "base" if is_docx else "material"
+            if role == "base":
+                if not is_docx:
+                    raise ValueError("旧报告需要 Word（.docx）文件")
+                up = updater.load_docx(path)
+                bases.append({"title": title, "path": path, "chars": up["chars"],
+                              "paras": len(up["rows"]), "tables": up["tables"]})
+                items[i].update(state="done", pct=100, pages=0, chars=up["chars"],
+                                detail=f"底稿 · {len(up['rows'])} 段 · {up['chars']} 字")
+                if progress:
+                    progress((i + 1) / n * 100, "读取材料", "底稿已就绪", items=items)
+                continue
+            if is_docx:
+                # docx 作为外部材料：提取文本即可，页数没有意义
+                up = updater.load_docx(path)
+                item = {"title": title, "text": up["text"], "pages": 0,
+                        "chars": up["chars"], "path": path}
+                items[i].update(state="run", pct=60, detail="提取 docx 文本")
+            elif path:  # 本地上传的 PDF
+                item = pdf_text.load_file(path, title, budget=one, progress=cb)
             else:
                 item = pdf_text.load_material(m["url"], title, budget=one, progress=cb)
             left = max(6000, left - item["chars"])
             item["date"] = m.get("date", "")
             item["source"] = m.get("source", "upload" if m.get("path") else "caihui")
             loaded.append(item)
+            shown = (f"{item['pages']} 页 · " if item["pages"] else "")
             items[i].update(state="done", pct=100, pages=item["pages"], chars=item["chars"],
-                            detail=f"{item['pages']} 页 · 摘录 {item['chars']} 字")
+                            detail=f"{shown}摘录 {item['chars']} 字")
         except Exception as e:  # 单份失败不影响其余
             items[i].update(state="error", detail=str(e)[:120])
         if progress:
@@ -136,6 +164,12 @@ def do_fetch(company: str, picks: list[dict], budget: int = 0, progress=None,
         prev = [] if replace else [x for x in st["materials"] if x.get("title") not in titles]
         st["materials"] = prev + [x for x in loaded if x.get("text")]
         all_titles = [x.get("title") for x in st["materials"] if x.get("title")]
+        # 底稿每轮只认最新那份：换主体或重新上传就该覆盖，留着旧底稿会让
+        # 修订落到上一份文件上，产物与页面看到的不是一回事。
+        if bases:
+            st["base"] = bases[-1]
+            if replace:
+                all_titles = all_titles + [bases[-1]["title"]]
     usage_mod.record("fetch", company=company or "本地材料",
                      chars=sum(m["chars"] for m in loaded),
                      note=f"{len(loaded)}/{len(picks)} 份 · "
@@ -145,15 +179,18 @@ def do_fetch(company: str, picks: list[dict], budget: int = 0, progress=None,
             # 这一轮之后该主体名下的材料全集：前端据此覆盖本地清单，
             # 而不是把每次的结果并进一个只增不减的数组
             "all": all_titles,
+            "base": bases[-1] if bases else None,
+            "base_titles": [b["title"] for b in bases],
             "items": items}
 
 
 def do_generate(company: str, model: str | None, progress=None,
-                titles: list[str] | None = None) -> dict:
+                titles: list[str] | None = None, mode: str = "new") -> dict:
     with LOCK:
         st = STATE.get(_key(company)) or {}
         facts = st.get("facts") or {}
         materials = st.get("materials") or []
+        base = st.get("base") or None
     # 只写这一轮真正选中的材料：STATE 里可能还留着同一主体更早读过的几份，
     # 不按标题过滤的话，第二次生成的正文会混进没勾选的旧材料。
     if titles:
@@ -161,6 +198,28 @@ def do_generate(company: str, model: str | None, progress=None,
         picked = [m for m in materials if m.get("title") in want]
         if picked:
             materials = picked
+
+    if mode == "update":
+        # 更新模式：底稿是修订对象，外部材料是依据，两者缺一不可。
+        if not base:
+            raise ValueError("更新既有报告需要先上传待修订的旧报告（.docx）")
+        if not materials:
+            raise ValueError("请先拉取或上传外部评级报告（PDF），作为修订依据")
+        old = updater.load_docx(base["path"])
+        result = updater.analyze(old, materials, model_id=model,
+                                 progress=progress, facts=facts)
+        # 历史记录与导出都按这个名字找主体，缺了就会落成「未命名」
+        result["company_full_name"] = company
+        result["base_title"] = base.get("title") or ""
+        result["base_path"] = base["path"]
+        rid = history.save(result, materials,
+                           model=(result.get("usage") or {}).get("model", ""),
+                           seconds=(result.get("usage") or {}).get("seconds", 0))
+        result["history_id"] = rid
+        with LOCK:
+            STATE.setdefault(_key(company), {})["draft"] = result
+        return {"draft": result}
+
     if not materials:
         raise ValueError("请先拉取材料，或上传评级报告/募集说明书 PDF")
     draft = generator.generate(facts or facts_mod.empty_facts(company), materials,
@@ -197,29 +256,43 @@ def api_fetch(payload: dict) -> dict:
 
 
 def save_upload(name: str, data: bytes) -> dict:
-    """把上传的 PDF 落到 data/uploads/，等下一步统一解析。"""
+    """把上传的文件落到 data/uploads/，等下一步统一解析。
+
+    PDF 是外部材料；docx 是待修订的旧报告底稿。两者都在这里落盘，
+    由 do_fetch 按扩展名分流，前端不需要为两种文件准备两套上传逻辑。
+    """
     if len(data) < 1200:
-        raise ValueError("文件太小，不像是 PDF")
-    if not data[:5].startswith(b"%PDF"):
-        raise ValueError("只接受 PDF 文件")
+        raise ValueError("文件太小，不像是完整的报告")
+    is_pdf = data[:5].startswith(b"%PDF")
+    is_docx = data[:2] == b"PK" and b"word/" in data[:4096]
+    if not (is_pdf or is_docx):
+        raise ValueError("只接受 PDF 或 Word（.docx）文件")
     title = facts_mod.title_key(name) or "上传材料"
     safe = re.sub(r"[^\w\u4e00-\u9fa5.\-]+", "_", title)[:80] or "upload"
     digest = hashlib.sha256(data).hexdigest()[:12]
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-    path = UPLOAD_DIR / f"{safe}_{digest}.pdf"
+    suffix = ".pdf" if is_pdf else ".docx"
+    path = UPLOAD_DIR / f"{safe}_{digest}{suffix}"
     path.write_bytes(data)
-    return {"path": str(path), "title": title, "size": len(data), "name": path.name}
+    return {"path": str(path), "title": title, "size": len(data), "name": path.name,
+            "kind": "pdf" if is_pdf else "docx"}
 
 
 def api_generate(payload: dict) -> dict:
     company = (payload.get("company") or "").strip()
     return {"draft": do_generate(company, payload.get("model"),
-                                 titles=[t for t in (payload.get("titles") or []) if t])["draft"]}
+                                 titles=[t for t in (payload.get("titles") or []) if t],
+                                 mode=(payload.get("mode") or "new"))["draft"]}
 
 
 def api_export(payload: dict) -> dict:
+    draft = payload.get("draft") or {}
+    # 更新模式的产物是「在旧报告上打了修订标记的文件」，不是重新排一份。
+    # 所以它走自己的分支：底稿必须是记录里那份 docx，正文不再参与排版。
+    if (draft.get("mode") or payload.get("mode")) == "update":
+        return _export_revision(draft, payload)
     # 导出是最终形态：页面上改过的段落也要过一遍语言清理，别把「材料未披露」带进 Word
-    draft = generator.polish_draft(payload.get("draft") or {})
+    draft = generator.polish_draft(draft)
     out = write_docx(draft, payload.get("company") or "")
     name = (draft.get("company_full_name") or payload.get("company") or "").strip()
     usage_mod.record("export", company=name or out.stem, note=out.name)
@@ -228,6 +301,40 @@ def api_export(payload: dict) -> dict:
         history.attach_docx(rid, out.name)
     return {"path": str(out), "name": out.name, "url": "/download/" + quote(out.name),
             "cleaned": draft.get("_cleaned") or 0}
+
+
+def _export_revision(draft: dict, payload: dict) -> dict:
+    """把页面上的修订清单落到旧报告 docx 上，输出带修订标记的文件。
+
+    底稿一律取记录里存的那份（draft.base_path），不接受页面另传路径——
+    修订必须发生在「这一轮分析过的那份文件」上，否则改动会落到别处。
+    文件命名照评级更新流程的约定：公司全称 + 内评简评报告 + YY.M.D。
+    """
+    actions = draft.get("actions") or []
+    base_path = draft.get("base_path") or ""
+    if not actions:
+        raise ValueError("没有可执行的改动")
+    if not base_path or not Path(base_path).is_file():
+        raise ValueError("找不到这次的旧报告底稿，无法生成修订版；请重新上传后分析")
+
+    name = (draft.get("company_full_name") or payload.get("company") or "未命名主体").strip()
+    name = re.sub(r"[\\/:*?\"<>|]", "", name)
+    stamp = datetime.now().strftime("%y.%-m.%-d")
+    out = OUTPUT / f"{name}内评简评报告 {stamp}.docx"
+    n = 2
+    while out.exists():
+        out = OUTPUT / f"{name}内评简评报告 {stamp}-{n}.docx"
+        n += 1
+
+    res = updater.apply(actions, base_path, out, author="内评简评")
+    usage_mod.record("export", company=name, note=out.name)
+    rid = payload.get("history_id") or draft.get("history_id") or ""
+    if rid:
+        history.attach_docx(rid, out.name)
+    return {"path": str(out), "name": out.name, "url": "/download/" + quote(out.name),
+            "mode": "update", "counts": res["counts"],
+            "failed_detail": res["failed_detail"], "review_detail": res["review_detail"],
+            "cleaned": 0}
 
 
 def api_settings(payload: dict) -> dict:
@@ -515,6 +622,10 @@ def _upgrade_record(rec: dict) -> dict:
     """
     draft = rec.get("draft") or {}
     val = draft.get("validation") or {}
+    # 更新模式的校验是「每条改动能否在旧报告里定位」，与新建模式的数字溯源
+    # 不是一套规则，不能拿 generator.validate 去重算，否则会得出无意义的结论。
+    if (draft.get("mode") or "new") == "update":
+        return rec
     if val.get("rev") == generator.VALIDATOR_REV:   # 已按当前规则算过
         return rec
     if rec.get("_reval") == "skip":                 # 试过、材料已不在，别每次都试
@@ -589,7 +700,9 @@ def api_job(kind: str, payload: dict) -> dict:
         company = (payload.get("company") or "").strip()
         model = payload.get("model")
         titles = [t for t in (payload.get("titles") or []) if t]
-        job = jobs.submit("generate", lambda p: do_generate(company, model, p, titles))
+        mode = payload.get("mode") or "new"
+        job = jobs.submit("generate",
+                          lambda p: do_generate(company, model, p, titles, mode))
     else:
         raise ValueError("未知任务类型")
     return {"job": job["id"]}
