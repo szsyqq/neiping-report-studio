@@ -332,6 +332,13 @@ def render_report(data: dict[str, Any], out_path: str | Path) -> Path:
         )
         _gap()
 
+    pf = c.get("profit") or {}
+    if pf.get("body"):
+        # 盈利段：收入与利润分开写，亏损逐项归因。程序不判断写得好坏，只保证位置对——
+        # 它在财务指标表之后、债务段之前，与网页上的顺序一致。
+        _add_lead_para(doc, pf.get("lead", ""), pf.get("body", ""))
+        _gap()
+
     db = c.get("debt") or {}
     if db:
         _add_lead_para(doc, db.get("lead", ""), db.get("body", ""))
@@ -407,6 +414,10 @@ def render_skeleton(template_json: str | Path, out_path: str | Path) -> Path:
                     ["EBITDA", "{{}}", "{{}}", "{{}}"],
                     ["货币资金/短期债务（倍）", "{{}}", "{{}}", "{{}}"],
                 ],
+            },
+            "profit": {
+                "lead": "{{盈利段加粗汇总句：这一年利润被什么吃掉的}}",
+                "body": "{{营业收入与同比 → 量的变化、价的变化、结构变化 → 利润总额与净利润及同比 → 亏损或大幅下滑逐项归因：毛利变动（量/价/成本）→ 期间费用 → 减值损失（资产减值、信用减值各多少、提在哪项资产）→ 投资收益、政府补助、资产处置、所得税，每项带金额并按影响排序 → 哪些偶发、哪些持续、下一期还吃不吃}}",
             },
             "debt": {
                 "lead": "{{债务段加粗汇总句：规模趋势 + 期限结构 + 即期压力 + 备用流动性}}",

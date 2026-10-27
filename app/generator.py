@@ -365,7 +365,7 @@ def build_segment_table(facts: dict) -> dict | None:
 SYSTEM_PROMPT = """你是信用评级机构的分析员，负责撰写内部「简评报告」。写作必须严格遵循给定的体例与纪律。
 
 【体例】报告只有两层：摘要层（正面：/关注：各3条，最多5条，编号 1）2）3））与正文层（1、基本情况；2、点评）。
-点评由以下块按序组成：总述段 → 业务构成表 → 分部业务段（1）2）…）→ 资产段 → 财务指标表 → 债务段 → 或有/专题段（可选）。
+点评由以下块按序组成：总述段 → 业务构成表 → 分部业务段（1）2）…）→ 资产段 → 财务指标表 → 盈利段 → 债务段 → 或有/专题段（可选）。
 
 【硬规则】
 1. 摘要层是定性概括，除判断核心依赖量级外不得出现金额、百分比、倍数、占比。判定口径：删掉这个数字，这条判断是否仍成立？成立就删掉数字。
@@ -408,6 +408,7 @@ SYSTEM_PROMPT = """你是信用评级机构的分析员，负责撰写内部「�
 17. 措辞分级、不用极端词与宣传语：判断词只用很强／较强／一般／较弱、可控／充足／尚可／承压这类分级表述，不用「极强」「极弱」「恶劣」「极大」「严重恶化」；材料里的「荣获」「行业领先」「填补空白」「有力保障」「成效显著」等宣传语与美化表述一律不进正文，只写可核实的事实与风险。
 18. 正文每段至少锚定一个具体数据或明确事实（金额、比率、期限、数量、协议条款），不写通篇定性的空段；也不为凑数据引与判断无关的数字——引的每个数都要能用在一句判断上。
 19. 同一件事只说一遍。加粗汇总句是判断，正文不得把这句话换个说法再说一次；专题段只写它自己那件事的新证据，不复述债务段、资产段或业务段已经写过的数据与结论；同一条事实（如某科目余额、某协议条款）在全文只出现一次，后文需要引用时用「上述」带过或直接给结论，不重抄原句。
+19.1 总述段与盈利段的分工写在纸上，不许两段各写一遍：总述段给「收入是多少、由哪几块构成、利润率朝哪个方向走」，末尾一句点明赚钱还是亏钱；盈利段从「降在哪一块、是量还是价」写起，再展开利润与亏损归因。营业收入的总数、各板块收入与占比，总述段写过之后盈利段不再重抄——要提就写「上述收入结构下」「其中基础建材板块」这种承接，不要第二次列出整串金额。反过来，减值提了多少、费用为什么变，只在盈利段说，总述段不要提前把归因讲完。
 20. 分部业务段是一整段：编号与板块名之后的全部内容在同一段里连续写完，不在段内换行、不分成若干小段、不加小标题。
 21. 摘要从正文倒抽，不从材料正推。写完正文后再回头逐段读，把「能独立成立、且对偿债有含义」的判断句圈出来当候选池：先圈 10-14 条进 positive_pool / concern_pool（每条 30-50 字、纯定性、不带数字、不写「公司」开头以外的修饰），再从中按分量排序挑 3-5 条进 positive / concern。定稿的条目必须同时出现在候选池里。候选池里不要放正文没说过的话——它只是正文的抽提，不是第二遍分析。
 21.1 摘要层只分等级，不做评价。程度词只用有共同刻度的那些：很强／较强／一般／较弱（能力、地位、支持力度、专营性），充足／尚可／承压／不足（流动性、覆盖、再融资），偏高／合理（占比、杠杆、集中度），顺畅／受限（融资渠道、回款），清晰／待理顺（股权、治理）。没有刻度的词一律不写：显著、突出、明显、良好、较好、优良、充裕、雄厚、强劲、领先、龙头、重要增长极、核心平台、有力、有效、大幅、充分、完善、稳健、向好、稳步。理由不是这些词不好听，而是它们没有共同刻度——同一件事，换个人写就会落在「较强」或「一般」，读者无法据此比较两家公司。也不写「存在一定风险」「债务期限结构有待优化」「仍存××风险」这类委婉收尾：把「有待优化」还原成它实际指向的事（短债占比偏高、非受限资金覆盖不足、到期集中）。
@@ -426,6 +427,18 @@ SYSTEM_PROMPT = """你是信用评级机构的分析员，负责撰写内部「�
 22.3 每条五个字段：where 只能写「资产段之后」或「债务段之后」；title 是这段叫什么（如「对外担保」「未决诉讼」）；why 是为什么值得补，必须带材料里的金额与比重，这条只给用户判断用、不进正文；lead 是可直接用的加粗判断句，不带数字；body 是可直接用的正文，带实数，写清对手方、期限与触发条件。
 22.4 六类一项都没有就给空数组。不要用「公司治理结构完善」「未发现重大异常」这类没有数据支撑的话凑数。
 19. 两类专项按条件触发，不按行业标签触发。（1）收入主要来自政府结算（土地整理、代建、特许经营、购买服务）的，总述段交代「钱从谁来」时就要带上区域财力的实数——地区 GDP 与增速、一般公共预算收入、政府性债务余额或债务率，各一句、写明年份，并点明公司在这套结算体系里的层级与回款路径；不要只写「区域财力持续增长」这种不带数的判断，也不要把区域情况另起一段展开。（2）在建工程占非流动资产比重较高的，写清计划总投资、已累计投资、剩余投资，并与货币资金对照说明缺口。材料没有这些数据就整段不写，不许用「预计」「大致」补位。
+23. 盈利段（profit）单独成段，位置在财务指标表之后、债务段之前。收入与利润分开写，不许只写收入不写利润。
+23.1 收入侧：本期营业收入与同比变动幅度；把变动拆成量、价、结构三块，每块落到具体板块或产品——哪个板块销量降了多少、哪个产品均价降了多少、哪个板块新并表或已退出。只写「营业收入下降」不写降在哪一块、是量还是价，等于没写。
+23.2 利润侧：利润总额与净利润各写本期数与同比变动。由盈转亏、亏损扩大、亏损收窄都要明写「亏损」，不得用「利润承压」「盈利弱化」「有所下滑」「利润空间收窄」代替——「承压」是评论，不是利润表上的数。
+23.3 亏损或利润大幅下滑必须逐项归因，一项一句，每句带金额或幅度，按对利润的影响从大到小排：毛利变动（量、价、成本各影响多少）→ 期间费用（销售、管理、研发、财务费用各是多少、为什么变）→ 减值损失（资产减值与信用减值分别是多少、计在哪个科目或哪项资产上、依据什么提的）→ 投资收益与公允价值变动 → 政府补助与其他收益 → 资产处置损益 → 所得税。写完回算一遍：各归因项的方向与规模要能对上利润的变动，加不起来就说明漏项或数字抄错了，回到材料里核，不许就这么交。
+23.4 归因只能落在材料里有实数的项上。材料给了减值金额就写金额；只给了「计提减值」没给数，就写「计提了减值」并把它排到后面，不编比例、不编构成。绝不能用「受行业景气度影响」「受宏观环境影响」「市场竞争加剧」「成本上升」这类不带数的话充当原因——那不是分析，是把要解释的事换个说法。也不许写「其余部分未披露」「具体原因不详」：只写有据的项，剩下的不写。
+23.5 段末收口落在「这一年的利润被什么吃掉了、下一期还吃不吃」：哪些是偶发（一次性减值、资产处置、补助清退），哪些会持续（售价下行、毛利率中枢下移、费用刚性），下一期是否重演。这一句是评级最需要的，不要省，也不要用「未来盈利有望改善」这种没有依据的话代替。
+【盈利段的检验法】把段里每个归因句单独拎出来问：这句话里的金额在材料里能不能找到？把它删掉，利润下降这件事还解释得通吗？——找不到金额的是编的，删掉也照旧解释得通的是废话。
+23.6 利润数字只能取材料的原值。合并净利润材料没给，就写「净利润为负」「由盈转亏」，用量级证据把亏损的规模撑起来（利润总额多少、同比降多少、减值提了多少），**不许用子公司净利润顶替合并数，不许用净资产收益率乘所有者权益倒算，也不许用「利润总额×(1−所得税率)」凑一个**——这些数看着像真的，但材料和算式都不支持，比空着更危险。
+反例（材料原话只有「计提大额资产减值损失，导致净利润出现亏损」）：写成「净利润-8.39亿元、由上年盈利75.29亿元转为亏损」——两个数材料里都没有，8.39 是把 13.49 减 5.11 凑的，75.29 是子公司 75.28 抄错的。这种句子一经引用就要担责任。
+正例：「2025年利润总额12.45亿元、同比下降87.05%，净利润为负、由盈转亏；当期资产减值损失68.17亿元、信用减值损失17.38亿元，较上年分别增加63.06亿元和13.43亿元，两项合计构成亏损的主要来源」——一个数都没编，亏损的规模也交代清楚了。
+财务指标表里材料没给的项一律留「—」。确实需要自己算的（差额、合计、占比、增速），按 16.1 把算式写进 data_notes，一行一条，程序会复算；表格里找不到出处的数会被程序置空并提示，那不是程序太严，是这一格没人能证明它。
+23.7 亏损归因的每一笔都要能对上账：减值提了多少、毛利变动多少、费用增减多少，加起来要能解释利润总额从多少掉到多少。差一个量级就说明还有一项没找到或抄错了——回到材料里把那一项找出来，找不到就不写，不要用「其他因素」兜底。
 
 【写作风格】以跟踪评级报告正文为语体基准：段首归因（受……影响／受益于）、段中展开（具体来看／结构上／此外）、段末收口（整体来看，……）。判断词要分级（很强/较强/一般/较弱、可控/充足/尚可/承压）。不用「本期」「去年」「大幅」这类不可核实表述，也不用「可能」「大概」「或许」——判断要么有据，要么不写。行文里不出现「材料」「披露」「外部条件」这类词：它们是分析员的作业对象，不是报告的语言。
 
@@ -487,8 +500,9 @@ def build_user_prompt(facts: dict, materials: list[dict]) -> str:
     "overview": {"lead": "加粗汇总句（不带数字）", "body": "总述段正文：先交代钱的来源、量的决定、价的制定，再写经营与盈利主线数据与收入构成概览，收口引出业务构成表"},
     "segments": [{"name": "该主体自己用的板块名，照原文写，不改写不带编号", "body": "承接『1）××业务方面，』之后的正文"}],
     "segment_table": {"unit_line": "单位：亿元", "header": ["业务板块", "营业收入", "收入占比", "毛利率"], "rows": [["板块名", "0.00", "0.00%", ""], ["营业总收入", "0.00", "100.00%", ""]]},
-    "financial_table": {"unit_line": "单位：亿元", "periods": ["2023年", "2024年", "2025年"], "rows": [["资产总额", "0.00", "0.00", "0.00"], ["负债总额", "0.00", "0.00", "0.00"]]},
+    "financial_table": {"unit_line": "单位：亿元", "periods": ["2023年", "2024年", "2025年"], "rows": [["资产总额", "0.00", "0.00", "0.00"], ["负债总额", "0.00", "0.00", "0.00"], ["净利润", "0.00", "0.00", "0.00"]]},
     "asset": {"lead": "加粗汇总句（不带数字）", "body": "资产段正文"},
+    "profit": {"lead": "加粗汇总句（不带数字，说清这一年利润是被什么吃掉的）", "body": "盈利段正文：收入（量价结构）→ 利润总额与净利润及同比 → 亏损或下滑逐项归因（毛利、费用、减值、投资收益、补助、处置、所得税，每项带金额）→ 哪些偶发、哪些持续、下一期还吃不吃"},
     "debt": {"lead": "加粗汇总句（不带数字）", "body": "债务段正文"},
     "special_topics": [],
     "add_on_sections": [
@@ -514,7 +528,7 @@ def build_user_prompt(facts: dict, materials: list[dict]) -> str:
 【输出 JSON 结构】
 {schema}
 
-注意：若【事实台账】已有「财务指标」，财务指标表由程序按台账生成，你不需要输出 financial_table；若台账没有财务指标，你必须从【材料原文】的「主要财务数据」表整理 financial_table——期次取最近三期（前两年 + 最新一期，按时间正序排列，最新一期放最后），期次写法照抄材料表头，行项按规模→结构→盈利→获现→债务→偿债排列，金额统一亿元、两位小数，数字与材料逐一对应，材料没有的行不要编。若台账无主营构成数据，请从评级报告正文补出 segment_table（金额按亿元、两位小数，占比两位小数，缺毛利率则该列留空字符串），否则 segment_table 输出 null。你只需保证正文里的数字与材料一致，且能被台账或材料原文支撑。segments 的 name 用该公司自己披露的板块名称，不要带「业务方面」四个字，也不带编号；板块数量按收入结构决定，不要为了凑段数拆分或合并材料里没有的板块。special_topics 默认给空数组（用户在前端按需加段）；确有重大事项才写一条，且必须自带加粗判断句作 lead。add_on_sections 是给用户的「可以在模板这里补一段」提醒，不要把它写进正文，也不要为了填满而凑数；扫到六类事项（对外担保、未决诉讼、对外承诺、股东出资、在建缺口、补助依赖）就给，扫不到给空数组。资产段每个科目都必须带金额与占比，并按 8 号规则的句式展开。"""
+注意：若【事实台账】已有「财务指标」，财务指标表由程序按台账生成，你不需要输出 financial_table；若台账没有财务指标，你必须从【材料原文】的「主要财务数据」表整理 financial_table——期次取最近三期（前两年 + 最新一期，按时间正序排列，最新一期放最后），期次写法照抄材料表头，行项按规模→结构→盈利→获现→债务→偿债排列，其中盈利类必须有「营业总收入」与「净利润」两行，材料给了「利润总额」「营业毛利率」也一并列出——利润表上看不出亏没亏，后面的归因就无从谈起；金额统一亿元、两位小数，数字与材料逐一对应，材料没有的行不要编。若台账无主营构成数据，请从评级报告正文补出 segment_table（金额按亿元、两位小数，占比两位小数，缺毛利率则该列留空字符串），否则 segment_table 输出 null。你只需保证正文里的数字与材料一致，且能被台账或材料原文支撑。segments 的 name 用该公司自己披露的板块名称，不要带「业务方面」四个字，也不带编号；板块数量按收入结构决定，不要为了凑段数拆分或合并材料里没有的板块。special_topics 默认给空数组（用户在前端按需加段）；确有重大事项才写一条，且必须自带加粗判断句作 lead。add_on_sections 是给用户的「可以在模板这里补一段」提醒，不要把它写进正文，也不要为了填满而凑数；扫到六类事项（对外担保、未决诉讼、对外承诺、股东出资、在建缺口、补助依赖）就给，扫不到给空数组。资产段每个科目都必须带金额与占比，并按 8 号规则的句式展开。"""
 
 
 def _clean_llm_table(t: Any) -> dict | None:
@@ -1066,6 +1080,7 @@ def _ensure_structure(draft: dict, facts: dict) -> dict:
         b = polish_language(clean_segment_body(nm, str(s.get("body") or "")))
         segments.append({"name": nm, "body": dedupe_sentences(b)})
     asset = para(at)
+    pf = para(c.get("profit"))
     debt = para(db)
     topics = [para(t) for t in (c.get("special_topics") or []) if str(t.get("body") or "").strip()]
 
@@ -1075,6 +1090,7 @@ def _ensure_structure(draft: dict, facts: dict) -> dict:
         "segments": segments,
         "asset": asset,
         "financial_table": fin_table,
+        "profit": pf,
         "debt": debt,
         "special_topics": [t for t in topics if t["body"]],
     }
@@ -1120,7 +1136,7 @@ def polish_draft(draft: dict) -> dict:
         lead = _lead(p.get("lead"))
         return {"lead": lead, "body": dedupe_sentences(dedupe_lead(lead, _pol(p.get("body") or "")))}
 
-    for k in ("overview", "asset", "debt"):
+    for k in ("overview", "asset", "profit", "debt"):
         if isinstance(c.get(k), dict):
             c[k] = para(c[k])
     if isinstance(c.get("segments"), list):
@@ -1325,8 +1341,17 @@ _FORMULA_LINE = re.compile(
 
 
 def _parse_formula(note: str) -> dict | None:
-    """解析一行 data_notes 算式：『短期债务占比 = 3,421.53 ÷ 5,924.25 × 100%』。"""
+    """解析一行 data_notes 算式：『短期债务占比 = 3,421.53 ÷ 5,924.25 × 100%』。
+
+    模型常把结果也写上去（『… × 100% = -1.90%』），这一截在复算时是多余的，
+    但正则会被它整行挡住，算式就白交底了——先摘掉末尾的「= 结果」再解析。
+    """
     s = (note or "").strip().lstrip("-·•* ").strip()
+    m2 = re.match(r"^(?P<head>.+?)[=＝]\s*(?P<val>[-−]?[0-9,]+(?:\.\d+)?)\s*"
+                  r"(?P<unit>%|％|个百分点|倍|亿元|万元)?\s*$", s)
+    if m2 and re.search(r"[÷×+\-−*/]", m2.group("head").split("=")[-1] if "=" in m2.group("head")
+                        else m2.group("head")):
+        s = m2.group("head").strip()
     m = _FORMULA_LINE.match(s)
     if not m:
         return None
@@ -1456,11 +1481,18 @@ def _formula_table(pool: list[float]) -> dict:
     return table
 
 
-def _try_formula(target: float, kind: str, table: dict) -> tuple[str, str] | None:
+def _try_formula(target: float, kind: str, table: dict,
+                 allow: set[str] | None = None) -> tuple[str, str] | None:
     """按 target 去表里找一条成立的算式，返回 (算式文字, 口径名)。
 
     只在「同一段」的数字里找，不碰材料全文——全文几千个数两两组合，
     几乎能凑出任何 target，那是假核对，比不核对更糟。
+
+    allow 限定可接受的算式类型，用在一处最容易出错的地方：一个裸金额
+    （「净利润 -8.39 亿元」）在同一段两两相减几乎总能凑出等值——
+    实测它被「13.49 − 5.11 = 8.39」验成了通过，而这两项跟净利润毫无关系。
+    所以只有当句子本身在讲差额（增加/减少/上升/下降）时才认差额算式，
+    讲合计时才认加总算式；裸金额只能靠材料原文或模型交底的算式。
     """
     if not table:
         return None
@@ -1481,6 +1513,8 @@ def _try_formula(target: float, kind: str, table: dict) -> tuple[str, str] | Non
         orders = ("diff", "times") if abs(target) >= 1 else ("diff",)
     else:
         orders = ("ratio", "growth", "diff", "sum") if pct else ("diff", "sum")
+    if allow is not None:
+        orders = tuple(o for o in orders if o in allow)
 
     for mode in orders:
         for key in (round(target, 2), round(target + 0.01, 2), round(target - 0.01, 2),
@@ -1511,6 +1545,91 @@ def _try_formula(target: float, kind: str, table: dict) -> tuple[str, str] | Non
                 return (f"{_fmt_num(a)} + {_fmt_num(b)} = {_fmt_num(target)}", "合计")
             if mode == "times":
                 return (f"{_fmt_num(a)} ÷ {_fmt_num(b)} = {_fmt_num(target)} 倍", "倍数")
+    return None
+
+
+def _try_formula_corpus(target: float, kind: str, anchors: list[float],
+                        corpus_nums: set[str],
+                        allow: set[str] | None = None) -> tuple[str, str] | None:
+    """用「句中的一个数」配「材料里的另一个数」，反解出这个结果是怎么来的。
+
+    解决的是一类很常见的漏核：「资产减值损失68.17亿元、较上年增加63.06亿元」——
+    68.17 在句子里，5.11 只在材料的另一页上，同段穷举永远凑不出来，
+    于是这条正确的分析被当成「算不出来」。差的那半个操作数，材料里明明有。
+
+    做法不是穷举（几千个数两两组合能凑出任何值），而是反解：
+    差额要 c = a − target，合计要 c = target − a，增速要 c = a ÷ (1 + target)…
+    每个锚点只查一个候选值，命中即回代验算。要凑巧命中，得同时满足
+    「a 是句子里的数」且「a − target 恰好在材料里」，这不是运气能做到的。
+    """
+    if not corpus_nums or not anchors:
+        return None
+
+    def has(x: float) -> list[float]:
+        """反解出来的操作数可能因四舍五入差一点（26.65% 反解出 306.03，
+        材料写 306.02），容差放到 0.05；容差内的几个都返回来，由回代裁决。"""
+        out: list[float] = []
+        for d in (0.0, 0.01, -0.01, 0.02, -0.02, 0.05, -0.05):
+            cand = round(x + d, 2)
+            if f"{cand:.2f}" in corpus_nums or f"{cand:.1f}" in corpus_nums:
+                if not any(_close(cand, o) for o in out):
+                    out.append(cand)
+        return out
+
+    orders = {"差额": ["diff"], "变动幅度": ["diff"], "金额": ["diff", "sum"],
+              "规模": ["diff", "sum"], "结构": ["diff", "sum"],
+              "增速": ["growth"], "占比": ["ratio", "rest"],
+              "比率": ["ratio", "growth"], "倍数/覆盖率": ["times", "diff"],
+              "比例/增速": ["ratio", "growth"]}.get(kind, ["ratio", "growth"])
+    if allow is not None:
+        orders = [o for o in orders if o in allow]
+
+    unit = " 个百分点" if kind == "变动幅度" else ""
+    for a in anchors:
+        if a <= 0:
+            continue
+        for mode in orders:
+            if mode == "diff":
+                cands = [c for c in has(a - target)
+                         # 只挡住「减掉一个近乎为零的数」这种凑数；不按量级配对，
+                         # 「收入减少137.69亿元」的两端本来就差着一个量级
+                         # （940.42 减 802.73）。
+                         if abs(c) >= 0.5 and abs(c) <= max(500 * abs(target), 1)]
+            elif mode == "sum":
+                cands = has(target - a)
+            elif mode == "growth":
+                if target <= -100:
+                    continue
+                cands = has(a / (1 + target / 100))
+            elif mode == "ratio":
+                cands = has(a * 100 / target) if target else []
+            elif mode == "rest":
+                cands = has(a * (100 - target) / 100) if target != 100 else []
+            else:                       # times
+                cands = has(a / target) if target else []
+            for c in cands:
+                if _close(c, target) or _close(c, a):
+                    continue
+                got = _calc(mode, a, c)
+                # 与调用方给的 target 比（它已经带了符号：降幅传 -26.65），
+                # 不能取绝对值——取绝对值就永远比不过算出来的负数。
+                if got is None or not _close(got, target):
+                    continue
+                if mode == "diff":
+                    return (f"{_fmt_num(a)} − {_fmt_num(c)} = "
+                            f"{_fmt_num(target)}{unit}", "差额")
+                if mode == "sum":
+                    return (f"{_fmt_num(a)} + {_fmt_num(c)} = {_fmt_num(target)}", "合计")
+                if mode == "growth":
+                    return (f"({_fmt_num(a)} − {_fmt_num(c)}) ÷ {_fmt_num(c)} × 100% = "
+                            f"{_fmt_num(target)}%", "增速")
+                if mode == "ratio":
+                    return (f"{_fmt_num(a)} ÷ {_fmt_num(c)} × 100% = "
+                            f"{_fmt_num(target)}%", "占比")
+                if mode == "rest":
+                    return (f"({_fmt_num(a)} − {_fmt_num(c)}) ÷ {_fmt_num(a)} × 100% = "
+                            f"{_fmt_num(target)}%", "占比")
+                return (f"{_fmt_num(a)} ÷ {_fmt_num(c)} = {_fmt_num(target)} 倍", "倍数")
     return None
 
 
@@ -1552,7 +1671,7 @@ def _subj_ratio(items: list[str]) -> tuple[int, int]:
 # 校验规则的版本号。规则一改就加一，存量记录据此判断要不要重算——
 # 只看「有没有 issue_items」是不够的：新加的校验项不会进到老记录里，
 # 用户打开旧报告就看不到新提示，等于没上。
-VALIDATOR_REV = 4
+VALIDATOR_REV = 5
 
 
 def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
@@ -1761,7 +1880,7 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
     # 或有事项不进债务段（规则 9），但也不能因此消失——它能单列就提示用户补一段。
     _whole = " ".join(
         [str(draft.get("basic_info") or "")]
-        + [str((_c.get(k) or {}).get("body") or "") for k in ("overview", "asset", "debt")]
+        + [str((_c.get(k) or {}).get("body") or "") for k in ("overview", "asset", "profit", "debt")]
         + [str(s.get("body") or "") for s in (_c.get("segments") or [])]
         + [str(t.get("body") or "") for t in (_c.get("special_topics") or [])])
     _mat = "\n".join((m.get("text") or "") for m in materials)
@@ -1773,6 +1892,201 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
             "担保余额、占净资产比重、被担保方是谁、是否已出现代偿；诉讼则写涉案金额与进展。")
         issue_items.append({"t": "或有事项没落到段落", "a": "blk-topics", "d": []})
 
+    # 1.5) 盈利段：收入与利润都要写，亏损要归因，归因要带数。
+    # 这一块的病不是「漏了数据」，是「把要解释的事换了个说法」：
+    # 利润从 96 亿掉到 12 亿，正文只写「盈利承压，受行业景气度影响」——
+    # 读者看完不知道钱是被谁吃掉的，也无法判断下一期还吃不吃。
+    _pf_body = str((_c.get("profit") or {}).get("body") or "").strip()
+    _fin = _c.get("financial_table") or {}
+
+    def _num_of(v: str) -> float | None:
+        t = re.sub(r"[^\d.\-]", "", str(v).replace("−", "-").replace("－", "-"))
+        if t in ("", "-", ".", "-."):
+            return None
+        try:
+            return float(t)
+        except ValueError:
+            return None
+
+    # 表里的利润行：表格由程序按台账生成，比正文可靠，先用它判断亏损与降幅
+    _profit_rows: dict[str, list[float | None]] = {}
+    for r in (_fin.get("rows") or []):
+        cells = [str(x) for x in (r or [])]
+        if cells and re.search(r"净利润|利润总额|归母净利润", cells[0]):
+            _profit_rows[cells[0]] = [_num_of(v) for v in cells[1:]]
+    _loss_from = ""          # 亏损的判据：说明是表还是材料
+    _loss_num = ""
+    _loss_nm = ""
+    for nm, vals in _profit_rows.items():
+        nums = [v for v in vals if v is not None]
+        if nums and min(nums) < 0:
+            _loss_from, _loss_nm, _loss_num = "财务表", nm, f"{min(nums):,.2f}"
+            break
+    # 表里没有负值不等于没亏：模型整理财务表时常把「净利润」换成「利润总额」，
+    # 亏损就藏在材料的一句话里（「计提减值，导致净利润出现亏损」）。
+    _loss_hint = ""
+    if not _loss_from:
+        mm = re.search(r"净利润[^。；]{0,24}?(?:亏损|为负|-[\d,]+\.\d{2})"
+                       r"|(?:亏损|净亏损)[^。；]{0,12}?[\d,]+\.\d{2}\s*亿元", _mat)
+        if mm:
+            _loss_hint = mm.group(0)[:60]
+            _loss_from = "材料"
+    _drop = None
+    for nm, vals in _profit_rows.items():
+        nums = [v for v in vals if v is not None]
+        if len(nums) >= 2 and nums[1]:
+            d = (nums[0] - nums[1]) / abs(nums[1]) * 100
+            if d < -20:
+                _drop = (nm, round(d, 2), nums[0], nums[1])
+                break
+    _all_body = " ".join(
+        [str((_c.get(k) or {}).get("body") or "") for k in ("overview", "asset", "profit", "debt")]
+        + [str(s.get("body") or "") for s in (_c.get("segments") or [])])
+    _has_profit_word = bool(re.search(r"净利润|利润总额|净亏损", _all_body))
+    # 「有没有说亏损」只看盈利段：亏损若只在债务段里顺带提一句（「受利润亏损影响，
+    # 所有者权益下降」），那是拿它解释别的事，不算对亏损作了交代。
+    _says_loss = bool(re.search(r"亏损|净亏损|由盈转亏", _pf_body))
+    _loss_elsewhere = bool(re.search(r"亏损|净亏损", _all_body)) and not _says_loss
+
+    # ① 盈利段空着：位置空着，利润就会被塞进债务段或资产段里当一句附带
+    if not _pf_body and _profit_rows:
+        issues.append(
+            "点评里没有盈利段（财务指标表之后、债务段之前这一段空着）。"
+            "收入与利润的分析要单独成段：收入拆量、价、结构，利润写总额与净额及同比，"
+            "亏损或大幅下滑再逐项归因。")
+        issue_items.append({"t": "缺盈利段", "a": "blk-profit", "d": []})
+
+    # ② 通篇不提利润：只写了收入不写利润
+    if not _has_profit_word and (_pf_body or _all_body.strip()):
+        issues.append(
+            "正文只交代了收入，没有利润总额与净利润——收入涨跌不等于赚钱能力变化，"
+            "读者看不出这一年到底赚没赚钱。请在盈利段补上利润总额与净利润的本期数与同比。")
+        issue_items.append({"t": "只写收入没写利润", "a": "blk-profit",
+                            "d": [{"num": "", "where": "盈利段", "kind": "写法",
+                                   "full": _pf_body[:120] or "（盈利段为空）", "si": 0,
+                                   "anchor": "blk-profit", "field": "pf-body",
+                                   "note": "补利润总额与净利润的本期数与同比"}]})
+
+    # ③ 已经亏了，盈利段却不肯写「亏损」二字
+    if _loss_from and _pf_body and not _says_loss:
+        where = (f"财务表里 {_loss_nm} 为 {_loss_num} 亿元" if _loss_from == "财务表"
+                 else f"材料里写着「{_loss_hint}」")
+        extra = ("正文别处只有一句顺带提到亏损，还是拿它去解释所有者权益下降的，"
+                 "读者仍然不知道亏在哪。" if _loss_elsewhere else "")
+        issues.append(
+            f"{where}，盈利段没有任何一处写「亏损」，只用了「承压」「下滑」这类说法。"
+            + extra +
+            "亏损是利润表上的事实，不是程度问题——请直接写明哪一年亏了多少，再讲亏在哪。")
+        issue_items.append({"t": "亏损没写成亏损", "a": "blk-profit",
+                            "d": [{"num": (_loss_nm + " " + _loss_num).strip() or "亏损",
+                                   "where": "盈利段", "kind": "写法",
+                                   "full": _pf_body[:140], "si": 0,
+                                   "anchor": "blk-profit", "field": "pf-body",
+                                   "note": "明写「亏损」与金额，再逐项归因"}]})
+
+    # ④ 亏损或大幅下滑，却没有带数的归因（盈利段都没写时由 ① 负责，不重复报）
+    if _pf_body and (_loss_from or _drop):
+        # 归因载体：这些词出现、且同一句里有金额／幅度，才算真的归了因
+        carriers = ("减值", "信用减值", "毛利率", "毛利", "费用", "投资收益",
+                    "公允价值", "补助", "其他收益", "处置", "所得税",
+                    "售价", "均价", "销量", "价格")
+        strong: list[str] = []
+        empty: list[str] = []
+        for sent in re.split(r"[。；]", _pf_body or _all_body):
+            s = sent.strip()
+            if not s or not any(w in s for w in carriers):
+                continue
+            if re.search(r"\d+(?:\.\d+)?\s*(?:亿元|万元|%|％|个百分点|倍)", s):
+                strong.append(s)
+            else:
+                empty.append(s)
+        # 只挂大环境的原因：既不带数，也没说清是哪一项
+        vague = [v for v in re.findall(
+            r"(?:受|由于|主要系|主要是因为)([^，。；]{2,18}?)(?:影响|所致|拖累)", _pf_body or "")
+            if re.search(r"行业|宏观|市场|景气|环境|竞争|周期|政策|需求疲弱", v)]
+        enough = 2 if _loss_from else 1
+        if len(strong) < enough:
+            why = (f"{_loss_from}显示已亏损"
+                   + (f"（{_loss_nm} {_loss_num} 亿元）" if _loss_from == "财务表"
+                      else f"（{_loss_hint}）")
+                   if _loss_from else
+                   f"财务表显示{_drop[0]}由 {_drop[3]:,.2f} 降到 {_drop[2]:,.2f} 亿元、"
+                   f"降幅 {abs(_drop[1])}%")
+            issues.append(
+                f"{why}，但盈利段里只找到 {len(strong)} 句带金额的归因"
+                + (f"，其余只写了「{empty[0][:32]}…」" if empty else "")
+                + "。亏损要一项一句讲清：毛利变动（量、价、成本各多少）→ 期间费用 → "
+                  "减值损失（资产减值与信用减值分别是多少、提在哪项资产上）→ 投资收益、"
+                  "政府补助、资产处置、所得税，每项带金额，并按影响大小排序。"
+                  "写「受行业景气度影响」这类不带数的话，等于把要解释的事换了个说法。")
+            issue_items.append({
+                "t": "亏损原因没说清", "a": "blk-profit",
+                "d": [{"num": "缺金额归因", "where": "盈利段", "kind": "写法",
+                       "full": s[:160], "si": 0,
+                       "anchor": "blk-profit", "field": "pf-body",
+                       "note": "补金额与影响方向"}
+                      for s in (empty or [_pf_body or _all_body[:160]])[:4]]})
+        # ⑤ 有金额归因，但空话仍占着原因的位置
+        elif vague and len(vague) >= len(strong):
+            issues.append(
+                f"盈利段的归因仍以「受{vague[0]}影响」这类说法为主（{len(vague)} 处），"
+                f"带金额的只有 {len(strong)} 句。空话可以留作背景，但不能顶在原因的位置上——"
+                "读者要的是「哪一项、多少钱」，不是「大环境不好」。")
+            issue_items.append({"t": "归因还被空话占着", "a": "blk-profit",
+                                "d": [{"num": "", "where": "盈利段", "kind": "写法",
+                                       "full": vague[0], "si": 0,
+                                       "anchor": "blk-profit", "field": "pf-body",
+                                       "note": "把这一处换成具体项与金额"}]})
+    # ⑥ 财务表缺「净利润」行：只列利润总额时，亏没亏在表上根本看不出来
+    _fin_names = [str((r or [""])[0]) for r in (_fin.get("rows") or [])]
+    if _fin_names and not any(re.search(r"净利润", nm) for nm in _fin_names):
+        has_np = bool(re.search(r"净利润", _mat))
+        if has_np:
+            issues.append(
+                "财务指标表里没有「净利润」行"
+                + ("（表里有「利润总额」）" if any("利润总额" in nm for nm in _fin_names) else "")
+                + "。利润总额扣掉所得税才是净利润，亏损与否看的是净利润；"
+                  "缺这一行，正文说「亏损」在表上找不到依托，说「盈利」也看不出薄厚。"
+                  "材料里有净利润的，请补一行。")
+            issue_items.append({"t": "财务表缺净利润行", "a": "blk-fintable",
+                                "d": [{"num": "缺净利润", "where": "财务指标表",
+                                       "kind": "结构", "full": "、".join(_fin_names[:8]),
+                                       "si": 0, "anchor": "blk-fintable", "field": "table",
+                                       "note": "补「净利润」行，与营业总收入同列"}]})
+    elif _says_loss:
+        # 有行但整行都是「—」，而正文讲了亏损：读者会问到底亏多少。
+        # 材料只定性说「净利润出现亏损」时，不许编金额——但要把量级交代清楚，
+        # 用能核的数（利润总额、减值金额）把亏损的规模撑起来。
+        np_row = next((r for r in (_fin.get("rows") or [])
+                       if str((r or [""])[0]).strip() and "净利润" in str(r[0])), None)
+        if np_row and all(_num_of(v) is None for v in list(np_row)[1:]):
+            # 表里空着、正文却给了金额，必有一处不对：金额若来自材料，就该填进表；
+            # 若来路不明，就是编的——两种都得停下来看一眼。
+            num_in_body = re.search(r"净利润[^，。；]{0,6}?(-?[\d,]+\.\d{2})\s*亿元",
+                                    _all_body)
+            if num_in_body:
+                issues.append(
+                    f"正文写了「净利润 {num_in_body.group(1)} 亿元」，财务表里这一行却是「—」。"
+                    "两者必须一致：金额有材料支撑就填进表，没有就把正文改成定性表述"
+                    "（写明亏损，并用利润总额与减值金额交代量级），不要用倒算值撑场面。")
+                issue_items.append({"t": "正文与表格的净利润对不上", "a": "blk-profit",
+                                    "d": [{"num": num_in_body.group(1) + "亿元",
+                                           "where": "盈利段", "kind": "写法",
+                                           "full": num_in_body.group(0), "si": 0,
+                                           "anchor": "blk-profit", "field": "pf-body",
+                                           "note": "填进表，或改成定性表述"}]})
+            else:
+                issues.append(
+                    "财务表「净利润」一整行都是「—」，正文只写了亏损。材料没给净利润金额时"
+                    "不要编，但要把亏损的量级交代出来：用利润总额的同比降幅、减值损失的金额，"
+                    "说明亏损是由哪几项堆出来的，读者才判断得了这是一次性亏损还是持续亏损。")
+                issue_items.append({"t": "净利润有行无值", "a": "blk-fintable",
+                                    "d": [{"num": "净利润 —", "where": "财务指标表",
+                                           "kind": "结构",
+                                           "full": "、".join(str(v) for v in np_row),
+                                           "si": 0, "anchor": "blk-fintable", "field": "table",
+                                           "note": "补不到金额就用利润总额与减值金额交代量级"}]})
+
     # 2) 正文数字溯源
     # 带段落标签收集，出问题时要能指出「在哪个段、哪句话、大概是哪个指标」——
     # 只报一串数字（14.76%、0.41亿元）等于让用户自己去全文搜，等于没提。
@@ -1782,10 +2096,13 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
         ("基本情况", draft.get("basic_info", ""),
          {"anchor": "blk-basic", "field": "basic"})]
     c = draft.get("commentary") or {}
-    for k, name in (("overview", "总述段"), ("asset", "资产段"), ("debt", "债务段")):
+    for k, name in (("overview", "总述段"), ("asset", "资产段"),
+                    ("profit", "盈利段"), ("debt", "债务段")):
         block = c.get(k) or {}
-        field = {"overview": "ov-body", "asset": "as-body", "debt": "db-body"}[k]
-        anchor = {"overview": "blk-overview", "asset": "blk-asset", "debt": "blk-debt"}[k]
+        field = {"overview": "ov-body", "asset": "as-body",
+                 "profit": "pf-body", "debt": "db-body"}[k]
+        anchor = {"overview": "blk-overview", "asset": "blk-asset",
+                  "profit": "blk-profit", "debt": "blk-debt"}[k]
         labeled.append((name, (block.get("body") or ""),
                         {"anchor": anchor, "field": field}))
     for i, seg in enumerate(c.get("segments") or [], 1):
@@ -1799,6 +2116,103 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
     if seg_tbl:
         for r in seg_tbl.get("rows") or []:
             texts.append(" ".join(str(x) for x in r))
+
+    # 财务表逐格溯源：这一块以前完全在核对之外——正文里的数逐个查，表里的数却
+    # 默认是可信的。于是「净利润」这种材料没给合并数的行，模型会拿子公司数或
+    # 倒算值填进去，表看起来齐整，其实是编的。表格是读者最先看的地方，编在这里
+    # 比编在正文里更糟，所以每一格都要能在材料里找到，或在同一列里算出来。
+    fin_tbl = c.get("financial_table") or {}
+    fin_bad: list[dict] = []
+    _periods = [str(x) for x in (fin_tbl.get("periods") or [])]
+    for ri, r in enumerate(fin_tbl.get("rows") or []):
+        cells = [str(x) for x in (r or [])]
+        if len(cells) < 2:
+            continue
+        rowname = cells[0].strip()
+        col_vals: list[float] = []
+        for v in cells[1:]:
+            fv = _num_of(v)
+            if fv is not None:
+                col_vals.append(fv)
+        for i, raw in enumerate(cells[1:]):
+            v = _num_of(raw)
+            if v is None:
+                continue
+            # 表格里的数带符号，不去绝对值比对：净利润 -8.39 若按 8.39 去材料里找，
+            # 会命中「18.39%」这种毛利率，一笔编出来的负数就这么混过去了。
+            hits = {f"{v:.2f}", f"{v:.1f}", f"{v:.0f}"}
+            if hits & corpus_nums:
+                continue
+            # 这一格没在材料里出现，可能是同列算出来的（资产负债率、总资本化比率…）。
+            # 用同一列的其他数反推：算得上就销账，算不上的才按「编的」报出去。
+            pool = [x for x in col_vals if not _close(x, v)]
+            tmpl = _formula_table(pool)
+            kind = ("比率" if ("%" in raw or "率" in rowname or "比" in rowname)
+                    else "倍数" if "倍" in rowname else "")
+            if _try_formula(abs(v), kind, tmpl):
+                continue
+            period = _periods[i] if i < len(_periods) else f"第{i + 1}列"
+            fin_bad.append({"num": raw, "where": f"财务指标表 · {rowname} · {period}",
+                            "kind": "表格", "full": f"{rowname}（{period}）：{raw}",
+                            "si": 0, "anchor": "blk-fintable", "field": "table",
+                            "note": "材料里没有这一格，同列也推不出来，已先置为「—」"})
+    # 找不到出处的格子直接置为「—」。这不是宁缺毋滥的美德，是这一处的实际教训：
+    # 材料只写「计提减值导致净利润出现亏损」，模型却给出「净利润 -8.39 亿元」
+    # （把子公司 75.28 抄成 75.29、再用净资产收益率倒算），表看起来齐整，
+    # 数字却是凑的。内评表里一个凑出来的数比一个「—」危险得多——
+    # 前者会被继续引用，后者会被人去问「这个怎么没有」。
+    if fin_bad and fin_tbl.get("rows"):
+        for b in fin_bad:
+            parts = b["where"].split(" · ")
+            if len(parts) < 3:
+                continue
+            nm, period = parts[1], parts[2]
+            for r in fin_tbl["rows"]:
+                if str(r[0]).strip() != nm:
+                    continue
+                for i, p in enumerate(_periods, 1):
+                    if p == period and i < len(r):
+                        r[i] = "—"
+        b0 = fin_bad[0]
+        sample = "；".join(f"{x['where']}＝{x['num']}" for x in fin_bad[:4])
+        issues.append(
+            f"财务指标表有 {len(fin_bad)} 格数在材料里找不到出处、同列也推不出来（{sample}），"
+            "已先置为「—」。表格是读者最先看的地方，材料没给的项就该留空，"
+            "不要用子公司数、净资产收益率倒算或相邻年份顶上；确实自己算的，"
+            "把算式写进 data_notes，程序会复算后再填回来。")
+        issue_items.append({"t": "财务表有数找不到出处", "a": "blk-fintable",
+                            "d": fin_bad[:8]})
+        draft["data_notes"] = list(draft.get("data_notes") or []) + [
+            "财务表置空（材料未给出、同列推不出）：" + sample
+            + ("……" if len(fin_bad) > 4 else "")]
+
+        # 置空之后再看一眼正文：表里空了、正文却还写着净利润的具体金额，
+        # 两处对不上。金额若真有依据，就该把它填回表里（并附算式）；
+        # 若来路不明，正文要改成定性表述——不能一边留白一边报数。
+        _np = next((r for r in (fin_tbl.get("rows") or [])
+                    if str((r or [""])[0]).strip() and "净利润" in str(r[0])), None)
+        if _np and all(_num_of(x) is None for x in list(_np)[1:]):
+            nb = re.search(r"净利润[^，。；]{0,6}?(-?[\d,]+\.\d{2})\s*亿元", _all_body)
+            if nb:
+                issues.append(
+                    f"正文写了「净利润 {nb.group(1)} 亿元」，财务表里这一行却是「—」，两处对不上。"
+                    "金额有材料支撑就填进表里；没有就把正文改成定性表述（写明亏损，"
+                    "用利润总额与减值金额交代量级），不要一边留白一边报一个查不到来源的数。")
+                issue_items.append({"t": "正文与表格的净利润对不上", "a": "blk-profit",
+                                    "d": [{"num": nb.group(1) + "亿元", "where": "盈利段",
+                                           "kind": "写法", "full": nb.group(0), "si": 0,
+                                           "anchor": "blk-profit", "field": "pf-body",
+                                           "note": "填进表，或改成定性表述"}]})
+
+    # 财务表里的数本身已经逐个溯源过（见上），所以它们是可信的操作数。
+    # 正文里的「同比降 1.90%」常常要用到上一年的数，而那个数往往只出现在表里、
+    # 不出现在同一段正文里——只按同段反推就会把它判成「算不出来」。
+    # 把表内的数并成一个操作数池，专给占比、增速这类结构性算式用。
+    tab_fin: dict = {}
+    if fin_tbl.get("rows"):
+        _fin_pool = [v for r in fin_tbl["rows"] for v in
+                     (_num_of(x) for x in list(r)[1:]) if v is not None]
+        tab_fin = _formula_table(_fin_pool)
 
     # 模型在 data_notes 里声明过的推算值，单独归为「已声明推算」，不算未溯源
     declared: set[str] = set()
@@ -1871,7 +2285,39 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
                     auto_ok.append(hit)
                     continue
                 # ② 同段反推：运算过程就在这一段里摆着
-                proof = _try_formula(v, kind, tab_sure) or _try_formula(v, kind, tab_every)
+                # 差额与合计只在数字旁边确实写着「增加／减少／合计」时才认。
+                # 一整句里出现「下降」不算数——那句话讲的是另一个数（「利润总额
+                # 同比下降87.05%，净利润-8.39亿元」），按整句放行就会让 -8.39
+                # 被「13.49 − 5.11 = 8.39」验成通过，而这两项跟净利润毫无关系。
+                ctx = sent[max(0, sent.find(n) - 8): sent.find(n) + len(n) + 8]
+                allow = {"ratio", "rest", "growth", "times"}
+                if re.search(r"增加|减少|上升|下降|提高|回落|扩大|收窄|增长|降幅|增幅|"
+                             r"多|少|变动|差额|增量", ctx):
+                    allow |= {"diff"}
+                if re.search(r"合计|累计|总计|共计|小计", ctx):
+                    allow.add("sum")
+                # 正文报降幅时常写「下降1.90%」而不带负号，算式算出来却是 -1.90。
+                # 两个方向都试一次，别的什么都不改。
+                cands = [v]
+                if re.search(r"下降|减少|降幅|回落|收窄|下滑|收窄", ctx):
+                    cands.append(-v)
+                proof = None
+                _anchors = [float(re.sub(r"[^\d.]", "", x))
+                            for x in collect_numbers(sent) if re.sub(r"[^\d.]", "", x)]
+                # 先用句中的数配材料里的数；句子里的数不够用时，再放宽到整段。
+                # 「量价齐跌使基础建材收入减少137.69亿元」这一句里没有 802.73，
+                # 它在上一句，但仍是同一段的同一个话题。
+                _para_anchors = [float(re.sub(r"[^\d.]", "", x))
+                                 for x in collect_numbers(text or "")
+                                 if re.sub(r"[^\d.]", "", x)]
+                for cv in cands:
+                    proof = (_try_formula(cv, kind, tab_sure, allow)
+                             or _try_formula(cv, kind, tab_every, allow)
+                             or _try_formula(cv, kind, tab_fin, allow)
+                             or _try_formula_corpus(cv, kind, _anchors, corpus_nums, allow)
+                             or _try_formula_corpus(cv, kind, _para_anchors, corpus_nums, allow))
+                    if proof:
+                        break
                 if proof and not (digits in declared or f"{v:.2f}" in declared):
                     hit["formula"], hit["rule"] = proof[0], proof[1]
                     auto_ok.append(hit)

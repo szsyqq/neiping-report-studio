@@ -2453,6 +2453,10 @@ function renderDraft(){
     h += tableHtml(c.financial_table) + `</div>`;
   }
   h += `</div>
+    <div class="blk" id="blk-profit">
+      ${ta("pf-lead lead", c.profit && c.profit.lead)}
+      ${ta("pf-body", c.profit && c.profit.body)}
+    </div>
     <div class="blk" id="blk-debt">
       ${ta("db-lead lead", c.debt && c.debt.lead)}
       ${ta("db-body", c.debt && c.debt.body)}
@@ -2643,6 +2647,7 @@ const CK_RULES = [
 const WHERE_RULES = [
   [/关注/, "blk-con"], [/正面/, "blk-pos"], [/点评|总述/, "blk-overview"],
   [/分部|板块|业务/, "blk-segments"], [/资产/, "blk-asset"],
+  [/盈利|利润|亏损|毛利/, "blk-profit"],
   [/债务|负债|有息/, "blk-debt"], [/基本/, "blk-basic"],
   [/专题/, "blk-topics"], [/财务|表/, "blk-fintable"],
 ];
@@ -2729,7 +2734,8 @@ function fieldForWhere(w){
 }
 function fieldForAnchor(a){
   return { "blk-basic": "basic", "blk-overview": "ov", "blk-asset": "as",
-    "blk-debt": "db", "blk-segments": "seg", "blk-topics": "topic" }[a] || "";
+    "blk-profit": "pf", "blk-debt": "db", "blk-segments": "seg",
+    "blk-topics": "topic" }[a] || "";
 }
 function ckItems(v){
   if((v.issue_items || []).length){
@@ -2968,6 +2974,7 @@ function ckFieldEl(field, seg){
   if(field === "table") return document.getElementById("blk-fintable");
   if(field === "ov") return document.querySelector(".ta.ov-body") || document.querySelector(".ta.ov-lead");
   if(field === "as") return document.querySelector(".ta.as-body") || document.querySelector(".ta.as-lead");
+  if(field === "pf") return document.querySelector(".ta.pf-body") || document.querySelector(".ta.pf-lead");
   if(field === "db") return document.querySelector(".ta.db-body") || document.querySelector(".ta.db-lead");
   return document.querySelector(".ta." + field);
 }
@@ -2978,6 +2985,7 @@ function ckTextFields(){
   push(document.querySelector(".ta.basic"), "basic", "基本情况");
   push(document.querySelector(".ta.ov-body"), "ov", "总述段");
   push(document.querySelector(".ta.as-body"), "as", "资产段");
+  push(document.querySelector(".ta.pf-body"), "pf", "盈利段");
   push(document.querySelector(".ta.db-body"), "db", "债务段");
   document.querySelectorAll("#d-segs .seg-line").forEach((el, i) => {
     const t = (el.innerText || "").trim();
@@ -3750,6 +3758,8 @@ function collectDraft(){
     return parseSeg(line.innerText || line.textContent || "", line.dataset.name);
   }).filter(s => s.body);
   d.commentary.asset = { lead: $(".ta.as-lead").value.trim(), body: $(".ta.as-body").value.trim() };
+  d.commentary.profit = { lead: $(".ta.pf-lead") ? $(".ta.pf-lead").value.trim() : "",
+                          body: $(".ta.pf-body") ? $(".ta.pf-body").value.trim() : "" };
   d.commentary.debt = { lead: $(".ta.db-lead").value.trim(), body: $(".ta.db-body").value.trim() };
   d.commentary.special_topics = [...document.querySelectorAll("#d-topics .topic")].map(t => ({
     lead: t.querySelector(".topic-lead").value.trim(),
