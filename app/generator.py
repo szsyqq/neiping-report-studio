@@ -380,7 +380,15 @@ SYSTEM_PROMPT = """你是信用评级机构的分析员，负责撰写内部「�
 正例：「……2025年1-3月确认收入0.88亿元，同期回款0.31亿元，已确认收入与已回款之间的缺口随结算进度波动，回款节奏取决于天心区财政资金安排。」
 反例：「……2025年1-3月确认收入0.88亿元。该板块风险点在于回款依赖天心区财政结算，已确认收入与已回款存在缺口。」
 三件事要连成一段叙述，不按这三件事分段，也不写成三个并列短句。
-8. 资产段的前五大科目必须按最新期次的实际金额降序排列（不是沿用旧名单换数字），写清每个科目「是什么」，并交代其质量——能否变现、是否已质押、账龄或回收对象。
+8. 资产段逐科目展开，一个科目一句话，句式固定为「科目 金额（占资产总额 ××.××%），主要为×××，再交代质量」：
+   - 科目取前三大到前五大，按最新期次的实际金额降序排列（不是沿用旧名单换数字）。
+   - 括号里只放占比，写法固定为「（占资产总额 27.74%）」；占比由该科目金额÷资产总额算出，并写进 data_notes。
+   - 括号之后紧跟「主要为……」，把这个科目里装的是什么说清：对手方是谁、做什么用、什么形态（土地房产、往来款、工程结算款、理财与存单）。这句不是评价，是把科目名还原成事实。
+   - 每个科目还要落到质量：什么时候能回来、在谁手里、有没有被质押冻结、账龄落在哪一档。
+   - 段内另给一句前五大合计占资产总额的比重；受限资产收在段末，写清金额、占总资产比重、主要为哪些资产、因什么受限。
+   - 反例：「应收账款规模较大，回收存在一定不确定性；存货占比较高，变现能力一般。」
+   - 正例：「应收账款 342.16 亿元（占资产总额 27.74%），主要为应收××区财政局的工程结算款，账龄一年以内的占 68.20%，回款节奏取决于年度预算安排；存货 128.40 亿元（占资产总额 10.41%），主要为代建项目的开发成本，未计提跌价准备，变现依赖项目结算进度。」
+   - 只写「规模较大」「占比较高」不写金额与占比，等于没写：读者判断不了这个科目到底压了多少资产。
 9. 债务段按固定顺序展开：负债总额与资产负债率 → 全部债务及长短债结构与占比 → 有息债务的融资构成 → 利息保障与经营获现 → 非受限货币资金对短债覆盖 → 授信与未使用额度。或有事项不进债务段——它由用户在页面上自行决定是否单列一段（见规则 21），债务段里不写「或有事项方面，……」。
 10. 全文用合并口径。总债务（含政府专项债等）与有息债务是两个口径，混用时必须说明差额来源。
 11. 期次只能照抄台账『期次写法』里的字面写法：时点用「X年末／X年6月末／X年9月末」，区间用「X年／X年1-6月／X年1-9月」。资产类、负债类、债务类数据用时点写法，收入、利润、现金流用区间写法。台账写「中报」的，时点就是「X年6月末」，绝不允许写成 9 月末或 1-9 月。
@@ -412,7 +420,11 @@ SYSTEM_PROMPT = """你是信用评级机构的分析员，负责撰写内部「�
 反例：「区域专营地位较强，外部支持力度大。」
 正例：「公司为天心区政府全资持有的城市建设主体，区域专营地位较强，资产注入与政府补助构成外部支持的主要来源。」
 主语不必每条都重复堆在句首：前一条已明确是公司，后一条可以承接省略；但只要这条单独拎出来读不出主体，就要补上。
-22. 专题段（special_topics）默认输出空数组。只有材料里存在「非报不可」的重大事项（大额对外担保且被担保方已出现风险、重大未决诉讼、股东出资未到位、在建项目投资缺口远超货币资金）才写，且最多一条。写的时候必须带一句独立的加粗判断句作 lead（先说结论，不带数字），body 再摆数据；不要用「或有事项方面，」这种引子开头。用户在页面上可自行增删专题段，你不必为了完整而补。
+22. 专题段默认空数组，但「值得单列的事项」不能因为它没被写进正文就消失。
+22.1 special_topics 默认输出空数组：加不加段由用户在前端决定，不必为了完整而补。确有非报不可的重大事项（大额对外担保且被担保方已出现风险、重大未决诉讼、股东出资未到位、在建项目投资缺口远超货币资金）才写，最多一条，必须带独立的加粗判断句作 lead，body 再摆数据；不要用「或有事项方面，」这种引子开头。
+22.2 另一头，分析中发现「够不上专题段、但值得单列一段」的事项，写进 add_on_sections——它不是正文，是给用户的提醒：这一事项可以在模板的哪个位置补一段。必须逐项扫这六类，扫到就写，扫不到就空着：①对外担保（余额、占净资产比重、被担保方是谁、是否互保、是否已出现代偿）②未决诉讼与仲裁（涉案金额、进展、是否已计提）③对外承诺与票据保函（敞口、到期分布）④股东出资与注资进度（承诺额、到位额）⑤在建项目资金缺口（计划总投资、已累计投资、剩余投资、货币资金）⑥政府补助依赖（补助金额与净利润的比值）。
+22.3 每条五个字段：where 只能写「资产段之后」或「债务段之后」；title 是这段叫什么（如「对外担保」「未决诉讼」）；why 是为什么值得补，必须带材料里的金额与比重，这条只给用户判断用、不进正文；lead 是可直接用的加粗判断句，不带数字；body 是可直接用的正文，带实数，写清对手方、期限与触发条件。
+22.4 六类一项都没有就给空数组。不要用「公司治理结构完善」「未发现重大异常」这类没有数据支撑的话凑数。
 19. 两类专项按条件触发，不按行业标签触发。（1）收入主要来自政府结算（土地整理、代建、特许经营、购买服务）的，总述段交代「钱从谁来」时就要带上区域财力的实数——地区 GDP 与增速、一般公共预算收入、政府性债务余额或债务率，各一句、写明年份，并点明公司在这套结算体系里的层级与回款路径；不要只写「区域财力持续增长」这种不带数的判断，也不要把区域情况另起一段展开。（2）在建工程占非流动资产比重较高的，写清计划总投资、已累计投资、剩余投资，并与货币资金对照说明缺口。材料没有这些数据就整段不写，不许用「预计」「大致」补位。
 
 【写作风格】以跟踪评级报告正文为语体基准：段首归因（受……影响／受益于）、段中展开（具体来看／结构上／此外）、段末收口（整体来看，……）。判断词要分级（很强/较强/一般/较弱、可控/充足/尚可/承压）。不用「本期」「去年」「大幅」这类不可核实表述，也不用「可能」「大概」「或许」——判断要么有据，要么不写。行文里不出现「材料」「披露」「外部条件」这类词：它们是分析员的作业对象，不是报告的语言。
@@ -478,7 +490,13 @@ def build_user_prompt(facts: dict, materials: list[dict]) -> str:
     "financial_table": {"unit_line": "单位：亿元", "periods": ["2023年", "2024年", "2025年"], "rows": [["资产总额", "0.00", "0.00", "0.00"], ["负债总额", "0.00", "0.00", "0.00"]]},
     "asset": {"lead": "加粗汇总句（不带数字）", "body": "资产段正文"},
     "debt": {"lead": "加粗汇总句（不带数字）", "body": "债务段正文"},
-    "special_topics": []
+    "special_topics": [],
+    "add_on_sections": [
+      {"where": "债务段之后（或资产段之后）", "title": "这一段叫什么，如「对外担保」",
+       "why": "为什么值得补一段：带材料里的金额与比重，这行只给用户看，不进正文",
+       "lead": "可直接用的加粗判断句（不带数字）",
+       "body": "可直接用的正文（带实数，写清对手方、期限与触发条件）"}
+    ]
   },
   "data_notes": ["自算值的算式，一行一条，照此写：『比率·毛利率同比上升6.40个百分点 = 73.84 − 67.44』；口径差异或不确定处同样写在这里"],
   "sources": [{"claim": "文中的关键判断或数字", "where": "材料名+页码/章节"}]
@@ -496,7 +514,7 @@ def build_user_prompt(facts: dict, materials: list[dict]) -> str:
 【输出 JSON 结构】
 {schema}
 
-注意：若【事实台账】已有「财务指标」，财务指标表由程序按台账生成，你不需要输出 financial_table；若台账没有财务指标，你必须从【材料原文】的「主要财务数据」表整理 financial_table——期次取最近三期（前两年 + 最新一期，按时间正序排列，最新一期放最后），期次写法照抄材料表头，行项按规模→结构→盈利→获现→债务→偿债排列，金额统一亿元、两位小数，数字与材料逐一对应，材料没有的行不要编。若台账无主营构成数据，请从评级报告正文补出 segment_table（金额按亿元、两位小数，占比两位小数，缺毛利率则该列留空字符串），否则 segment_table 输出 null。你只需保证正文里的数字与材料一致，且能被台账或材料原文支撑。segments 的 name 用该公司自己披露的板块名称，不要带「业务方面」四个字，也不带编号；板块数量按收入结构决定，不要为了凑段数拆分或合并材料里没有的板块。special_topics 默认给空数组（用户在前端按需加段）；确有重大事项才写一条，且必须自带加粗判断句作 lead。"""
+注意：若【事实台账】已有「财务指标」，财务指标表由程序按台账生成，你不需要输出 financial_table；若台账没有财务指标，你必须从【材料原文】的「主要财务数据」表整理 financial_table——期次取最近三期（前两年 + 最新一期，按时间正序排列，最新一期放最后），期次写法照抄材料表头，行项按规模→结构→盈利→获现→债务→偿债排列，金额统一亿元、两位小数，数字与材料逐一对应，材料没有的行不要编。若台账无主营构成数据，请从评级报告正文补出 segment_table（金额按亿元、两位小数，占比两位小数，缺毛利率则该列留空字符串），否则 segment_table 输出 null。你只需保证正文里的数字与材料一致，且能被台账或材料原文支撑。segments 的 name 用该公司自己披露的板块名称，不要带「业务方面」四个字，也不带编号；板块数量按收入结构决定，不要为了凑段数拆分或合并材料里没有的板块。special_topics 默认给空数组（用户在前端按需加段）；确有重大事项才写一条，且必须自带加粗判断句作 lead。add_on_sections 是给用户的「可以在模板这里补一段」提醒，不要把它写进正文，也不要为了填满而凑数；扫到六类事项（对外担保、未决诉讼、对外承诺、股东出资、在建缺口、补助依赖）就给，扫不到给空数组。资产段每个科目都必须带金额与占比，并按 8 号规则的句式展开。"""
 
 
 def _clean_llm_table(t: Any) -> dict | None:
@@ -880,6 +898,121 @@ def _lead(txt: str) -> str:
     return out or raw
 
 
+# ── 「可以在这里补一段」：模型没给时的兜底 ───────────────────────────────
+# 规则 22 要求模型把担保、诉讼、在建缺口这类事项写进 add_on_sections，
+# 但小模型经常把这个选填数组整个省掉（实测 deepseek-v4-flash 全空），
+# 用户就看不到「这里能补一段」的提醒。这里退一步：材料里能摘到原句，
+# 就做成一条提醒卡，正文留空由人改写——不虚构、不代写、也不擅自加段。
+_ADV_RULES = (
+    ("对外担保", ("对外担保", "担保余额"), ("无对外担保", "担保余额/"), "债务段之后"),
+    ("未决诉讼", ("未决诉讼", "仲裁事项"), (), "债务段之后"),
+    ("在建项目与资本支出", ("计划总投资", "剩余投资", "尚需投资"), (), "债务段之后"),
+    ("股东出资", ("出资未到位", "尚未实缴", "承诺出资"), (), "资产段之后"),
+)
+
+
+def _advice_sentence(text: str, words: tuple[str, ...], excludes: tuple[str, ...],
+                     max_len: int = 150) -> str:
+    """在材料里摘一句「有实数、说这件事」的原文。
+
+    PDF 抽出来的文本按版面换行，一句话常被切成几段，所以先把空白全部去掉
+    再按句读定位；以关键词为锚向前找句首、向后找句末，避免摘出「要补充；公司
+    固定资产……」这种从半句开始的碎片。
+    """
+    flat = re.sub(r"\s+", "", text or "")
+    for need_amount in (True, False):
+        for w in words:
+            for m in re.finditer(w, flat):
+                start = max(flat.rfind(c, 0, m.start()) for c in "。；") + 1
+                ends = [x for x in (flat.find(c, m.start()) for c in "。；") if x > 0]
+                end = min(ends) if ends else len(flat)
+                s = flat[start:end]
+                if any(x in s for x in excludes):
+                    continue
+                # 财务指标公式表里也会出现「担保余额/所有者权益×100%」，那不是事项
+                if "×100%" in s or "计算公式" in s:
+                    continue
+                if not re.search(r"\d", s):
+                    continue
+                # 先找带金额的句子：只说「规模有所下降」的定性句不值得提醒补段
+                if need_amount and not re.search(r"\d+(?:\.\d+)?(?:亿|万)元", s):
+                    continue
+                if len(s) < 15:
+                    continue
+                if len(s) > max_len:
+                    # 在逗号处断开，别把半句话留在卡片上
+                    cut = max(s.rfind(c, 0, max_len) for c in "，、；")
+                    s = (s[:cut] if cut > 60 else s[:max_len]).rstrip("，、；") + "……"
+                if len(s) < 15:
+                    continue
+                return s
+    return ""
+
+
+def fallback_advice(materials: list[dict]) -> list[dict]:
+    out: list[dict] = []
+    for title, words, excludes, where in _ADV_RULES:
+        for m in materials:
+            s = _advice_sentence(m.get("text") or "", words, excludes)
+            if not s:
+                continue
+            out.append({
+                "where": where, "title": title,
+                # 摘出来的原句放 body，why 只说明来历——同一句话不要在卡片上出现两遍。
+                # 这句也不能过 polish_language：那一层会删掉「材料」「披露」这类词，
+                # 「材料原文」会被改写成「未改写）」这样的残句。
+                "why": "原文里有这一节可写，这里是程序摘出的那句作起点；"
+                       "要不要补、按什么语体重写，由你定。",
+                "lead": "", "body": s, "auto": True,
+            })
+            break
+    return out[:3]
+
+
+def merge_advice(given: list[dict], materials: list[dict]) -> list[dict]:
+    """模型给的建议优先；它没提到的类别，用材料摘句补一条提醒。"""
+    rows = [a for a in (given or []) if isinstance(a, dict) and a.get("title")]
+    have = " ".join(f"{a.get('title')} {a.get('body')} {a.get('why')}" for a in rows)
+    for a in fallback_advice(materials):
+        # 正文里已经写过这件事，就不用再提醒补段
+        if any(k in have for k in (a["title"],)):
+            continue
+        rows.append(a)
+    return rows[:5]
+
+
+def _clean_advice(raw) -> list[dict]:
+    """「可补充段落」建议的清洗。
+
+    where 归一到模板里真实存在的两个落点——模型偶尔会写「第三章之后」
+    「财务指标表之前」这种页面上指不到的地址，直接显示只会让人找不着。
+    """
+    advice: list[dict] = []
+    for a in (raw or [])[:5]:
+        if not isinstance(a, dict):
+            continue
+        title = str(a.get("title") or "").strip()
+        # 程序摘录的原句保持原样：语言清理会删掉「材料」「披露」，把原文改残，
+        # 而这张卡片的用途正是让用户看到材料里到底怎么写的。
+        if a.get("auto"):
+            body = str(a.get("body") or "").strip()
+            why = str(a.get("why") or "").strip()
+        else:
+            body = polish_language(str(a.get("body") or "").strip())
+            why = polish_language(str(a.get("why") or "").strip())
+        if not title or not (body or why):
+            continue
+        advice.append({
+            "where": "资产段之后" if "资产" in str(a.get("where") or "") else "债务段之后",
+            "title": title[:20],
+            "why": why[:220],
+            "lead": _lead(a.get("lead")),
+            "body": body,
+            **({"auto": True} if a.get("auto") else {}),
+        })
+    return advice
+
+
 def _ensure_structure(draft: dict, facts: dict) -> dict:
     """补齐缺省字段，并把程序生成的表格塞进去。"""
     out: dict[str, Any] = {}
@@ -947,6 +1080,8 @@ def _ensure_structure(draft: dict, facts: dict) -> dict:
     }
     out["data_notes"] = draft.get("data_notes") or []
     out["sources"] = draft.get("sources") or []
+    # 「可补充段落」建议：只给前端提示用，不并入正文。
+    out["add_on_sections"] = _clean_advice(draft.get("add_on_sections"))
     if _DEDUP_LOG:
         out["data_notes"] = list(out["data_notes"]) + [
             f"已自动删去 {len(_DEDUP_LOG)} 处与上文重复的表述：" + "；".join(_DEDUP_LOG[:4])
@@ -1003,6 +1138,13 @@ def polish_draft(draft: dict) -> dict:
         if isinstance(c.get(key), dict):
             c[key] = reorder_table(c[key])
     d["commentary"] = c
+    # 建议段只做语言清理（去「材料未披露」这类串场话），不改它的定位与去留：
+    # 加不加由用户在页面上点，程序不替人决定。
+    if isinstance(d.get("add_on_sections"), list):
+        d["add_on_sections"] = [
+            dict(a, lead=_lead(a.get("lead")), body=_pol(a.get("body") or ""),
+                 why=_pol(a.get("why") or ""))
+            for a in d["add_on_sections"] if isinstance(a, dict)]
     n = changed + len(_DEDUP_LOG)
     d["_cleaned"] = n
     if _DEDUP_LOG:
@@ -1410,7 +1552,7 @@ def _subj_ratio(items: list[str]) -> tuple[int, int]:
 # 校验规则的版本号。规则一改就加一，存量记录据此判断要不要重算——
 # 只看「有没有 issue_items」是不够的：新加的校验项不会进到老记录里，
 # 用户打开旧报告就看不到新提示，等于没上。
-VALIDATOR_REV = 3
+VALIDATOR_REV = 4
 
 
 def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
@@ -1568,6 +1710,68 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
         issues.append("正面与关注重复了同一事实（" + "、".join(r["where"] for r in dup_sum[:3])
                       + "），一条事实只能出现在一侧：留在更能说明偿债含义的那一侧。")
         issue_items.append({"t": "正面与关注说了同一件事", "a": "blk-pos", "d": dup_sum[:6]})
+
+    # 1.3) 资产段：科目金额必须带占比，科目要落到「主要为……」
+    # 这一块最容易滑回「应收账款规模较大，回收存在一定不确定性」的旧写法：
+    # 没有金额与占比，读者判断不了这个科目压了多少资产；没有「主要为」，
+    # 也判断不了它装的是工程结算款还是往来款。规则 8 写归写，仍要提示。
+    #
+    # 只查每句（。；切分）里的第一个金额：那是这句话的主语科目。句中的金额
+    # 多是明细、减值准备、投资收益（「贡献投资收益 13.49 亿元」「计提减值
+    # 准备 183.09 亿元」），要求它们各自带占总资产比重是错的要求——
+    # 实测一份写得完全合格的资产段会被这条规则报出十条，提示就失效了。
+    _c = draft.get("commentary") or {}
+    as_body = ((_c.get("asset") or {}).get("body") or "")
+    if as_body:
+        bare: list[tuple[str, str]] = []
+        clauses = [x.strip() for x in re.split(r"[。；;]", as_body) if x.strip()]
+        for seg in clauses:
+            m = re.search(r"[\d,]+\.\d{2}\s*亿元", seg)
+            if not m:
+                continue
+            # 「资产总额 1,000.00亿元」是分母，不是科目，不要求它自己带占比
+            if re.search(r"(?:资产总额|总资产|资产规模)[^，]{0,6}$", seg[:m.start()]):
+                continue
+            if "%" in seg[m.end():] or "％" in seg[m.end():]:
+                continue
+            bare.append((m.group(0), seg))
+        no_main = "主要为" not in as_body and "主要系" not in as_body
+        if len(bare) >= 2:
+            rows: list[dict] = [{
+                "num": re.sub(r"\s", "", amt), "where": "资产段",
+                "kind": "写法", "full": seg[:140], "si": 0,
+                "anchor": "blk-asset", "field": "as-body",
+                "note": "金额后面补「（占资产总额 ××.××%）」，再交代「主要为……」与质量",
+            } for amt, seg in bare[:5]]
+            if no_main:
+                rows.append({
+                    "num": "缺「主要为」", "where": "资产段", "kind": "写法",
+                    "full": as_body[:120], "si": 0,
+                    "anchor": "blk-asset", "field": "as-body",
+                    "note": "每个科目都要说清装的是什么（对手方、用途、形态）",
+                })
+            issues.append(
+                f"资产段有 {len(bare)} 个科目只给了金额没给占比"
+                + ("，整段也没有「主要为……」" if no_main else "")
+                + "。每个科目按「科目 金额（占资产总额 ××.××%），主要为×××，"
+                  "再交代能否变现／是否质押／账龄」写，读者才知道压了多少资产、是什么。")
+            issue_items.append({"t": "资产段缺金额占比", "a": "blk-asset", "d": rows[:6]})
+
+    # 1.4) 或有事项：材料里给了担保、诉讼的实数，正文一处不提，也没给补段建议。
+    # 或有事项不进债务段（规则 9），但也不能因此消失——它能单列就提示用户补一段。
+    _whole = " ".join(
+        [str(draft.get("basic_info") or "")]
+        + [str((_c.get(k) or {}).get("body") or "") for k in ("overview", "asset", "debt")]
+        + [str(s.get("body") or "") for s in (_c.get("segments") or [])]
+        + [str(t.get("body") or "") for t in (_c.get("special_topics") or [])])
+    _mat = "\n".join((m.get("text") or "") for m in materials)
+    _hints = [w for w in ("对外担保", "担保余额", "未决诉讼", "重大诉讼", "仲裁事项") if w in _mat]
+    if _hints and not re.search(r"担保|诉讼|仲裁", _whole) and not (draft.get("add_on_sections") or []):
+        issues.append(
+            f"材料里出现了或有事项线索（{'、'.join(_hints[:3])}），但正文与专题段都没有相应内容，"
+            "也没有给出补段建议。或有事项不写进债务段，可考虑在债务段之后单列一段："
+            "担保余额、占净资产比重、被担保方是谁、是否已出现代偿；诉讼则写涉案金额与进展。")
+        issue_items.append({"t": "或有事项没落到段落", "a": "blk-topics", "d": []})
 
     # 2) 正文数字溯源
     # 带段落标签收集，出问题时要能指出「在哪个段、哪句话、大概是哪个指标」——
@@ -1993,6 +2197,10 @@ def generate(facts: dict, materials: list[dict], model_id: str | None = None,
         if isinstance(draft["commentary"].get(_k), dict):
             draft["commentary"][_k] = reorder_table(draft["commentary"][_k])
     _p(progress, 96, "校验", "数字溯源、期次写法、财务表自洽")
+    # 模型漏给「可补充段落」时用材料摘句兜底：提醒不到位，用户就不知道
+    # 或有事项其实还有一段可以写。放在校验之前——校验也要看有没有建议。
+    draft["add_on_sections"] = _clean_advice(
+        merge_advice(draft.get("add_on_sections"), materials))
     draft["validation"] = validate(draft, facts, materials)
 
     # 记一行用量：主体名取草稿里的全称，便于回看「哪家花了多少」

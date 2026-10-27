@@ -456,6 +456,23 @@ body.dragging .item-ghost{display:flex}
 .tpmenu button{display:block;width:100%;text-align:left;border:0;background:transparent;
   font-family:inherit;font-size:12px;color:var(--ink2);padding:6px 9px;border-radius:5px;cursor:pointer}
 .tpmenu button:hover{background:var(--hover);color:var(--ink)}
+/* 模型建议补充的段落：分析出了事，但按模板不该擅自加段——把「可以补在哪」
+   摆出来，由用户决定加不加。卡片放在专题段区上方，点一下就变成正文里的段。 */
+.advbox{margin-bottom:calc(var(--pgap) + 2px);border:1px solid var(--line);border-left:2px solid var(--amber);
+  border-radius:6px;background:#fffdf7;padding:8px 10px 6px}
+.adv-h{font-size:11.5px;color:var(--amber);letter-spacing:.02em;margin-bottom:6px}
+.adv+.adv{border-top:1px dashed var(--line);margin-top:6px;padding-top:7px}
+.adv-t{font-size:12.5px;color:var(--ink);display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+.adv-where{font-size:10.5px;color:var(--ink2);border:1px solid var(--line);border-radius:999px;
+  padding:0 6px;line-height:1.7;white-space:nowrap;background:#fff}
+.adv-why{font-size:11.5px;color:var(--ink2);line-height:1.65;margin-top:3px;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.adv-tag{font-size:10px;color:var(--muted);border:1px dashed var(--line);border-radius:3px;
+  padding:0 4px;line-height:1.6}
+.adv-acts{display:flex;align-items:center;gap:6px;margin-top:5px}
+.adv-acts .tool{border:0;background:transparent;font-family:inherit;font-size:11.5px;
+  color:var(--muted);cursor:pointer;padding:2px 4px}
+.adv-acts .tool:hover{color:var(--red)}
 /* ── 侧栏：候选观点（左）／待核对（右） ───────────────────────────
    两栏只在宽屏出现，位置在正文版心之外的留白里，与正文各自独立滚动。
    窄屏时退回正文内部：候选观点回到各自的板块下面，待核对落到正文之后。 */
@@ -2317,6 +2334,8 @@ function renderDraft(){
         <button class="btn-sm" onclick="copyPrompt()" title="复制本次用的提示词">提示词</button>
         <button class="btn-sm" id="btnGap" onclick="toggleParaGap()"
           title="段与段之间是否空一行（加粗句与它的正文始终连着）">${gapOn ? "段落空行：有" : "段落空行：无"}</button>
+        ${(d.add_on_sections || []).length ? `<button class="btn-sm" onclick="jumpAdvice()"
+          title="模型分析出、但模板里没有对应章节的事项：可补在哪、依据是什么">补充建议 ${d.add_on_sections.length}</button>` : ""}
         <div class="end">
           <div class="pkgwrap">
             <button class="btn-sm ico" id="btnMail" onclick="toggleMail(event)" title="把正文当附件发到邮箱">${ICON.mail}发送</button>
@@ -2387,6 +2406,7 @@ function renderDraft(){
       ${ta("db-body", c.debt && c.debt.body)}
     </div>
     <div class="blk" id="blk-topics">
+      <div id="d-advice"></div>
       <div id="d-topics"></div>
       <div class="tp-add">
         <button class="add" onclick="topicMenu()">+ 专题段（可选）</button>
@@ -2410,6 +2430,7 @@ function renderDraft(){
   renderPool("pos", d.positive_pool || []);
   renderPool("con", d.concern_pool || []);
   renderSegs(c.segments || []);
+  renderAdvice(d.add_on_sections || []);
   renderTopics(c.special_topics || []);
   syncRails();
   placeRailR();
@@ -3427,6 +3448,56 @@ function renumberSegs(){
     const t = (line.textContent || "").replace(/^\s*\d+\s*[）)．.]?\s*/, "");
     line.textContent = `${i + 1}）${t}`;
   });
+}
+
+/* 模型分析出的「值得单列、但按模板不擅自加」的事项，摆成建议卡。
+   加不加是编报人的判断，程序只负责把落点与依据说清楚。 */
+function renderAdvice(list){
+  const box = $("#d-advice");
+  if(!box) return;
+  const rows = (list || []).map((a, i) => ({ a: a || {}, i }))
+    .filter(x => x.a.title && (x.a.why || x.a.body));
+  if(!rows.length){ box.innerHTML = ""; return; }
+  box.innerHTML = `<div class="advbox">
+    <div class="adv-h">有几处可以补成一段：分析到了，但模板里没有这一节。点「加到专题段」就写进正文，点「忽略」不再提。</div>
+    ${rows.map(({a, i}) => `<div class="adv">
+      <div class="adv-t"><span class="adv-where">${esc(a.where || "债务段之后")}</span><span>${esc(a.title)}</span>${a.auto ? '<span class="adv-tag">材料摘录</span>' : ""}</div>
+      ${a.why ? `<div class="adv-why">${esc(a.why)}</div>` : ""}
+      <div class="adv-acts">
+        <button class="btn-sm" onclick="takeAdvice(${i})">加到专题段</button>
+        <button class="tool" onclick="dropAdvice(${i})">忽略</button>
+      </div>
+    </div>`).join("")}
+  </div>`;
+}
+function takeAdvice(i){
+  const a = ((S.draft && S.draft.add_on_sections) || [])[i];
+  if(!a) return;
+  addTopic(a.lead || "", a.body || a.title || "");
+  const where = a.where || "债务段之后";
+  dropAdvice(i, true);
+  if(a.auto){
+    // 程序从材料里摘的原句，不是报告语言：提示去改写，别当成定稿
+    toast("已加到专题段，这段是材料原句，请按报告语体重写并补上加粗判断句");
+    return;
+  }
+  toast(where.indexOf("资产") === 0
+    ? "已加到专题段（排在债务段之后）；要放进资产段内部，导出后在 Word 里前移"
+    : "已加到专题段，紧接债务段之后");
+}
+function dropAdvice(i, quiet){
+  const list = (S.draft && S.draft.add_on_sections) || [];
+  if(!list[i]) return;
+  list.splice(i, 1);
+  S.draft.add_on_sections = list;
+  renderAdvice(list);
+  if(!quiet) toast("已忽略这条建议，导出时不会出现");
+}
+function jumpAdvice(){
+  const box = $("#d-advice");
+  if(!box || !box.firstChild) return toast("这条记录没有补充建议");
+  box.scrollIntoView({ block: "center", behavior: "smooth" });
+  flashBlk(box);
 }
 
 function renderTopics(ts){
