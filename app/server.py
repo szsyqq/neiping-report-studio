@@ -27,6 +27,7 @@ BASE = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import auth as auth_mod  # noqa: E402
+import analysis  # noqa: E402
 import docx_writer  # noqa: E402
 import facts as facts_mod  # noqa: E402
 import generator  # noqa: E402
@@ -422,6 +423,21 @@ def api_mail(payload: dict) -> dict:
                 if p.is_file():
                     files.append(p)
                     break
+    # 分析附件（核对结果、自算算式、来源对照……）：勾了才附。
+    # 附件是文件，txt 得先落盘；统一放 output/analysis/，同名覆盖即可——
+    # 这些东西每次都从草稿重算，不存在「要保留上一版」的诉求。
+    ana_keys = [k for k in (payload.get("analysis") or []) if isinstance(k, str)]
+    if ana_keys and (draft or payload.get("company")):
+        src, mats = _draft_for_analysis(payload)
+        if src:
+            ana_dir = OUTPUT / "analysis"
+            ana_dir.mkdir(parents=True, exist_ok=True)
+            for f in analysis.build(src, materials=mats):
+                if f["key"] not in ana_keys:
+                    continue
+                fp = ana_dir / _base_name(f["name"])
+                fp.write_text(f["text"], encoding="utf-8")
+                files.append(fp)
     if not files:
         raise ValueError("没有可发送的附件：先导出报告，或勾选原底稿")
 
@@ -538,18 +554,55 @@ def _pdf_index(company: str, titles: list[str] | None = None) -> list[dict]:
 def api_bundle_items(company: str, titles: list[str] | None = None) -> dict:
     company = (company or "").strip()
     with LOCK:
-        has_draft = bool((STATE.get(_key(company)) or {}).get("draft"))
+        st = STATE.get(_key(company)) or {}
+        has_draft = bool(st.get("draft"))
+        mats = st.get("materials") or []
+    # 分析附件是「这一轮分析留下的过程稿」，只有本次有草稿时才给清单：
+    # 换了主体或刚重启时给空清单，比把上一家的核对结果端上来安全。
+    ana = analysis.meta_list(st["draft"], mats) if has_draft else []
     return {"company": company, "docx": _docx_index(company),
-            "materials": _pdf_index(company, titles), "has_draft": has_draft}
+            "materials": _pdf_index(company, titles), "has_draft": has_draft,
+            "analysis": ana}
+
+
+def _draft_for_analysis(payload: dict) -> tuple[dict, list[dict]]:
+    """本次草稿与材料。前端带了草稿就用前端的（页面上改过的才算数）。"""
+    company = (payload.get("company") or "").strip()
+    with LOCK:
+        st = STATE.get(_key(company)) or {}
+        draft = payload.get("draft") if isinstance(payload.get("draft"), dict) else st.get("draft")
+        mats = st.get("materials") or []
+    return (draft if isinstance(draft, dict) else {}), mats
+
+
+def api_analysis_list(payload: dict) -> dict:
+    """分析附件清单（不含全文）：侧栏与两个勾选面板都用它。"""
+    draft, mats = _draft_for_analysis(payload)
+    if not draft:
+        return {"files": []}
+    return {"files": analysis.meta_list(draft, mats)}
+
+
+def api_analysis_get(payload: dict) -> dict:
+    """取一份分析附件的全文，用于侧栏预览。"""
+    draft, mats = _draft_for_analysis(payload)
+    if not draft:
+        raise ValueError("还没有生成结果：先完成一次生成，再看分析附件")
+    key = (payload.get("key") or "").strip()
+    f = analysis.one(draft, key, materials=mats)
+    if not f:
+        raise ValueError(f"没有这一份分析附件：{key}")
+    return {"key": f["key"], "name": f["name"], "desc": f["desc"], "text": f["text"]}
 
 
 def api_bundle(payload: dict) -> dict:
-    """把勾选的报告与原底稿打成一个 zip。"""
+    """把勾选的报告、原底稿与分析附件打成一个 zip。"""
     company = (payload.get("company") or "").strip()
     draft = payload.get("draft") or {}
     want_json = bool(payload.get("with_json"))
     docx_name = _base_name(payload.get("docx") or "")
     picked = [m for m in (_base_name(x) for x in (payload.get("materials") or [])) if m]
+    ana_keys = [k for k in (payload.get("analysis") or []) if isinstance(k, str)]
 
     docx_path = OUTPUT / docx_name if docx_name else None
     if not (docx_path and docx_path.is_file()):
@@ -566,7 +619,15 @@ def api_bundle(payload: dict) -> dict:
                 pdfs.append(p)
                 break
 
-    if not docx_path and not pdfs and not (want_json and draft):
+    # 分析附件只有文字，直接从草稿现场生成；没带草稿就退回服务端存的那份
+    ana: list[dict] = []
+    if ana_keys:
+        src = draft or _draft_for_analysis(payload)[0]
+        mats = _draft_for_analysis(payload)[1]
+        if src:
+            ana = [f for f in analysis.build(src, materials=mats) if f["key"] in ana_keys]
+
+    if not docx_path and not pdfs and not ana and not (want_json and draft):
         raise ValueError("没有可打包的文件")
 
     label = re.sub(r"[\\/:*?\"<>|]", "", company or "内评简评报告")
@@ -585,6 +646,10 @@ def api_bundle(payload: dict) -> dict:
         for p in pdfs:
             z.write(p, "原底稿/" + _base_name(p.name))
             files.append({"name": p.name, "dir": "原底稿", "size": p.stat().st_size})
+        for f in ana:
+            blob = f["text"].encode("utf-8")
+            z.writestr(f"{f['dir']}/{f['name']}", blob)
+            files.append({"name": f["name"], "dir": f["dir"], "size": len(blob)})
         if want_json and draft:
             blob = json.dumps(draft, ensure_ascii=False, indent=2).encode()
             z.writestr("草稿数据.json", blob)
@@ -899,6 +964,9 @@ class Handler(BaseHTTPRequestHandler):
                 q = parse_qs(urlparse(self.path).query)
                 self._json(api_bundle_items((q.get("company") or [""])[0],
                                             q.get("title") or []))
+            elif p == "/api/analysis/list":
+                q = parse_qs(urlparse(self.path).query)
+                self._json(api_analysis_list({"company": (q.get("company") or [""])[0]}))
             else:
                 self._json({"error": "not found"}, 404)
         except FileNotFoundError:
@@ -972,6 +1040,8 @@ class Handler(BaseHTTPRequestHandler):
             "/api/export": api_export,
             "/api/prompt": api_prompt,
             "/api/bundle": api_bundle,
+            "/api/analysis/list": api_analysis_list,
+            "/api/analysis/get": api_analysis_get,
             "/api/history/list": api_history_list,
             "/api/history/delete": api_history_delete,
             "/api/mail": api_mail,

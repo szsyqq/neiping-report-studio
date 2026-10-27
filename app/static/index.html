@@ -335,6 +335,15 @@ select{width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 8px
 .mlatt input{width:13px;height:13px;margin:2px 0 0;accent-color:var(--ink);flex:none}
 .mlatt .n{line-height:1.5;color:var(--ink2);word-break:break-all}
 .mlatt .n i{display:block;color:var(--muted);font-size:10.5px;font-style:normal}
+/* 分析附件：总勾选一行 + 可展开的单勾。默认不勾——多数收件人只要报告本身 */
+.mlatt .mlana{position:relative;align-items:center}
+.mlatt .mlana .ana-fold{margin-left:auto;flex:none;border:0;background:none;color:#2f5fd0;
+  font-size:10.5px;font-family:inherit;cursor:pointer;padding:0 0 0 6px;white-space:nowrap}
+.mlatt .mlana .ana-fold:hover{text-decoration:underline}
+.mlsub{margin:1px 0 3px 20px;border-left:1px solid var(--line2);padding-left:8px}
+.mlatt .r2{display:flex;align-items:flex-start;gap:6px;padding:2px 0;cursor:pointer}
+.mlatt .r2 input{width:12px;height:12px;margin:2px 0 0;accent-color:var(--ink);flex:none}
+.mlatt .r2 .n{font-size:11.5px}
 .ml-foot{display:flex;align-items:center;gap:8px;margin-top:10px}
 .ml-foot .st{flex:1;font-size:10.5px;color:var(--muted);line-height:1.4}
 .ml-foot .st.err{color:var(--red)}
@@ -534,6 +543,44 @@ body.dragging .item-ghost{display:flex}
 .act-tools button:hover{color:var(--ink2)}
 .act-empty{padding:40px 0;text-align:center;color:var(--muted);font-size:12.5px}
 
+/* ── 分析附件（侧栏）：核对结果、自算算式、来源对照… ──────────────
+   这些东西原来是「点开才有、关掉就没」，审稿要复核时无处可看。
+   挂在待核对上方，一行一份，点开弹层看全文；勾选进打包与邮件在各自面板里。 */
+.ana{margin:0 0 14px;padding:0 0 10px;border-bottom:1px solid var(--line2)}
+.ana-h{display:flex;align-items:baseline;gap:6px;margin:0 0 6px}
+.ana-h b{font-size:11px;color:var(--muted);letter-spacing:.06em;font-weight:600}
+.ana-h .n{font-size:11px;color:var(--ink2);margin-left:auto;font-variant-numeric:tabular-nums}
+.ana-h button{border:0;background:none;font-size:11px;padding:0 0 0 6px;cursor:pointer;color:#c6cbd2}
+.ana-h button:hover{color:var(--ink2)}
+.ana-row{display:flex;align-items:flex-start;gap:6px;padding:5px 7px;border:1px solid var(--line);
+  border-radius:6px;background:#fff;margin-bottom:5px;cursor:pointer;
+  transition:border-color .14s ease,background .14s ease}
+.ana-row:hover{border-color:#cfd4dc;background:#fcfcfd}
+.ana-row .nm{flex:1;min-width:0;font-size:12px;color:var(--ink);line-height:1.5}
+.ana-row .sz{flex:none;font-size:10.5px;color:var(--muted);font-variant-numeric:tabular-nums;
+  padding-top:1px}
+.ana-row .ds{display:block;font-size:10.5px;color:var(--muted);line-height:1.5;margin-top:1px}
+.ana-empty{font-size:11.5px;color:var(--muted);line-height:1.6}
+/* 预览弹层：纯文本，等宽、可滚、可复制 */
+.anamask{position:fixed;inset:0;background:rgba(17,20,24,.28);z-index:60;display:none}
+.anamask.show{display:block}
+.anaview{position:fixed;z-index:61;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:min(760px,92vw);max-height:82vh;display:none;flex-direction:column;
+  background:#fff;border:1px solid var(--line);border-radius:9px;
+  box-shadow:0 18px 48px rgba(17,20,24,.20)}
+.anaview.show{display:flex}
+.anaview .h{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line2)}
+.anaview .h b{font-size:13px;color:var(--ink);font-weight:600}
+.anaview .h .sz{margin-left:auto;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.anaview .h button{border:0;background:none;color:var(--muted);font-size:15px;line-height:1;
+  cursor:pointer;padding:0 2px}
+.anaview .h button:hover{color:var(--red)}
+.anaview .b{overflow:auto;padding:12px 14px;background:#fbfbfc}
+.anaview pre{margin:0;font-family:"SF Mono",Menlo,Consolas,"PingFang SC",monospace;
+  font-size:11.5px;line-height:1.75;color:var(--ink2);white-space:pre-wrap;word-break:break-word}
+.anaview .f{display:flex;align-items:center;gap:8px;padding:8px 12px;border-top:1px solid var(--line2)}
+.anaview .f .st{flex:1;font-size:10.5px;color:var(--muted)}
+
 /* 待核对：按「一类问题」分组，一组一卡。
    一个数目类问题常有十来个待核数，逐条打勾等于点十几次——所以组头带一个全选框，
    勾一次把整组销账；单条要单独确认时，再点行首那个框。
@@ -550,6 +597,7 @@ body.dragging .item-ghost{display:flex}
   cursor:pointer;transform:translateY(-1px)}
 .ck-fold:hover{color:var(--ink2)}
 .rail-r.collapsed .ck-list,.rail-r.collapsed .ck-bar,.rail-r.collapsed .ck-auto{display:none}
+.rail-r.collapsed .ana{display:none}
 .rail-r.collapsed .ck-h{margin-bottom:0}
 .ck-bar{height:2px;background:var(--line2);border-radius:2px;margin:0 0 9px;overflow:hidden}
 .ck-bar i{display:block;height:100%;width:0;background:var(--ink);transition:width .25s ease}
@@ -1092,6 +1140,7 @@ function clearRound(){
   S.keepChecked = null; S.expand = {};
   PKG.data = null; PKG.sel = {}; PKG.open = false;
   MAIL.subject = undefined; MAIL.subjectFor = ""; MAIL.body = undefined; MAIL.docx = "";
+  MAIL.ana = {}; MAIL.anaOpen = false;
   if($("#draftArea")){ $("#draftArea").innerHTML = ""; $("#draftArea").style.display = "none"; }
   if($("#empty")){
     $("#empty").style.display = "";
@@ -1126,6 +1175,7 @@ function resetSession(){
   PKG.data = null; PKG.sel = {}; PKG.open = false;
   MAIL.subject = undefined; MAIL.subjectFor = ""; MAIL.body = undefined;
   MAIL.to = undefined; MAIL.cc = ""; MAIL.docx = ""; MAIL.withPdf = false;
+  MAIL.ana = {}; MAIL.anaOpen = false;
   if($("#upList")) $("#upList").innerHTML = "";
   if($("#matList")) renderMaterials(null);
   if($("#draftArea")){ $("#draftArea").innerHTML = ""; $("#draftArea").style.display = "none"; }
@@ -1597,6 +1647,7 @@ async function restoreHistory(id){
     S.loaded = (rec.materials || []).map(m => m.title).filter(Boolean);
     // 打开的是另一家的记录：邮件标题、正文草稿与文件清单缓存都不能沿用上一份
     MAIL.subject = undefined; MAIL.subjectFor = ""; MAIL.body = undefined; MAIL.docx = "";
+  MAIL.ana = {}; MAIL.anaOpen = false;
     PKG.data = null; PKG.sel = {};
     S.actSel = new Set(); S.actInit = false; S.actFilter = "all";
     // 打开的是哪一类记录，就把页面切到哪一类：否则清单会被当成正文渲染
@@ -2146,7 +2197,7 @@ function renderActions(d){
       </div>
     </div>
   </div>
-  <aside class="rail rail-r" id="railR">${ckHtml(v)}</aside>
+  <aside class="rail rail-r" id="railR"><div id="d-ana"></div>${ckHtml(v)}</aside>
 </div>`;
 
   $("#draftArea").innerHTML = h;
@@ -2159,6 +2210,7 @@ function renderActions(d){
   placeRailR();
   ckApplyFold();
   ckPaint();
+  loadAna();          // 分析附件清单要问服务端，异步补进侧栏
   syncFab();
 }
 
@@ -2416,7 +2468,7 @@ function renderDraft(){
       </div>
     </div>
   </div></div>
-  <aside class="rail rail-r" id="railR">${ckHtml(v)}</aside>
+  <aside class="rail rail-r" id="railR"><div id="d-ana"></div>${ckHtml(v)}</aside>
 </div>`;
 
   $("#draftArea").innerHTML = h;
@@ -2436,8 +2488,119 @@ function renderDraft(){
   placeRailR();
   ckApplyFold();
   ckPaint();
+  loadAna();
   autoGrowAll();
   syncFab();
+}
+
+/* ── 分析附件（侧栏） ─────────────────────────────────────────
+   核对结果、自算算式、来源对照、观点与建议、正文全文。
+   这几份是「分析过程」的留痕：审稿要复核某个数怎么来的、归档要留一份可读的过程稿。
+   侧栏只做预览与下载；进压缩包或邮件，各自在面板里勾。 */
+const ANA = { files: [], key: "", text: "", open: false };
+
+async function loadAna(){
+  if(!S.draft) return renderAna([]);
+  try{
+    // 带上当前页面上的草稿：分析附件是按「现在这一稿」算的，不是按生成那一刻。
+    // 只传 company 的话，服务重启后 STATE 里没有草稿，侧栏就空了。
+    const r = await api("/api/analysis/list",
+      { company: curCo(), draft: safeDraft() });
+    ANA.files = r.files || [];
+  }catch(e){ ANA.files = []; }
+  renderAna(ANA.files);
+}
+
+/* collectDraft 会读页面上的输入框；生成刚完成、DOM 还没铺好时退回内存里的草稿 */
+function safeDraft(){
+  try{
+    const d = collectDraft();
+    return (d && (d.commentary || d.actions)) ? d : S.draft;
+  }catch(e){ return S.draft; }
+}
+
+function renderAna(files){
+  const box = $("#d-ana");
+  if(!box) return;
+  if(!files.length){ box.innerHTML = ""; syncRails(); return; }
+  const total = files.reduce((a, f) => a + (f.chars || 0), 0);
+  box.innerHTML = `<div class="ana">
+    <div class="ana-h"><b>分析附件</b>
+      <span class="n">${files.length} 份 · ${(total / 1000).toFixed(1)}k 字</span></div>
+    ${files.map(f => `<div class="ana-row" data-key="${esc(f.key)}" onclick="openAna('${esc(f.key)}')"
+        title="点开先看一眼；要放进压缩包或邮件，在「下载」「发送」面板里勾">
+      <span class="nm">${esc(anaShort(f.name))}<span class="ds">${esc(f.desc || "")}</span></span>
+      <span class="sz">${fmtChars(f.chars)}</span>
+    </div>`).join("")}
+  </div>`;
+  syncRails();
+}
+
+function fmtChars(n){
+  const v = n || 0;
+  return v >= 1000 ? (v / 1000).toFixed(1) + "k 字" : v + " 字";
+}
+
+/* 文件名形如「中国建材股份有限公司_分析1_核对结果.txt」，面板里只留「分析1 核对结果」，
+   主体名已经在页面标题上了，重复一遍只是占位。 */
+function anaShort(name){
+  const n = String(name || "").replace(/\.txt$/i, "");
+  const i = n.indexOf("_分析");
+  return (i >= 0 ? n.slice(i + 1) : n).replace(/_/g, " ");
+}
+
+async function openAna(key){
+  try{
+    const r = await api("/api/analysis/get",
+      { company: curCo(), key, draft: safeDraft() });
+    ANA.key = r.key; ANA.text = r.text; ANA.name = r.name;
+    let m = $("#anaMask");
+    if(!m){
+      m = document.createElement("div");
+      m.id = "anaMask"; m.className = "anamask"; m.onclick = closeAna;
+      m.innerHTML = `<div class="anaview" id="anaView" onclick="event.stopPropagation()">
+        <div class="h"><b id="anaTitle"></b><span class="sz" id="anaSize"></span>
+          <button onclick="closeAna()" title="关闭">×</button></div>
+        <div class="b"><pre id="anaPre"></pre></div>
+        <div class="f"><span class="st" id="anaSt">${esc(r.desc || "")}</span>
+          <button class="btn-sm" onclick="copyAna()">复制全文</button>
+          <button class="btn-sm solid" onclick="dlAna()">下载这份 txt</button></div>
+      </div>`;
+      document.body.appendChild(m);
+    }
+    $("#anaTitle").textContent = r.name;
+    $("#anaSize").textContent = fmtChars((r.text || "").length);
+    $("#anaPre").textContent = r.text || "";
+    $("#anaSt").textContent = r.desc || "";
+    m.classList.add("show");
+    $("#anaView").classList.add("show");
+    $("#anaPre").scrollTop = 0;
+    ANA.open = true;
+  }catch(e){ toast(e.message, true); }
+}
+
+function closeAna(){
+  ANA.open = false;
+  const m = $("#anaMask"), v = $("#anaView");
+  if(m) m.classList.remove("show");
+  if(v) v.classList.remove("show");
+}
+
+async function copyAna(){
+  try{
+    await navigator.clipboard.writeText(ANA.text || "");
+    toast("已复制这份分析附件");
+  }catch(e){ toast("复制失败，可在预览里手动选中", true); }
+}
+
+function dlAna(){
+  if(!ANA.text) return;
+  const blob = new Blob([ANA.text], { type: "text/plain;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = ANA.name || "分析附件.txt";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
 }
 
 /* ── 待核对事项 ────────────────────────────────────────────────
@@ -3097,7 +3260,9 @@ function syncRails(){
   if(!g) return;
   const l = $("#railL"), r = $("#railR");
   const hasL = !!(l && l.querySelector(".chip"));
-  const hasR = !!(r && (r.querySelector(".ckr") || r.querySelector(".ck-auto")));
+  // 分析附件也算右栏内容：只有它、没有待核对项时，右栏仍然是该显示的
+  const hasR = !!(r && (r.querySelector(".ckr") || r.querySelector(".ck-auto")
+                        || r.querySelector(".ana-row")));
   if(l) l.style.display = hasL ? "" : "none";
   if(r) r.style.display = hasR ? "" : "none";
   g.classList.toggle("nol", !hasL);
@@ -3886,7 +4051,8 @@ document.addEventListener("keydown", e => {
 });
 
 /* ---------------- 发送邮件 ---------------- */
-const MAIL = { open: false, cfg: null, busy: false, withPdf: false, docx: "", subjectFor: "" };
+const MAIL = { open: false, cfg: null, busy: false, withPdf: false, docx: "", subjectFor: "",
+              ana: {}, anaOpen: false };
 
 function mailCompany(){
   const el = $("#d-company");
@@ -3969,6 +4135,30 @@ function renderMailPanel(){
         onchange="MAIL.withPdf=this.checked" />
       <span class="n">原底稿 ${pdfs.length} 份 PDF<i>${pdfs.map(x => fmtSize(x.size || 0)).join(" · ")}</i></span></label>`;
   }
+  // 分析附件：核对结果、自算算式、来源对照… 一份一份可以单独勾。
+  // 默认都不勾——收件人多数只要报告正文；要留痕的场合再勾，且能只挑其中几份。
+  // 清单优先用接口的；服务重启后 STATE 空，就退回侧栏已取到的那份
+  const anas = ((PKG.data && PKG.data.analysis && PKG.data.analysis.length)
+                ? PKG.data.analysis : (ANA.files || []));
+  if(anas.length){
+    MAIL.ana = MAIL.ana || {};
+    const onList = anas.filter(x => MAIL.ana[x.key]);
+    const allOn = onList.length === anas.length;
+    const sub = onList.length ? " · 已选 " + onList.length : "";
+    h += '<div class="r mlana">'
+      + '<input type="checkbox" id="mlAnaAll"' + (allOn ? " checked" : "")
+      + (onList.length && !allOn ? ' data-part="1"' : "") + ' onchange="mailAnaAll(this.checked)" />'
+      + '<span class="n">分析附件 ' + anas.length + ' 份 TXT'
+      + '<i>核对结果、自算算式、来源对照、观点建议、正文全文' + sub + '</i></span>'
+      + '<button class="ana-fold" onclick="mailAnaFold(event)">' + (MAIL.anaOpen ? "收起" : "展开单勾") + '</button>'
+      + '</div>'
+      + '<div class="mlsub" id="mlAnaSub" style="display:' + (MAIL.anaOpen ? "block" : "none") + '">'
+      + anas.map(x => '<label class="r2"><input type="checkbox" data-ak="' + esc(x.key) + '"'
+          + (MAIL.ana[x.key] ? " checked" : "") + ' onchange="mailAnaOne(this)" />'
+          + '<span class="n">' + esc(anaShort(x.name)) + '<i>' + esc(x.desc || "") + ' · '
+          + fmtChars(x.chars) + '</i></span></label>').join("")
+      + '</div>';
+  }
   h += `</div>`;   // 必须闭合 .mlatt：不闭合的话下面的 SMTP 表单会被 .mlatt input{width:13px} 命中，框缩成 16px 点不到
 
   if(!cfg.ready){
@@ -3984,11 +4174,60 @@ function renderMailPanel(){
     </div>`;
 
   $("#mailPanel").innerHTML = h;
+  // 半选只能靠 JS 属性设置，HTML 的 data-part 只是个标记
+  const all = $("#mlAnaAll");
+  if(all){
+    const n = ((PKG.data && PKG.data.analysis && PKG.data.analysis.length)
+                ? PKG.data.analysis : (ANA.files || [])).filter(x => MAIL.ana[x.key]).length;
+    const tot = ((PKG.data && PKG.data.analysis && PKG.data.analysis.length)
+                ? PKG.data.analysis : (ANA.files || [])).length;
+    all.indeterminate = n > 0 && n < tot;
+    all.checked = tot > 0 && n === tot;
+  }
+}
+
+/* 分析附件的勾选：总框是「全要／全不要」，单勾是「只要其中几份」。
+   状态放 MAIL.ana（按 key），换主体时整个 MAIL 会重置，不会把上一家的勾选带过来。
+
+   每勾一下就重渲染整个面板（要更新总框与「已选 N」），重渲染会把输入框换掉，
+   所以先把用户敲进去的收件人、抄送、标题、正文读回 MAIL——否则
+   「填完收件人再勾一个附件」就把刚填的东西弄丢了。 */
+function mailSnapshot(){
+  const val = id => { const el = $(id); return el ? el.value : undefined; };
+  const to = val("#mlTo"), cc = val("#mlCc"), s = val("#mlSubject"), b = val("#mlBody");
+  if(to !== undefined) MAIL.to = to;
+  if(cc !== undefined) MAIL.cc = cc;
+  if(s !== undefined) MAIL.subject = s;
+  if(b !== undefined) MAIL.body = b;
+  if(!MAIL.subjectFor) MAIL.subjectFor = mailCompany() || (S.draft && S.draft.company_full_name) || "";
+}
+
+function mailAnaAll(on){
+  mailSnapshot();
+  // 清单优先用接口的；服务重启后 STATE 空，就退回侧栏已取到的那份
+  const anas = ((PKG.data && PKG.data.analysis && PKG.data.analysis.length)
+                ? PKG.data.analysis : (ANA.files || []));
+  MAIL.ana = MAIL.ana || {};
+  anas.forEach(x => { MAIL.ana[x.key] = !!on; });
+  renderMailPanel();
+}
+function mailAnaOne(el){
+  mailSnapshot();
+  MAIL.ana = MAIL.ana || {};
+  MAIL.ana[el.dataset.ak] = el.checked;
+  renderMailPanel();
+}
+function mailAnaFold(e){
+  if(e) e.stopPropagation();
+  mailSnapshot();
+  MAIL.anaOpen = !MAIL.anaOpen;
+  renderMailPanel();
 }
 
 async function runMail(){
   const go = $("#mlGo"), st = $("#mlSt");
   const cfg = MAIL.cfg || {};
+  const anaKeys = Object.keys(MAIL.ana || {}).filter(k => MAIL.ana[k]);
   const payload = {
     company: mailCompany(),
     to: ($("#mlTo").value || "").trim(),
@@ -3997,6 +4236,7 @@ async function runMail(){
     body: $("#mlBody") ? $("#mlBody").value : "",
     with_materials: !!($("#mlPdf") && $("#mlPdf").checked),
     materials: ((PKG.data && PKG.data.materials) || []).map(x => x.name),
+    analysis: anaKeys,
     history_id: (S.draft && S.draft.history_id) || "",
   };
   if(!payload.to) return toast("请填收件人", true);
@@ -4014,6 +4254,8 @@ async function runMail(){
     }else{
       payload.docx = MAIL.docx || (((PKG.data && PKG.data.docx) || [])[0] || {}).name || "";
     }
+    // 分析附件由草稿现场生成：带了附件就必须带草稿，否则服务端只能拿它存的那份
+    if(anaKeys.length && !payload.draft && S.draft) payload.draft = collectDraft();
     const r = await api("/api/mail", payload);
     st.textContent = `已发送 · ${r.attachments.length} 个附件 · ${fmtSize(r.size)}`;
     toast(`已发送给 ${r.to.join("、")}`);
@@ -4096,6 +4338,8 @@ function pkgRow(key, name, meta){
 function renderBundle(){
   const d = PKG.data || {};
   const docs = d.docx || [], mats = d.materials || [];
+  // 附件清单优先用接口给的；没有（例如服务重启后 STATE 里没草稿）就用侧栏已取到的那份
+  const anas = (d.analysis && d.analysis.length) ? d.analysis : (ANA.files || []);
   let b = "";
 
   b += `<div class="pkgrp"><span>报告</span></div>`;
@@ -4109,6 +4353,7 @@ function renderBundle(){
   }
 
   const pdfOn = mats.every(x => PKG.sel["pdf:" + x.name]);
+  const anaOn = anas.length > 0 && anas.every(x => PKG.sel["ana:" + x.key] !== false);
   b += `<div class="pkgrp"><span>原底稿（${mats.length} 份）</span>${mats.length > 1
     ? `<button onclick="pkgAll('pdf:', ${!pdfOn})">${pdfOn ? "取消全选" : "全选"}</button>` : ""}</div>`;
   if(mats.length){
@@ -4119,6 +4364,18 @@ function renderBundle(){
     });
   }else{
     b += `<div class="pkrow none">本次没有读取过 PDF</div>`;
+  }
+
+  b += `<div class="pkgrp"><span>分析附件（${anas.length} 份 TXT）</span>${anas.length > 1
+    ? `<button onclick="pkgAll('ana:', ${!anaOn})">${anaOn ? "取消全选" : "全选"}</button>` : ""}</div>`;
+  if(anas.length){
+    anas.forEach(x => {
+      PKG.sel["ana:" + x.key] = PKG.sel["ana:" + x.key] !== false;   // 默认勾上：分析留痕是默认需求
+      b += pkgRow("ana:" + x.key, anaShort(x.name),
+                  [x.desc, fmtChars(x.chars)].filter(Boolean).join(" · "));
+    });
+  }else{
+    b += `<div class="pkrow none">这次还没有分析附件，生成一次后才有</div>`;
   }
 
   b += `<div class="pkgrp"><span>附加</span></div>`;
@@ -4149,9 +4406,11 @@ function bundleSum(){
   let bytes = 0;
   keys.forEach(k => {
     const [kind, name] = [k.slice(0, k.indexOf(":")), k.slice(k.indexOf(":") + 1)];
-    const pool = kind === "docx" ? (d.docx || []) : kind === "pdf" ? (d.materials || []) : [];
-    const hit = pool.find(x => x.name === name);
-    if(hit) bytes += hit.size || 0;
+    const pool = kind === "docx" ? (d.docx || []) : kind === "pdf" ? (d.materials || [])
+               : kind === "ana" ? (d.analysis || []) : [];
+    const hit = pool.find(x => (x.name === name || x.key === name));
+    // 分析附件没有 size 字段，按字数估：中文 UTF-8 一个字约 3 字节
+    if(hit) bytes += hit.size || (hit.chars ? hit.chars * 3 : 0);
   });
   const sum = $("#pkSum");
   if(!sum) return;
@@ -4171,9 +4430,13 @@ async function runBundle(){
     company: pkgCompany(),
     docx: docxName,
     materials: keys.filter(k => k.indexOf("pdf:") === 0).map(k => k.slice(4)),
+    analysis: keys.filter(k => k.indexOf("ana:") === 0).map(k => k.slice(4)),
     with_json: keys.indexOf("json:1") >= 0
   };
   if(!docxName && S.draft) body.draft = collectDraft();
+  // 分析附件是从草稿算出来的：不管有没有导出 Word，都把当前页面上的版本带上，
+  // 否则压缩包里的核对结果会停在生成那一刻，页面上改过的对不上。
+  if(!body.draft && S.draft && body.analysis.length) body.draft = collectDraft();
 
   PKG.busy = true;
   const go = $("#pkGo");

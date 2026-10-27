@@ -97,7 +97,9 @@ SMTP_USER=me@qq.com SMTP_PASS=授权码 PORT=8770 ... app/server.py
 
 这份配置里的条目并非都能从本进程直接调：OpenCode Go 那组要求 `x-opencode-session` 请求头（WorkBuddy 自己会补，我们不补），`GLM-5.3-Flash` 的 url 少了 `/chat/completions`，`sensenova` 的模型 id 对不上。全部列进下拉等于让人选一个必报错的，所以加了**模型体检**：服务启动时后台线程对每个模型发一个 `max_tokens=1` 的请求探活，结果落 `data/model_health.json`，下拉只列通得过的，其余折成一行「另有 N 个模型未通过验证」（鼠标悬停看各自原因）。`GET /api/models?refresh=1` 可强制重测。
 
-对应接口：`POST /api/jobs/{search|fetch|generate}` 起任务并拿到 `job_id`，`GET /api/jobs/<id>` 读进度（含逐份材料的明细）；`POST /api/upload?name=文件名` 收 PDF；`/api/export` 仍是同步接口（排版只需秒级）；`GET /api/bundle?company=…&title=…` 列可打包的文件，`POST /api/bundle` 按勾选打 zip（同步返回下载地址）；`GET /api/history` 列历史、`GET /api/history/<id>` 取全文。
+对应接口：`POST /api/jobs/{search|fetch|generate}` 起任务并拿到 `job_id`，`GET /api/jobs/<id>` 读进度（含逐份材料的明细）；`POST /api/upload?name=文件名` 收 PDF；`/api/export` 仍是同步接口（排版只需秒级）；`GET /api/bundle?company=…&title=…` 列可打包的文件，`POST /api/bundle` 按勾选打 zip（同步返回下载地址）；`GET /api/history` 列历史、`GET /api/history/<id>` 取全文；`POST /api/analysis/list` 列分析附件清单、`POST /api/analysis/get` 取某一份全文（预览用）。
+
+**分析附件（5 份 TXT）**：正文 Word 是成品，分析过程原本只活在这一屏里——哪些数没对上、每个自算值怎么算的、每句话的出处、被刷掉的候选观点、可补充段落。现在由 `app/analysis.py` 从草稿整理成五份纯文本（核对结果／自算算式／来源对照／观点与建议／正文全文），三处可用：右侧栏点开先看（弹层预览，可复制、可单份下载）、打包面板勾选进 zip 的 `分析附件/` 目录、发送邮件时作附件（默认不勾，可只挑其中几份）。生成内容全部来自 `draft`，不新增判断，所以页面上改过什么、附件里就是什么。
 
 **调用统计**：页头右上角一行「累计 N 次 · 财汇 M 点」，点开是明细——今日与累计的生成次数、财汇点数与 token，输入输出拆分、单次平均耗时、缓存命中率，检索／读取／生成／导出四类动作的累计次数，以及**最近调用逐条记录**（时间、动作、主体、这一下花了多少点或多少 token）。不按月切，看的是「这一次点了几下、累计用了多少」。数字全部来自模型返回的 `usage`（端点不回时才按字符估算并标「含估算」）。
 
