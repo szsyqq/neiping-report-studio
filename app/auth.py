@@ -87,35 +87,67 @@ def check(password: str) -> bool:
 
 
 def set_password(password: str) -> None:
-    """改口令（写 data/auth.json）。环境变量优先，设了环境变量这里就不生效。"""
+    """改口令（写 data/auth.json）。
+
+    环境变量优先：云端由 start.sh 注入 REPORT_PASSWORD，写文件不会生效。
+    以前这里是静默的——用户改完口令发现还是旧口令能进，会以为改坏了。
+    所以直接拒绝并说清去哪儿改。
+    """
     pw = (password or "").strip()
     if len(pw) < 4:
         raise ValueError("口令至少 4 位")
+    if env_password():
+        raise ValueError("当前口令由环境变量 REPORT_PASSWORD 决定（写在 start.sh 里），"
+                         "改这里不生效；要换口令请改 start.sh 后重新部署。")
     salt = secrets.token_bytes(16)
     _write(AUTH_JSON, {"salt": salt.hex(), "hash": _hash(pw, salt),
                        "updated": _now().isoformat(timespec="seconds")})
     # 旧 token 会随密钥变化自动失效，无需清理会话表
 
 
-def _secret() -> bytes:
+def _materials() -> list[str]:
+    """签发密钥的候选材料，按优先级排。
+
+    关键点：材料只认**口令值本身**，不认它从哪来。早先写成 "env:ce-shi"
+    与 "default:ce-shi"，同一个口令换个来源就算两种材料——把启动方式从
+    `python app/server.py` 改成 `bash start.sh`（口令由环境变量注入）之后，
+    所有人手里的 token 一夜失效，页面上表现为「没有可用模型」（401 被当成空清单）。
+    改口令仍然会让旧 token 全失效，因为材料就是口令。
+    """
+    out: list[str] = []
+    env = env_password()
+    if env:
+        out.append("pw:" + env)
+    rec = _read(AUTH_JSON)
+    if rec.get("hash"):
+        out.append("hash:" + str(rec.get("hash")) + ":" + str(rec.get("salt") or ""))
+    elif not env:
+        out.append("pw:" + DEFAULT_PASSWORD)
+    # 过渡期兼容：按旧写法签发的 token 仍认一次，避免这次更新把人踢下线。
+    # 只对「当前实际生效的口令」补旧写法，不能把默认口令也算进来——
+    # 否则把环境变量改成别的口令时，旧 token 靠默认那档照样能过。
+    if env:
+        out.append("env:" + env)
+    elif rec.get("hash"):
+        out.append("file:" + str(rec.get("hash")) + ":" + str(rec.get("salt") or ""))
+    else:
+        out.append("default:" + DEFAULT_PASSWORD)
+    return list(dict.fromkeys(out))
+
+
+def _secret(material: str | None = None) -> bytes:
     """签发密钥：由当前口令的校验材料派生。
 
     不落盘、不依赖会话文件——容器可能重启、可能多副本共用同一镜像，
     存文件里的会话会时有时无（云端实测就是：登录成功，紧接着带 token 就 401）。
     改成无状态签名：密钥由口令派生，口令一改旧 token 全失效，天然满足「改密踢下线」。
     """
-    env = env_password()
-    if env:
-        material = "env:" + env
-    else:
-        rec = _read(AUTH_JSON)
-        material = ("file:" + str(rec.get("hash") or "") + ":" + str(rec.get("salt") or "")) \
-            if rec.get("hash") else "default:" + DEFAULT_PASSWORD
-    return hashlib.sha256(("neiping-report|" + material).encode()).digest()
+    mat = material if material is not None else _materials()[0]
+    return hashlib.sha256(("neiping-report|" + mat).encode()).digest()
 
 
-def _sign(payload: str) -> str:
-    return hmac.new(_secret(), payload.encode(), hashlib.sha256).hexdigest()[:32]
+def _sign(payload: str, material: str | None = None) -> str:
+    return hmac.new(_secret(material), payload.encode(), hashlib.sha256).hexdigest()[:32]
 
 
 def issue(days: int = TOKEN_DAYS) -> dict:
@@ -137,7 +169,7 @@ def valid(token: str) -> bool:
         payload = base64.urlsafe_b64decode(body + "=" * (-len(body) % 4)).decode()
     except (ValueError, UnicodeDecodeError):
         return False
-    if not hmac.compare_digest(sig, _sign(payload)):
+    if not any(hmac.compare_digest(sig, _sign(payload, m)) for m in _materials()):
         return False
     exp_s = payload.split("|", 1)[0]
     return exp_s > _now().isoformat(timespec="seconds")

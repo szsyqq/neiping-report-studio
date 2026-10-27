@@ -51,8 +51,14 @@ def _env_model() -> dict | None:
             "maxOutputTokens": int(os.environ.get("LLM_MAX_OUTPUT") or 8192)}
 
 
-# 适合长文写作的偏好顺序（上下文大、中文好、性价比高）
-PREFERRED = ["deepseek-v4", "kimi-k2", "glm-5.1", "qwen3.7-plus", "qwen3.7-max", "glm-5"]
+# 适合长文写作的偏好顺序（上下文大、中文好、性价比高）。
+# 「deepseek」单独一条排在前面：模型名会随版本变（deepseek-v4-flash、
+# deepseek-chat…），只认 deepseek-v4 的话，换了个后缀就默认不到它。
+PREFERRED = ["deepseek", "kimi-k2", "glm-5.1", "qwen3.7-plus", "qwen3.7-max", "glm-5"]
+
+# 用户上次在下拉里选的模型。有它就以它为准——否则每次刷新都回落到
+# 「偏好顺序里的第一个」，用户选了 A、页面又回到 B，看着像没生效。
+PREF_JSON = Path(__file__).resolve().parent.parent / "data" / "model_pref.json"
 
 # 最近一次 chat() 的 token 用量（进程级，便于排查）。
 # 业务统计不要读它——用 chat(..., usage_out=本调用自己的 dict)，否则并发时会被别的调用覆盖。
@@ -218,16 +224,85 @@ def usable_models() -> tuple[list[dict], int]:
 
 
 def pick_default(models: list[dict]) -> str | None:
+    """默认选哪个：设置页填的 > 页面上次选的 > 偏好顺序 > 第一个。
+
+    顺序不能反：设置页是显式配置，页面上次的选择只是习惯。反过来会出现
+    「在设置里改成 A，刷新又回到 B」——比不记还糟。
+    """
+    ids = {m["id"] for m in models}
     fm = _file_model()
-    if fm:
-        for m in models:
-            if m["id"] == fm["id"]:
-                return fm["id"]
+    if fm and fm["id"] in ids:
+        return fm["id"]
+    pref = _pref_model()
+    if pref and pref in ids:
+        return pref
     for p in PREFERRED:
         for m in models:
             if p in m["id"].lower():
                 return m["id"]
     return models[0]["id"] if models else None
+
+
+def _pref_model() -> str:
+    """上次选中的模型（页面写入）。读不到就当没有，不抛。"""
+    try:
+        d = json.loads(PREF_JSON.read_text(encoding="utf-8")) or {}
+    except (OSError, json.JSONDecodeError):
+        return ""
+    return str(d.get("model") or "").strip()
+
+
+def save_pref(model_id: str) -> None:
+    """记住用户在页面上选的模型。写失败不影响使用，静默即可。"""
+    if not model_id:
+        return
+    try:
+        PREF_JSON.parent.mkdir(parents=True, exist_ok=True)
+        tmp = PREF_JSON.with_suffix(".tmp")
+        tmp.write_text(json.dumps({"model": model_id}, ensure_ascii=False), encoding="utf-8")
+        os.replace(tmp, PREF_JSON)
+    except OSError:
+        pass
+
+
+def diagnose() -> dict:
+    """模型这一层的自检：能不能用、默认是哪个、不能用的原因、缺什么配置。
+
+    页面下拉报「没有可用模型」时，真正需要的是最后那一句 hint——
+    「没有可用模型」这句话本身没有信息量，用户不知道去哪儿补。
+    """
+    models = list_models()
+    cache = load_health()
+    ids = {m["id"] for m in models}
+    reasons = {k: v.get("why") for k, v in (cache.get("results") or {}).items()
+               if not v.get("ok")}
+    # 只统计「这次清单里」没通过的：换过配置后，缓存里还留着别的模型的名字，
+    # 原样报「8 个未通过」会让人以为这 8 个都在下拉里。
+    reasons = {k: v for k, v in reasons.items() if k in ids}
+    hint = ""
+    if not models:
+        env_url = (os.environ.get("LLM_BASE_URL") or "").strip()
+        env_mid = (os.environ.get("LLM_MODEL") or "").strip()
+        if env_url or env_mid:
+            hint = ("只配了一半：LLM_BASE_URL / LLM_API_KEY / LLM_MODEL 三个都要有，"
+                    "缺一个这条通道就不生效。")
+        elif not MODELS_JSON.exists():
+            hint = ("没有读到任何模型配置。本机应有 ~/.workbuddy/models.json；"
+                    "云端应在 start.sh 里写 LLM_BASE_URL / LLM_API_KEY / LLM_MODEL；"
+                    "也可以在下面「模型」里手填一个。")
+        else:
+            hint = "~/.workbuddy/models.json 里没有同时带 url 与 apiKey 的条目。"
+    return {
+        "ready": bool(models),
+        "models": models,
+        "default": pick_default(models),
+        "skipped": len(reasons),
+        "reasons": reasons,
+        "hint": hint,
+        "source": ("env" if _env_model() else ("file" if _file_model() else
+                   ("workbuddy" if models else ""))),
+        "checked_at": cache.get("ts") or "",
+    }
 
 
 def _get_model(model_id: str) -> dict:
@@ -260,9 +335,16 @@ def chat(messages: list[dict], model_id: str | None = None, temperature: float =
     每个调用方用自己的 dict，互不干扰。
     """
     models = list_models()
+    ids = [m["id"] for m in models]
+    if not ids:
+        raise RuntimeError("没有可用模型：" + (diagnose().get("hint") or
+                                             "请先在 WorkBuddy 中配置模型"))
+    # 页面下拉里可能留着占位文案（「没有可用模型」「未连接服务」）或上一版的
+    # 模型名，这些都不是 id。直接拿去请求只会得到一句「未找到模型 X」，
+    # 而报告其实照常能出——所以认不出来就退回默认，不在这里拦。
+    if model_id and model_id not in ids:
+        model_id = ""
     model_id = model_id or pick_default(models)
-    if not model_id:
-        raise RuntimeError("没有可用模型，请先在 WorkBuddy 中配置模型")
     m = _get_model(model_id)
     reset_usage()
     local: dict = dict(_EMPTY)

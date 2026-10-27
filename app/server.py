@@ -396,6 +396,20 @@ def api_settings(payload: dict) -> dict:
     return {"ok": True, "settings": settings_store.overview()}
 
 
+def api_model_pick(payload: dict) -> dict:
+    """记住页面上选的模型。
+
+    没有这一层，每次刷新都按「偏好顺序」重新挑，用户明明选了 A，
+    回来还是 B——看着像选择没生效。
+    """
+    mid = (payload.get("model") or "").strip()
+    ids = [m["id"] for m in llm.list_models()]
+    if not mid or mid not in ids:
+        raise ValueError("这个模型不在当前清单里，无法设为默认")
+    llm.save_pref(mid)
+    return {"ok": True, "default": mid}
+
+
 def api_mail_config(payload: dict) -> dict:
     """读或改发件配置。密码只进不出。"""
     if payload.get("save"):
@@ -1021,6 +1035,26 @@ class Handler(BaseHTTPRequestHandler):
             elif p == "/api/session":
                 self._json({"authed": self._authed(),
                             "default_password": auth_mod.is_default()})
+            elif p == "/api/models":
+                # 模型清单放在登录前：它只是名字，没有敏感信息。
+                # 放在闸门后面会有个恶心的问题——token 过期时这里回 401，
+                # 页面上把「没登录」显示成「没有可用模型」，然后一直卡着。
+                q = parse_qs(urlparse(self.path).query)
+                if ((q.get("refresh") or [""])[0] in ("1", "true")) and self._authed():
+                    llm.check_all()
+                models, skipped = llm.usable_models()
+                info = llm.diagnose()
+                authed = self._authed()
+                self._json({"models": models,
+                            "default": llm.pick_default(models),
+                            "skipped": skipped,
+                            "checked_at": info["checked_at"],
+                            "ready": info["ready"],
+                            "source": info["source"],
+                            "hint": info["hint"],
+                            # 失败原因里会带服务商的原始报错（域名、限流信息），
+                            # 登录前只给个数，别把端点细节摊给过路人。
+                            "reasons": info["reasons"] if authed else {}})
             elif p == "/api/health":
                 # 带一句配置自检：排查「未找到财汇 MCP」时不用先登录、点检索。
                 # 只报有没有配好，不回显 key。
@@ -1033,8 +1067,19 @@ class Handler(BaseHTTPRequestHandler):
                            "from_env": has_mcp}
                 except Exception:                              # noqa: BLE001
                     cai = {"ready": False, "source": "", "host": "", "from_env": has_mcp}
+                try:
+                    li = llm.diagnose()
+                    # 只报「可用」的，不要把没通过体检的一起列出来——
+                    # 健康检查是给人看「能不能用」的，列 8 个坏的不解决问题。
+                    ok_ids = [m["id"] for m in llm.usable_models()[0]]
+                    lli = {"ready": bool(ok_ids), "source": li["source"],
+                           "default": li["default"], "models": ok_ids[:5],
+                           "failed": len(li["reasons"]), "hint": li["hint"]}
+                except Exception:                              # noqa: BLE001
+                    lli = {"ready": False, "source": "", "default": None,
+                           "models": [], "failed": 0, "hint": "模型自检失败"}
                 self._json({"ok": True, "time": datetime.now().isoformat(),
-                            "caihui": cai,
+                            "caihui": cai, "llm": lli,
                             "env_filled": len(_ENV_FILLED)})
             elif not self._authed():
                 # 口令闸门之后的一切：下载、历史、统计、任务状态……
@@ -1056,16 +1101,6 @@ class Handler(BaseHTTPRequestHandler):
                     self._json({"error": "任务不存在或已过期"}, 404)
                 else:
                     self._json(job)
-            elif p == "/api/models":
-                q = parse_qs(urlparse(self.path).query)
-                if (q.get("refresh") or [""])[0] in ("1", "true"):
-                    llm.check_all()
-                models, skipped = llm.usable_models()
-                cache = llm.load_health()
-                self._json({"models": models, "default": llm.pick_default(models),
-                            "skipped": skipped, "checked_at": cache.get("ts") or "",
-                            "reasons": {k: v.get("why") for k, v in
-                                        (cache.get("results") or {}).items() if not v.get("ok")}})
             elif p == "/api/settings":
                 self._json(settings_store.overview())
             elif p == "/api/mail/config":
@@ -1163,6 +1198,7 @@ class Handler(BaseHTTPRequestHandler):
             "/api/mail": api_mail,
             "/api/mail/config": api_mail_config,
             "/api/settings": api_settings,
+            "/api/model/pick": api_model_pick,
         }
         try:
             if p.startswith("/api/jobs/"):
@@ -1198,6 +1234,15 @@ def main():
         print(f"财汇 MCP：{_up(_u).netloc}（key 已加载）")
     except Exception as _e:                                    # noqa: BLE001
         print(f"财汇 MCP 不可用：{_e}")
+    try:
+        _li = llm.diagnose()
+        if _li["ready"]:
+            print(f"模型：{_li['default']}（来源 {_li['source'] or '-'}，"
+                  f"另有 {_li['skipped']} 个未通过验证）")
+        else:
+            print("模型不可用：" + (_li["hint"] or "没有读到任何模型配置"))
+    except Exception as _e:                                    # noqa: BLE001
+        print(f"模型自检失败：{_e}")
     try:
         srv.serve_forever()
     except KeyboardInterrupt:

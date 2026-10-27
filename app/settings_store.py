@@ -124,8 +124,9 @@ def overview() -> dict:
     cc = caihui_config()
     try:
         models, skipped = llm.usable_models()
+        hint = "" if models else (llm.diagnose().get("hint") or "")
     except Exception:  # noqa: BLE001 —— 配置坏掉时不要让设置页跟着崩
-        models, skipped = [], 0
+        models, skipped, hint = [], 0, "模型自检失败，看服务日志"
     # 没填自定义端点、但有 WorkBuddy 自带模型时，也算「能用」，
     # 否则徽标写着「未配置」，用户会以为生成功能坏了。
     usable = [m["id"] for m in models]
@@ -135,7 +136,9 @@ def overview() -> dict:
         "password": {"is_default": is_default()},
         "llm": {"url": lc["url"], "model": lc["model"] or (usable[0] if usable else ""),
                 "source": src, "ready": llm_ready, "has_key": bool(lc["apiKey"]),
-                "models": usable, "skipped": skipped},
+                "models": usable, "skipped": skipped,
+                # 「没有可用模型」这句本身没有信息量，要跟着说缺什么
+                "hint": "" if usable else hint},
         "mail": {"host": mc["host"], "port": mc["port"], "user": mc["user"],
                  "tls": mc["tls"], "ready": mc["ready"],
                  "has_password": mc["has_password"], "default_to": mc["default_to"]},

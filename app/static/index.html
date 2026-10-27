@@ -1468,24 +1468,64 @@ async function pingConn(){
   }
 }
 
-async function loadModels(){
+/* 模型下拉。
+   两条硬规则，都是踩过的：
+   1) 占位项的 value 必须是空串。以前是 `<option>没有可用模型</option>`，
+      value 就等于这行文字，doGenerate 把它当模型名发给服务端，
+      报「未找到模型 没有可用模型」——一句话里两个「模型」，看着莫名其妙。
+   2) 用户选过的模型要留在 model_pref 里，下次回来还是它；
+      否则每次刷新都按偏好顺序重挑，选了也不生效。 */
+const MODEL_IDS = [];
+
+async function loadModels(retry){
+  const sel = $("#model");
+  let d = {}, r = null;
   try{
-    const d = await (await fetch(apiUrl("/api/models"))).json();
-    if(!(d.models || []).length){
-      $("#model").innerHTML = `<option>没有可用模型</option>`;
-      return;
-    }
-    let h = d.models.map(m =>
-      `<option value="${esc(m.id)}" ${m.id === d.default ? "selected" : ""}>${esc(m.name)}</option>`).join("");
-    if(d.skipped) h += `<option disabled>另有 ${d.skipped} 个模型未通过验证</option>`;
-    $("#model").innerHTML = h;
-    const why = Object.entries(d.reasons || {});
-    $("#model").title = why.length
-      ? "未通过验证：\n" + why.map(([k, v]) => `${k} — ${v}`).join("\n")
-      : "";
+    // 空清单先别急着报「没有可用模型」：体检是开机后台跑的，
+    // 那一刻问过来可能还没落盘；网络抖一下也会让首选模型假阴性。
+    // 带 refresh 再探一次，多数情况第二次就有了。
+    r = await fetch(apiUrl("/api/models" + (retry ? "?refresh=1" : "")));
+    d = await r.json().catch(() => ({}));
   }catch(e){
-    $("#model").innerHTML = `<option>未连接服务</option>`;
+    sel.innerHTML = `<option value="">未连接服务</option>`;
+    sel.title = String(e.message || e);
+    return;
   }
+  // 登录过期时接口回 401 + {error, need_login}，里面没有 models。
+  // 旧代码不认状态码，直接把这当成「清单为空」，于是页面上写着
+  // 「没有可用模型」——真正的原因却是没登录，人被引到配置上去查。
+  if(!r.ok || d.need_login){
+    sel.innerHTML = `<option value="">登录已过期</option>`;
+    sel.title = d.error || "请重新输入口令";
+    return;
+  }
+  const models = d.models || [];
+  if(!models.length && !retry){
+    sel.innerHTML = `<option value="">正在检测模型…</option>`;
+    return loadModels(true);
+  }
+  MODEL_IDS.length = 0;
+  models.forEach(m => MODEL_IDS.push(m.id));
+  if(!models.length){
+    sel.innerHTML = `<option value="">没有可用模型</option>`;
+    sel.title = d.hint || "没有读到模型配置：看「设置—模型」里该怎么填";
+    if(d.hint) console.warn("模型未就绪：" + d.hint);
+    return;
+  }
+  const picked = d.default && MODEL_IDS.indexOf(d.default) >= 0 ? d.default : models[0].id;
+  let h = models.map(m =>
+    `<option value="${esc(m.id)}" ${m.id === picked ? "selected" : ""}>${esc(m.name)}</option>`).join("");
+  if(d.skipped) h += `<option value="" disabled>另有 ${d.skipped} 个模型未通过验证</option>`;
+  sel.innerHTML = h;
+  sel.value = picked;
+  const why = Object.entries(d.reasons || {});
+  sel.title = why.length
+    ? "未通过验证：\n" + why.map(([k, v]) => `${k} — ${v}`).join("\n")
+    : "";
+  sel.onchange = () => {
+    if(!MODEL_IDS.includes(sel.value)) return;
+    api("/api/model/pick", { model: sel.value }).catch(() => {});
+  };
 }
 
 /* ---------------- 用量统计 ---------------- */
@@ -2039,7 +2079,10 @@ async function doGenerate(){
     // titles 传本轮真正读进来的材料：服务端据此过滤，避免同主体早先读过的
     // 旧材料混进这一次的提示词（表现为正文里出现上一轮的旧数据）。
     // mode 决定服务端走哪条路：新建写正文，更新产出 Action List。
-    const j = await runJob("generate", { company: curCo(), model: $("#model").value,
+    // 只在确实是清单里的模型时才传；下拉若是占位（比如「没有可用模型」），
+    // 传空串，服务端按默认模型跑——不能因为一句提示文案把生成拦下来。
+    const mid = MODEL_IDS.includes($("#model").value) ? $("#model").value : "";
+    const j = await runJob("generate", { company: curCo(), model: mid,
       titles: S.loaded.slice(), mode: S.mode }, j => {
       setStep("generate", { state: "run", pct: j.pct, detail: j.detail || j.stage });
     });
@@ -3862,7 +3905,8 @@ function renderSettings(){
     <div class="st">模型 API ${badge(llm.ready, "已配置", "未配置")}
       ${llm.source ? `<span class="badge">${llm.source === "env" ? "来自环境变量" : llm.source === "workbuddy" ? "用 WorkBuddy 已配模型" : "页面填写"}</span>` : ""}</div>
     <div class="sd">生成报告用的模型。默认沿用 WorkBuddy 已配的模型；想换别的就填任意 OpenAI 兼容端点，
-      存本机 <code>data/llm.json</code>（改完会自动测连通）。环境变量 <code>LLM_BASE_URL/LLM_API_KEY/LLM_MODEL</code> 优先级最高。</div>
+      存本机 <code>data/llm.json</code>（改完会自动测连通）。环境变量 <code>LLM_BASE_URL/LLM_API_KEY/LLM_MODEL</code> 优先级最高。
+      ${llm.hint ? `<br/><span class="warn">${esc(llm.hint)}</span>` : ""}</div>
     <div class="setgrid">
       <label>接口地址</label>
       <input id="stLlmUrl" value="${esc(llm.url || "")}" placeholder="https://api.deepseek.com/chat/completions" spellcheck="false"/>
@@ -4484,11 +4528,13 @@ document.addEventListener("click", e => {
 // 口令校验通过后才去拉数据：没进来之前不发任何要 token 的请求
 let booted = false;
 function bootData(){
-  if(booted) return;
-  booted = true;
+  // 模型清单与用量每次都重拉：token 过期→重新登录时 booted 已经是 true，
+  // 早退的话下拉会一直停在「没有可用模型」「未连接服务」那行占位上。
   loadModels();
   pingConn();
   refreshUsage();
+  if(booted) return;
+  booted = true;
   paintMode();     // 初始模式(new)的文案
   syncButtons();  // 初始状态：无材料时两个动作都灰着
 }
