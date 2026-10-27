@@ -690,6 +690,8 @@ body.dragging .item-ghost{display:flex}
 .setsec:last-child{border-bottom:0}
 .setsec .st{font-size:12.5px;font-weight:600;margin-bottom:2px;display:flex;align-items:center;gap:6px}
 .setsec .sd{font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:8px}
+/* 未配置时的具体指引：这种提示要能被看见，又不能喧宾夺主 */
+.setsec .sd .warn{display:inline-block;margin-top:3px;color:var(--amber)}
 .setsec .badge{font-size:10px;font-weight:400;padding:1px 6px;border-radius:9px;
   border:1px solid var(--line);color:var(--muted);background:#fafbfc}
 .setsec .badge.ok{color:#2e7d32;border-color:#c8e6c9;background:#f1f8f1}
@@ -3903,7 +3905,7 @@ function renderSettings(){
   h += `<div class="setsec">
     <div class="st">财汇 MCP ${badge(ch.ready, "已连接", "未配置")}
       ${ch.source ? `<span class="badge">${ch.source === "env" ? "来自环境变量" : ch.source === "workbuddy" ? "读本机 mcp.json" : "页面填写"}</span>` : ""}</div>
-    <div class="sd">检索公告、下载评级报告与募集说明书用。留空则读本机 <code>~/.workbuddy/mcp.json</code>。</div>
+    <div class="sd">检索公告、下载评级报告与募集说明书用。留空则读本机 <code>~/.workbuddy/mcp.json</code>。${ch.hint ? `<br/><span class="warn">${esc(ch.hint)}</span>` : ""}</div>
     <div class="setgrid">
       <label>地址</label>
       <input id="stChUrl" value="${esc(ch.url || "")}" placeholder="https://mcp.finchina.com/..." spellcheck="false"/>

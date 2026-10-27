@@ -140,5 +140,12 @@ def overview() -> dict:
                  "tls": mc["tls"], "ready": mc["ready"],
                  "has_password": mc["has_password"], "default_to": mc["default_to"]},
         "caihui": {"url": cc["url"], "source": cc["source"], "ready": cc["ready"],
-                   "has_key": bool(cc["key"])},
+                   "has_key": bool(cc["key"]),
+                   # 没配好时把「该去哪儿填」直接说出来：云端没有 ~/.workbuddy，
+                   # 只写「请检查 mcp.json」等于什么也没说。
+                   "hint": "" if cc["ready"] else (
+                       "没读到财汇端点。云端请在 start.sh 里写 CAIHUI_MCP_URL 与 "
+                       "CAIHUI_MCP_KEY 并用 bash start.sh 启动，或在本页「财汇」一栏直接填；"
+                       "本机可从 ~/.workbuddy/mcp.json 的 caihui_mcp 条目读取。"),
+                   "env_loaded": bool(_env("CAIHUI_MCP_URL"))},
     }

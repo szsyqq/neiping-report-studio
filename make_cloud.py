@@ -183,6 +183,9 @@ def build(password: str | None = None, new_pw: bool = False) -> None:
         "# 云端副本\n\n"
         "由 `make_cloud.py` 生成，只含运行时需要的文件。\n\n"
         "- `start.sh` 里带财汇与模型的密钥，**不要提交到任何仓库**。\n"
+        "- 启动方式两种都行：`bash start.sh`，或直接 `python3 app/server.py`——"
+        "后者会由 `app/bootstrap_env.py` 回头读 start.sh，把缺失的密钥补进环境变量。"
+        "部署工具若传了自定义启动命令，就走这条兜底，不会因为没执行 start.sh 而丢配置。\n"
         "- 数据（上传件、导出的 docx、历史、用量）写在容器内的 `data/` 与 `output/`，"
         "重启即丢；需要长期留存请用本机部署。\n"
         f"- 访问口令见 `_cloud_pw.txt`（项目根目录）。\n",

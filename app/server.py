@@ -13,6 +13,7 @@ from __future__ import annotations
 import hashlib
 import json
 import mimetypes
+import os
 import re
 import sys
 import threading
@@ -25,6 +26,13 @@ from urllib.parse import parse_qs, quote, unquote, urlparse
 
 BASE = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+# 密钥在云端只写在 start.sh 里。若平台用自定义启动命令（直接跑本文件）而没执行
+# start.sh，进程环境里就没有财汇与模型配置，界面上会报「未找到财汇 MCP」。
+# 这里先补齐缺失项，再导入其他模块——它们都在函数里读环境变量，此时已就绪。
+import bootstrap_env  # noqa: E402
+
+_ENV_FILLED = bootstrap_env.load()
 
 import auth as auth_mod  # noqa: E402
 import analysis  # noqa: E402
@@ -961,7 +969,20 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({"authed": self._authed(),
                             "default_password": auth_mod.is_default()})
             elif p == "/api/health":
-                self._json({"ok": True, "time": datetime.now().isoformat()})
+                # 带一句配置自检：排查「未找到财汇 MCP」时不用先登录、点检索。
+                # 只报有没有配好，不回显 key。
+                with LOCK:
+                    has_mcp = bool(os.environ.get("CAIHUI_MCP_URL"))
+                try:
+                    cc = settings_store.caihui_config()
+                    cai = {"ready": cc["ready"], "source": cc["source"],
+                           "host": (urlparse(cc["url"]).netloc if cc["url"] else ""),
+                           "from_env": has_mcp}
+                except Exception:                              # noqa: BLE001
+                    cai = {"ready": False, "source": "", "host": "", "from_env": has_mcp}
+                self._json({"ok": True, "time": datetime.now().isoformat(),
+                            "caihui": cai,
+                            "env_filled": len(_ENV_FILLED)})
             elif not self._authed():
                 # 口令闸门之后的一切：下载、历史、统计、任务状态……
                 self._need_login()
@@ -1106,13 +1127,24 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main():
-    import os
     port = int(os.environ.get("PORT") or 8770)
     host = os.environ.get("HOST") or "127.0.0.1"
     srv = ThreadingHTTPServer((host, port), Handler)
     # 模型体检放到后台跑：8 个端点逐个探活要十几秒，别挡住首页
     threading.Thread(target=lambda: llm.check_all(), daemon=True, name="model-probe").start()
     print(f"内评简评报告工作台：http://{host}:{port}")
+    # 启动第一行就交代配置从哪来、缺什么：云端「未找到财汇 MCP」这类问题，
+    # 看日志一眼就知道是密钥没加载，还是加载了但被网关挡了。
+    print(bootstrap_env.describe())
+    try:
+        import mcp_client as _mcp
+
+        _u, _k = _mcp._load_endpoint()
+        from urllib.parse import urlparse as _up
+
+        print(f"财汇 MCP：{_up(_u).netloc}（key 已加载）")
+    except Exception as _e:                                    # noqa: BLE001
+        print(f"财汇 MCP 不可用：{_e}")
     try:
         srv.serve_forever()
     except KeyboardInterrupt:

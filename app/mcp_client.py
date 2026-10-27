@@ -37,7 +37,10 @@ def _load_endpoint() -> tuple[str, str]:
         if d.get("url") and d.get("key"):
             return d["url"], d["key"]
     if MCP_CONFIG.exists():
-        cfg = json.loads(MCP_CONFIG.read_text(encoding="utf-8"))
+        try:
+            cfg = json.loads(MCP_CONFIG.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            cfg = {}
         servers = cfg.get("mcpServers") or {}
         for name in SERVER_NAMES:
             s = servers.get(name)
@@ -47,7 +50,17 @@ def _load_endpoint() -> tuple[str, str]:
             k = (s.get("headers") or {}).get("x-api-key") or ""
             if u and k:
                 return u, k
-    raise MCPError("未找到财汇 MCP 配置：请检查 ~/.workbuddy/mcp.json 中的 caihui_mcp 条目")
+    # 报错要把「找过哪几处」写全：云端没有 ~/.workbuddy/mcp.json，
+    # 只提示去看那个文件，人就一直在错的地方找。
+    raise MCPError(
+        "未找到财汇 MCP 配置。已查过三处："
+        "① 环境变量 CAIHUI_MCP_URL / CAIHUI_MCP_KEY；"
+        f"② 页面「设置 → 财汇」写入的 {f}；"
+        f"③ {MCP_CONFIG} 里的 caihui_mcp 条目。"
+        + ("云端部署请确认是用 `bash start.sh` 启动的（start.sh 里才有密钥），"
+           "或在上面的「设置」里直接填端点与 key。"
+           if not Path.home().joinpath(".workbuddy").exists()
+           else "本机可运行 make_cloud.py -h 查看配置方式，或在「设置」里直接填。"))
 
 
 class CaihuiClient:
