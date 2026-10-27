@@ -961,7 +961,7 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
 
 <div id="vbar">
   <span class="tag">v7.4 · 10-27 10:35</span>
-  <span class="tt"><b>分析过程做成可看、可勾、可发的附件</b>　核对结果、自算算式、来源对照这些分析过程此前只在页面上活着，关掉就没了，打包与发送也只能带报告与原底稿。这一轮把它们整理成五份纯文本，侧栏可预览，两处面板可勾选。</span>
+  <span class="tt"><b>发债情况与关键财务信息做成两份可看可发的 txt</b>　写报告前的两份底料原先散在几十页 PDF 里：债券摊在第 12 页、三期财务数据各在一张表上，核对时来回翻；打包与发送也只能带报告与原底稿。这一轮把这两份整理成纯文本，侧栏可预览，两处面板可勾选。</span>
   <span class="st" id="vstat">正在连接…</span>
   <a href="../">全部版本</a>
   <a href="../../">回到最新版</a>
@@ -2602,7 +2602,7 @@ async function loadAna(){
     // 带上当前页面上的草稿：分析附件是按「现在这一稿」算的，不是按生成那一刻。
     // 只传 company 的话，服务重启后 STATE 里没有草稿，侧栏就空了。
     const r = await api("/api/analysis/list",
-      { company: curCo(), draft: safeDraft() });
+      { company: curCo(), draft: safeDraft(), materials: (S.loaded || []) });
     ANA.files = r.files || [];
   }catch(e){ ANA.files = []; }
   renderAna(ANA.files);
@@ -2638,18 +2638,25 @@ function fmtChars(n){
   return v >= 1000 ? (v / 1000).toFixed(1) + "k 字" : v + " 字";
 }
 
-/* 文件名形如「中国建材股份有限公司_分析1_核对结果.txt」，面板里只留「分析1 核对结果」，
-   主体名已经在页面标题上了，重复一遍只是占位。 */
+/* 一行说明这几份是什么，随实际清单变化——写死五个名字，清单一改就露馅 */
+function anaKinds(files){
+  const names = (files || []).map(f => anaShort(f.name)).filter(Boolean);
+  return names.length ? names.join("、") : "分析附件";
+}
+
+/* 文件名形如「中国建材股份有限公司_发债情况.txt」，面板里只留「发债情况」：
+   主体名已经在页面标题上，重复一遍只占位。 */
 function anaShort(name){
   const n = String(name || "").replace(/\.txt$/i, "");
-  const i = n.indexOf("_分析");
-  return (i >= 0 ? n.slice(i + 1) : n).replace(/_/g, " ");
+  const i = n.indexOf("_");
+  const rest = i >= 0 ? n.slice(i + 1) : n;
+  return rest || n;
 }
 
 async function openAna(key){
   try{
     const r = await api("/api/analysis/get",
-      { company: curCo(), key, draft: safeDraft() });
+      { company: curCo(), key, draft: safeDraft(), materials: (S.loaded || []) });
     ANA.key = r.key; ANA.text = r.text; ANA.name = r.name;
     let m = $("#anaMask");
     if(!m){
@@ -4246,7 +4253,7 @@ function renderMailPanel(){
       + '<input type="checkbox" id="mlAnaAll"' + (allOn ? " checked" : "")
       + (onList.length && !allOn ? ' data-part="1"' : "") + ' onchange="mailAnaAll(this.checked)" />'
       + '<span class="n">分析附件 ' + anas.length + ' 份 TXT'
-      + '<i>核对结果、自算算式、来源对照、观点建议、正文全文' + sub + '</i></span>'
+      + '<i>' + anaKinds(anas) + sub + '</i></span>'
       + '<button class="ana-fold" onclick="mailAnaFold(event)">' + (MAIL.anaOpen ? "收起" : "展开单勾") + '</button>'
       + '</div>'
       + '<div class="mlsub" id="mlAnaSub" style="display:' + (MAIL.anaOpen ? "block" : "none") + '">'
