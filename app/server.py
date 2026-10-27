@@ -44,6 +44,7 @@ import jobs  # noqa: E402
 import llm  # noqa: E402
 import mailer  # noqa: E402
 import settings_store  # noqa: E402
+import state_store  # noqa: E402
 import pdf_text  # noqa: E402
 import updater  # noqa: E402
 import usage as usage_mod  # noqa: E402
@@ -64,6 +65,30 @@ BUDGET_BY_KIND = {"跟踪评级报告": 32000, "募集说明书": 26000}
 
 STATE: dict[str, dict] = {}
 LOCK = threading.Lock()
+
+# 启动时把上次的材料与草稿铺回来。材料是逐份解析 PDF 换来的（每份十几秒），
+# 进程一重启就丢掉再让用户重读一遍，是最没必要的那种重复劳动。
+# 读不出来的单份快照直接跳过，不影响启动。
+try:
+    _RESTORED = state_store.load_all()
+    STATE.update(_RESTORED)
+except Exception:                                          # noqa: BLE001
+    _RESTORED = {}
+
+
+def _persist(company: str) -> None:
+    """把这一轮的状态落盘。
+
+    在 LOCK 外面调用：写盘是几十毫秒的磁盘动作，不该占着业务锁。
+    快照是浅拷贝，但 STATE 里这几个键都是整体替换而不是就地改写
+    （`st["materials"] = prev + [...]`、`st["draft"] = ...`），
+    所以拿到的是某个时间点的完整视图，不会出现半新半旧的列表。
+    """
+    with LOCK:
+        st = STATE.get(_key(company))
+        snap = {k: st.get(k) for k in state_store.KEEP} if st else None
+    if snap:
+        state_store.save(_key(company), snap)
 
 
 def _client() -> CaihuiClient:
@@ -89,6 +114,7 @@ def do_search(company: str, progress=None) -> dict:
         st["materials"] = []
     n = sum(len(v) for v in (facts.get("materials") or {}).values())
     calls = int(stats.get("calls") or 0)
+    _persist(company)
     usage_mod.record("search", company=company, chars=n, mcp_calls=calls,
                      note=f"公告 {n} 条 · 财汇 {calls} 次")
     return {"company": company, "facts": facts, "mcp_calls": calls,
@@ -179,6 +205,7 @@ def do_fetch(company: str, picks: list[dict], budget: int = 0, progress=None,
             st["base"] = bases[-1]
             if replace:
                 all_titles = all_titles + [bases[-1]["title"]]
+    _persist(company)
     usage_mod.record("fetch", company=company or "本地材料",
                      chars=sum(m["chars"] for m in loaded),
                      note=f"{len(loaded)}/{len(picks)} 份 · "
@@ -255,6 +282,7 @@ def do_generate(company: str, model: str | None, progress=None,
         result["history_id"] = rid
         with LOCK:
             STATE.setdefault(_key(company), {})["draft"] = result
+        _persist(company)
         return {"draft": result}
 
     if not materials:
@@ -267,6 +295,7 @@ def do_generate(company: str, model: str | None, progress=None,
     draft["history_id"] = rid
     with LOCK:
         STATE.setdefault(_key(company), {})["draft"] = draft
+    _persist(company)
     return {"draft": draft}
 
 
@@ -1225,6 +1254,8 @@ def main():
     # 启动第一行就交代配置从哪来、缺什么：云端「未找到财汇 MCP」这类问题，
     # 看日志一眼就知道是密钥没加载，还是加载了但被网关挡了。
     print(bootstrap_env.describe())
+    print(state_store.describe()
+          + (f"，已恢复 {len(_RESTORED)} 个主体的材料与草稿" if _RESTORED else ""))
     try:
         import mcp_client as _mcp
 
