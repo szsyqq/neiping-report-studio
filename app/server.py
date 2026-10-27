@@ -431,16 +431,18 @@ def api_mail(payload: dict) -> dict:
                 if p.is_file():
                     files.append(p)
                     break
-    # 分析附件（核对结果、自算算式、来源对照……）：勾了才附。
+    # 分析附件（债券代码清单、财务专项指标）：勾了才附。
     # 附件是文件，txt 得先落盘；统一放 output/analysis/，同名覆盖即可——
-    # 这些东西每次都从草稿重算，不存在「要保留上一版」的诉求。
+    # 这些东西每次都从草稿与材料重算，不存在「要保留上一版」的诉求。
     ana_keys = [k for k in (payload.get("analysis") or []) if isinstance(k, str)]
     if ana_keys and (draft or payload.get("company")):
         src, mats = _draft_for_analysis(payload)
         if src:
+            b_rows, b_err = _company_bonds(payload.get("company") or
+                                           src.get("company_full_name") or "")
             ana_dir = OUTPUT / "analysis"
             ana_dir.mkdir(parents=True, exist_ok=True)
-            for f in analysis.build(src, materials=mats):
+            for f in analysis.build(src, materials=mats, bonds=b_rows, err=b_err):
                 if f["key"] not in ana_keys:
                     continue
                 fp = ana_dir / _base_name(f["name"])
@@ -559,6 +561,45 @@ def _pdf_index(company: str, titles: list[str] | None = None) -> list[dict]:
     return rows
 
 
+_BOND_CACHE: dict[str, dict] = {}
+_BOND_LOCK = threading.Lock()
+
+
+def _company_bonds(company: str) -> tuple[list[dict], str]:
+    """该主体的全量发行债券（含已到期）。返回 (rows, 说明)。
+
+    只从财汇取，不从 PDF 猜：评级报告只列存续的那几只，私募债与历史到期债
+    根本不在里面，而「债券代码」这一份要的就是全量。一次调用一个主体，
+    结果按主体缓存在内存里——侧栏预览、打包、发信可能连着问三次，不该花三次点数。
+    失败也缓存（记下原因），避免面板每刷新一次就重试一次。
+    """
+    key = re.sub(r"\s+", "", company or "")
+    if not key:
+        return [], "未指定主体"
+    with _BOND_LOCK:
+        hit = _BOND_CACHE.get(key)
+    if hit is not None:
+        return hit.get("rows") or [], hit.get("err") or ""
+    rows: list[dict] = []
+    err = ""
+    try:
+        out = _client().execute("get_company_issued_bonds", {
+            "target_company": [company],
+            "sort_field": "issuance_start_date:desc",
+            "limit": 200,
+        })
+        rows = CaihuiClient.rows(out)
+        if not rows:
+            err = "财汇未返回记录，可能是主体名称与库内不一致"
+    except MCPError as e:
+        err = str(e)[:160]
+    except Exception as e:                                  # noqa: BLE001
+        err = f"{type(e).__name__}: {e}"[:160]
+    with _BOND_LOCK:
+        _BOND_CACHE[key] = {"rows": rows, "err": err}
+    return rows, err
+
+
 def api_bundle_items(company: str, titles: list[str] | None = None) -> dict:
     company = (company or "").strip()
     with LOCK:
@@ -567,7 +608,12 @@ def api_bundle_items(company: str, titles: list[str] | None = None) -> dict:
         mats = st.get("materials") or []
     # 分析附件是「这一轮分析留下的过程稿」，只有本次有草稿时才给清单：
     # 换了主体或刚重启时给空清单，比把上一家的核对结果端上来安全。
-    ana = analysis.meta_list(st["draft"], mats) if has_draft else []
+    if not has_draft:
+        return {"company": company, "docx": _docx_index(company),
+                "materials": _pdf_index(company, titles), "has_draft": False,
+                "analysis": []}
+    bonds, err = _company_bonds(company)
+    ana = analysis.meta_list(st["draft"], mats, bonds, err)
     return {"company": company, "docx": _docx_index(company),
             "materials": _pdf_index(company, titles), "has_draft": has_draft,
             "analysis": ana}
@@ -630,7 +676,9 @@ def api_analysis_list(payload: dict) -> dict:
     draft, mats = _draft_for_analysis(payload)
     if not draft:
         return {"files": []}
-    return {"files": analysis.meta_list(draft, mats)}
+    bonds, err = _company_bonds((payload.get("company") or "").strip()
+                                or draft.get("company_full_name") or "")
+    return {"files": analysis.meta_list(draft, mats, bonds, err)}
 
 
 def api_analysis_get(payload: dict) -> dict:
@@ -639,10 +687,13 @@ def api_analysis_get(payload: dict) -> dict:
     if not draft:
         raise ValueError("还没有生成结果：先完成一次生成，再看分析附件")
     key = (payload.get("key") or "").strip()
-    f = analysis.one(draft, key, materials=mats)
+    bonds, err = _company_bonds((payload.get("company") or "").strip()
+                                or draft.get("company_full_name") or "")
+    f = analysis.one(draft, key, materials=mats, bonds=bonds, err=err)
     if not f:
         raise ValueError(f"没有这一份分析附件：{key}")
-    return {"key": f["key"], "name": f["name"], "desc": f["desc"], "text": f["text"]}
+    return {"key": f["key"], "name": f["name"], "short": f["short"],
+            "desc": f["desc"], "text": f["text"]}
 
 
 def api_bundle(payload: dict) -> dict:
@@ -675,7 +726,9 @@ def api_bundle(payload: dict) -> dict:
         src = draft or _draft_for_analysis(payload)[0]
         mats = _draft_for_analysis(payload)[1]
         if src:
-            ana = [f for f in analysis.build(src, materials=mats) if f["key"] in ana_keys]
+            b_rows, b_err = _company_bonds(company or src.get("company_full_name") or "")
+            ana = [f for f in analysis.build(src, materials=mats, bonds=b_rows, err=b_err)
+                   if f["key"] in ana_keys]
 
     if not docx_path and not pdfs and not ana and not (want_json and draft):
         raise ValueError("没有可打包的文件")

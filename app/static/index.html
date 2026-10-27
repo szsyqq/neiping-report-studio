@@ -2535,7 +2535,7 @@ function renderAna(files){
       <span class="n">${files.length} 份 · ${(total / 1000).toFixed(1)}k 字</span></div>
     ${files.map(f => `<div class="ana-row" data-key="${esc(f.key)}" onclick="openAna('${esc(f.key)}')"
         title="点开先看一眼；要放进压缩包或邮件，在「下载」「发送」面板里勾">
-      <span class="nm">${esc(anaShort(f.name))}<span class="ds">${esc(f.desc || "")}</span></span>
+      <span class="nm">${esc(f.short || anaShort(f.name))}<span class="ds">${esc(f.desc || "")}</span></span>
       <span class="sz">${fmtChars(f.chars)}</span>
     </div>`).join("")}
   </div>`;
@@ -2547,19 +2547,18 @@ function fmtChars(n){
   return v >= 1000 ? (v / 1000).toFixed(1) + "k 字" : v + " 字";
 }
 
-/* 一行说明这几份是什么，随实际清单变化——写死五个名字，清单一改就露馅 */
+/* 一行说明这几份是什么，随实际清单变化——写死名字，清单一改就露馅 */
 function anaKinds(files){
-  const names = (files || []).map(f => anaShort(f.name)).filter(Boolean);
+  const names = (files || []).map(f => f.short || anaShort(f.name)).filter(Boolean);
   return names.length ? names.join("、") : "分析附件";
 }
 
-/* 文件名形如「中国建材股份有限公司_发债情况.txt」，面板里只留「发债情况」：
-   主体名已经在页面标题上，重复一遍只占位。 */
+/* 面板里只显示附件名，不显示主体名（标题行已经有了）。
+   简称由后端给（short）；文件名本身形如「中山城市建设集团有限公司-债券代码-524901.SZ.txt」，
+   主体名与品种之间都用短横，前端不再自己切。 */
 function anaShort(name){
   const n = String(name || "").replace(/\.txt$/i, "");
-  const i = n.indexOf("_");
-  const rest = i >= 0 ? n.slice(i + 1) : n;
-  return rest || n;
+  return n;
 }
 
 async function openAna(key){
@@ -4174,7 +4173,7 @@ function renderMailPanel(){
       + '<div class="mlsub" id="mlAnaSub" style="display:' + (MAIL.anaOpen ? "block" : "none") + '">'
       + anas.map(x => '<label class="r2"><input type="checkbox" data-ak="' + esc(x.key) + '"'
           + (MAIL.ana[x.key] ? " checked" : "") + ' onchange="mailAnaOne(this)" />'
-          + '<span class="n">' + esc(anaShort(x.name)) + '<i>' + esc(x.desc || "") + ' · '
+          + '<span class="n">' + esc(x.short || anaShort(x.name)) + '<i>' + esc(x.desc || "") + ' · '
           + fmtChars(x.chars) + '</i></span></label>').join("")
       + '</div>';
   }
@@ -4390,7 +4389,7 @@ function renderBundle(){
   if(anas.length){
     anas.forEach(x => {
       PKG.sel["ana:" + x.key] = PKG.sel["ana:" + x.key] !== false;   // 默认勾上：分析留痕是默认需求
-      b += pkgRow("ana:" + x.key, anaShort(x.name),
+      b += pkgRow("ana:" + x.key, x.short || anaShort(x.name),
                   [x.desc, fmtChars(x.chars)].filter(Boolean).join(" · "));
     });
   }else{
