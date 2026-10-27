@@ -565,6 +565,46 @@ def api_bundle_items(company: str, titles: list[str] | None = None) -> dict:
             "analysis": ana}
 
 
+def _materials_by_names(names: list[str]) -> list[dict]:
+    """按文件名把材料重新读出来（带缓存）。
+
+    服务重启后 STATE 是空的，而分析附件里的债券表必须回到原文才能还原；
+    前端本来就传了本次材料的文件名，用它在缓存目录里对回文件即可。
+    读一份约 0.6 秒，按「路径 + 修改时间」缓存，同一份只解析一次。
+    """
+    out: list[dict] = []
+    for n in names or []:
+        base = _base_name(n)
+        if not base:
+            continue
+        cands = [d / base for d in (DATA_DIR, UPLOAD_DIR)]
+        cands.append(_find_pdf(base))        # 传进来的是标题时按标题对回缓存文件
+        hit = None
+        for p in cands:
+            if not (p and p.is_file()):
+                continue
+            try:
+                key = f"{p}|{p.stat().st_mtime_ns}"
+            except OSError:
+                continue
+            with _MAT_LOCK:
+                cached = _MAT_CACHE.get(key)
+            if cached is None:
+                try:
+                    cached = pdf_text.load_file(str(p), base, budget=45000)
+                except Exception:                              # noqa: BLE001 — 读不了就跳过
+                    cached = None
+                if cached:
+                    with _MAT_LOCK:
+                        _MAT_CACHE[key] = cached
+            if cached:
+                hit = cached
+                break
+        if hit:
+            out.append(hit)
+    return out
+
+
 def _draft_for_analysis(payload: dict) -> tuple[dict, list[dict]]:
     """本次草稿与材料。前端带了草稿就用前端的（页面上改过的才算数）。"""
     company = (payload.get("company") or "").strip()
@@ -572,6 +612,8 @@ def _draft_for_analysis(payload: dict) -> tuple[dict, list[dict]]:
         st = STATE.get(_key(company)) or {}
         draft = payload.get("draft") if isinstance(payload.get("draft"), dict) else st.get("draft")
         mats = st.get("materials") or []
+    if not mats:
+        mats = _materials_by_names(payload.get("materials") or [])
     return (draft if isinstance(draft, dict) else {}), mats
 
 
