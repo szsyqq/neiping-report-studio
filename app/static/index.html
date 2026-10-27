@@ -3027,9 +3027,15 @@ function ckTextFields(){
   const out = [];
   const push = (el, f, name) => { if(el) out.push({ el, f, name }); };
   push(document.querySelector(".ta.basic"), "basic", "基本情况");
+  // 加粗句也要进候选池：主语类问题瞄准的就是加粗句，
+  // 只收 body 的话，引文在加粗句里就搜不到，点了没反应。
+  push(document.querySelector(".ta.ov-lead"), "ov-lead", "总述段加粗句");
   push(document.querySelector(".ta.ov-body"), "ov", "总述段");
+  push(document.querySelector(".ta.as-lead"), "as-lead", "资产段加粗句");
   push(document.querySelector(".ta.as-body"), "as", "资产段");
+  push(document.querySelector(".ta.pf-lead"), "pf-lead", "盈利段加粗句");
   push(document.querySelector(".ta.pf-body"), "pf", "盈利段");
+  push(document.querySelector(".ta.db-lead"), "db-lead", "债务段加粗句");
   push(document.querySelector(".ta.db-body"), "db", "债务段");
   document.querySelectorAll("#d-segs .seg-line").forEach((el, i) => {
     const t = (el.innerText || "").trim();
