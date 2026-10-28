@@ -200,6 +200,8 @@ main{overflow-y:auto;padding:26px 40px 90px}
 .more:hover{color:var(--ink)}
 .grp{font-size:11.5px;color:var(--muted);margin:10px 0 2px}
 .grp:first-child{margin-top:0}
+.grp .gsub{color:var(--muted);font-size:11px;margin-left:4px;opacity:.85}
+.grp .gsub.warn{color:var(--red);opacity:1}
 
 /* 上传 */
 .up{display:flex;align-items:center;gap:8px;padding:9px 10px;margin-top:12px;
@@ -1017,12 +1019,12 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
         <div class="up" id="upBox">
           <input type="file" id="files" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple hidden onchange="onPick(this)"/>
           <input type="file" id="fileBase" accept=".docx" hidden onchange="onPickBase(this)"/>
-          <span class="grow uptxt"><span id="upTitle">上传 PDF</span><span class="hint" id="upHint">评级报告 / 募集说明书，也可拖进来</span></span>
+          <span class="grow uptxt"><span id="upTitle">上传 PDF</span><span class="hint" id="upHint">评级报告 / 募集说明书 / 审计报告，也可拖进来</span></span>
           <button id="btnUpBase" class="hide" onclick="document.getElementById('fileBase').click()">旧报告</button>
           <button id="btnUpGo" onclick="document.getElementById('files').click()">选择</button>
         </div>
         <div id="upList"></div>
-        <div class="matwrap" id="matList"><div style="font-size:12px;color:var(--muted);padding-top:8px">检索后显示评级报告与募集说明书</div></div>
+        <div class="matwrap" id="matList"><div style="font-size:12px;color:var(--muted);padding-top:8px">检索后显示评级报告、募集说明书、审计报告与其他公告</div></div>
         <div class="wfoot">
           <span class="whint grow" id="matHint"></span>
           <button class="btn" id="btnFetch" onclick="doFetch()">读取选中材料</button>
@@ -1111,7 +1113,7 @@ function paintMode(){
   const set = (sel, txt) => { const el = $(sel); if(el) el.textContent = txt; };
   set("#upTitle", up ? "上传旧报告（.docx）" : "上传 PDF");
   const hint = $("#upHint");
-  if(hint) hint.textContent = up ? "待修订的旧报告；外部依据用下面的 PDF" : "评级报告 / 募集说明书，也可拖进来";
+  if(hint) hint.textContent = up ? "待修订的旧报告；外部依据用下面的 PDF" : "评级报告 / 募集说明书 / 审计报告，也可拖进来";
   set("#btnGen", up ? "分析差异" : "生成草稿");
   set("#lblGen", up ? "分析差异" : "生成草稿");
   set("#genHint", up ? "逐条比对，约 60–120 秒" : "约 30–60 秒，可先离开");
@@ -1129,7 +1131,7 @@ function paintMode(){
   const mt = $("#matList");
   if(mt && !S.facts && !S.loaded.length){
     mt.innerHTML = `<div style="font-size:12px;color:var(--muted);padding-top:8px">`
-      + (up ? "检索后可选外部评级报告；旧报告走上面的上传" : "检索后显示评级报告与募集说明书") + `</div>`;
+      + (up ? "检索后可选外部评级报告、审计报告与其他公告；旧报告走上面的上传" : "检索后显示评级报告、募集说明书、审计报告与其他公告") + `</div>`;
   }
 }
 
@@ -1751,7 +1753,7 @@ async function doSearch(){
     setStep("search", { state: "done", pct: 100,
       detail: calls ? `清单已取 · 财汇 ${calls} 点` : "清单已取" });
     renderMaterials(S.facts);
-    const kinds = ["跟踪评级报告", "募集说明书"];
+    const kinds = MAT_ORDER;
     const n = kinds.reduce((a, k) => a + ((S.facts.materials || {})[k] || []).length, 0);
     setStep("materials", { state: "wait", pct: 0,
       detail: n ? `${n} 份待读取` : "未检索到，可上传 PDF" });
@@ -1767,7 +1769,15 @@ async function doSearch(){
 }
 
 /* ---------------- 材料 ---------------- */
-const MAT_ORDER = ["跟踪评级报告", "募集说明书"];
+/* 四类材料，顺序就是读的顺序：判断主线 → 募投条款 → 财务口径与审计意见 → 报告期内变化。
+   sub 是给用户看的用途说明，defaultN 是默认勾几份（0 表示默认不勾，等人自己挑）。 */
+const MAT_KINDS = [
+  { key: "跟踪评级报告", sub: "判断主线",        defaultN: 1 },
+  { key: "募集说明书",   sub: "募投与条款",      defaultN: 1 },
+  { key: "审计报告",     sub: "财务口径与审计意见", defaultN: 1 },
+  { key: "其他公告",     sub: "报告期内变化，按需挑", defaultN: 0 }
+];
+const MAT_ORDER = MAT_KINDS.map(x => x.key);
 const busy = { fetch: false, gen: false };
 S.expand = {};
 
@@ -1795,22 +1805,28 @@ function setMS(title, patch){
 
 function renderMaterials(f){
   const ms = (f && f.materials) || {};
+  // 勾选态按「类别 + 序号」而不是标题判断：同一份公告在多个债券名下重复发布时，
+  // 标题会变，按标题判断会在重绘后把用户刚取消的勾选又勾回来。
+  const fresh = !S.keepChecked;
   let html = "";
-  for(const k of MAT_ORDER){
+  for(const spec of MAT_KINDS){
+    const k = spec.key;
     const arr = ms[k] || [];
     const open = !!S.expand[k];
     const show = open ? arr : arr.slice(0, 2);
-    html += `<div class="grp">${esc(k)}${arr.length ? "（" + arr.length + "）" : ""}</div>`;
+    html += `<div class="grp">${esc(k)}${arr.length ? "（" + arr.length + "）" : ""}`
+          + `<span class="gsub">${esc(spec.sub)}</span></div>`;
     if(!arr.length){
       html += `<div style="font-size:12px;color:var(--muted);padding:2px 0 4px">未检索到</div>`;
       continue;
     }
     show.forEach((m, i) => {
       setMS(m.title, S.mstate[m.title] || { state: "wait", pct: 0, detail: m.date || "" });
+      const on = fresh ? i < spec.defaultN : S.keepChecked.has(m.title);
       html += `<label class="mat">
-        <input type="checkbox" class="mchk" data-url="${esc(m.url)}" data-title="${esc(m.title)}" ${(S.keepChecked ? S.keepChecked.has(m.title) : i === 0) ? "checked" : ""}/>
+        <input type="checkbox" class="mchk" data-url="${esc(m.url)}" data-title="${esc(m.title)}" data-kind="${esc(k)}" data-date="${esc(m.date || '')}" ${on ? "checked" : ""}/>
         <span class="t"><span class="nm">${esc(m.title)}</span>
-        <span class="meta">${esc(m.date || "")}</span></span>
+        <span class="meta">${esc(m.date || "")}${m.category && m.category !== k ? " · " + esc(m.category) : ""}</span></span>
       </label>`;
     });
     if(arr.length > 2){
@@ -1842,7 +1858,10 @@ function paintMatStates(){
 }
 
 async function doFetch(){
-  const picks = [...document.querySelectorAll(".mchk:checked")].map(el => ({ url: el.dataset.url, title: el.dataset.title }));
+  // kind 一起带上：后端据此决定摘录策略（审计报告只留意见页与三表页）
+  const picks = [...document.querySelectorAll(".mchk:checked")].map(el => ({
+    url: el.dataset.url, title: el.dataset.title,
+    kind: el.dataset.kind || "", date: el.dataset.date || "" }));
   if(!picks.length) return toast("请先勾选材料，或上传 PDF", true);
   busy.fetch = true; syncButtons();
   document.querySelectorAll(".mchk").forEach(c => c.disabled = true);
@@ -3976,7 +3995,7 @@ function renderSettings(){
   h += `<div class="setsec">
     <div class="st">财汇 MCP ${badge(ch.ready, "已连接", "未配置")}
       ${ch.source ? `<span class="badge">${ch.source === "env" ? "来自环境变量" : ch.source === "workbuddy" ? "读本机 mcp.json" : "页面填写"}</span>` : ""}</div>
-    <div class="sd">检索公告、下载评级报告与募集说明书用。留空则读本机 <code>~/.workbuddy/mcp.json</code>。${ch.hint ? `<br/><span class="warn">${esc(ch.hint)}</span>` : ""}</div>
+    <div class="sd">检索公告、下载评级报告 / 募集说明书 / 审计报告 / 其他公告用。留空则读本机 <code>~/.workbuddy/mcp.json</code>。${ch.hint ? `<br/><span class="warn">${esc(ch.hint)}</span>` : ""}</div>
     <div class="setgrid">
       <label>地址</label>
       <input id="stChUrl" value="${esc(ch.url || "")}" placeholder="https://mcp.finchina.com/..." spellcheck="false"/>

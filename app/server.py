@@ -58,10 +58,13 @@ VERSIONS = BASE / "site" / "versions"
 DATA_DIR = BASE / "data"
 
 # 单份材料的摘录上限与本次生成的总上限（字符）。评级报告正文约 2.5 万字符，
-# 募集说明书只取与主体相关的前半部；两份合计控制在 6 万字符内，
-# 相当于把一次生成送入模型的材料量压到 4 万 token 上下。
-BUDGET_TOTAL = 62000
-BUDGET_BY_KIND = {"跟踪评级报告": 32000, "募集说明书": 26000}
+# 募集说明书只取与主体相关的前半部；审计报告只留审计意见与三表页，
+# 其他公告按份给小额。四类合计控制在 8 万字符内，
+# 相当于把一次生成送入模型的材料量压到 5 万 token 上下。
+BUDGET_TOTAL = 80000
+BUDGET_BY_KIND = {"跟踪评级报告": 32000, "募集说明书": 26000,
+                  "审计报告": 14000, "其他公告": 6000}
+BUDGET_DEFAULT = 30000
 
 STATE: dict[str, dict] = {}
 LOCK = threading.Lock()
@@ -121,8 +124,15 @@ def do_search(company: str, progress=None) -> dict:
             "queries": stats.get("queries") or []}
 
 
-def _budget_for(title: str, remaining: int) -> int:
-    want = next((v for k, v in BUDGET_BY_KIND.items() if k in (title or "")), 30000)
+def _budget_for(title: str, remaining: int, kind: str = "") -> int:
+    """按类别定摘录预算，类别缺失时才看标题。
+
+    只看标题会漏：「××2025年度经审计的合并及母公司财务报告」通篇没有「审计报告」
+    四个字，按标题匹配就拿默认值，一份 120 页的报告会送进 3 万字。
+    """
+    want = (BUDGET_BY_KIND.get(kind)
+            or next((v for k, v in BUDGET_BY_KIND.items() if k in (title or "")), None)
+            or BUDGET_DEFAULT)
     return max(6000, min(want, remaining))
 
 
@@ -141,6 +151,12 @@ def do_fetch(company: str, picks: list[dict], budget: int = 0, progress=None,
     left = budget or BUDGET_TOTAL
     for i, m in enumerate(picks):
         title = m.get("title") or "material"
+        # 材料类别决定摘录策略：审计报告只留审计意见与三表页，其他公告按份小额度。
+        # 前端勾选时会带上 kind；直接调接口没带的，按标题反推一次。
+        kind = (m.get("kind") or facts_mod.classify_material(title, m.get("category")) or "")
+        # 定期报告（半年报、季报、年度报告）名义上归其他公告，但内容就是几张报表，
+        # 摘录要用财务页优先的老策略，按公告关键词挑页只会挑到会计政策说明。
+        excerpt_kind = "" if (kind == "其他公告" and facts_mod.is_periodic(title)) else kind
         items[i].update(state="run", detail="准备读取")
 
         def cb(frac, label, i=i):
@@ -150,7 +166,7 @@ def do_fetch(company: str, picks: list[dict], budget: int = 0, progress=None,
                          f"第 {i + 1}/{n} 份 · {label}", items=items)
 
         try:
-            one = _budget_for(title, left)
+            one = _budget_for(title, left, kind)
             path = (m.get("path") or "")
             is_docx = path.lower().endswith(".docx")
             # 谁能当底稿不能只看扩展名：外部评级报告也常是 docx。
@@ -177,11 +193,13 @@ def do_fetch(company: str, picks: list[dict], budget: int = 0, progress=None,
                         "chars": up["chars"], "path": path}
                 items[i].update(state="run", pct=60, detail="提取 docx 文本")
             elif path:  # 本地上传的 PDF
-                item = pdf_text.load_file(path, title, budget=one, progress=cb)
+                item = pdf_text.load_file(path, title, budget=one, progress=cb, kind=excerpt_kind)
             else:
-                item = pdf_text.load_material(m["url"], title, budget=one, progress=cb)
+                item = pdf_text.load_material(m["url"], title, budget=one, progress=cb,
+                                              kind=excerpt_kind)
             left = max(6000, left - item["chars"])
             item["date"] = m.get("date", "")
+            item["kind"] = kind
             item["source"] = m.get("source", "upload" if m.get("path") else "caihui")
             loaded.append(item)
             shown = (f"{item['pages']} 页 · " if item["pages"] else "")

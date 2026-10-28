@@ -23,6 +23,19 @@ KEEP_HINTS = ("基本情况", "股权", "实际控制人", "业务", "经营", "
               "现金流", "受限资产", "应收账款", "对外担保", "诉讼", "评级观点",
               "正面", "关注", "财务", "主要指标", "募集资金", "主营业务")
 
+# 审计报告独有的加分词：简评要用的是「审计意见是什么」和三表数字。
+# 「形成审计意见的基础」「关键审计事项」两节往往就是全篇唯一值得读的部分，
+# 但那几页关键词命中少、页首无表名，按通用打分会被裁掉，所以单列加分。
+AUDIT_HINTS = ("审计意见", "无保留意见", "保留意见", "否定意见", "无法表示意见",
+               "形成审计意见的基础", "关键审计事项", "持续经营", "审计机构",
+               "会计师事务所", "合并及母公司财务报告", "财务报表附注")
+
+# 其他公告：一段话就是一份公告的全文，页数少，不需要挑页；
+# 出现这些词的页优先（实质事项都落在这些词上）
+NOTICE_HINTS = ("诉讼", "仲裁", "担保", "代偿", "处罚", "决定书", "监管", "警示",
+                "违约", "展期", "重组", "重整", "收购", "控制权", "股东", "质押",
+                "冻结", "失信", "持有人会议", "资金占用", "关联交易", "资产处置")
+
 # 财务三表与主要指标页：数字的唯一出处，一旦被预算裁掉，模型就会把
 # 「材料里明明有」的期次写成「未披露」。所以这些页先占预算，再谈打分。
 FIN_STMT_HINTS = ("合并资产负债表", "合并利润表", "合并现金流量表", "合并所有者权益变动表",
@@ -109,7 +122,7 @@ def _clean(t: str) -> str:
     return t.strip()
 
 
-def score_page(text: str) -> float:
+def score_page(text: str, kind: str = "") -> float:
     if len(text.strip()) < 80:
         return -100
     s = 0.0
@@ -119,20 +132,35 @@ def score_page(text: str) -> float:
     for h in KEEP_HINTS:
         if h in text:
             s += 1.5
+    if kind == "审计报告":
+        for h in AUDIT_HINTS:
+            if h in text:
+                s += 2.5
+        # 审计报告的「资产负债表」附录动辄几十页，通用财务页加权反而不该太重
+        if any(h in text[:200] for h in ("审计报告", "审计意见")):
+            s += 3
+    elif kind == "其他公告":
+        for h in NOTICE_HINTS:
+            if h in text:
+                s += 2
     # 含数字密集（表格/指标）的页加权
     if len(re.findall(r"\d+\.\d{2}", text)) > 15:
         s += 2
     return s
 
 
-def excerpt(pages: list[str], budget: int = 45000, title: str = "") -> str:
+def excerpt(pages: list[str], budget: int = 45000, title: str = "", kind: str = "") -> str:
     """按页打分，保留得分高的页，输出不超过 budget 字符的摘录。
 
     顺序是「先保财务页，再按打分填」：财务三表页在打分上不占优（页首多是表名，
     关键词命中少，还可能被当成年报附录），但它们是资产总额、负债总额这类数字的
     唯一出处。先让它们占掉不超过三成预算，剩下的再按内容价值分配。
+
+    kind 用来切换打分词典：审计报告重「审计意见」，其他公告重「实质事项词」。
+    另外审计报告的报表附注页数极多，若照三表页先占四成，会把意见页挤出去，
+    所以审计报告改用「意见页先占、报表页其次」的顺序。
     """
-    scored = [(i, score_page(p), p) for i, p in enumerate(pages)]
+    scored = [(i, score_page(p, kind), p) for i, p in enumerate(pages)]
     total = sum(len(p) for _, _, p in scored)
     if total <= budget:
         body = "\n\n".join(f"[第{i + 1}页]\n{_clean(p)}" for i, _, p in scored if p.strip())
@@ -163,9 +191,14 @@ def excerpt(pages: list[str], budget: int = 45000, title: str = "") -> str:
             got += len(text)
         return got
 
-    # ① 三大报表页：资产负债、利润、现金流是刚需，先占三成八
+    # ① 审计报告先保「意见页」：这是简评唯一必须引用的一段（意见类型），
+    #    而报表页动辄占四成预算，先把意见页拿下来才不会被挤出去
+    if kind == "审计报告":
+        used += take([i for i in range(len(pages))
+                      if any(h in pages[i] for h in AUDIT_HINTS)], int(budget * 0.45))
+    # ② 三大报表页：资产负债、利润、现金流是刚需，先占三成八
     used += take([i for i in range(len(pages)) if levels[i] == 3], int(budget * 0.38))
-    # ② 主要财务数据/指标页：评级报告里通常也有同一张表，给它一成
+    # ③ 主要财务数据/指标页：评级报告里通常也有同一张表，给它一成
     used += take([i for i in range(len(pages)) if levels[i] == 2], int(budget * 0.1))
 
     for i, s, p in sorted(scored, key=lambda x: (-x[1], x[0])):
@@ -200,8 +233,9 @@ def excerpt(pages: list[str], budget: int = 45000, title: str = "") -> str:
     return f"《{title}》摘录（原{len(pages)}页，保留{len(keep)}页）\n{body}"
 
 
-def load_file(pdf_path: str | Path, title: str, budget: int = 32000, progress=None) -> dict:
-    """抽取一份已在本地（下载或上传）的 PDF。"""
+def load_file(pdf_path: str | Path, title: str, budget: int = 32000, progress=None,
+              kind: str = "") -> dict:
+    """抽取一份已在本地（下载或上传）的 PDF。kind 决定摘录时偏重哪类页。"""
     def rep(frac, label):
         if progress:
             progress(max(0.0, min(1.0, frac)), label)
@@ -209,13 +243,14 @@ def load_file(pdf_path: str | Path, title: str, budget: int = 32000, progress=No
     rep(0.05, "解析 PDF")
     pages = extract_pages(pdf_path, on_progress=lambda f, lab: rep(0.05 + 0.85 * f, "解析 " + lab))
     rep(0.94, "生成摘录")
-    text = excerpt(pages, budget=budget, title=title)
+    text = excerpt(pages, budget=budget, title=title, kind=kind)
     rep(1.0, "完成")
     return {"title": title, "path": str(pdf_path), "pages": len(pages),
             "chars": len(text), "text": text}
 
 
-def load_material(url: str, title: str, budget: int = 32000, progress=None) -> dict:
+def load_material(url: str, title: str, budget: int = 32000, progress=None,
+                  kind: str = "") -> dict:
     """下载并抽取一份材料，返回 {title, path, chars, text}。
 
     progress(frac, label)：frac 是这一份材料的完成度（0-1），供前端显示逐份进度。
@@ -226,5 +261,5 @@ def load_material(url: str, title: str, budget: int = 32000, progress=None) -> d
 
     rep(0.02, "开始下载")
     pdf = download(url, title, on_progress=lambda f, lab: rep(0.05 + 0.45 * f, "下载 " + lab))
-    return load_file(pdf, title, budget=budget,
+    return load_file(pdf, title, budget=budget, kind=kind,
                      progress=lambda f, lab: rep(0.5 + 0.5 * f, lab))

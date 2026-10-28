@@ -459,6 +459,11 @@ SYSTEM_PROMPT = """你是信用评级机构的分析员，负责撰写内部「�
 正例：「2025年利润总额12.45亿元、同比下降87.05%，净利润为负、由盈转亏；当期资产减值损失68.17亿元、信用减值损失17.38亿元，较上年分别增加63.06亿元和13.43亿元，两项合计构成亏损的主要来源」——一个数都没编，亏损的规模也交代清楚了。
 财务指标表里材料没给的项一律留「—」。确实需要自己算的（差额、合计、占比、增速），按 16.1 把算式写进 data_notes，一行一条，程序会复算；表格里找不到出处的数会被程序置空并提示，那不是程序太严，是这一格没人能证明它。
 23.7 亏损归因的每一笔都要能对上账：减值提了多少、毛利变动多少、费用增减多少，加起来要能解释利润总额从多少掉到多少。差一个量级就说明还有一项没找到或抄错了——回到材料里把那一项找出来，找不到就不写，不要用「其他因素」兜底。
+24. 材料的用途按类别分，不要一视同仁地摘抄。本次材料可能包含跟踪评级报告、募集说明书、审计报告（含经审计的财务报表）与其他公告，分工如下：
+　24.1 跟踪评级报告是判断主线：业务模式、行业量价、资产构成、债务结构以它为准。
+　24.2 审计报告不是用来复述的。它只有两个用途：① 财务指标表的数字与它对齐——审计报告的三表是最终口径，评级报告的表格与它不一致时以审计报告为准；② 审计意见类型是偿债判断的一部分——标准无保留意见不必写（见 19.2 没有变化的不写），出现保留意见、带强调事项段、无法表示意见、否定意见，或首次出现持续经营重大不确定性段落，必须在基本情况或债务段写出来，说明段落的原文事由（如「与持续经营相关的重大不确定性」涉及哪笔债务、哪项资产）。审计报告的附注、会计政策变更说明、报表项目明细一律不进正文。
+　24.3 其他公告是用来找「报告期内发生了什么」的：诉讼与仲裁、担保代偿、监管处罚、评级下调、控制权与股权变动、重大资产处置、资金占用、债务展期或技术性违约。这一类只有出现对偿债有含义的事项才写，按 19.2 的判断法筛一遍——写成一条公告，读者会不会改变「这家公司能不能按期还钱」的判断？会，就写进对应的段（资产、债务或专题段），并带金额、对手方、时点；不会，就整句不写。程序性公告（付息、兑付、上市流通、发行结果、票面利率）即使被读进材料也不写。
+　24.4 同一件事在多类材料里都出现时，只写一次，取最具体的那个数（审计报告与募集说明书里的同一科目余额不一致，以审计报告为准）。
 
 【写作风格】以跟踪评级报告正文为语体基准：段首归因（受……影响／受益于）、段中展开（具体来看／结构上／此外）、段末收口（整体来看，……）。判断词要分级（很强/较强/一般/较弱、可控/充足/尚可/承压）。不用「本期」「去年」「大幅」这类不可核实表述，也不用「可能」「大概」「或许」——判断要么有据，要么不写。行文里不出现「材料」「披露」「外部条件」这类词：它们是分析员的作业对象，不是报告的语言。
 
@@ -507,8 +512,17 @@ def build_user_prompt(facts: dict, materials: list[dict]) -> str:
             "期次写法照材料原文的表述，同一张表内的期次必须与材料表的表头一致。",
             "财务指标表需要你按【材料原文】的「主要财务数据」表整理输出，数字与材料逐一对应。",
         ]
-    mat_block = "\n\n".join(f"===== {m['title']}（{m.get('date','')}）=====\n{m['text']}"
-                            for m in materials if m.get("text"))
+    # 每份材料头标出日期与类别：类别决定模型怎么用它（规则 24），
+    # 日期决定它以哪一版为准（同一年的审计报告可能有两个版本）
+    mat_blocks = []
+    for m in materials:
+        if not m.get("text"):
+            continue
+        meta = "｜".join(x for x in ((m.get("date") or "").strip(),
+                                     (m.get("kind") or "").strip()) if x)
+        mat_blocks.append(f"===== {m['title']}" + (f"（{meta}）" if meta else "")
+                          + f" =====\n{m['text']}")
+    mat_block = "\n\n".join(mat_blocks)
     schema = """{
   "company_full_name": "工商全称",
   "positive": ["定稿的正面观点，3-5 条", "..."],
@@ -1806,7 +1820,45 @@ def _nochange_rows(draft: dict) -> list[dict]:
 # 校验规则的版本号。规则一改就加一，存量记录据此判断要不要重算——
 # 只看「有没有 issue_items」是不够的：新加的校验项不会进到老记录里，
 # 用户打开旧报告就看不到新提示，等于没上。
-VALIDATOR_REV = 7
+VALIDATOR_REV = 8
+
+# 审计意见的判定表，按严重程度从高到低。只认这三种非标准意见与「持续经营重大
+# 不确定性」段落：标准无保留意见不必写（19.2），而「强调事项」在部分事务所的
+# 模板里是常设栏目，拿来当漏项会大批误报，所以不进校验，只在提示词里提一句。
+_AUDIT_OPINIONS = (
+    ("无法表示意见", ("无法表示意见",), ("无法表示意见",)),
+    ("否定意见", ("否定意见",), ("否定意见",)),
+    ("保留意见", ("保留意见",), ("保留意见",)),
+    ("与持续经营相关的重大不确定性",
+     ("持续经营相关的重大不确定性", "持续经营重大不确定性"), ("持续经营",)),
+)
+
+
+def _audit_opinion(materials: list[dict]) -> dict | None:
+    """从审计报告材料里认出非标准审计意见；标准无保留意见返回 None。
+
+    关键坑：「无保留意见」里含「保留意见」四个字，标准报告必然出现，直接搜
+    「保留意见」会把每一份干净的报告都当成保留意见。所以先把「无保留意见」
+    整体遮掉，再判保留意见。
+    """
+    for mat in materials or []:
+        kind = mat.get("kind") or ""
+        title = mat.get("title") or ""
+        if kind != "审计报告" and "审计" not in title:
+            continue
+        text = mat.get("text") or ""
+        if not text:
+            continue
+        masked = text.replace("无保留意见", "标准意见")
+        for phrase, triggers, marks in _AUDIT_OPINIONS:
+            hit = next((t for t in triggers if t in masked), None)
+            if not hit:
+                continue
+            i = masked.find(hit)
+            sent = text[max(0, i - 60):i + 90].replace("\n", " ").strip()
+            return {"phrase": phrase, "marks": list(marks), "sentence": sent,
+                    "title": title}
+    return None
 
 
 def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
@@ -1819,6 +1871,19 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
     issue_items: list[dict] = []
     auto_notes: list[str] = []
     auto_ok: list[dict] = []
+
+    # 全文拼一份，供「正文到底写了没有」这类判断用（与后文 labeled 同源，
+    # 但那些块在几百行之后才拼，早点的检查先用这份）
+    _c0 = draft.get("commentary") or {}
+    _chunks = [draft.get("basic_info") or ""]
+    for _k in ("industry", "overview", "asset", "profit", "debt"):
+        _b = _c0.get(_k) or {}
+        _chunks += [_b.get("lead") or "", _b.get("body") or ""]
+    for _b in (_c0.get("segments") or []):
+        _chunks.append(_b.get("body") or "")
+    for _b in (_c0.get("special_topics") or []):
+        _chunks += [_b.get("lead") or "", _b.get("body") or ""]
+    _body_all = "\n".join(_chunks)
 
     def _sketch(t: str, width: int = 60) -> str:
         """取命中处前后一小段，提示里看得懂是哪句话。"""
@@ -2042,6 +2107,23 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
             "董事长、总经理这类人事更替与偿债能力无关，也不写。"
             "判断方法——把这件事写成一条公告，读者会不会改变「能不能按期还钱」的判断？不会就删掉。")
         issue_items.append({"t": "写了没有变化的事", "a": "blk-basic", "d": _nochange[:6]})
+
+    # 1.1b) 审计意见非标准、正文却没交代——这是读过审计报告之后最要紧的一条。
+    # 判据只看审计报告材料里的定性结论，不去猜：出现「保留意见」「无法表示意见」
+    # 「否定意见」或「与持续经营相关的重大不确定性」，而正文一个字没提，就是漏了。
+    # 注意「无保留意见」里含「保留意见」子串，必须先把它遮掉再判断。
+    _opin = _audit_opinion(materials)
+    if _opin and not any(k in _body_all for k in _opin["marks"]):
+        issues.append(
+            f"审计报告是「{_opin['phrase']}」，正文没有交代。"
+            "非标准意见本身就是偿债判断的一部分：写清是哪一类意见、出具的事由（涉及哪笔债务、"
+            "哪项资产或哪个金额），放在基本情况或债务段；标准无保留意见不必写。")
+        issue_items.append({"t": "审计意见非标准，正文没写", "a": "blk-basic",
+                            "d": [{"num": "", "where": "基本情况/债务段",
+                                   "full": _opin["sentence"][:120], "si": 0,
+                                   "kind": "漏项", "anchor": "blk-basic",
+                                   "field": "bi-body", "seg": 0,
+                                   "note": f"审计报告：{_opin['phrase']}"}]})
 
     # 1.2) 同一事实在正面与关注各说一次，等于自相矛盾
     pos_items = [x for x in (draft.get("positive") or []) if (x or "").strip()]
