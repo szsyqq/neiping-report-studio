@@ -281,8 +281,22 @@ def render_report(data: dict[str, Any], out_path: str | Path) -> Path:
     _add_para(doc, data.get("basic_info", ""))
     _gap()
 
-    _add_para(doc, "2、点评", bold=True, align=WD_ALIGN_PARAGRAPH.LEFT)
     c = data.get("commentary") or {}
+
+    # 行业情况单列一节。行业的量价与政策放这里，总述段只写公司自己的收入结构——
+    # 两者混在一段里，读者分不清哪句说行业、哪句说公司。
+    #
+    # 编号跟着内容走：这一节有内容时是「2、行业情况」、点评顺延为 3；
+    # 旧稿没有这一节时不留空节，点评仍是「2、点评」。否则导出的成品会跳号
+    # （1、基本情况 → 3、点评），读者以为缺了一页。
+    ind = c.get("industry") or {}
+    has_ind = bool((ind.get("lead") or "").strip() or (ind.get("body") or "").strip())
+    if has_ind:
+        _add_para(doc, "2、行业情况", bold=True, align=WD_ALIGN_PARAGRAPH.LEFT)
+        _add_lead_para(doc, ind.get("lead", ""), ind.get("body", ""))
+        _gap()
+
+    _add_para(doc, "3、点评" if has_ind else "2、点评", bold=True, align=WD_ALIGN_PARAGRAPH.LEFT)
 
     ov = c.get("overview") or {}
     if ov:
@@ -371,11 +385,15 @@ def render_skeleton(template_json: str | Path, out_path: str | Path) -> Path:
         "internal_rating_code": "{{内部评级代码}}",
         "positive": ["{{正面一}}", "{{正面二}}", "{{正面三}}"],
         "concern": ["{{关注一}}", "{{关注二}}", "{{关注三}}"],
-        "basic_info": "{{基本情况：成立时间与前身 → 主营与功能定位 → 注册资本、实收资本、股东及持股比例、实际控制人 → 报告期内股权或控制权变动 → 增资到位、上市状态、外部主体评级、并表子公司数量}}",
+        "basic_info": "{{基本情况：成立时间与前身 → 主营与功能定位 → 注册资本与实收资本（不一致时说明差额原因）、股东及持股比例、实际控制人 → 增资到位、上市状态、并表子公司数量。（股权、评级、审计机构未变的，以及董监高更替，一律不写）}}",
         "commentary": {
+            "industry": {
+                "lead": "{{行业段加粗判断句：主语是行业或政策，不带数字}}",
+                "body": "{{行业情况（独立一节）：供需格局（产量或需求增速、产能利用率、需求端构成）→ 价格与成本（价格走势与幅度、原材料与能源成本）→ 政策（真正影响这家公司的那一条）→ 传导（怎样落到公司的量、价、毛利上）。每个判断后跟一个可核实的数}}",
+            },
             "overview": {
                 "lead": "{{总述段加粗汇总句：主体定位 + 经营趋势 + 但书}}",
-                "body": "{{外部条件按三问展开（钱从谁那里来 / 量由什么决定 / 价由谁定）→ 经营与盈利主线数据 → 收入构成概览，末句引出业务构成表}}",
+                "body": "{{钱从谁那里来 → 公司自身经营与盈利主线数据 → 收入构成概览，末句引出业务构成表。行业的量价与政策已在行业段写过，这里不重抄}}",
             },
             "segment_table": {
                 "unit_line": "单位：亿元",

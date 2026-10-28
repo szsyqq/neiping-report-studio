@@ -364,7 +364,7 @@ def build_segment_table(facts: dict) -> dict | None:
 
 SYSTEM_PROMPT = """你是信用评级机构的分析员，负责撰写内部「简评报告」。写作必须严格遵循给定的体例与纪律。
 
-【体例】报告只有两层：摘要层（正面：/关注：各3条，最多5条，编号 1）2）3））与正文层（1、基本情况；2、点评）。
+【体例】报告只有两层：摘要层（正面：/关注：各3条，最多5条，编号 1）2）3））与正文层（1、基本情况；2、行业情况；3、点评）。
 点评由以下块按序组成：总述段 → 业务构成表 → 分部业务段（1）2）…）→ 资产段 → 财务指标表 → 盈利段 → 债务段 → 或有/专题段（可选）。
 
 【硬规则】
@@ -400,6 +400,14 @@ SYSTEM_PROMPT = """你是信用评级机构的分析员，负责撰写内部「�
 10. 全文用合并口径。总债务（含政府专项债等）与有息债务是两个口径，混用时必须说明差额来源。
 11. 期次只能照抄台账『期次写法』里的字面写法：时点用「X年末／X年6月末／X年9月末」，区间用「X年／X年1-6月／X年1-9月」。资产类、负债类、债务类数据用时点写法，收入、利润、现金流用区间写法。台账写「中报」的，时点就是「X年6月末」，绝不允许写成 9 月末或 1-9 月。
 12. 不按行业套路写作。写外部条件时问三件事：钱从谁那里来、量由什么决定、价由谁定；三问的答案决定引什么数据。不要因为主体名称或行业标签就推断它应该有什么业务、什么风险——只写材料里有据、且该主体确实存在的事实。找不到某项惯常指标（例如某类产出量），就跳过，不用相近指标替代。
+12.1 行业情况单列一段（industry），位置在基本情况之后、点评总述段之前，是独立的一节，不和公司自身经营混在一起写。这一段只回答「量由什么决定、价由谁定」，四件事各一到两句，按对公司的传导强弱排序，不按行业报告的目录顺序：
+　① 供需格局：行业所处阶段、产量或需求增速、产能利用率、需求端由哪几块构成（基建、地产、制造业投资……）；
+　② 价格与成本：产品价格或价格指数的走势与变动幅度、主要原材料与能源成本的变化；
+　③ 政策：产能置换、环保限产、补贴退坡、定价与结算机制中真正影响这家公司的那一条；
+　④ 传导：前三件事怎样落到公司的量、价、毛利上，用一句话接住，转下一节。
+　写法要求：每个判断后面跟一个可核实的数（增速、幅度、利用率、区域投资额）；材料只给定性表述（「行业景气度下行」）时，改写到公司自己的数据上（公司产量降了多少、均价降了多少），不拿行业套话充数。不列行业风险清单——「行业竞争加剧」「政策存在不确定性」这类没有对象、也没有影响方向的句子一律不写；凡删掉后读者仍说不出「这件事影响公司哪个指标、往哪个方向」的句子，都不写。
+　与总述段分工：行业的量、价、政策在行业段写完，总述段只写公司自己的收入结构、板块拆分与盈利主线，行业数据不在两段各写一遍（见 19）。
+12.2 基本情况必须交代注册资本与实收资本：写清注册资本多少、实收资本多少；两者不一致时要说明差额是什么（未实缴、分期到位、口径不同），不能只写其中一个。股东及持股比例只写当前状态与实际控制人；报告期内股权、控制权没有变化的，不写「未发生变化」（见 19.2）。
 13. 叙述视角：报告是评级机构对受评主体的判断，句中主语只能是公司、股东、政府、行业或政策，不能是「材料」。全文禁止出现「材料」「材料原文」「公开资料」「公开信息」「本报告」「本文」，禁止出现「披露」「未披露」「载明」「列示」「数据显示」「报表显示」这类转述来源的词，也禁止「从外部条件看」「从内部条件看」「从财务表现看」这类框架提示语——直接陈述事实与因果。判断标准：把这些词删掉后句子依然成立，就说明本来不该写。
 14. 正文不出现编制层面的说明：不写「因数据可得性」「受限于资料」「以××为准」「详见下表」「如下所示」。表格由程序排版，正文只管判断。
 15. 概念不得混用：已实现营业收入不等于合同金额、中标金额或订单储备；净利润不等于 EBITDA，也不等于经营活动现金流；年度数据不等于单季或累计数据；历史数据不等于预测数。用之前先确认是哪一种，口径不同时在句中点明。
@@ -416,6 +424,11 @@ SYSTEM_PROMPT = """你是信用评级机构的分析员，负责撰写内部「�
 18. 正文每段至少锚定一个具体数据或明确事实（金额、比率、期限、数量、协议条款），不写通篇定性的空段；也不为凑数据引与判断无关的数字——引的每个数都要能用在一句判断上。
 19. 同一件事只说一遍。加粗汇总句是判断，正文不得把这句话换个说法再说一次；专题段只写它自己那件事的新证据，不复述债务段、资产段或业务段已经写过的数据与结论；同一条事实（如某科目余额、某协议条款）在全文只出现一次，后文需要引用时用「上述」带过或直接给结论，不重抄原句。
 19.1 总述段与盈利段的分工写在纸上，不许两段各写一遍：总述段给「收入是多少、由哪几块构成、利润率朝哪个方向走」，末尾一句点明赚钱还是亏钱；盈利段从「降在哪一块、是量还是价」写起，再展开利润与亏损归因。营业收入的总数、各板块收入与占比，总述段写过之后盈利段不再重抄——要提就写「上述收入结构下」「其中基础建材板块」这种承接，不要第二次列出整串金额。反过来，减值提了多少、费用为什么变，只在盈利段说，总述段不要提前把归因讲完。
+19.2 没有变化的事不写。报告只记录变化和它的影响，不记录「没变」：控股股东及持股比例未发生变化、外部主体评级维持原有等级且展望未调整、审计机构未更换、注册地址未搬迁，这些都不写。与偿债能力无关的人事变动也不写——董事长、总经理、董事的任免与更替，内部部门调整，都属于这一类。
+　判断方法：把这件事写成一条公告，读者看了会不会改变「这家公司能不能按期还钱」的判断？不会，就整句删掉。不要因为它出现在材料里、或者是跟踪报告固定栏目，就顺手抄进来占字数。
+　反过来，这些必须写，而且要写出对信用水平的影响方向：控股股东或实际控制人变更为风险主体、控制权发生转移、主体评级下调或列入观察名单、评级展望调为负面、审计意见类型变化、会计师事务所因故更换并出具非标意见。
+　正例：不写「跟踪期内公司控股股东及持股比例未发生变化。董事长由王彤宙变更为宋海良，总经理由王海怀变更为张炳南。」——两句都不影响偿债判断，整段删掉。
+　正例：要写「2026年3月公司控股股东由××市国资委变更为××控股集团，持股比例由100%降至51%，实际控制人未变，政府支持路径改由新股东归口，需关注后续注资与结算安排。」——变化本身带有信用含义。
 20. 分部业务段是一整段：编号与板块名之后的全部内容在同一段里连续写完，不在段内换行、不分成若干小段、不加小标题。
 21. 摘要从正文倒抽，不从材料正推。写完正文后再回头逐段读，把「能独立成立、且对偿债有含义」的判断句圈出来当候选池：先圈 10-14 条进 positive_pool / concern_pool（每条 30-50 字、纯定性、不带数字、不写「公司」开头以外的修饰），再从中按分量排序挑 3-5 条进 positive / concern。定稿的条目必须同时出现在候选池里。候选池里不要放正文没说过的话——它只是正文的抽提，不是第二遍分析。
 21.1 摘要层只分等级，不做评价。程度词只用有共同刻度的那些：很强／较强／一般／较弱（能力、地位、支持力度、专营性），充足／尚可／承压／不足（流动性、覆盖、再融资），偏高／合理（占比、杠杆、集中度），顺畅／受限（融资渠道、回款），清晰／待理顺（股权、治理）。没有刻度的词一律不写：显著、突出、明显、良好、较好、优良、充裕、雄厚、强劲、领先、龙头、重要增长极、核心平台、有力、有效、大幅、充分、完善、稳健、向好、稳步。理由不是这些词不好听，而是它们没有共同刻度——同一件事，换个人写就会落在「较强」或「一般」，读者无法据此比较两家公司。也不写「存在一定风险」「债务期限结构有待优化」「仍存××风险」这类委婉收尾：把「有待优化」还原成它实际指向的事（短债占比偏高、非受限资金覆盖不足、到期集中）。
@@ -502,9 +515,10 @@ def build_user_prompt(facts: dict, materials: list[dict]) -> str:
   "concern": ["定稿的关注观点，3-5 条", "..."],
   "positive_pool": ["候选：从正文回抽、够格但没进定稿的正面判断，5-8 条"],
   "concern_pool": ["候选：从正文回抽、够格但没进定稿的关注判断，5-8 条"],
-  "basic_info": "150-300字，一段：成立与前身→主营与功能定位（含靠什么收钱）→注册资本/实收资本/股东及比例/实控人→报告期股权变动→增资、上市、外部评级、并表子公司",
+  "basic_info": "150-300字，一段：成立与前身→主营与功能定位（含靠什么收钱）→注册资本与实收资本（两者不一致要说清差额原因）/股东及比例/实控人→增资到位、上市状态、并表子公司。报告期内股权、控制权、评级、审计机构没有变化的，一句都不写",
   "commentary": {
-    "overview": {"lead": "加粗汇总句（不带数字）", "body": "总述段正文：先交代钱的来源、量的决定、价的制定，再写经营与盈利主线数据与收入构成概览，收口引出业务构成表"},
+    "industry": {"lead": "行业段加粗判断句（不带数字，主语是行业或政策，如「水泥需求随基建与地产投资回落，价格中枢下移压制行业毛利」）", "body": "行业情况正文（独立一节，250-420字）：供需格局（产量或需求增速、产能利用率、需求端构成）→ 价格与成本（价格走势与幅度、原材料与能源成本）→ 政策（真正影响这家公司的那一条）→ 传导（怎样落到公司的量、价、毛利上）。每个判断后跟一个可核实的数"},
+    "overview": {"lead": "加粗汇总句（不带数字）", "body": "总述段正文：先交代钱的来源与公司自身的经营主线，再写收入结构概览，收口引出业务构成表。行业的量价与政策已在行业段写过，这里不重抄"},
     "segments": [{"name": "该主体自己用的板块名，照原文写，不改写不带编号", "body": "承接『1）××业务方面，』之后的正文"}],
     "segment_table": {"unit_line": "单位：亿元", "header": ["业务板块", "营业收入", "收入占比", "毛利率"], "rows": [["板块名", "0.00", "0.00%", ""], ["营业总收入", "0.00", "100.00%", ""]]},
     "financial_table": {"unit_line": "单位：亿元", "periods": ["2023年", "2024年", "2025年"], "rows": [["资产总额", "0.00", "0.00", "0.00"], ["负债总额", "0.00", "0.00", "0.00"], ["净利润", "0.00", "0.00", "0.00"]]},
@@ -1060,6 +1074,7 @@ def _ensure_structure(draft: dict, facts: dict) -> dict:
 
     c = draft.get("commentary") or {}
     ov = c.get("overview") or {}
+    ind = c.get("industry") or {}
     at = c.get("asset") or {}
     db = c.get("debt") or {}
     fin_table = build_financial_table(facts)
@@ -1078,6 +1093,7 @@ def _ensure_structure(draft: dict, facts: dict) -> dict:
         body = dedupe_lead(lead, polish_language(p.get(key) or ""))
         return {"lead": lead, "body": dedupe_sentences(body)}
 
+    industry = para(ind)
     overview = para(ov)
     segments = []
     for s in (c.get("segments") or []):
@@ -1092,6 +1108,7 @@ def _ensure_structure(draft: dict, facts: dict) -> dict:
     topics = [para(t) for t in (c.get("special_topics") or []) if str(t.get("body") or "").strip()]
 
     out["commentary"] = {
+        "industry": industry,
         "overview": overview,
         "segment_table": build_segment_table(facts) or _clean_llm_table(c.get("segment_table")),
         "segments": segments,
@@ -1143,7 +1160,7 @@ def polish_draft(draft: dict) -> dict:
         lead = _lead(p.get("lead"))
         return {"lead": lead, "body": dedupe_sentences(dedupe_lead(lead, _pol(p.get("body") or "")))}
 
-    for k in ("overview", "asset", "profit", "debt"):
+    for k in ("industry", "overview", "asset", "profit", "debt"):
         if isinstance(c.get(k), dict):
             c[k] = para(c[k])
     if isinstance(c.get("segments"), list):
@@ -1408,8 +1425,10 @@ def _verify_notes(draft: dict, corpus_nums: set[str]) -> tuple[list[dict], list[
     c = draft.get("commentary") or {}
     body_text = " ".join([
         draft.get("basic_info") or "",
+        ((c.get("industry") or {}).get("body") or ""),
         ((c.get("overview") or {}).get("body") or ""),
         ((c.get("asset") or {}).get("body") or ""),
+        ((c.get("profit") or {}).get("body") or ""),
         ((c.get("debt") or {}).get("body") or ""),
         " ".join(s.get("body") or "" for s in (c.get("segments") or [])),
         " ".join(t.get("body") or "" for t in (c.get("special_topics") or [])),
@@ -1714,10 +1733,80 @@ def _subj_ratio(items: list[str]) -> tuple[int, int]:
     return hit, len(rows)
 
 
+# 「没有变化的事」的识别式。每一条都是「这件事没变」的例行交代，
+# 或者与偿债能力无关的人事变动——它们出现在跟踪评级报告里是因为栏目固定，
+# 但对读者判断「能不能还钱」没有信息量。
+#
+# 刻意不做的两件事：
+# ① 不去判「变化重不重要」。机器判不了。所以这里只认「明确写了没变」的句式，
+#    以及人事任免这一个公认与偿债无关的类别，其余一律放过。
+# ② 不把「评级下调」「列入观察名单」算进来——那是变化，而且要写。
+_NOCHANGE_PATTERNS = (
+    # 股权、股东、持股比例没变
+    ("股东/持股未变",
+     r"(?:控股股东|股东|股权结构|股权关系|持股比例|实际控制人|控制权)"
+     r"[^。；]{0,24}?(?:未发生|没有发生|未|没有)(?:发生)?(?:变化|变动|变更|调整)"),
+    # 评级维持原级、展望稳定。两个方向都要认：「等级维持AA+」与「维持等级AA+」，
+    # 只写一种顺序会漏掉另一种——评级报告里「联合资信维持公司主体信用等级AA+」
+    # 是最常见的那一句。
+    ("评级未变",
+     r"(?:信用等级|主体信用等级|评级|级别)[^。；]{0,20}?(?:维持|保持|仍为|未变|未调整|不变)"),
+    ("评级未变",
+     r"(?:维持|保持)[^。；]{0,14}?(?:信用等级|主体信用等级|主体评级|评级|级别)"),
+    # 审计机构没换
+    ("审计机构未换",
+     r"(?:审计机构|会计师事务所|审计单位)[^。；]{0,16}?(?:未|没有)(?:发生)?(?:变更|更换|变化)"),
+    # 董监高人事变动
+    ("董监高变更",
+     r"(?:董事长|总经理|总裁|副总经理|财务负责人|董事会秘书|监事会主席|董事|监事|高级管理人员)"
+     r"[^。；]{0,20}?(?:由[^。；]{1,16}?变更|变更为|改由|更换为|不再担任|辞任|离任|新任)"),
+)
+
+
+def _nochange_rows(draft: dict) -> list[dict]:
+    """找出「没有变化的事」被写进正文的地方。
+
+    只扫基本情况与各段正文，不扫摘要——摘要本来就是定性概括，
+    真写了「评级未变」会在摘要层的其他规则里被抓到。
+
+    「评级维持」这条要留一个口子：句子里同时出现下调／上调／观察／负面，
+    说明写的是变化，不报。否则「评级由 AA+ 上调至 AAA，展望维持稳定」
+    会被前半句「维持」误伤。
+    """
+    c = draft.get("commentary") or {}
+    fields: list[tuple[str, str, str]] = [
+        ("基本情况", "basic", "blk-basic", draft.get("basic_info") or ""),
+        ("行业情况", "in-body", "blk-industry", (c.get("industry") or {}).get("body") or ""),
+        ("总述段", "ov-body", "blk-overview", (c.get("overview") or {}).get("body") or ""),
+        ("资产段", "as-body", "blk-asset", (c.get("asset") or {}).get("body") or ""),
+        ("盈利段", "pf-body", "blk-profit", (c.get("profit") or {}).get("body") or ""),
+        ("债务段", "db-body", "blk-debt", (c.get("debt") or {}).get("body") or ""),
+    ]
+    rows: list[dict] = []
+    seen: set[str] = set()
+    for where, field, anchor, text in fields:
+        for kind, pat in _NOCHANGE_PATTERNS:
+            for m in re.finditer(pat, text or ""):
+                # 取这一句，作为定位与判断的完整单位
+                cut = max(text.rfind(ch, 0, m.start()) for ch in "。；") + 1
+                ends = [x for x in (text.find(ch, m.start()) for ch in "。；") if x > 0]
+                sent = text[cut: min(ends) if ends else len(text)].strip()
+                if not sent or sent in seen:
+                    continue
+                if kind == "评级未变" and re.search(r"下调|上调|列入观察|观察名单|负面|撤销", sent):
+                    continue          # 写的是评级变化，不是「没变」
+                seen.add(sent)
+                rows.append({"num": "", "where": f"{where}·{kind}", "kind": "无变化",
+                             "full": sent[:180], "si": 0,
+                             "anchor": anchor, "field": field,
+                             "note": "不影响偿债判断的变化/未变，整句删掉"})
+    return rows
+
+
 # 校验规则的版本号。规则一改就加一，存量记录据此判断要不要重算——
 # 只看「有没有 issue_items」是不够的：新加的校验项不会进到老记录里，
 # 用户打开旧报告就看不到新提示，等于没上。
-VALIDATOR_REV = 6
+VALIDATOR_REV = 7
 
 
 def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
@@ -1838,7 +1927,8 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
     # 这里只是漏网时的兜底。所以不做逐条清单——列出八条让人一条条改，
     # 比不提示还累；只说明「哪一段的加粗句看不出主体」和覆盖情况。
     _c0 = draft.get("commentary") or {}
-    _leads = [("总述段", "ov-lead", "blk-overview", (_c0.get("overview") or {}).get("lead")),
+    _leads = [("行业段", "in-lead", "blk-industry", (_c0.get("industry") or {}).get("lead")),
+              ("总述段", "ov-lead", "blk-overview", (_c0.get("overview") or {}).get("lead")),
               ("资产段", "as-lead", "blk-asset", (_c0.get("asset") or {}).get("lead")),
               ("盈利段", "pf-lead", "blk-profit", (_c0.get("profit") or {}).get("lead")),
               ("债务段", "db-lead", "blk-debt", (_c0.get("debt") or {}).get("lead"))]
@@ -1881,6 +1971,77 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
                                           for r in long_rows[:4])
             + "）：一条只讲一件事、一句话，把并列的那半句拆出去。")
         issue_items.append({"t": "摘要一条塞了两件事", "a": "blk-pos", "d": long_rows[:8]})
+
+    # 1.16) 行业情况：必须是独立一段，且每句站得住
+    # 这一段此前不存在，行业的量价被揉进总述段，与公司自己的收入结构混在一起，
+    # 读的人分不清哪句说行业、哪句说公司。规则 12.1 要求单列，这里兜底检查。
+    _ind = _c0.get("industry") or {}
+    _ind_body = str(_ind.get("body") or "").strip()
+    if not (_ind_body or str(_ind.get("lead") or "").strip()):
+        issues.append(
+            "缺少「行业情况」一段。行业处在什么阶段、量由什么决定、价由谁定，"
+            "这一段要单独写，不能揉进总述段与公司自己的收入结构混在一起。")
+        issue_items.append({"t": "缺行业情况段", "a": "blk-industry",
+                            "d": [{"num": "", "where": "行业情况", "kind": "结构",
+                                   "full": "", "si": 0, "anchor": "blk-industry",
+                                   "field": "in-body",
+                                   "note": "补一段：供需 → 价格与成本 → 政策 → 对公司的传导"}]})
+    elif len(_ind_body) < 120:
+        issues.append(f"行业情况只有 {len(_ind_body)} 字，"
+                      "写不完整就退化成一句行业概述。按供需 → 价格与成本 → 政策 → 传导四件事展开。")
+        issue_items.append({"t": "行业情况偏薄", "a": "blk-industry",
+                            "d": [{"num": f"{len(_ind_body)} 字", "where": "行业情况",
+                                   "kind": "写法", "full": _ind_body[:140], "si": 0,
+                                   "anchor": "blk-industry", "field": "in-body",
+                                   "note": "补价格与政策两条，并写清对公司的传导"}]})
+    elif not re.search(r"\d", _ind_body):
+        issues.append(
+            "行业情况整段没有一个数字。行业分析靠的是产量增速、产能利用率、价格涨跌幅、"
+            "区域投资额这类可核实的量，纯定性的行业判断换个人写也一样，读者据此比不了强弱。")
+        issue_items.append({"t": "行业段没有数据", "a": "blk-industry",
+                            "d": [{"num": "缺数据", "where": "行业情况", "kind": "写法",
+                                   "full": _ind_body[:140], "si": 0,
+                                   "anchor": "blk-industry", "field": "in-body",
+                                   "note": "每个判断后面跟一个数；材料只给定性说法时，写到公司自己的量价上"}]})
+
+    # 1.17) 基本情况：注册资本与实收资本
+    # 这两项是判断「股东到底投了多少钱」的唯一依据，注册了不等于实缴了。
+    # 只在材料里确实出现「实收资本」时要求写——材料没给的不能编（规则 5）。
+    _basic = str(draft.get("basic_info") or "")
+    if _basic.strip():
+        _mat_text = "\n".join((m.get("text") or "") for m in materials)
+        _has_reg = "注册资本" in _basic
+        _has_paid = "实收资本" in _basic
+        _mat_has_paid = "实收资本" in _mat_text
+        if not _has_reg or (_mat_has_paid and not _has_paid):
+            _miss = []
+            if not _has_reg:
+                _miss.append("注册资本")
+            if _mat_has_paid and not _has_paid:
+                _miss.append("实收资本")
+            issues.append(
+                f"基本情况没有写「{'」「'.join(_miss)}」。注册资本是认缴额、实收资本是到账额，"
+                "两项差着就说明还有没缴的部分，这直接影响股东支持的成色。"
+                + ("材料里有实收资本，请一并写出；两者不一致时说明差额是什么。"
+                   if _mat_has_paid else "请补注册资本；材料给出实收资本时也一并写。"))
+            issue_items.append({"t": "基本情况缺注册资本/实收资本", "a": "blk-basic",
+                                "d": [{"num": "、".join(_miss), "where": "基本情况",
+                                       "kind": "结构", "full": _basic[:140], "si": 0,
+                                       "anchor": "blk-basic", "field": "basic",
+                                       "note": "写清注册资本与实收资本；两者不一致说明差额原因"}]})
+
+    # 1.18) 没有变化的事不写
+    # 跟踪报告里最占字数的往往不是变化，而是「未发生变化」的例行交代：
+    # 控股股东没变、评级没调、董事长换人。这些不影响偿债判断，却挤掉真正的分析。
+    _nochange = _nochange_rows(draft)
+    if _nochange:
+        _kinds = "、".join(dict.fromkeys(r["kind"] for r in _nochange))
+        issues.append(
+            f"正文写了 {len(_nochange)} 处没有变化的事（{_kinds}）。"
+            "报告只记录变化和它的影响：股东与持股比例没变、评级维持原级、审计机构未换，都不写；"
+            "董事长、总经理这类人事更替与偿债能力无关，也不写。"
+            "判断方法——把这件事写成一条公告，读者会不会改变「能不能按期还钱」的判断？不会就删掉。")
+        issue_items.append({"t": "写了没有变化的事", "a": "blk-basic", "d": _nochange[:6]})
 
     # 1.2) 同一事实在正面与关注各说一次，等于自相矛盾
     pos_items = [x for x in (draft.get("positive") or []) if (x or "").strip()]
@@ -1949,7 +2110,7 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
     # 或有事项不进债务段（规则 9），但也不能因此消失——它能单列就提示用户补一段。
     _whole = " ".join(
         [str(draft.get("basic_info") or "")]
-        + [str((_c.get(k) or {}).get("body") or "") for k in ("overview", "asset", "profit", "debt")]
+        + [str((_c.get(k) or {}).get("body") or "") for k in ("industry", "overview", "asset", "profit", "debt")]
         + [str(s.get("body") or "") for s in (_c.get("segments") or [])]
         + [str(t.get("body") or "") for t in (_c.get("special_topics") or [])])
     _mat = "\n".join((m.get("text") or "") for m in materials)
@@ -2165,13 +2326,13 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
         ("基本情况", draft.get("basic_info", ""),
          {"anchor": "blk-basic", "field": "basic"})]
     c = draft.get("commentary") or {}
-    for k, name in (("overview", "总述段"), ("asset", "资产段"),
+    for k, name in (("industry", "行业情况"), ("overview", "总述段"), ("asset", "资产段"),
                     ("profit", "盈利段"), ("debt", "债务段")):
         block = c.get(k) or {}
-        field = {"overview": "ov-body", "asset": "as-body",
+        field = {"industry": "in-body", "overview": "ov-body", "asset": "as-body",
                  "profit": "pf-body", "debt": "db-body"}[k]
-        anchor = {"overview": "blk-overview", "asset": "blk-asset",
-                  "profit": "blk-profit", "debt": "blk-debt"}[k]
+        anchor = {"industry": "blk-industry", "overview": "blk-overview",
+                  "asset": "blk-asset", "profit": "blk-profit", "debt": "blk-debt"}[k]
         labeled.append((name, (block.get("body") or ""),
                         {"anchor": anchor, "field": field}))
     for i, seg in enumerate(c.get("segments") or [], 1):

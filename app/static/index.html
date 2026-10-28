@@ -2477,8 +2477,13 @@ function renderDraft(){
       <div class="doc-h first">1、基本情况</div>
       ${ta("basic", d.basic_info)}
     </div>
+    <div class="blk" id="blk-industry">
+      <div class="doc-h first">2、行业情况</div>
+      ${ta("in-lead lead", c.industry && c.industry.lead)}
+      ${ta("in-body", c.industry && c.industry.body)}
+    </div>
     <div class="blk" id="blk-overview">
-      <div class="doc-h first">2、点评</div>
+      <div class="doc-h first">3、点评</div>
       ${ta("ov-lead lead", c.overview && c.overview.lead)}
       ${ta("ov-body", c.overview && c.overview.body)}`;
 
@@ -2684,6 +2689,10 @@ const CK_RULES = [
   [/正面不足/, "正面不足 3 条", "blk-pos"],
   [/关注不足/, "关注不足 3 条", "blk-con"],
   [/总述段缺加粗汇总句/, "总述段缺加粗句", "blk-overview"],
+  [/缺行业情况段/, "缺行业情况段", "blk-industry"],
+  [/行业情况偏薄|行业段没有数据/, "行业情况", "blk-industry"],
+  [/缺注册资本|缺注册资本\/实收资本/, "注册资本与实收资本", "blk-basic"],
+  [/写了没有变化的事/, "没有变化的事", "blk-basic"],
   [/正文偏短/, "正文偏短", "d-doc"],
   [/正文偏长/, "正文偏长", "d-doc"],
 ];
@@ -2692,6 +2701,7 @@ const WHERE_RULES = [
   [/关注/, "blk-con"], [/正面/, "blk-pos"], [/点评|总述/, "blk-overview"],
   [/分部|板块|业务/, "blk-segments"], [/资产/, "blk-asset"],
   [/盈利|利润|亏损|毛利/, "blk-profit"],
+  [/行业情况|行业景气|供需/, "blk-industry"],
   [/债务|负债|有息/, "blk-debt"], [/基本/, "blk-basic"],
   [/专题/, "blk-topics"], [/财务|表/, "blk-fintable"],
 ];
@@ -2777,9 +2787,9 @@ function fieldForWhere(w){
   return "";
 }
 function fieldForAnchor(a){
-  return { "blk-basic": "basic", "blk-overview": "ov", "blk-asset": "as",
-    "blk-profit": "pf", "blk-debt": "db", "blk-segments": "seg",
-    "blk-topics": "topic" }[a] || "";
+  return { "blk-basic": "basic", "blk-industry": "in", "blk-overview": "ov",
+    "blk-asset": "as", "blk-profit": "pf", "blk-debt": "db",
+    "blk-segments": "seg", "blk-topics": "topic" }[a] || "";
 }
 function ckItems(v){
   if((v.issue_items || []).length){
@@ -3016,6 +3026,7 @@ function ckFieldEl(field, seg){
   if(field === "pos") return document.querySelectorAll("#d-pos .ta")[Math.max(0, seg - 1)] || null;
   if(field === "con") return document.querySelectorAll("#d-con .ta")[Math.max(0, seg - 1)] || null;
   if(field === "table") return document.getElementById("blk-fintable");
+  if(field === "in") return document.querySelector(".ta.in-body") || document.querySelector(".ta.in-lead");
   if(field === "ov") return document.querySelector(".ta.ov-body") || document.querySelector(".ta.ov-lead");
   if(field === "as") return document.querySelector(".ta.as-body") || document.querySelector(".ta.as-lead");
   if(field === "pf") return document.querySelector(".ta.pf-body") || document.querySelector(".ta.pf-lead");
@@ -3029,6 +3040,8 @@ function ckTextFields(){
   push(document.querySelector(".ta.basic"), "basic", "基本情况");
   // 加粗句也要进候选池：主语类问题瞄准的就是加粗句，
   // 只收 body 的话，引文在加粗句里就搜不到，点了没反应。
+  push(document.querySelector(".ta.in-lead"), "in-lead", "行业情况加粗句");
+  push(document.querySelector(".ta.in-body"), "in", "行业情况");
   push(document.querySelector(".ta.ov-lead"), "ov-lead", "总述段加粗句");
   push(document.querySelector(".ta.ov-body"), "ov", "总述段");
   push(document.querySelector(".ta.as-lead"), "as-lead", "资产段加粗句");
@@ -3802,6 +3815,8 @@ function collectDraft(){
   d.positive = [...document.querySelectorAll(".it-pos")].map(t => t.value.trim()).filter(Boolean);
   d.concern = [...document.querySelectorAll(".it-con")].map(t => t.value.trim()).filter(Boolean);
   d.basic_info = $(".ta.basic").value.trim();
+  d.commentary.industry = { lead: $(".ta.in-lead") ? $(".ta.in-lead").value.trim() : "",
+                            body: $(".ta.in-body") ? $(".ta.in-body").value.trim() : "" };
   d.commentary.overview = { lead: $(".ta.ov-lead").value.trim(), body: $(".ta.ov-body").value.trim() };
   d.commentary.segments = [...document.querySelectorAll("#d-segs .seg")].map(s => {
     const line = s.querySelector(".seg-line");
