@@ -972,9 +972,8 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
   <span class="sep"></span>
   <button class="usage" id="lockBtn" onclick="logout()" title="退出，重新需要口令">锁定</button>
   <span class="sep"></span>
-  <a href="docs/template-v1.1.html" target="_blank">模板</a>
-  <span class="sep"></span>
-  <a href="docs/method-v1.1.html" target="_blank">方法论</a>
+  <a href="docs/wiki.html" id="docLink" target="_blank"
+     title="方法论与模板：报告骨架、四步写法、摘要怎么抽、程序替你查了什么">方法论</a>
 </header>
 
 <div class="wrap">
@@ -1231,6 +1230,14 @@ async function probeBase(base){
     return !!(d && d.ok);
   }catch(e){ return false; }
 }
+
+/* 顶栏的文档链接：站内相对路径，云端必须带 sharecode，
+   否则网关回 403——看着像链接坏了。 */
+(function fixDocLink(){
+  const a = document.getElementById("docLink");
+  if(!a) return;
+  a.href = withShare(a.getAttribute("href"));
+})();
 
 async function resolveApiBase(){
   if((localStorage.getItem("apiBase") || "").trim()) return;   // 用户手填的优先
