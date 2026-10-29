@@ -162,7 +162,9 @@ def build(password: str | None = None, new_pw: bool = False) -> None:
         "LLM_API_KEY": m["apiKey"],
         "LLM_MODEL": m["id"],
         "LLM_MAX_INPUT": str(m.get("maxInputTokens") or 131072),
-        "LLM_MAX_OUTPUT": str(m.get("maxOutputTokens") or 8192),
+        # 输出上限别回落到 8192：一份报告的 JSON 实测要 7800 上下 token，
+        # 8192 只剩几百余量，材料稍多就截断，表现为「JSON 无法解析」。
+        "LLM_MAX_OUTPUT": str(m.get("maxOutputTokens") or 32000),
     }
     env.update(smtp())
     env.update(smtp())

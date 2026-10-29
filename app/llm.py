@@ -39,7 +39,7 @@ def _file_model() -> dict | None:
     return {"id": d["model"], "name": d["model"], "vendor": "custom",
             "url": d["url"], "apiKey": d["apiKey"],
             "maxInputTokens": int(d.get("maxInput") or 131072),
-            "maxOutputTokens": int(d.get("maxOutput") or 8192)}
+            "maxOutputTokens": int(d.get("maxOutput") or 32000)}
 
 
 def _env_model() -> dict | None:
@@ -48,7 +48,10 @@ def _env_model() -> dict | None:
         return None
     return {"id": mid, "name": mid, "vendor": "env", "url": url, "apiKey": key,
             "maxInputTokens": int(os.environ.get("LLM_MAX_INPUT") or 131072),
-            "maxOutputTokens": int(os.environ.get("LLM_MAX_OUTPUT") or 8192)}
+            # 输出上限别给 8192：一份报告的 JSON（正文 + 摘要两个池 + 两张表 +
+            # data_notes + sources）实测就要 7800 上下 token，8192 只剩几百的余量，
+            # 材料稍多就顶到上限被截断，表现为「模型输出的 JSON 无法解析」。
+            "maxOutputTokens": int(os.environ.get("LLM_MAX_OUTPUT") or 32000)}
 
 
 # 适合长文写作的偏好顺序（上下文大、中文好、性价比高）。
@@ -322,6 +325,21 @@ def _get_model(model_id: str) -> dict:
     raise RuntimeError(f"未找到模型 {model_id}")
 
 
+def context_limit(model_id: str | None = None) -> int:
+    """这个模型能吃多少输入 token。取不到就给个保守值，调用方据此裁材料。
+
+    单独做成函数，是因为 generate 要在拼提示词之前就知道上限——拼完再发现
+    超了，只能整份重拼，白算一次 8 万字的模板渲染。
+    """
+    try:
+        models = list_models()
+        ids = [m["id"] for m in models]
+        mid = model_id if model_id in ids else pick_default(models)
+        return int(_get_model(mid).get("maxInputTokens") or 131072)
+    except Exception:                                          # noqa: BLE001
+        return 131072
+
+
 def chat(messages: list[dict], model_id: str | None = None, temperature: float = 0.3,
          max_tokens: int = 8000, timeout: int = 600, thinking: bool = False,
          usage_out: dict | None = None) -> str:
@@ -368,7 +386,13 @@ def chat(messages: list[dict], model_id: str | None = None, temperature: float =
                 payload = json.loads(r.read().decode("utf-8", "ignore"))
             choice = payload["choices"][0]
             content = (choice["message"].get("content") or "").strip()
+            finish = choice.get("finish_reason") or ""
             _note_usage([local, LAST_USAGE], m["id"], payload.get("usage"), messages, content)
+            # 截断（finish_reason=length）不在这里抛：半截 JSON 往往只差最后一个
+            # 括号，parse_json 能修回来，直接抛等于把可救的稿子扔掉。
+            # 但要如实记下来，让上层知道「这次可能不全」，好决定要不要重试。
+            local["finish_reason"] = finish
+            LAST_USAGE["finish_reason"] = finish
             if content:
                 if usage_out is not None:
                     usage_out.update(local)
@@ -376,7 +400,7 @@ def chat(messages: list[dict], model_id: str | None = None, temperature: float =
             # content 为空：通常是 token 预算被推理耗尽
             usage = payload.get("usage") or {}
             last = RuntimeError(
-                f"模型返回空正文（finish_reason={choice.get('finish_reason')}，"
+                f"模型返回空正文（finish_reason={finish}，"
                 f"tokens={usage.get('completion_tokens')}，"
                 f"其中推理 {usage.get('completion_tokens_details', {}).get('reasoning_tokens')}）"
             )
@@ -395,8 +419,73 @@ def chat(messages: list[dict], model_id: str | None = None, temperature: float =
     raise RuntimeError(f"模型调用失败：{last}")
 
 
+def _scan(t: str, start: int) -> tuple[str, bool]:
+    """从 start 扫到结尾，返回（未闭合的括号栈, 是否停在字符串中间）。
+
+    栈里只放 '{' 与 '['，用于事后补闭括号。
+    """
+    stack: list[str] = []
+    in_str = esc = False
+    for ch in t[start:]:
+        if in_str:
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                in_str = False
+            continue
+        if ch == '"':
+            in_str = True
+        elif ch in "{[":
+            stack.append(ch)
+        elif ch in "}]":
+            if stack:
+                stack.pop()
+    return "".join(stack), in_str
+
+
+def _repair_truncated(t: str, start: int) -> str | None:
+    """把被截断的 JSON 补成能解析的样子。
+
+    输出被 max_tokens 砍断时，模型通常已经写完了正文，只是停在半句或某个
+    字段中间。整份作废太浪费——从尾部往回找最近的「结构边界」（逗号、
+    已闭合的对象/数组），截断到那里再补上剩余括号，多半就能解析。
+    补出来的可能缺尾部字段（sources、data_notes 的后几条），那些由
+    _ensure_structure 补默认值，比让用户重跑一次划算。
+    """
+    stack, in_str = _scan(t, start)
+    if not stack and not in_str:
+        return None                      # 括号本来就闭合，不是截断问题
+    closers = "".join("}" if c == "{" else "]" for c in reversed(stack))
+    body = t[start:]
+    # 从尾部往前找断点，最多试 240 处，避免在超长文本上空转
+    cuts = [i for i, ch in enumerate(body) if ch in ",}]"][-240:]
+    for i in reversed(cuts):
+        head = body[: i + 1].rstrip()
+        if head.endswith(","):
+            head = head[:-1]
+        if not head:
+            continue
+        st2, in2 = _scan(head, 0)
+        if in2:
+            continue                     # 断在字符串里，这个点不能用
+        tail = "".join("}" if c == "{" else "]" for c in reversed(st2))
+        try:
+            json.loads(head + tail)
+            return head + tail
+        except json.JSONDecodeError:
+            continue
+    # 退一步：只补括号，赌它正好断在字段边界上
+    try:
+        json.loads(body + closers)
+        return body + closers
+    except json.JSONDecodeError:
+        return None
+
+
 def parse_json(text: str) -> Any:
-    """从模型输出里抠出 JSON（容忍 ```json 围栏与前后闲话）。"""
+    """从模型输出里抠出 JSON（容忍 ```json 围栏与前后闲话，容忍被截断）。"""
     t = text.strip()
     t = re.sub(r"^```(?:json)?\s*", "", t)
     t = re.sub(r"\s*```$", "", t)
@@ -432,4 +521,11 @@ def parse_json(text: str) -> Any:
                     return json.loads(t[start:i + 1])
                 except json.JSONDecodeError:
                     break
-    raise ValueError("模型输出的 JSON 无法解析")
+    # 走到这里说明 JSON 不完整（多半是被 max_tokens 截断）或中间有非法字符
+    fixed = _repair_truncated(t, start)
+    if fixed is not None:
+        try:
+            return json.loads(fixed)
+        except json.JSONDecodeError:
+            pass
+    raise ValueError("模型输出的 JSON 无法解析（通常是被输出上限截断，或引号/逗号未闭合）")

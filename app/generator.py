@@ -2889,11 +2889,81 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
     if body_len > 5200:
         issues.append(f"正文偏长（约{body_len}字），建议压缩到 4000 字以内")
 
+    # 模型输出撞到长度上限：正文与表格已由残缺修复补齐，但尾部的来源清单、
+    # 补充建议可能少几条。这条不阻断，只让人知道哪里可能不全。
+    if draft.get("truncated"):
+        issues.append("本次模型输出到达长度上限被截断，已自动补齐结构与正文；"
+                      "结尾的 sources（依据清单）与 add_on_sections 可能少几条，"
+                      "需要的话少勾一份材料重生成，或手工补这两处。")
+        issue_items.append({"t": "输出被截断（已自动补齐）", "a": "d-doc", "d": []})
+
     return {"issues": issues, "body_chars": body_len,
             "issue_items": issue_items,          # 结构化，带段/句定位
             "auto_checks": auto_notes,           # 机器已自己核对过的（附算式），仅留痕
             "auto_count": len(auto_ok),
             "rev": VALIDATOR_REV}                # 校验规则版本：变了就要重算存量记录
+
+
+def _est_tokens(chars: int) -> int:
+    """按字符粗估 token。中文实测约 1.6 字 1 token（91,457 字 → 51,923 token），
+    估小了会在 API 侧吃 400，估大了只会白裁材料，所以取保守的 1.6。"""
+    return int(chars / 1.6)
+
+
+def _trim_materials(materials: list[dict], keep: float) -> list[dict]:
+    """按比例截断每份材料的正文。keep=0.6 表示每份只留前 60%。
+
+    截断从尾部切，会切掉财务报表那几页（它们通常在后半部）。所以这条路径
+    只在两种兜底时用：输入超上下文、或输出被截断要重试——那时宁可少几页，
+    也好过整份作废。
+    """
+    out = []
+    for m in materials:
+        t = m.get("text") or ""
+        if not t:
+            out.append(m)
+            continue
+        cut = max(3000, int(len(t) * keep))
+        out.append({**m, "text": t[:cut], "chars": cut})
+    return out
+
+
+def _fit_ratio(prompt_chars: int, mat_chars: int, cap_in: int,
+               reserve_tokens: int = 16000) -> float:
+    """材料该留多少比例，才能连固定开销一起塞进上下文。
+
+    预留 16000 token 给输出：报告 JSON 实测要 7800，留一倍余量，否则输入压到
+    边缘时输出又会被顶住。只裁材料——系统提示词与输出样张是固定的，动不得。
+    """
+    cap = int(cap_in or 131072)
+    budget_chars = max(8000, cap - reserve_tokens) * 1.6
+    if prompt_chars <= budget_chars:
+        return 1.0
+    fixed = max(0, prompt_chars - mat_chars)     # 提示词里不可裁的部分
+    room = budget_chars - fixed
+    if mat_chars <= 0 or room <= 0:
+        return 0.0
+    return max(0.2, min(1.0, room / mat_chars))
+
+
+# 输出被截断后重试时追加的约束：把篇幅压回模板上限，别让它再写超
+RETRY_NOTE = """
+
+【补充要求】上一次输出因超过长度上限被截断，本次请务必压缩：正文总字数控制在 4000 字以内（模板上限），
+positive_pool 与 concern_pool 各不超过 6 条，data_notes 只列正文真正用到的算式，sources 不超过 8 条。
+只输出一个 JSON 对象，不要任何解释文字。"""
+
+
+def _too_incomplete(draft) -> list[str]:
+    """修出来的草稿缺了哪些主干块。缺两个以上就不算修好，该重试。
+
+    被截断的 JSON 能补上括号，但补不回没写出来的段落。若缺的是盈利段与
+    债务段，用户拿到手会看着像「报告没写完」，不如重试一次。
+    """
+    c = (draft.get("commentary") or {}) if isinstance(draft, dict) else {}
+    need = {"overview": "总述段", "asset": "资产段", "profit": "盈利段", "debt": "债务段"}
+    return [v for k, v in need.items()
+            if not ((c.get(k) or {}).get("body") or "").strip()]
 
 
 def generate(facts: dict, materials: list[dict], model_id: str | None = None,
@@ -2902,9 +2972,19 @@ def generate(facts: dict, materials: list[dict], model_id: str | None = None,
     import time
 
     _p(progress, 3, "组装提示词", "合并台账与材料原文")
+    prompt = build_user_prompt(facts, materials)
+    # 输入预算：模型上下文不够时先裁材料，别等 API 回 400 让用户看到一句
+    # 「模型调用失败」。裁的比例写进进度，用户知道这次少给了多少。
+    keep = _fit_ratio(len(SYSTEM_PROMPT) + len(prompt),
+                      sum(len(m.get("text") or "") for m in materials),
+                      llm.context_limit(model_id))
+    if keep < 1.0:
+        materials = _trim_materials(materials, keep)
+        prompt = build_user_prompt(facts, materials)
+        _p(progress, 5, "组装提示词", f"材料超出模型上下文，按 {keep:.0%} 裁剪后重拼")
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": build_user_prompt(facts, materials)},
+        {"role": "user", "content": prompt},
     ]
     chars = sum(len(m.get("text") or "") for m in materials)
     _p(progress, 8, "模型写作中", f"已送入 {len(materials)} 份材料、约 {chars // 1000}k 字")
@@ -2924,7 +3004,7 @@ def generate(facts: dict, materials: list[dict], model_id: str | None = None,
     t0 = time.time()
     used: dict = {}
     try:
-        raw = llm.chat(messages, model_id=model_id, temperature=0.3, max_tokens=12000,
+        raw = llm.chat(messages, model_id=model_id, temperature=0.3, max_tokens=16000,
                        timeout=900, thinking=False, usage_out=used)
     except Exception as e:
         # 失败也记：token 可能已经消耗（超时、空返回），不记会让统计偏低
@@ -2937,6 +3017,13 @@ def generate(facts: dict, materials: list[dict], model_id: str | None = None,
                          seconds=time.time() - t0, chars=chars, ok=False,
                          estimated=bool(used.get("estimated")),
                          note=f"失败：{e}"[:150])
+        # 输出预算被推理吃光是另一种失败形态：模型一个字没写，finish_reason 仍是
+        # length。原样抛「模型返回空正文」用户看不懂，换成能动手的话。
+        if "finish_reason=length" in str(e):
+            raise RuntimeError(
+                "模型这次把输出预算用尽却没写出正文（finish_reason=length）。"
+                "多为材料过多、或模型把预算花在了推理上：请少勾一份材料重试，"
+                "或在设置里换输出上限更大的模型。") from e
         raise
     finally:
         stop.set()
@@ -2944,9 +3031,53 @@ def generate(facts: dict, materials: list[dict], model_id: str | None = None,
     secs = time.time() - t0
 
     _p(progress, 90, "解析结构", "检查 JSON 与字段完整性")
-    draft = llm.parse_json(raw)
+
+    def _parse(raw_text: str):
+        """解析一次；截断修出来的残稿缺块太多时按解析失败处理。"""
+        d = llm.parse_json(raw_text)
+        if isinstance(d, list):
+            d = d[0] if d else {}
+        if used.get("finish_reason") == "length" and len(_too_incomplete(d)) >= 2:
+            raise ValueError("截断修出来的草稿缺 " + "、".join(_too_incomplete(d)))
+        return d
+
+    try:
+        draft = _parse(raw)
+    except ValueError as e:
+        # 修不回来基本只有一个原因：输出到上限被砍断（finish_reason=length）。
+        # 这种不怪模型理解，只怪这次材料多、写出来的 JSON 长——按精简材料
+        # 重试一次，比让用户自己减材料再点一遍强。
+        if used.get("finish_reason") != "length":
+            raise
+        _p(progress, 92, "重新生成", "上次输出达上限被截断，改用精简材料重试")
+        materials2 = _trim_materials(materials, 0.6)
+        used2: dict = {}
+        raw = llm.chat([
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": build_user_prompt(facts, materials2) + RETRY_NOTE},
+        ], model_id=model_id, temperature=0.3, max_tokens=16000, timeout=900,
+            thinking=False, usage_out=used2)
+        for k in ("prompt_tokens", "completion_tokens", "total_tokens", "cached_tokens"):
+            used[k] = used.get(k, 0) + used2.get(k, 0)
+        used["calls"] = used.get("calls", 0) + used2.get("calls", 0)
+        used["model"] = used2.get("model") or used.get("model", "")
+        used["finish_reason"] = used2.get("finish_reason", "")
+        materials = materials2
+        chars = sum(len(m.get("text") or "") for m in materials)
+        secs = time.time() - t0
+        try:
+            draft = _parse(raw)
+        except ValueError:
+            # 第二次仍不完整：把真实原因说清楚，别只丢一句「无法解析」
+            raise RuntimeError(
+                f"模型输出两次都超过长度上限被截断（上限 {used2.get('completion_tokens')} token）。"
+                "本次材料偏多，请少勾一两份（建议先去掉募集说明书或其他公告）再试；"
+                "或在设置里换输出上限更大的模型。") from e
     if isinstance(draft, list):
         draft = draft[0] if draft else {}
+    # 被截断但修回来了：正文与表格齐全，尾部（来源清单、部分补充建议）可能少几条。
+    # 不静默接受——记一个标记，校验里单列一条，让人知道该不该补。
+    draft["truncated"] = (used.get("finish_reason") == "length")
     draft = _ensure_structure(draft, facts)
     # 期次列在这里就排好，而不是等到导出才排：页面上看到的表必须和 Word 里一致，
     # 否则用户改的是「2024年那一列」，导出后它会跑到最右边。
@@ -2982,5 +3113,7 @@ def generate(facts: dict, materials: list[dict], model_id: str | None = None,
         "calls": used.get("calls", 0),
         "seconds": round(secs, 1),
         "estimated": bool(used.get("estimated")),
+        # 排查用：stop=正常结束，length=撞到输出上限（本次靠残缺修复补齐）
+        "finish_reason": used.get("finish_reason", ""),
     }
     return draft
