@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>方法论与模板 · 内评简评报告</title>
-<meta name="description" content="内评简评报告的完整方法论、报告骨架与动态流程图：认料、取数、写正文、提摘要四步，及机器起草时的校验与人工确认。">
+<title>说明与方法 · 内评简评报告</title>
+<meta name="description" content="内评简评报告怎么运行：四步流程、涉及的文件、模板与提示词的结构；详版另讲写作判据、实现链路与核心技术点。">
 <style>
 :root{
   --bg:#fff; --bg2:#fafbfc; --card:#fff; --ink:#111418; --ink2:#4b5563; --muted:#9aa1ac;
@@ -24,19 +24,25 @@
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
 body{margin:0;background:var(--bg);color:var(--ink);
-  font:15px/1.85 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+  font:15px/1.85 -apple-system,BlinkMacSystemFont,"PingFang SC","PingFang SC","Microsoft YaHei",sans-serif;
   -webkit-font-smoothing:antialiased}
 
-/* ── 顶栏 ─────────────────────────────────────── */
+/* ── 顶栏 ── */
 .bar{position:sticky;top:0;z-index:40;background:var(--bar);
   backdrop-filter:saturate(180%) blur(12px);-webkit-backdrop-filter:saturate(180%) blur(12px);
   border-bottom:1px solid var(--line)}
-.barin{max-width:1180px;margin:0 auto;padding:0 24px;height:52px;display:flex;align-items:center;gap:12px}
+.barin{max-width:1180px;margin:0 auto;padding:0 24px;height:52px;display:flex;align-items:center;gap:10px}
 .brand{font-weight:700;font-size:14px;letter-spacing:.2px;white-space:nowrap}
 .brand span{color:var(--muted);font-weight:400;margin-left:7px;font-size:12.5px}
 .spacer{flex:1}
+.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--card);flex:none}
+.seg button{border:0;background:transparent;color:var(--ink2);font:inherit;font-size:12.5px;
+  padding:0 11px;height:28px;cursor:pointer;white-space:nowrap}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button.on{background:var(--ink);color:#fff;font-weight:600}
+[data-theme="dark"] .seg button.on{background:var(--accent);color:#0f1218}
 .search{position:relative}
-.search input{width:210px;height:30px;border:1px solid var(--line);background:var(--card);
+.search input{width:180px;height:30px;border:1px solid var(--line);background:var(--card);
   color:var(--ink);border-radius:8px;padding:0 10px 0 28px;font:inherit;font-size:12.5px;outline:none}
 .search input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent2)}
 .search svg{position:absolute;left:9px;top:8px;width:13px;height:13px;stroke:var(--muted);
@@ -48,7 +54,7 @@ body{margin:0;background:var(--bg);color:var(--ink);
 .prog{height:2px;background:transparent}
 .prog i{display:block;height:2px;width:0;background:var(--accent);transition:width .08s linear}
 
-/* ── 骨架 ─────────────────────────────────────── */
+/* ── 骨架 ── */
 .shell{max-width:1180px;margin:0 auto;padding:0 24px;display:grid;
   grid-template-columns:236px minmax(0,1fr);gap:44px;align-items:start}
 aside{position:sticky;top:52px;max-height:calc(100vh - 52px);overflow-y:auto;
@@ -77,40 +83,38 @@ aside::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
 .toc a.hide{display:none !important}
 .toc.searching a.lv3{display:flex}
 .toc .none{color:var(--muted);padding:6px 10px;font-size:12px}
+aside .hint{color:var(--muted);font-size:11.5px;padding:10px 10px 0;line-height:1.6}
 main{min-width:0;padding:0 0 90px}
 article{max-width:748px}
 
-/* ── 排版 ─────────────────────────────────────── */
-.hero{padding:34px 0 6px;border-bottom:1px solid var(--line);margin-bottom:8px}
-.hero h1{margin:0 0 10px;font-size:27px;line-height:1.35;letter-spacing:-.2px}
-.hero p{margin:0 0 12px;color:var(--ink2);font-size:14.5px}
-.hero .tags{display:flex;flex-wrap:wrap;gap:7px;margin:14px 0 18px}
-.tag{font-size:11.5px;color:var(--ink2);border:1px solid var(--line);border-radius:999px;
-  padding:2.5px 10px;background:var(--bg2)}
-h2{font-size:20px;margin:46px 0 12px;padding-bottom:9px;border-bottom:1px solid var(--line);
+/* ── 排版 ── */
+.hero{padding:30px 0 6px;border-bottom:1px solid var(--line);margin-bottom:6px}
+.hero h1{margin:0 0 8px;font-size:26px;line-height:1.35;letter-spacing:-.2px}
+.hero p{margin:0;color:var(--ink2);font-size:14.5px}
+.view{display:none}
+.view.on{display:block}
+h2{font-size:19px;margin:42px 0 10px;padding-bottom:8px;border-bottom:1px solid var(--line);
   scroll-margin-top:66px;letter-spacing:-.1px}
-h2 .n{color:var(--muted);font-weight:400;margin-right:9px;font-size:17px;font-variant-numeric:tabular-nums}
-h3{font-size:15.8px;margin:30px 0 8px;scroll-margin-top:66px;color:var(--ink)}
-h3 .n{color:var(--muted);font-weight:400;margin-right:7px;font-size:13.5px;font-variant-numeric:tabular-nums}
-p{margin:10px 0}
-ul,ol{margin:10px 0 10px 21px;padding:0}
-li{margin:5px 0}
+h2 .n{color:var(--muted);font-weight:400;margin-right:9px;font-size:16px;font-variant-numeric:tabular-nums}
+h3{font-size:15.5px;margin:26px 0 6px;scroll-margin-top:66px;color:var(--ink)}
+h3 .n{color:var(--muted);font-weight:400;margin-right:7px;font-size:13.2px;font-variant-numeric:tabular-nums}
+p{margin:9px 0}
+ul,ol{margin:9px 0 9px 21px;padding:0}
+li{margin:4px 0}
 li::marker{color:var(--muted)}
 strong{font-weight:650}
 a{color:var(--accent)}
 code{background:var(--line2);padding:1.5px 5px;border-radius:4px;font-family:var(--mono);
-  font-size:12.6px;color:var(--ink);border:1px solid var(--line)}
-kbd{font-family:var(--mono);font-size:11.5px;border:1px solid var(--line);border-bottom-width:2px;
-  border-radius:4px;padding:0 4px;color:var(--ink2)}
-hr{border:0;border-top:1px solid var(--line);margin:34px 0}
+  font-size:12.4px;color:var(--ink);border:1px solid var(--line)}
+hr{border:0;border-top:1px solid var(--line);margin:30px 0}
 
 /* 引文 / 提示块 */
-.quote{margin:14px 0;padding:10px 15px;border-left:3px solid var(--accent);
-  background:var(--bg2);color:var(--ink2);font-size:14px;border-radius:0 6px 6px 0}
+.quote{margin:12px 0;padding:9px 14px;border-left:3px solid var(--accent);
+  background:var(--bg2);color:var(--ink2);font-size:13.8px;border-radius:0 6px 6px 0}
 .quote b{color:var(--ink)}
-.note{margin:14px 0;padding:11px 15px;border:1px solid var(--line);border-radius:9px;
-  background:var(--bg2);font-size:13.8px;color:var(--ink2)}
-.note .h{display:block;color:var(--ink);font-weight:650;margin-bottom:3px}
+.note{margin:12px 0;padding:10px 14px;border:1px solid var(--line);border-radius:9px;
+  background:var(--bg2);font-size:13.4px;color:var(--ink2)}
+.note .h{display:block;color:var(--ink);font-weight:650;margin-bottom:2px;font-size:13.2px}
 .note.warn{border-color:#eadfc0;background:var(--amber2)}
 [data-theme="dark"] .note.warn{border-color:#3d3423}
 .note.bad{border-color:#efd6d1;background:var(--red2)}
@@ -119,22 +123,22 @@ hr{border:0;border-top:1px solid var(--line);margin:34px 0}
 [data-theme="dark"] .note.good{border-color:#24382a}
 
 /* 表格 */
-.tw{overflow-x:auto;margin:14px 0;border:1px solid var(--line);border-radius:10px}
-table{border-collapse:collapse;width:100%;font-size:13.4px;background:var(--card)}
-th,td{padding:9px 12px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
-th{background:var(--bg2);font-weight:650;font-size:12.8px;color:var(--ink2);white-space:nowrap}
+.tw{overflow-x:auto;margin:12px 0;border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:13.2px;background:var(--card)}
+th,td{padding:8px 11px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
+th{background:var(--bg2);font-weight:650;font-size:12.6px;color:var(--ink2);white-space:nowrap}
 tr:last-child td{border-bottom:0}
-td code{font-size:12px}
-.tbl-cap{font-size:12px;color:var(--muted);margin:-6px 0 16px}
+td code{font-size:11.8px}
+.tbl-cap{font-size:11.8px;color:var(--muted);margin:-4px 0 14px;line-height:1.7}
 
-/* ── 图 ───────────────────────────────────────── */
-.fig{margin:20px 0 22px;border:1px solid var(--line);border-radius:12px;background:var(--bg2);
-  padding:16px 16px 12px;box-shadow:var(--sh)}
+/* ── 图 ── */
+.fig{margin:18px 0 20px;border:1px solid var(--line);border-radius:12px;background:var(--bg2);
+  padding:15px 15px 11px;box-shadow:var(--sh)}
 .figbody{overflow-x:auto;overflow-y:hidden;scrollbar-width:thin}
 .figbody::-webkit-scrollbar{height:6px}
 .figbody::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
 .fig svg{display:block;width:100%;height:auto;overflow:visible}
-.cap{font-size:12px;color:var(--muted);text-align:center;margin-top:8px;line-height:1.6}
+.cap{font-size:11.8px;color:var(--muted);text-align:center;margin-top:7px;line-height:1.6}
 .cap b{color:var(--ink2);font-weight:600}
 
 /* 主流程图 */
@@ -147,35 +151,32 @@ td code{font-size:12px}
 .fnode.on rect{stroke:var(--accent);stroke-width:1.8;fill:var(--accent2)}
 .farrow{stroke:var(--accent);stroke-width:1.5;fill:none;stroke-dasharray:4 5;opacity:.85;
   animation:dashflow 1.3s linear infinite}
-.farrow.slow{animation-duration:2s}
 @keyframes dashflow{to{stroke-dashoffset:-18}}
 
 /* 骨架树 */
-.tree{font-size:13.4px;line-height:1.55}
-.tr-row{display:flex;align-items:stretch;gap:0}
+.tree{font-size:13.2px;line-height:1.55}
+.tr-row{display:flex;align-items:stretch}
 .tr-left{width:132px;flex:none;text-align:right;padding:6px 12px 6px 0;color:var(--ink2);
   font-weight:600;border-right:1px solid var(--line)}
 .tr-right{flex:1;padding:6px 0 6px 14px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
-.tr-main{background:var(--card);border:1px solid var(--line);border-radius:7px;padding:4px 10px;
-  color:var(--ink);white-space:nowrap;font-size:12.8px}
+.tr-main{background:var(--card);border:1px solid var(--line);border-radius:7px;padding:3px 9px;
+  color:var(--ink);white-space:nowrap;font-size:12.6px}
 .tr-main.lead{border-color:var(--accent);color:var(--accent);background:var(--accent2);font-weight:600}
 .tr-sep{color:var(--muted);font-size:11px}
 .tr-sub{color:var(--muted);font-size:11.5px;width:100%;padding-left:2px;margin-top:-2px}
 
-/* 双路径对比 */
-/* minmax(0,1fr)：默认的 auto 列最小宽是 max-content，
-   里面一句 nowrap 的长句就能把整块撑出屏幕（手机实测 641px 撑破 320px 容器）。 */
-.two{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;margin:4px 0}
-.path{min-width:0;border:1px solid var(--line);border-radius:10px;padding:11px 13px;background:var(--card)}
+/* 双路径对比 —— 列最小宽必须 minmax(0,1fr)，
+   否则里面一句 nowrap 的长句会把整块撑出屏幕。 */
+.two{display:grid;grid-template-columns:minmax(0,1fr);gap:9px;margin:4px 0}
+.path{min-width:0;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--card)}
 .path.no{border-color:#efd6d1}
 [data-theme="dark"] .path.no{border-color:#3d2723}
 .path.yes{border-color:#cfe6d6}
 [data-theme="dark"] .path.yes{border-color:#24382a}
-.path .h{font-size:12.5px;font-weight:650;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.path .h{font-size:12.4px;font-weight:650;margin-bottom:7px;display:flex;align-items:center;gap:6px}
 .path.no .h{color:var(--red)}
 .path.yes .h{color:var(--ok)}
 .chain{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:12.4px;color:var(--ink2);min-width:0}
-/* 不 nowrap：长句在窄屏里换行，好过整块横向撑破页面 */
 .chain i{font-style:normal;background:var(--bg2);border:1px solid var(--line);border-radius:6px;
   padding:2.5px 8px;line-height:1.6}
 .chain .ar{color:var(--muted);font-size:11px}
@@ -193,30 +194,55 @@ td code{font-size:12px}
 .loop .nd.on rect{stroke:var(--accent);fill:var(--accent2)}
 
 /* 分节说明卡 */
-.stepcard{margin:12px 0 0;border:1px solid var(--line);border-radius:10px;background:var(--card);
-  padding:12px 15px;min-height:86px}
-.stepcard .st{font-size:13px;font-weight:650;color:var(--accent);margin-bottom:4px}
-.stepcard .sb{font-size:13.4px;color:var(--ink2);line-height:1.75}
+.stepcard{margin:11px 0 0;border:1px solid var(--line);border-radius:10px;background:var(--card);
+  padding:11px 14px;min-height:80px}
+.stepcard .st{font-size:12.8px;font-weight:650;color:var(--accent);margin-bottom:3px}
+.stepcard .sb{font-size:13.2px;color:var(--ink2);line-height:1.75}
 .stepcard .sb b{color:var(--ink)}
 
+/* 文件树 */
+/* 文件树按等宽字体的空格对齐，必须保留换行：
+   不写 white-space:pre，<div> 里的换行会被折叠成空格，整棵树挤成一段。 */
+.ftree{font-family:var(--mono);font-size:12.4px;line-height:1.9;background:var(--bg2);
+  border:1px solid var(--line);border-radius:10px;padding:12px 14px;overflow-x:auto;margin:12px 0;
+  white-space:pre}
+.ftree b{color:var(--ink);font-weight:650}
+.ftree i{color:var(--muted);font-style:normal}
+.ftree .c{color:var(--muted)}
+
 /* 检查清单 */
-.chk{list-style:none;margin:12px 0;padding:0;counter-reset:c}
-.chk li{counter-increment:c;position:relative;padding:7px 0 7px 30px;border-bottom:1px dashed var(--line);
-  font-size:13.8px}
+.chk{list-style:none;margin:10px 0;padding:0;counter-reset:c}
+.chk li{counter-increment:c;position:relative;padding:6px 0 6px 28px;border-bottom:1px dashed var(--line);
+  font-size:13.4px}
 .chk li:last-child{border-bottom:0}
-.chk li::before{content:counter(c);position:absolute;left:0;top:8px;width:19px;height:19px;
-  border-radius:50%;background:var(--accent2);color:var(--accent);font-size:11px;font-weight:700;
+.chk li::before{content:counter(c);position:absolute;left:0;top:7px;width:18px;height:18px;
+  border-radius:50%;background:var(--accent2);color:var(--accent);font-size:10.5px;font-weight:700;
   display:flex;align-items:center;justify-content:center}
 
+/* 简版每节的开头一句 */
+.lead-in{font-size:14.2px;color:var(--ink);margin:8px 0 10px}
+.lead-in b{color:var(--ink)}
+
+/* 简版末尾的详版入口 */
+.gate{margin:36px 0 0;padding:16px 18px;border:1px solid var(--line);border-radius:12px;
+  background:var(--bg2);display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.gate .g1{flex:1;min-width:210px;font-size:13.4px;color:var(--ink2);line-height:1.7}
+.gate .g1 b{display:block;color:var(--ink);font-size:13.8px;margin-bottom:2px}
+.gate .g2{flex:none}
+.gbtn{border:1px solid var(--ink);background:var(--ink);color:#fff;border-radius:8px;
+  height:32px;padding:0 14px;font:inherit;font-size:12.8px;cursor:pointer;font-weight:600}
+[data-theme="dark"] .gbtn{background:var(--accent);border-color:var(--accent);color:#0f1218}
+.gbtn:hover{opacity:.88}
+
 /* 页脚导航 */
-.pager{display:flex;justify-content:space-between;gap:12px;margin-top:44px;
-  padding-top:20px;border-top:1px solid var(--line)}
+.pager{display:flex;justify-content:space-between;gap:12px;margin-top:40px;
+  padding-top:18px;border-top:1px solid var(--line)}
 .pager a{flex:1;text-decoration:none;color:var(--ink2);border:1px solid var(--line);
-  border-radius:9px;padding:10px 13px;font-size:13px;background:var(--card);transition:border-color .15s}
+  border-radius:9px;padding:9px 12px;font-size:12.8px;background:var(--card);transition:border-color .15s}
 .pager a:hover{border-color:var(--accent);color:var(--ink)}
 .pager a span{display:block;font-size:11px;color:var(--muted);margin-bottom:2px}
 .pager a.r{text-align:right}
-.foot{margin-top:34px;font-size:12px;color:var(--muted);line-height:1.9}
+.foot{margin-top:30px;font-size:11.8px;color:var(--muted);line-height:1.9}
 .foot a{color:var(--muted);text-decoration:none;border-bottom:1px solid var(--line)}
 .foot a:hover{color:var(--ink)}
 
@@ -228,29 +254,33 @@ mark.s{background:#fff3b8;color:inherit;padding:0 1px;border-radius:2px}
   box-shadow:var(--sh);display:none;align-items:center;justify-content:center;font-size:15px;z-index:30}
 .toTop.show{display:flex}
 
+/* 断点必须写在基础规则之后：同权重下顺序即优先级 */
 @media(max-width:920px){
   .shell{grid-template-columns:1fr;gap:0;padding:0 18px}
-  aside{position:static;max-height:none;padding:14px 0 6px;border-bottom:1px solid var(--line);
-    margin-bottom:8px;overflow:visible}
+  aside{position:static;max-height:none;padding:12px 0 6px;border-bottom:1px solid var(--line);
+    margin-bottom:6px;overflow:visible}
   aside.close .toc{display:none}
   .toc-t{display:flex;justify-content:space-between;align-items:center;padding-left:0;cursor:pointer}
   .toc-t::after{content:"展开";font-size:11px;color:var(--accent);letter-spacing:0;text-transform:none}
   aside.open .toc-t::after{content:"收起"}
   .toc{display:none}
   aside.open .toc{display:block}
-  .hero{padding-top:22px}
-  .hero h1{font-size:22px}
-  h2{font-size:18px}
-  .tr-left{width:96px;font-size:12.5px}
-  .search input{width:130px}
-  /* 手机上把流程图的文字缩到 7px 就没法看了：保一个最小宽度，
-     让图横向滚动，宁可滚一下也不要读不清 */
+  .hero{padding-top:20px}
+  .hero h1{font-size:21px}
+  h2{font-size:17.5px}
+  .tr-left{width:96px;font-size:12.3px}
+  .search input{width:104px}
+  /* 手机上把流程图文字缩到 7px 等于没法看：保最小宽度让它横向滚动 */
   .figbody svg{min-width:540px}
-  .barin{padding:0 14px;gap:8px}
+  .barin{padding:0 12px;gap:7px}
   .brand span{display:none}
+  .seg button{padding:0 9px}
+}
+@media(max-width:520px){
+  .search{display:none}
 }
 @media print{
-  .bar,aside,.pager,.toTop{display:none}
+  .bar,aside,.pager,.toTop,.gate{display:none}
   .shell{display:block;max-width:none;padding:0}
   article{max-width:none}
   .fig,.note,.quote{break-inside:avoid}
@@ -261,11 +291,15 @@ mark.s{background:#fff3b8;color:inherit;padding:0 1px;border-radius:2px}
 
 <div class="bar">
   <div class="barin">
-    <div class="brand">方法论与模板<span>内评简评报告 · v8.1</span></div>
+    <div class="brand">说明与方法<span>内评简评报告 · v8.3</span></div>
     <div class="spacer"></div>
+    <div class="seg" id="seg">
+      <button data-v="brief" class="on">简版</button>
+      <button data-v="full">详版</button>
+    </div>
     <div class="search">
       <svg viewBox="0 0 16 16"><circle cx="6.8" cy="6.8" r="4.6"/><path d="M10.4 10.4L14 14"/></svg>
-      <input id="q" type="search" placeholder="搜索本节内容" autocomplete="off">
+      <input id="q" type="search" placeholder="搜索" autocomplete="off">
     </div>
     <button class="tbtn" id="theme" title="切换明暗">深色</button>
     <button class="tbtn" id="home" title="回到工作台">工作台</button>
@@ -277,227 +311,127 @@ mark.s{background:#fff3b8;color:inherit;padding:0 1px;border-radius:2px}
   <aside id="side">
     <div class="toc-t" id="tocT">目录</div>
     <nav class="toc" id="toc"></nav>
+    <div class="hint" id="tocHint"></div>
   </aside>
   <main>
     <article id="art">
       <div class="hero">
-        <h1>把外部材料变成一份能上会的内部简评</h1>
-        <p>这一页是方法与模板的合并版：报告骨架、四步写法、摘要怎么抽、机器起草时程序替你查了什么，都在这里。原来分开的「模板」与「方法论」两个页面由本页取代。</p>
-        <div class="tags">
-          <span class="tag">四步：认料 → 取数 → 写正文 → 提摘要</span>
-          <span class="tag">正文三节：基本情况 / 行业情况 / 点评</span>
-          <span class="tag">摘要从正文倒抽</span>
-          <span class="tag">判断落在机制上，不落在标签上</span>
-        </div>
+        <h1>外部材料怎么变成一份能上会的内部简评</h1>
+        <p>简版讲它怎么跑、文件在哪、模板与提示词是什么样；详版讲写作判据、实现链路与技术点。</p>
       </div>
-      
-<h2><span class="n">一</span>方法总览：四步，顺序不能颠倒</h2>
 
-<p>这套方法解决一件事：手上只有外部的评级报告、募集说明书、审计报告或结构化数据，怎样稳定地写出一份内部简评——数据不出错、判断有落点、正面与关注能立得住。</p>
+      <!-- ═══════════════ 简版 ═══════════════ -->
+      <div class="view on" id="v-brief">
 
-<p>四步是 <strong>认料 → 取数 → 写正文 → 提摘要</strong>。顺序不能换，尤其「提摘要」必须放在正文之后：摘要是正文成型后从正文里抽出来的，不是先想好三条优点三条缺点再回头找材料填。反过来做，摘要与正文必然两层皮——摘要讲宏观印象，正文讲具体事实，两者对不上，评审第一眼就能看出来。</p>
+<h2><span class="n">一</span>四个步骤，顺序固定</h2>
+
+<p class="lead-in">认料 → 取数 → 写正文 → <b>提摘要</b>。最后一步在正文定稿之后做：摘要是从正文里抽出来的，不是先想好三条优点再回头找材料填。顺序一倒，摘要讲印象、正文讲事实，两层对不上。</p>
 
 <div class="fig">
   <div class="figbody">
-  <svg viewBox="0 0 680 130" role="img" aria-label="四步流程：认料、取数、写正文、提摘要">
+  <svg viewBox="0 0 680 122" role="img" aria-label="四步流程：认料、取数、写正文、提摘要">
     <g class="fnode" data-k="s0">
-      <text x="20" y="38" class="t3">01</text>
-      <rect x="20" y="46" width="124" height="56" rx="9"/>
-      <text x="82" y="72" class="t1" text-anchor="middle">认料</text>
-      <text x="82" y="88" class="t2" text-anchor="middle">手里有什么</text>
+      <text x="20" y="34" class="t3">01</text>
+      <rect x="20" y="42" width="124" height="56" rx="9"/>
+      <text x="82" y="68" class="t1" text-anchor="middle">认料</text>
+      <text x="82" y="84" class="t2" text-anchor="middle">手里有什么</text>
     </g>
-    <path class="farrow" d="M144 74 H180" marker-end="url(#ah)"/>
+    <path class="farrow" d="M144 70 H180" marker-end="url(#ah)"/>
     <g class="fnode" data-k="s1">
-      <text x="184" y="38" class="t3">02</text>
-      <rect x="184" y="46" width="124" height="56" rx="9"/>
-      <text x="246" y="72" class="t1" text-anchor="middle">取数</text>
-      <text x="246" y="88" class="t2" text-anchor="middle">期次 · 单位 · 口径</text>
+      <text x="184" y="34" class="t3">02</text>
+      <rect x="184" y="42" width="124" height="56" rx="9"/>
+      <text x="246" y="68" class="t1" text-anchor="middle">取数</text>
+      <text x="246" y="84" class="t2" text-anchor="middle">期次 · 单位 · 口径</text>
     </g>
-    <path class="farrow" d="M308 74 H344" marker-end="url(#ah)"/>
+    <path class="farrow" d="M308 70 H344" marker-end="url(#ah)"/>
     <g class="fnode" data-k="s2">
-      <text x="348" y="38" class="t3">03</text>
-      <rect x="348" y="46" width="124" height="56" rx="9"/>
-      <text x="410" y="72" class="t1" text-anchor="middle">写正文</text>
-      <text x="410" y="88" class="t2" text-anchor="middle">一段一条因果链</text>
+      <text x="348" y="34" class="t3">03</text>
+      <rect x="348" y="42" width="124" height="56" rx="9"/>
+      <text x="410" y="68" class="t1" text-anchor="middle">写正文</text>
+      <text x="410" y="84" class="t2" text-anchor="middle">一段一条因果链</text>
     </g>
-    <path class="farrow" d="M472 74 H508" marker-end="url(#ah)"/>
+    <path class="farrow" d="M472 70 H508" marker-end="url(#ah)"/>
     <g class="fnode" data-k="s3">
-      <text x="512" y="38" class="t3">04</text>
-      <rect x="512" y="46" width="124" height="56" rx="9"/>
-      <text x="574" y="72" class="t1" text-anchor="middle">提摘要</text>
-      <text x="574" y="88" class="t2" text-anchor="middle">从正文倒抽</text>
+      <text x="512" y="34" class="t3">04</text>
+      <rect x="512" y="42" width="124" height="56" rx="9"/>
+      <text x="574" y="68" class="t1" text-anchor="middle">提摘要</text>
+      <text x="574" y="84" class="t2" text-anchor="middle">从正文倒抽</text>
     </g>
     <defs>
       <marker id="ah" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
-        <path d="M0 0 L7 3.5 L0 7 z" fill="currentColor" class="t3" style="fill:var(--accent)"/>
+        <path d="M0 0 L7 3.5 L0 7 z" style="fill:var(--accent)"/>
       </marker>
     </defs>
   </svg>
   </div>
   <div class="stepcard" id="stepcard"></div>
-  <div class="cap"><b>点一下节点</b>看这一步要守什么 · 虚线是流动方向，前三步顺推、第四步回头抽</div>
+  <div class="cap"><b>点节点</b>看这一步守什么 · 虚线是流向：前三步顺推，第四步回头抽</div>
 </div>
 
-<h3><span class="n">1.1</span>三个产出，各管一段</h3>
+<div class="quote">
+判断一句话该不该写，看两条：能不能追到<b>一个可核实的数</b>，以及<b>这个数到偿债含义的那一步</b>。缺一条就不写。删掉的只是字数，判断力不减。
+</div>
+
+<h2><span class="n">二</span>一次生成经过哪几步</h2>
+
+<p class="lead-in">工作台把四步串成一条链路，每步有独立进度与产出。材料只解析一次，草稿、附件、导出读的是同一份数据。</p>
 
 <div class="tw">
 <table>
-<thead><tr><th>产出</th><th>管什么</th><th>它不管什么</th></tr></thead>
+<thead><tr><th>步</th><th>程序做的事</th><th>产出</th><th>耗时</th></tr></thead>
 <tbody>
-<tr><td>报告骨架<br><code>01_模板/*.json</code> <code>*.docx</code></td><td>章节顺序、槽位、字数区间、哪几段加粗、表格列与行项规则</td><td>具体某个主体该写什么——那由它的材料决定</td></tr>
-<tr><td>方法（本页）</td><td>材料怎么变成文字：取数规则、每段怎么走、摘要怎么抽、哪些话不许写</td><td>主体的实际数据</td></tr>
-<tr><td>工作台 <code>app/</code></td><td>取数、填表、按骨架拼装段落、生成后校验、导出 Word</td><td>判断本身——判断仍由人定，程序只把没落到实处的地方指出来</td></tr>
+<tr><td>检索</td><td>一次宽查询取回最近 120 条公告，本地分成四类并去重、滤掉程序性公告</td><td>四类材料清单</td><td>3–8 秒</td></tr>
+<tr><td>读取</td><td>逐份下载 PDF，按类别决定摘录策略，压到 3.2／2.6／1.4／0.6 万字符</td><td>摘录文本 + 页数</td><td>每份 10–40 秒</td></tr>
+<tr><td>生成</td><td>模板骨架 + 事实台账 + 材料原文拼成提示词，模型按 JSON 结构输出</td><td>正文、摘要、两张表</td><td>30–90 秒</td></tr>
+<tr><td>清洗</td><td>无损改写：删来源交代语、去重复句、合并粘连句、补千分位，不动判断</td><td>可读的正文</td><td>1–2 秒</td></tr>
+<tr><td>校验</td><td>数字溯源、表格逐格、结构写法、措辞主语四类自动检查</td><td>待核对清单</td><td>2–5 秒</td></tr>
+<tr><td>导出</td><td>按 <code>docx_writer</code> 的排版参数生成 Word；可另出两份文本附件</td><td>.docx + 打包 zip</td><td>1–3 秒</td></tr>
+</tbody>
+</table>
+</div>
+<div class="tbl-cap">生成之后人可以逐段改，改的是同一份草稿；导出、打包、发邮件都读它，不会出现「屏幕上一版、Word 里另一版」。</div>
+
+<h2><span class="n">三</span>涉及哪些文件</h2>
+
+<p class="lead-in">四块：模板定报告结构，提示词定怎么写，工作台执行前两件事，站点放给人看的说明。四处必须一致——改了提示词不改校验，就会出现「页面写一套、程序跑另一套」。</p>
+
+<div class="ftree">
+<b>01_模板/</b>            <i>骨架：.docx 是版式，.json 是槽位与参数</i>
+<b>02_方法/</b>            <i>写作方法（本页详版的文字底稿）</i>
+<b>03_示例/</b>            <i>样例报告</i>
+<b>app/</b>
+  <b>generator.py</b>      <i>← 提示词与校验都在这里（系统提示词 1.0 万字、46 条规则）</i>
+  <b>server.py</b>         <i>HTTP 接口、四步编排、摘录预算</i>
+  <b>facts.py</b>          <i>财汇检索与四类材料分类、去重</i>
+  <b>pdf_text.py</b>       <i>PDF 下载、按页打分与摘录</i>
+  <b>llm.py</b>            <i>模型清单、探活、调用与用量</i>
+  <b>docx_writer.py</b>    <i>按模板排版生成 Word</i>
+  <b>updater.py</b> + <b>revision.py</b>  <i>更新模式：修订清单与 Word 修订标记</i>
+  <b>analysis.py</b>       <i>两份分析附件（债券清单、财务专项指标）</i>
+  <b>history.py</b> / <b>state_store.py</b>  <i>生成历史 / 会话快照</i>
+  <b>auth.py</b> <b>mailer.py</b> <b>usage.py</b> <b>jobs.py</b> <i>口令、邮件、用量、后台任务</i>
+  <b>static/index.html</b> <i>前端（单文件，改前端只改它）</i>
+<b>site/</b>               <i>站点：本页、版本快照</i>
+<b>output/</b>             <i>导出的 Word</i>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>文件</th><th>改了它，什么会变</th></tr></thead>
+<tbody>
+<tr><td><code>01_模板/*.json</code></td><td>章节槽位、字数区间、表格行项规则、排版参数（楷体小四、行距 1.15、首行缩进 2 字符）</td></tr>
+<tr><td><code>generator.py</code> 的 <code>SYSTEM_PROMPT</code></td><td>模型怎么写：每段的句式、哪些话不许写、自算值怎么交底</td></tr>
+<tr><td><code>generator.py</code> 的 <code>validate()</code></td><td>生成后查什么。新增一条校验要同时往 <code>issue_items</code> 塞定位，否则前端只能跳到段落</td></tr>
+<tr><td><code>facts.py</code> 的 <code>classify_material()</code></td><td>哪些公告进清单、归到哪一类</td></tr>
+<tr><td><code>server.py</code> 的 <code>BUDGET_BY_KIND</code></td><td>每类材料送进提示词多少字</td></tr>
+<tr><td><code>static/index.html</code></td><td>页面的一切：布局、编辑器、待核对面板、导出面板</td></tr>
 </tbody>
 </table>
 </div>
 
-<div class="note">
-<span class="h">一句话概括三者的关系</span>
-骨架规定「写在哪」，方法规定「怎么写」，工作台把前两件事自动执行一遍，并把执行不了的地方列出来给人。
-</div>
+<h2><span class="n">四</span>模板长什么样</h2>
 
-<h3><span class="n">1.2</span>唯一不可让步的一条</h3>
-
-<p>报告里的每一句判断，都要能追到两样东西：<strong>一个可核实的数</strong>，和<strong>这个数到偿债含义的那一步</strong>。两样缺一样，这句话就不要写。删掉它，报告会变短，但不会变差——这是判断「该不该写」最快的尺子。</p>
-
-<h2><span class="n">二</span>认料：先看清手里有什么</h2>
-
-<p>外部材料的可信度不同，取数优先级也不同。同一事实出现两个值时，按下面的顺序采信；低优先级来源的冲突值不采用，但要在草稿上留痕——将来有人问「为什么这里用 3.21 而不是 3.18」，答得出来。</p>
-
-<div class="tw">
-<table>
-<thead><tr><th>优先级</th><th>材料</th><th>主要用途</th><th>局限</th></tr></thead>
-<tbody>
-<tr><td>1</td><td>最新一期跟踪评级报告</td><td>摘要层的判断依据、经营与行业分析、评级机构关注点、历史财务数据</td><td>数据有滞后，通常只到上年末或一季；观点是别人的</td></tr>
-<tr><td>2</td><td>最新募集说明书</td><td>受限资产、应收账龄、债务明细、募投项目、股权穿透</td><td>期次更旧，只作补充与穿透</td></tr>
-<tr><td>3</td><td>审计报告、年报、半年报、季报</td><td>最新财务数据（总额、负债、现金流）、审计意见类型</td><td>无分析、无经营口径；附注与会计政策说明不进正文</td></tr>
-<tr><td>4</td><td>交易所与清算所公告</td><td>控股权变更、评级调整、重大事项、突发事件</td><td>碎片化</td></tr>
-<tr><td>5</td><td>财汇等结构化数据</td><td>债券清单、评级历史、主体档案、区域财政</td><td>口径可能与披露原文不同，需回原文核</td></tr>
-</tbody>
-</table>
-</div>
-<div class="tbl-cap">同一事实冲突时按此采信；第 5 级的数据只作索引，正文里的数要能在前四级找到原句。</div>
-
-<h3><span class="n">2.1</span>评级报告的章节，拆开就是简评的各段</h3>
-
-<p>评级报告的结构是标准的，写简评基本上是把它的章节拆开重组，不是从头写一篇新文章：</p>
-
-<ul>
-<li><strong>开头的「评级观点」与「正面／关注」</strong>——摘要层的原材料。但只当原料，不当结论：它的条数与侧重是外部机构对自己评级体系的表述，与内部简评不同。</li>
-<li><strong>「行业」与「业务」两节</strong>——行业情况段与分部业务段的主料。</li>
-<li><strong>「财务分析」的资产、负债、盈利、现金流四块</strong>——对应资产段、盈利段、债务段。</li>
-<li><strong>附表的财务数据与主要指标</strong>——财务指标表的底稿。</li>
-<li><strong>「关注」与「评级展望」点出的具体事项</strong>——关注条目的直接来源，但要回正文核金额与期次。</li>
-</ul>
-
-<h3><span class="n">2.2</span>四类材料各管一段，不要一视同仁地摘抄</h3>
-
-<p>程序取回的材料分四类：跟踪评级报告、募集说明书、审计报告、其他公告。四类不是「多找几份更保险」，各有各的用处，用错地方就是白占篇幅。</p>
-
-<div class="tw">
-<table>
-<thead><tr><th>类别</th><th>只用来做这件事</th><th>不要拿它做</th></tr></thead>
-<tbody>
-<tr><td>跟踪评级报告</td><td>判断主线：业务模式、行业量价、资产构成、债务结构</td><td>当自己的结论照抄</td></tr>
-<tr><td>募集说明书</td><td>穿透细节：受限资产、应收账龄、债务明细、募投项目</td><td>取最新一期数据（期次更旧）</td></tr>
-<tr><td>审计报告</td><td>财务表的最终口径、审计意见类型</td><td>复述附注、会计政策、报表项目明细</td></tr>
-<tr><td>其他公告</td><td>报告期内的变化：诉讼、担保代偿、处罚、股权与控制权</td><td>抄付息兑付、上市流通这类程序性公告</td></tr>
-</tbody>
-</table>
-</div>
-<div class="tbl-cap">同一件事在多类材料里都出现时只写一次，取最具体的那个数；审计报告与募集说明书的同一科目余额不一致，以审计报告为准。</div>
-
-<p>审计报告的价值常被低估成「只是一份报表」，其实它给的是两样别处拿不到的东西。一是数字的最终口径——评级报告为排版会把几张表合并、把口径改写，审计报告的三表是原始数，两者不一致时以后者为准。二是审计意见：标准无保留意见不必写（那属于「没有变化的事」），但保留意见、带强调事项段、无法表示意见、否定意见，以及「与持续经营相关的重大不确定性」段落，本身就是偿债判断的一部分，要写清是哪一类、出具的事由涉及哪笔债务或哪项资产。程序会扫一遍审计报告的结论段，发现非标准意见而正文没提，会单独列一条待核对。</p>
-
-<p>其他公告的用法反过来：它是找「报告期内发生了什么」的地方，而不是找数据的地方。一份公告读完只问一句——把这件事写成一条公告，读者会不会改变「这家公司能不能按期还钱」的判断？会，就写进对应的段并带上金额、对手方、时点；不会，整句不写。付息、兑付、上市流通、发行结果、票面利率这些只说明债券按计划在走，再齐也不进正文。</p>
-
-<h3><span class="n">2.3</span>材料不全时，降级要降得明确</h3>
-
-<div class="tw">
-<table>
-<thead><tr><th>手上的材料</th><th>能写到哪一步</th><th>不能做什么</th></tr></thead>
-<tbody>
-<tr><td>只有募集说明书</td><td>经营分析可以写，资产与债务明细也够</td><td>摘要层的趋势判断只能写截至该期次的事实，不能替发行人做前瞻</td></tr>
-<tr><td>只有年报</td><td>摘要层可从财务面提炼</td><td>正面第一条（身份与外部支持）要从年报的「公司基本情况」与股权结构里补齐，补不到就不写这一条</td></tr>
-<tr><td>只有结构化数据</td><td>只能出数据骨架稿</td><td>摘要层留空待补，不要用行业均值或常识填</td></tr>
-</tbody>
-</table>
-</div>
-
-<div class="note bad">
-<span class="h">不要用推测填补缺料</span>
-一条没有材料支撑的正面或关注，会在评审时被整条推翻，连带影响另外五条的可信度。缺一条比错一条的代价小得多——缺，读者知道你没写；错，读者会开始怀疑全部。
-</div>
-
-<h2><span class="n">三</span>取数：先定期次，再定单位，最后定口径</h2>
-
-<h3><span class="n">3.1</span>期次：资产负债看时点，收入盈利看区间</h3>
-
-<p>一份报告里同时存在多个日期是正常的，关键是每个数字都标明期次，同类数字用同一个期次。</p>
-
-<p>资产负债类（总资产、总负债、资产负债率、债务规模、货币资金、受限资产）取<strong>最新可得期末</strong>。收入盈利类（营业收入、净利润、毛利率、期间费用）取<strong>最近一个完整会计年度</strong>，同时并列最新的中期或季度数据作为边际变化。</p>
-
-<p>理由是：资产负债是时点存量，越新越有意义；收入盈利是期间流量，半年数无法与年度数直接比较，混用会得出错误的同比。</p>
-
-<p>写法固定为三种：<code>2026年9月末</code>、<code>2025年</code>、<code>2026年1-9月</code>。不写「本期」「上年同期」「报告期内」——读者无法从上下文反推是哪一段。</p>
-
-<div class="note warn">
-<span class="h">半年口径不要与全年比</span>
-取「最新一期 GDP」时，如果材料里有「2025年上半年 1,974.65 亿元」，按年份排序它会比「2024 年全年 3,880 亿元」更新，于是被当成最新值写进去——而半年值只有全年的一半。程序里对「上半年／半年度／1-6月／前三季度」直接跳过，人工取数时同理。
-</div>
-
-<h3><span class="n">3.2</span>单位与写法</h3>
-
-<p>金额统一亿元、保留两位小数；小额（千万级及以下）可保留万元，但同一段内不混用。源材料常以万元列示，例如财务附表的「长期投资 24,171.11」，换算成 2.42 亿元。</p>
-
-<p>查数时不能只按「亿元」检索：只搜「亿元」会把万元口径的披露误判为「未披露」，进而错改本来正确的旧值。</p>
-
-<p>比率与占比保留两位小数；倍数保留两位小数；<strong>百分点差异写成「下降 1.23 个百分点」，不写「下降 1.23%」</strong>。这两句话在利率与毛利率上差着一个数量级，是最容易被审出来的错。</p>
-
-<h3><span class="n">3.3</span>口径：三处最容易错的地方</h3>
-
-<p>全篇用合并口径，不混母公司数。下面三处要单独交代：</p>
-
-<ul>
-<li><strong>全部债务与有息债务不是一回事。</strong>全部债务通常等于短期债务加长期债务，短债含短期借款、一年内到期的非流动负债、应付票据等；有息债务的口径各家不同，有时剔除应付票据与专项应付款，有时不含政府专项债。同一句里不能混用两个口径；若融资构成一段引用的是另一口径，必须写明差额来自哪里。</li>
-<li><strong>货币资金要用非受限口径。</strong>计算短债覆盖时，分子是货币资金减受限部分（保证金、质押定期存款），不是报表上的货币资金总额。未披露受限金额时用总额计算，并注明「未剔除受限」。</li>
-<li><strong>占比之和超过 100% 时先找抵销行。</strong>分板块收入占比的分母常是抵销后合计，各板块占比之和自然超过 100%，与抵销项相抵才是 100%。这不是披露错误，写的时候把抵销项说明白。</li>
-</ul>
-
-<h3><span class="n">3.4</span>复算：四类必做，加一次量级检查</h3>
-
-<p>凡自己算的比率，都要写得出算式，并在草稿上留痕。工作台会把交底的算式逐条复算，算得上的就不再让人核。</p>
-
-<div class="tw">
-<table>
-<thead><tr><th>必做复算</th><th>不等时说明什么</th></tr></thead>
-<tbody>
-<tr><td>分板块收入占比合计 = 100%（含抵销则说明抵销额）</td><td>分母口径不一致，或漏了某个板块</td></tr>
-<tr><td>短债 + 长债 = 全部债务</td><td>有未归类科目，或两处口径不同</td></tr>
-<tr><td>总资产 = 总负债 + 所有者权益</td><td>抄错了某一侧，或用了不同期次</td></tr>
-<tr><td>同比增速用同口径两年数据重算，与披露值比对</td><td>差异超过 0.1 个百分点，回去看基期是否被追溯调整</td></tr>
-</tbody>
-</table>
-</div>
-
-<p>量级检查同样必做，且必须用<strong>该主体自己的历史区间</strong>作参照，不用行业平均数：把当期每一项除以营业收入或总资产，看得到的比值是否落在它过去三到五年的区间内；跳出区间的项，要么是业务发生了变化，要么是单位或口径错了。</p>
-
-<p>这一步比记任何行业的「正常值」都可靠——行业均值会随周期漂移，而同一主体的历史区间相对稳定。按总资产规模判断，货币资金、有息债务不可能是差着两三个数量级的数。</p>
-
-<h3><span class="n">3.5</span>混合数据期</h3>
-
-<p>一轮材料覆盖不同期次很常见：年报给上一完整年度，季报给最新期末，评级报告给行业判断但数据只到半年前。处理原则是各段分别标注自己的期次，不为了统一而往回退用旧数，也不为了统一而把不同期次的数凑成一句。</p>
-
-<p>没有最新数据的项目，沿用原口径并在交付说明里单列，不在正文里编造或推算。</p>
-
-<div class="note bad">
-<span class="h">金额与占比必须取自同一句、同一期次</span>
-真实踩过的坑：受限资产金额取到 2025 年 6 月末的 19.16 亿元，占比取到 2025 年末的 11.78%，凑成「19.16 亿元占 11.78%」。两个数各自都对，配在一起就是错的，而且看上去完全合理（19.16 ÷ 244.6 实际是 7.8%），不逐项复核根本发现不了。现在要求金额与占比在同一句里配对，只有金额的就只写金额。
-</div>
-
-<h2><span class="n">四</span>写正文：一段一条因果链</h2>
-
-<p>正文的判断力不来自形容词，来自「驱动因素 → 中间量 → 财务结果 → 偿债含义」这条链是否走通。一段话只走一条链，走不通的部分宁可删掉，不要并列罗列。</p>
+<p class="lead-in">模板管「写在哪」，不管「写什么」。三件东西：<b>.docx</b> 定版式，<b>.json</b> 定槽位与参数，<b>提示词里的骨架描述</b>定当前实现的段落顺序。</p>
 
 <div class="fig">
   <div class="tree">
@@ -532,35 +466,223 @@ mark.s{background:#fff3b8;color:inherit;padding:0 1px;border-radius:2px}
         <span class="tr-main lead">盈利段</span><span class="tr-sep">→</span>
         <span class="tr-main lead">债务段</span><span class="tr-sep">→</span>
         <span class="tr-main">专题段（可选）</span>
-        <div class="tr-sub">蓝框 = 段首有一句加粗汇总句（带判断不带数字）；两张表由程序排版，正文不解释「详见下表」</div>
+        <div class="tr-sub">蓝框 = 段首有一句加粗汇总句（带判断不带数字）；两张表由程序排版</div>
       </div>
     </div>
   </div>
-  <div class="cap"><b>正文三节 + 点评内部的块序列</b> · 顺序固定，因为读者是按「是谁 → 行业在哪 → 公司怎么样 → 钱从哪来 → 还不上怎么办」的顺序建立判断的</div>
+  <div class="cap"><b>三节 + 点评内部的块序列</b> · 顺序固定：读者按「是谁 → 行业在哪 → 公司怎么样 → 钱从哪来 → 还不上怎么办」建立判断</div>
 </div>
 
-<h3><span class="n">4.1</span>基本情况：只写身份，且要写清实收资本</h3>
+<p><code>template-v1.1.json</code> 里除了段落槽位，还有四组参数决定了 Word 的样子与表格的行项：</p>
 
-<p>单段，150–300 字，五拍推进，不换段：成立时间与前身 → 主营与功能定位（一句话说清「是谁、干什么、靠什么收钱」）→ 注册资本与实收资本、股东及持股比例、实际控制人 → 增资到位、上市状态、并表子公司数量 → 报告期内确有变化的股权、控制权或评级事项。</p>
-
-<p><strong>注册资本与实收资本都要写。</strong>注册资本是认缴额、实收资本是到账额，两者差着就说明还有没缴的部分，这直接影响股东支持的成色。两者不一致时说明差额是什么（未实缴、分期到位、口径不同），不能只写其中一个。</p>
-
-<div class="note good">
-<span class="h">写法示例</span>
-截至 2026 年 3 月底，公司股本为 75.93 亿元，实收资本 75.93 亿元，注册资本与实收资本一致；控股股东××集团直接及间接持股比例为 50.01%，最终实际控制人为××；合并范围主要包括……等上市子公司。
+<div class="tw">
+<table>
+<thead><tr><th>字段</th><th>管什么</th><th>现在的值</th></tr></thead>
+<tbody>
+<tr><td><code>typography</code></td><td>字体、字号、行距、缩进、页边距</td><td>楷体_GB2312 · 10.5pt · 行距 1.15 · 首行缩进 2 字符</td></tr>
+<tr><td><code>mark_layer</code></td><td>摘要层：允许什么、禁止什么</td><td>禁「亿元／万元／%／个百分点／倍」，一条一句</td></tr>
+<tr><td><code>indicator_layers</code></td><td>财务表的行项怎么选</td><td>三层叠加，上限 16 行，按「字段可得 + 占比够大」触发</td></tr>
+<tr><td><code>length_policy</code></td><td>篇幅上下限</td><td>正文 2000–4000 字 · 摘要各 3–5 条 · 表格 1–2 张</td></tr>
+</tbody>
+</table>
 </div>
 
-<h3><span class="n">4.2</span>没有变化的事不写</h3>
+<div class="note">
+<span class="h">模板是通用的，不按行业分支</span>
+行项由「字段是否可得 + 占比是否够大」决定，不由行业名称决定。换主体不用换模板，代价是每次都要重算占比——占比本身就是判断的一部分。
+</div>
 
-<p>跟踪报告里最占字数的往往不是变化，而是「未发生变化」的例行交代。这些对偿债判断没有信息量，却挤掉真正的分析。</p>
+<h2><span class="n">五</span>提示词长什么样</h2>
+
+<p class="lead-in">系统提示词约 1.0 万字、46 条规则，分四段：<b>体例</b>（报告有哪几层）→ <b>硬规则</b>（24 组编号规则，管句式、口径、禁令）→ <b>写作风格</b>（语体基准与用词分级）→ <b>输出</b>（只要一个 JSON）。用户提示词另附实例：模板摘要、事实台账、材料原文（约 8 万字符）、输出结构样张。</p>
+
+<div class="tw">
+<table>
+<thead><tr><th>段</th><th>内容</th><th>例子</th></tr></thead>
+<tbody>
+<tr><td>体例</td><td>两层结构：摘要层 + 正文层；点评内部八块</td><td>「1、基本情况；2、行业情况；3、点评」</td></tr>
+<tr><td>硬规则</td><td>24 组编号规则，每组下面若干条判据</td><td>规则 8 资产段句式、规则 23 盈利段归因、规则 24 四类材料分工</td></tr>
+<tr><td>写作风格</td><td>语体基准、判断词分级、不可核实表述</td><td>「受……影响／整体来看」；不用「本期」「去年」「大幅」</td></tr>
+<tr><td>输出</td><td>固定 JSON 结构，字段即段落</td><td><code>commentary.asset.body</code>、<code>data_notes</code>、<code>sources</code></td></tr>
+</tbody>
+</table>
+</div>
+
+<p>规则不写「禁止用某些词」这类清单，写判定方法。举三条原文：</p>
+
+<div class="tw">
+<table>
+<thead><tr><th>规则</th><th>提示词原文（节选）</th></tr></thead>
+<tbody>
+<tr><td>1 摘要不带数</td><td>摘要层是定性概括，除判断核心依赖量级外不得出现金额、百分比、倍数、占比。<b>判定口径：删掉这个数字，这条判断是否仍成立？成立就删掉数字。</b></td></tr>
+<tr><td>8 资产段句式</td><td>句式固定为「科目 金额（占资产总额 ××.××%），主要为×××，再交代质量」；括号里只放占比；括号之后紧跟「主要为……」，把科目名还原成事实，这句不是评价。</td></tr>
+<tr><td>16.1 自算值交底</td><td>凡不是材料直接给出的数，逐条写进 <code>data_notes</code>，格式为「指标名 = 操作数A 运算符 操作数B」。操作数一律用材料里的原值。程序会按算式逐条复算，算不上的会挑出来问。</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="note warn">
+<span class="h">提示词与校验是同一条规则的两种写法</span>
+提示词写「该怎么写」，校验写「写成这样了吗」。新增一条规则要同时落两处：<code>SYSTEM_PROMPT</code> 加一条文，<code>validate()</code> 加一条检查，且检查要往 <code>issue_items</code> 里塞定位（段落字段 + 句子序号），否则前端只能跳到段落，落不到那一句。
+</div>
+
+<h2><span class="n">六</span>三个入口</h2>
+
+<div class="tw">
+<table>
+<thead><tr><th>场景</th><th>怎么做</th><th>产出</th></tr></thead>
+<tbody>
+<tr><td>首次覆盖</td><td>填企业名 → 勾材料 → 生成 → 逐段改 → 导出</td><td>整篇新稿</td></tr>
+<tr><td>跟踪期更新</td><td>上传旧报告（.docx）→ 勾新材料 → 新稿/更新模式</td><td>修订清单（位置、原文、改后、理由），以 Word 原生修订标记落到旧稿</td></tr>
+<tr><td>不用财汇</td><td>直接把 PDF／Word 拖进「上传」</td><td>同上；材料完全由自己提供</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="gate">
+  <div class="g1">
+    <b>要看判据与实现细节</b>
+    详版共十节：写作判据（一至六节，含认料、取数、各段写法、提摘要、定稿检查、防过拟合）、实现链路与校验闭环（七、八节，一次请求经过哪些函数、待核对怎么落到句）、六个技术点（第九节，各讲问题、做法与验证）。
+  </div>
+  <div class="g2"><button class="gbtn" data-v="full">打开详版 →</button></div>
+</div>
+
+      </div><!-- /v-brief -->
+      <!-- ═══════════════ 详版 ═══════════════ -->
+      <div class="view" id="v-full">
+
+<div class="note" style="margin-top:20px">
+<span class="h">这一版怎么读</span>
+第一至六节是写作判据（机器与人都按它执行），第七、八节是一次请求的完整链路与校验闭环，第九节是六个技术点。要动手改程序，从第七节开始看。
+</div>
+
+<h2><span class="n">一</span>认料</h2>
+
+<h3><span class="n">1.1</span>四类材料各管一段</h3>
+
+<p>程序取回的材料分四类。四类不是「多找几份更保险」，各有各的用处，用错地方就是白占篇幅。</p>
+
+<div class="tw">
+<table>
+<thead><tr><th>类别</th><th>只用来做这件事</th><th>不要拿它做</th></tr></thead>
+<tbody>
+<tr><td>跟踪评级报告</td><td>判断主线：业务模式、行业量价、资产构成、债务结构</td><td>当自己的结论照抄</td></tr>
+<tr><td>募集说明书</td><td>穿透细节：受限资产、应收账龄、债务明细、募投项目</td><td>取最新一期数据（期次更旧）</td></tr>
+<tr><td>审计报告</td><td>财务表的最终口径、审计意见类型</td><td>复述附注、会计政策、报表项目明细</td></tr>
+<tr><td>其他公告</td><td>报告期内的变化：诉讼、担保代偿、处罚、股权与控制权</td><td>抄付息兑付、上市流通这类程序性公告</td></tr>
+</tbody>
+</table>
+</div>
+<div class="tbl-cap">同一件事在多类材料里都出现时只写一次，取最具体的数；审计报告与募集说明书的同一科目余额不一致，以审计报告为准。</div>
+
+<p>审计报告给的是两样别处拿不到的东西。一是数字的最终口径：评级报告为排版会把几张表合并、把口径改写，审计报告的三表是原始数。二是审计意见：标准无保留意见不必写（属于「没有变化的事」），但保留意见、无法表示意见、否定意见，以及「与持续经营相关的重大不确定性」段落，本身就是偿债判断的一部分，要写清是哪一类、出具的事由涉及哪笔债务或哪项资产。</p>
+
+<p>其他公告反过来，是找「报告期内发生了什么」的地方，不是找数据的地方。判断方法只有一句：把这件事写成一条公告，读者会不会改变「这家公司能不能按期还钱」的判断。会，就写进对应的段并带上金额、对手方、时点；不会，整句不写。</p>
+
+<h3><span class="n">1.2</span>冲突时按优先级采信</h3>
+
+<div class="tw">
+<table>
+<thead><tr><th>优先级</th><th>材料</th><th>主要用途</th><th>局限</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>最新一期跟踪评级报告</td><td>摘要依据、经营与行业分析、关注点、历史财务数据</td><td>数据滞后，通常到上年末或一季；观点是别人的</td></tr>
+<tr><td>2</td><td>最新募集说明书</td><td>受限资产、应收账龄、债务明细、募投项目、股权穿透</td><td>期次更旧，只作补充</td></tr>
+<tr><td>3</td><td>审计报告与定期报告</td><td>最新财务数据、审计意见类型</td><td>无分析、无经营口径；附注不进正文</td></tr>
+<tr><td>4</td><td>交易所与清算所公告</td><td>控股权变更、评级调整、重大事项</td><td>碎片化</td></tr>
+<tr><td>5</td><td>财汇结构化数据</td><td>债券清单、评级历史、主体档案、区域财政</td><td>口径可能与披露原文不同，需回原文核</td></tr>
+</tbody>
+</table>
+</div>
+<div class="tbl-cap">低优先级来源的冲突值不采用，但要在草稿上留痕——将来有人问「为什么这里用 3.21 而不是 3.18」，答得出来。第 5 级只作索引，正文里的数要能在前四级找到原句。</div>
+
+<p>评级报告的结构是标准的，写简评是把它的章节拆开重组：开头的「评级观点」与「正面／关注」是摘要层的原料（只当原料，不当结论）；「行业」与「业务」两节对应行业段与分部段；「财务分析」的资产、负债、盈利、现金流四块对应资产段、盈利段、债务段；附表的财务数据与主要指标是财务表的底稿。</p>
+
+<h3><span class="n">1.3</span>材料不全时降级要明确</h3>
+
+<div class="tw">
+<table>
+<thead><tr><th>手上的材料</th><th>能写到哪一步</th><th>不能做什么</th></tr></thead>
+<tbody>
+<tr><td>只有募集说明书</td><td>经营分析、资产与债务明细</td><td>摘要的趋势判断只能写到该期次，不替发行人做前瞻</td></tr>
+<tr><td>只有年报</td><td>摘要层可从财务面提炼</td><td>正面第一条（身份与外部支持）要能从基本情况与股权结构补齐，补不到就不写这一条</td></tr>
+<tr><td>只有结构化数据</td><td>只能出数据骨架稿</td><td>摘要层留空待补，不用行业均值或常识填</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="note bad">
+<span class="h">不用推测填补缺料</span>
+一条没有材料支撑的正面或关注，会在评审时被整条推翻，连带影响另外五条的可信度。缺一条比错一条代价小：缺，读者知道你没写；错，读者开始怀疑全部。
+</div>
+
+<h2><span class="n">二</span>取数</h2>
+
+<h3><span class="n">2.1</span>期次：存量看时点，流量看区间</h3>
+
+<p>资产负债类（总资产、总负债、资产负债率、债务规模、货币资金、受限资产）取最新可得期末；收入盈利类（营业收入、净利润、毛利率、期间费用）取最近一个完整会计年度，并列最新中期数据作为边际变化。原因是存量越新越有意义，而半年流量无法与全年直接比较，混用会得出错误的同比。</p>
+
+<p>写法固定三种：<code>2026年9月末</code>、<code>2025年</code>、<code>2026年1-9月</code>。不写「本期」「上年同期」「报告期内」——读者无法反推是哪一段。</p>
+
+<div class="note warn">
+<span class="h">半年口径不与全年比</span>
+材料里同时有「2025 年上半年 1,974.65 亿元」与「2024 年全年 3,880 亿元」时，按年份排序会把半年值当成最新值，而它只有全年的一半。程序对「上半年／半年度／1-6 月／前三季度」直接跳过，人工取数同理。
+</div>
+
+<h3><span class="n">2.2</span>单位与写法</h3>
+
+<p>金额统一亿元、两位小数，同一段内不混用万元。源材料常以万元列示，例如「长期投资 24,171.11」换算成 2.42 亿元。查数时不能只按「亿元」检索：只搜「亿元」会把万元口径的披露误判为「未披露」，进而错改本来正确的旧值。</p>
+
+<p>比率与倍数保留两位小数。<strong>百分点差异写「下降 1.23 个百分点」，不写「下降 1.23%」</strong>——这两句在毛利率上差着一个数量级。</p>
+
+<h3><span class="n">2.3</span>口径：三处最容易错</h3>
 
 <ul>
-<li><strong>不写</strong>：控股股东及持股比例未发生变化、主体评级维持原级且展望未调整、审计机构未更换、注册地址未搬迁。</li>
-<li><strong>不写</strong>：董事长、总经理、董事的任免与更替，内部部门调整——与偿债能力无关的人事变动。</li>
-<li><strong>必须写</strong>：控股股东或实际控制人变更为风险主体、控制权发生转移、主体评级下调或列入观察名单、评级展望调为负面、审计意见类型变化、会计师事务所因故更换并出具非标意见。而且要写出对信用水平的影响方向。</li>
+<li><strong>全部债务与有息债务不是一回事。</strong>全部债务通常为短债加长债，短债含短期借款、一年内到期的非流动负债、应付票据；有息债务各家口径不同，有时剔除应付票据与专项应付款。同一句不能混用两个口径；引用另一口径时要写明差额来源。</li>
+<li><strong>货币资金用非受限口径。</strong>短债覆盖的分子是货币资金减受限部分（保证金、质押定期存款）。未披露受限金额时用总额计算，并注明「未剔除受限」。</li>
+<li><strong>占比之和超过 100% 时先找抵销行。</strong>分板块收入占比的分母常是抵销后合计，各板块之和自然超过 100%，与抵销项相抵才是 100%。这不是披露错误，写的时候把抵销项说明白。</li>
 </ul>
 
-<p>判断方法：把这件事写成一条公告，读者看了会不会改变「这家公司能不能按期还钱」的判断？不会，就整句删掉。不要因为它出现在材料里、或者是跟踪报告的固定栏目，就顺手抄进来占字数。</p>
+<h3><span class="n">2.4</span>复算与量级检查</h3>
+
+<div class="tw">
+<table>
+<thead><tr><th>必做复算</th><th>不等时说明什么</th></tr></thead>
+<tbody>
+<tr><td>分板块收入占比合计 = 100%（含抵销则说明抵销额）</td><td>分母口径不一致，或漏了某个板块</td></tr>
+<tr><td>短债 + 长债 = 全部债务</td><td>有未归类科目，或两处口径不同</td></tr>
+<tr><td>总资产 = 总负债 + 所有者权益</td><td>抄错了某一侧，或用了不同期次</td></tr>
+<tr><td>同比增速用同口径两年数据重算</td><td>差异超 0.1 个百分点，回看基期是否被追溯调整</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>量级检查用<strong>该主体自己的历史区间</strong>作参照，不用行业平均：把当期每项除以营业收入或总资产，看比值是否落在过去三到五年的区间内。跳出区间的，要么业务变了，要么单位或口径错了。行业均值会随周期漂移，同一主体的历史区间相对稳定。</p>
+
+<div class="note bad">
+<span class="h">金额与占比必须取自同一句、同一期次</span>
+踩过的坑：受限资产金额取 2025 年 6 月末的 19.16 亿元、占比取 2025 年末的 11.78%，凑成「19.16 亿元占 11.78%」。两个数各自都对，配在一起就是错的，而且看上去完全合理（实为 7.8%）。现在要求金额与占比在同一句里配对，只有金额的就只写金额。
+</div>
+
+<h2><span class="n">三</span>写正文</h2>
+
+<p>正文的判断力不来自形容词，来自「驱动因素 → 中间量 → 财务结果 → 偿债含义」这条链是否走通。一段只走一条链，走不通的部分宁可删掉，不并列罗列。</p>
+
+<h3><span class="n">3.1</span>基本情况：只写身份</h3>
+
+<p>单段 150–300 字，五拍推进不换段：成立时间与前身 → 主营与功能定位（一句话说清是谁、干什么、靠什么收钱）→ 注册资本与实收资本、股东及持股比例、实际控制人 → 增资到位、上市状态、并表子公司数量 → 报告期内确有变化的股权、控制权或评级事项。</p>
+
+<p><strong>注册资本与实收资本都要写。</strong>注册资本是认缴额、实收资本是到账额，两者差着就说明还有没缴的部分，直接影响股东支持的成色。不一致时说明差额是什么（未实缴、分期到位、口径不同），不能只写其中一个。</p>
+
+<div class="note good">
+<span class="h">写法</span>
+截至 2026 年 6 月末，公司注册资本 42.32 亿元，实收资本 46.98 亿元，实收资本高于注册资本主要系 2025 年市国资委将资本公积转增实收资本所致；中山市人民政府持有 90.92% 股权，为控股股东及实际控制人。
+</div>
+
+<h3><span class="n">3.2</span>没有变化的事不写</h3>
+
+<p>跟踪报告里最占字数的往往不是变化，而是「未发生变化」的例行交代。不写：控股股东及持股比例未变、主体评级维持原级且展望未调整、审计机构未更换、注册地址未搬迁；也不写董事长、总经理、董事的任免与更替这类与偿债无关的人事变动。</p>
+
+<p>必须写，且要写出对信用水平的影响方向：控股股东或实际控制人变更为风险主体、控制权转移、主体评级下调或列入观察名单、评级展望调为负面、审计意见类型变化、会计师事务所因故更换并出具非标意见。</p>
 
 <div class="two">
   <div class="path no">
@@ -579,152 +701,105 @@ mark.s{background:#fff3b8;color:inherit;padding:0 1px;border-radius:2px}
   </div>
 </div>
 
-<h3><span class="n">4.3</span>行业情况：独立一节，只回答「量由什么决定、价由谁定」</h3>
+<h3><span class="n">3.3</span>行业情况：独立一节</h3>
 
-<p>单段 250–420 字，独立成节，不与公司自身经营混写。四件事按对公司的传导强弱排序，不按行业报告的目录顺序：</p>
+<p>单段 250–420 字，独立成节，不与公司经营混写。四件事按对公司传导的强弱排序，不按行业报告目录顺序：供需格局（所处阶段、产量或需求增速、产能利用率、需求端构成）→ 价格与成本（价格与指数的走势幅度、原材料与能源成本）→ 政策（真正影响这家公司的那一条）→ 传导（前三件怎样落到量、价、毛利上，一句话接住转下一节）。</p>
 
-<ol>
-<li><strong>供需格局</strong>——行业所处阶段、产量或需求增速、产能利用率、需求端由哪几块构成（基建、地产、制造业投资……）。</li>
-<li><strong>价格与成本</strong>——产品价格或价格指数的走势与变动幅度、主要原材料与能源成本的变化。</li>
-<li><strong>政策</strong>——产能置换、环保限产、补贴退坡、定价与结算机制中真正影响这家公司的那一条。</li>
-<li><strong>传导</strong>——前三件事怎样落到公司的量、价、毛利上，用一句话接住，转下一节。</li>
-</ol>
+<p>每个判断后跟一个可核实的数。材料只给定性表述（「行业景气度下行」）时，改写到公司自己的数据上（产量降了多少、均价降了多少）。不列行业风险清单：「行业竞争加剧」「政策存在不确定性」这类句子没有对象也没有影响方向，删掉后读者说不出「影响哪个指标、往哪个方向」，就是凑数。</p>
 
-<p>每个判断后面跟一个可核实的数（增速、幅度、利用率、区域投资额）。材料只给定性表述（「行业景气度下行」）时，改写到公司自己的数据上（公司产量降了多少、均价降了多少），不拿行业套话充数。</p>
+<h3><span class="n">3.4</span>总述段：三问代替行业套路</h3>
 
-<div class="note bad">
-<span class="h">不列行业风险清单</span>
-「行业竞争加剧」「政策存在不确定性」这类句子没有对象、也没有影响方向，一律不写。检验法：删掉这句，读者还能不能说出「这件事影响公司哪个指标、往哪个方向」？说不出，这句就是凑数的。
-</div>
+<p>写外部条件不问「这是哪个行业」，问三件事：<strong>钱从谁那里来</strong>（终端消费者、单一付费方、上下游议价、还是金融市场；付费方越集中、定价越被动，收入的可预测性越差）、<strong>量由什么决定</strong>（人口与流量、产能与开工率、政策额度、项目进度、订单）、<strong>价由谁定</strong>（市场竞价、政府定价、成本加成、长期协议）。三问答完，外部条件就写完了。</p>
 
-<p><strong>与总述段的分工</strong>：行业的量、价、政策在行业段写完；总述段只写公司自己的收入结构、板块拆分与盈利主线。同一组行业数据不在两处各写一遍——两段各写一次，读者会以为是两件事。</p>
+<p>加粗的段首句是全篇总判断，句式是「主体定位 + 经营趋势 + 但书」，不带数字，必须是一句可以被反驳的话。</p>
 
-<h3><span class="n">4.4</span>总述段：用三问代替行业套路</h3>
+<p><strong>与行业段、盈利段的分工</strong>：行业的量价政策在行业段写完；总述段只写公司自己的收入结构、板块拆分与盈利主线，末句点明赚钱还是亏钱；盈利段从「降在哪一块、是量还是价」写起。营业收入总数与各板块占比在总述段写过之后，盈利段用「上述收入结构下」承接，不重抄。</p>
 
-<p>写外部条件时不要先问「这是哪个行业」，而问三件事：</p>
+<h3><span class="n">3.5</span>分部业务段：六拍</h3>
 
-<ul>
-<li><strong>钱从谁那里来。</strong>终端消费者、单一付费方（政府或大客户）、上下游议价、还是金融市场本身。付费方越集中、定价越被动，收入的可预测性与可调整性差得越多。</li>
-<li><strong>量由什么决定。</strong>人口与流量、产能与开工率、政策额度与批复、项目进度、客户订单。这一问决定你引什么数据，也决定「增长」是可持续的还是阶段性的。</li>
-<li><strong>价由谁定。</strong>市场竞价、政府定价、成本加成、长期协议。这一问决定毛利率的稳定性，以及成本上行时能否转嫁。</li>
-</ul>
+<p>按收入结构归并板块，占比低于 5% 的并入「其他业务」。每段六拍：业务模式与产出能力 → 报告期产出量 → 价格或费率与对应收入 → 成本结构与毛利率变动原因 → 项目、订单或资源储备 → 受什么制约。</p>
 
-<p>三问答完，外部条件就写完了，不需要判断它属于哪个行业。同一套问句用在机场、水务、代建、光伏组件、融资租赁上都成立，答案自然不同。</p>
-
-<p>加粗的段首句是全篇总判断，句式是「主体定位 + 经营趋势 + 但书」，不带数字。它的作用是让读者在第一句就知道你的结论倾向，所以必须是一句<strong>可以被反驳</strong>的话。</p>
-
-<p>总述段与盈利段也要分工：总述段给「收入是多少、由哪几块构成、利润率朝哪个方向走」，末句点明赚钱还是亏钱；盈利段从「降在哪一块、是量还是价」写起，再展开利润与亏损归因。营业收入的总数、各板块收入与占比，总述段写过之后盈利段不再重抄——要提就写「上述收入结构下」「其中基础建材板块」这种承接。</p>
-
-<h3><span class="n">4.5</span>分部业务段：六拍，第二拍按业务性质定量</h3>
-
-<p>按收入结构归并板块，占比默认低于 5% 的并入「其他业务」。每段六拍：业务模式与产出能力 → 报告期的产出量 → 价格或费率与对应收入 → 成本结构与毛利率变动原因 → 项目、订单或资源储备 → 这一块受什么制约。</p>
-
-<p>第二拍的计量单位由业务性质决定，不由行业决定。选择规则只有一条：<strong>取该公司连续披露、可跨期比较、且与收入变动同向的那一个量</strong>。可能是产量、销量、处理量、吞吐量、载客量、通行量、发电量、订单金额、在管面积、席位或床位使用率、项目个数与投资进度。同一主体的不同板块可以用不同单位，不必强行统一。</p>
-
-<p>找不到这样的量就跳过第二拍，直接写收入与价格。拿一个和收入不同向的指标充数（用员工人数说明规模、用专利数说明竞争力），读者会以为你在回避真正的经营数据。</p>
+<p>第二拍的计量单位由业务性质决定：<strong>取该公司连续披露、可跨期比较、且与收入同向的那一个量</strong>。可以是产量、销量、处理量、吞吐量、载客量、通行量、发电量、订单金额、在管面积、使用率、项目个数。不同板块可以用不同单位。找不到就跳过这一拍，直接写收入与价格；拿一个与收入不同向的指标充数（用员工人数说明规模），读者会以为在回避经营数据。</p>
 
 <div class="note">
-<span class="h">最后一拍不是「点风险」，是接条件</span>
-把制约条件接在它已经影响的那件事后面：谁付钱、按什么结算、什么时候能回、价格由谁定、储备够不够。用「取决于」「受……制约」「一旦……将」把条件和后果连起来，让读者看到这件事怎么发生。
+<span class="h">最后一拍是接条件，不是贴标签</span>
+把制约条件接在它已经影响的那件事后面：谁付钱、按什么结算、什么时候能回、价由谁定。用「取决于」「受……制约」「一旦……将」把条件和后果连起来。<br>
+反例：……2025年1-3月确认收入0.88亿元。<span style="color:var(--red)">该板块风险点在于回款依赖财政结算，已确认收入与已回款存在缺口。</span><br>
+正例：……2025年1-3月确认收入0.88亿元，同期回款0.31亿元，<span style="color:var(--ok)">缺口随结算进度波动，回款节奏取决于财政资金安排。</span><br>
+检验法：删掉引导语，剩下的半句若主语仍是具体条件（回款、去化、价差、期限、担保对象）且能独立成句，合格；删掉就读不通、或主语还是「该板块」，说明这句话本来就是硬贴上去的。
 </div>
 
-<div class="note bad">
-<span class="h">禁止另起一句贴标签</span>
-「该板块风险在于……」「本板块主要风险是……」「板块风险主要表现为……」这类引导语一律不写。贴了标签，后面半句往往只剩风险的名字，没有发生机制。
-<div style="margin-top:8px"><b>反例：</b>……2025年1-3月确认收入0.88亿元。<span style="color:var(--red)">该板块风险点在于回款依赖财政结算，已确认收入与已回款存在缺口。</span></div>
-<div><b>正例：</b>……2025年1-3月确认收入0.88亿元，同期回款0.31亿元，<span style="color:var(--ok)">已确认收入与已回款之间的缺口随结算进度波动，回款节奏取决于财政资金安排。</span></div>
-</div>
+<p>这一段不加段首加粗——业务描述是事实层，加了加粗会与总述段、资产段、债务段的判断句混在一起。整段连续写完，不在段内换行、不加小标题。</p>
 
-<p>检验法：把引导语删掉，剩下的半句若主语仍是具体条件（回款、去化、价差、期限、担保对象）且能独立成句，合格；若删掉就读不通、或主语还是「该板块」，说明这句话本来就是硬贴上去的。</p>
+<h3><span class="n">3.6</span>资产段：先重排，再解释是什么</h3>
 
-<p>这一段<strong>不加段首加粗</strong>。业务描述是事实层，加了加粗会与总述段、资产段、债务段的判断句混在一起，读者分不清哪句是结论。整段连续写完，不在段内换行、不分成若干小段、不加小标题。</p>
+<p>按最新期次的<strong>实际金额降序</strong>重排前五大科目，再逐项说明构成，最后落到受限。沿用上一期名单只换数字，会让排名已变的科目挂在原位、新进入前五的被塞到句末。</p>
 
-<h3><span class="n">4.6</span>资产段：先重排，再解释「是什么」</h3>
-
-<p>先按最新期次的<strong>实际金额降序重排</strong>前五大科目，再逐项说明构成，最后落到受限。这一步最容易出错：很多人拿着上一期的前五大名单，只把每个数字换掉，结果排名已经变的科目还挂在原来的位置，新进入前五的科目被塞在句末。</p>
-
-<p>句式固定为：<strong>科目　金额（占资产总额 ××.××%），主要为×××，再交代质量</strong>。四个要素缺一不可：</p>
+<p>句式固定为<strong>科目　金额（占资产总额 ××.××%），主要为×××，再交代质量</strong>，四要素缺一不可：</p>
 
 <ul>
-<li><strong>金额</strong>——不能只写「规模较大」。没有金额与占比，读者判断不了这个科目压了多少资产。</li>
-<li><strong>占比</strong>——括号里只放占比，写法固定为「（占资产总额 27.74%）」，由该科目金额 ÷ 资产总额算出。</li>
-<li><strong>主要为</strong>——把这个科目里装的是什么说清：对手方是谁、做什么用、什么形态（土地房产、往来款、工程结算款、理财与存单）。这句不是评价，是把科目名还原成事实。写不出「是什么」，说明材料没读到位。</li>
+<li><strong>金额</strong>——不写「规模较大」。没有金额与占比，读者判断不了这个科目压了多少资产。</li>
+<li><strong>占比</strong>——括号里只放占比，由该科目金额 ÷ 资产总额算出，并写进 <code>data_notes</code>。</li>
+<li><strong>主要为</strong>——说清里面装的是什么：对手方是谁、做什么用、什么形态（土地房产、往来款、工程结算款、理财与存单）。这句不是评价，是把科目名还原成事实。</li>
 <li><strong>质量</strong>——什么时候能回来、在谁手里、有没有被质押冻结、账龄落在哪一档。</li>
 </ul>
 
-<p>段内另给一句前五大合计占资产总额的比重；受限资产收在段末，写清金额、占总资产比重、主要为哪些资产、因什么受限。货币资金是例外，不展开构成（银行存款与其他货币资金没有分析价值），只在括号里注明其中受限的金额。</p>
+<p>段内另给一句前五大合计占资产总额的比重；受限资产收在段末（金额、占总资产比重、主要为哪些资产、因什么受限）。货币资金不展开构成，只在括号里注明其中受限金额。</p>
 
 <div class="note good">
 <span class="h">正例</span>
 应收账款 342.16 亿元（占资产总额 27.74%），主要为应收××区财政局的工程结算款，账龄一年以内的占 68.20%，回款节奏取决于年度预算安排；存货 128.40 亿元（占资产总额 10.41%），主要为代建项目的开发成本，未计提跌价准备，变现依赖项目结算进度。
 </div>
 
-<div class="note bad">
-<span class="h">反例</span>
-应收账款规模较大，回收存在一定不确定性；存货占比较高，变现能力一般。
-</div>
+<h3><span class="n">3.7</span>财务指标表：行项由字段决定</h3>
 
-<h3><span class="n">4.7</span>财务指标表：行项由字段决定，不由行业决定</h3>
+<p>行项按三层选取：九到十一项无条件必选，其余按「字段是否可得 + 占比是否够大」逐条触发，受监管或被合同锁定现金流的主体加专属层，总数 11–15 行。行项按规模 → 结构 → 盈利 → 获现 → 债务 → 偿债排列，期次由新到旧。</p>
 
-<p>行项按三层选取：九到十一项无条件必选，其余按「字段是否可得 + 占比是否够大」逐条触发，受监管或被合同锁定现金流的主体再加专属层。总数控制在 11–15 行。行项按<strong>规模 → 结构 → 盈利 → 获现 → 债务 → 偿债</strong>排列，期次列一律由新到旧，最近一期在最左。</p>
-
-<p>这样选的好处是换主体不用换模板：不需要先判断它属于哪一类，也不会因为分类错误而少算或多算。代价是每次都要实际算一遍占比再决定加不加，不能照抄上一家的行项——占比是判断的一部分，算过才知道哪几个科目真正重要。</p>
-
-<p><strong>盈利类两行不能省：营业总收入与净利润。</strong>利润总额扣掉所得税才是净利润，亏损与否看的是净利润；缺这一行，正文说「亏损」在表上找不到依托，说「盈利」也看不出薄厚。</p>
+<p>盈利类两行不能省：<strong>营业总收入与净利润</strong>。利润总额扣掉所得税才是净利润，亏损与否看的是净利润；缺这一行，正文说「亏损」在表上找不到依托。</p>
 
 <div class="note warn">
-<span class="h">缺数填「—」，不许凑</span>
-不留空、不推算、不用相近科目替代，尤其不许用子公司数、净资产收益率乘所有者权益、「利润总额×(1−所得税率)」倒算净利润。这些数看着像真的，但材料和算式都不支持，比空着更危险。确实需要自己算的（差额、合计、占比、增速），把算式交底，程序会逐条复算；算不出来的会被置为「—」并列出是哪一行哪一期。
+<span class="h">缺数填「—」，不推算</span>
+不留空、不用相近科目替代，尤其不用子公司数、净资产收益率乘所有者权益、「利润总额×(1−所得税率)」倒算净利润。确实需要算的（差额、合计、占比、增速）按 2.4 把算式写进 <code>data_notes</code>，程序逐条复算；算不出来的置「—」并列出是哪一行哪一期。
 </div>
 
-<h3><span class="n">4.8</span>盈利段：收入拆量价，亏损逐项归因</h3>
+<h3><span class="n">3.8</span>盈利段：收入拆量价，亏损逐项归因</h3>
 
-<p>位置固定在财务指标表之后、债务段之前。收入与利润分开写，不许只写收入不写利润。</p>
+<p>位置固定在财务指标表之后、债务段之前。收入与利润分开写。</p>
 
-<p><strong>收入侧</strong>：本期营业收入与同比变动幅度；把变动拆成量、价、结构三块，每块落到具体板块或产品——哪个板块销量降了多少、哪个产品均价降了多少、哪个板块新并表或已退出。只写「营业收入下降」不写降在哪一块、是量还是价，等于没写。</p>
+<p><strong>收入侧</strong>：本期营业收入与同比幅度；把变动拆成量、价、结构三块，每块落到具体板块或产品。只写「营业收入下降」不写降在哪一块、是量还是价，等于没写。</p>
 
-<p><strong>利润侧</strong>：利润总额与净利润各写本期数与同比变动。由盈转亏、亏损扩大、亏损收窄都要明写「亏损」，不得用「利润承压」「盈利弱化」「有所下滑」「利润空间收窄」代替——「承压」是评论，不是利润表上的数。</p>
+<p><strong>利润侧</strong>：利润总额与净利润各写本期数与同比。由盈转亏、亏损扩大、亏损收窄都明写「亏损」，不用「利润承压」「盈利弱化」「有所下滑」代替——「承压」是评论，不是利润表上的数。</p>
 
-<p><strong>归因</strong>：亏损或利润大幅下滑必须逐项归因，一项一句，每句带金额或幅度，按对利润的影响从大到小排：毛利变动（量、价、成本各影响多少）→ 期间费用（销售、管理、研发、财务费用各是多少、为什么变）→ 减值损失（资产减值与信用减值分别是多少、计在哪个科目或哪项资产上、依据什么提的）→ 投资收益与公允价值变动 → 政府补助与其他收益 → 资产处置损益 → 所得税。写完回算一遍：各归因项的方向与规模要能对上利润的变动，加不起来就说明漏项或数字抄错了。</p>
+<p><strong>归因</strong>：按对利润的影响从大到小，一项一句，每句带金额：毛利变动（量、价、成本各影响多少）→ 期间费用（销售、管理、研发、财务各是多少、为什么变）→ 减值损失（资产减值与信用减值分别是多少、计在哪项资产上、依据什么提的）→ 投资收益与公允价值变动 → 政府补助与其他收益 → 资产处置损益 → 所得税。写完回算一遍，加不起来说明漏项或数字抄错。</p>
 
-<p>归因只能落在材料有实数的项上。材料给了减值金额就写金额；只给了「计提减值」没给数，就写「计提了减值」并把它排到后面，不编比例、不编构成。绝不能用「受行业景气度影响」「受宏观环境影响」「市场竞争加剧」「成本上升」这类不带数的话充当原因——那不是分析，是把要解释的事换了个说法。</p>
+<p>归因只能落在材料有实数的项上。只给了「计提减值」没给数，就写「计提了减值」并排到后面，不编比例与构成。不用「受行业景气度影响」「市场竞争加剧」这类不带数的话充当原因——那不是分析，是把要解释的事换个说法。</p>
 
 <div class="note">
 <span class="h">检验法</span>
-把段里每个归因句单独拎出来问两句：这句话里的金额在材料里能不能找到？把它删掉，利润下降这件事还解释得通吗？——<b>找不到金额的是编的，删掉也照旧解释得通的是废话。</b>
+把每个归因句单独拎出来问两句：这句话里的金额在材料里能不能找到？把它删掉，利润下降这件事还解释得通吗？<b>找不到金额的是编的，删掉也照旧解释得通的是废话。</b>
 </div>
 
-<p>段末收口落在「这一年的利润被什么吃掉了、下一期还吃不吃」：哪些是偶发（一次性减值、资产处置、补助清退），哪些会持续（售价下行、毛利率中枢下移、费用刚性），下一期是否重演。不要用「未来盈利有望改善」这种没有依据的话代替。</p>
+<p>段末收口落在「这一年利润被什么吃掉了、下一期还吃不吃」：哪些偶发（一次性减值、资产处置、补助清退），哪些持续（售价下行、毛利率中枢下移、费用刚性）。不用「未来盈利有望改善」代替。</p>
 
-<h3><span class="n">4.9</span>债务段：六个要素，顺序固定</h3>
+<h3><span class="n">3.9</span>债务段与专题段</h3>
 
-<p>负债总额与资产负债率 → 全部债务及长短债结构与占比 → 有息债务的融资构成（银行、债券、非标各占多少）→ 利息保障倍数与经营获现 → 非受限货币资金对短债的覆盖 → 授信总额与未使用额度。</p>
+<p>债务段六个要素，顺序固定：负债总额与资产负债率 → 全部债务及长短债结构与占比 → 有息债务的融资构成 → 利息保障与经营获现 → 非受限货币资金对短债的覆盖 → 授信总额与未使用额度。前三项回答「欠了多少、什么时候还」，后三项回答「拿什么还、还能借多少」。</p>
 
-<p>顺序固定有理由：前三项回答「欠了多少、什么时候还」，后三项回答「拿什么还、还能借多少」。违反这个顺序，读者读到一半会失去「到底还不还得上」的线索。</p>
+<p>或有事项不进债务段，由人决定是否单列。专题段只在塞不进现有段落时用：大额应收或存货存在减值风险、控制权变更或质押比例过高、评级下调或列入观察、重大在建项目资金缺口、对外担保存在代偿可能。工作台分析出这类事项却没写进正文时，会单独给一张「可以在这里补一段」的卡片，标出落点、依据与可直接用的判断句，加不加由人决定。</p>
 
-<p>或有事项不进债务段——它由人决定是否单列一段（见 4.10），债务段里不写「或有事项方面，……」。</p>
+<h3><span class="n">3.10</span>语言层</h3>
 
-<h3><span class="n">4.10</span>专题段：只在塞不进去时单列</h3>
+<p><strong>判断词要有级差</strong>：很强／较强／一般／较弱（能力、地位、支持力度）；充足／尚可／承压／不足（流动性、覆盖、再融资）；偏高／合理（占比、杠杆、集中度）；顺畅／受限（融资渠道、回款）；清晰／待理顺（股权、治理）。全篇「较强」等于没有判断。</p>
 
-<p>出现下列情形时单列一段，加粗句必须是完整判断句而不是标签：大额应收或存货存在减值风险；控制权变更或股权质押比例过高；评级被下调或列入观察；重大在建项目存在资金缺口；对外担保存在代偿可能；需要给出中期景气判断。</p>
+<p><strong>没有刻度的词不写</strong>：显著、突出、良好、较好、优良、充裕、雄厚、强劲、领先、龙头、核心平台、有力、有效、大幅、充分、完善、稳健、向好。理由不是难听，而是没有共同刻度——同一件事换个人写就落在「较强」或「一般」，读者无法据此比较两家公司。</p>
 
-<p>单列的标准是「这件事没法塞进现有段落而不打断原有逻辑」。能塞进去的就塞，专题段过多会让报告失去简评的性质。工作台在分析出但没写进正文的事项时，会单独给一张「可以在这里补一段」的提示卡，标出落点（资产段之后／债务段之后）、依据和可直接用的判断句——加不加仍由人决定。</p>
+<p><strong>删掉元话语</strong>：「这一结构的信用含义在于」「评级时应注意到」「需要明确的是」「从外部条件看」。也不出现「材料」「披露」「载明」「列示」这类转述来源的词——判断标准：删掉这些词句子依然成立，就说明本来不该写。</p>
 
-<h3><span class="n">4.11</span>语言层：判断要有级差，话要能落地</h3>
+<p>可以用评级机构的语体（段首归因、段中展开、段末收口、亿元口径、级差判断词），但不能把它的结论当论据。外部机构说「竞争地位较强」，要认可就得用自己能复算的数据重述一遍：产出量占区域总量的比重、可替代供给的数量、客户切换成本。</p>
 
-<p><strong>判断词要有级差</strong>：很强、较强、一般、较弱（能力、地位、支持力度、专营性）；充足、尚可、承压、不足（流动性、覆盖、再融资）；偏高、合理（占比、杠杆、集中度）；顺畅、受限（融资渠道、回款）；清晰、待理顺（股权、治理）。不要全篇「较强」，那等于没有判断。</p>
+<h2><span class="n">四</span>提摘要</h2>
 
-<p><strong>没有刻度的词不写</strong>：显著、突出、良好、较好、优良、充裕、雄厚、强劲、领先、龙头、核心平台、有力、有效、大幅、充分、完善、稳健、向好。理由不是这些词不好听，而是它们没有共同刻度——同一件事换个人写就会落在「较强」或「一般」，读者无法据此比较两家公司。</p>
-
-<p><strong>归因词</strong>用「受……影响」「使得」「导致」「带动」「受益于」，少用「意味着」。「意味着」是推理的痕迹，出现在正文里会让读者觉得你在替数据下结论。</p>
-
-<p><strong>删掉元话语</strong>：「这一结构的信用含义在于」「评级时应注意到」「需要明确的是」「从外部条件看」「从财务表现看」。这些是写给自己看的推理路标，不是报告内容。也不出现「材料」「披露」「载明」「列示」这类转述来源的词——判断标准：把这些词删掉句子依然成立，就说明本来不该写。</p>
-
-<p>可以用评级机构的叙述语言（段首归因、段中展开、段末「整体来看」收口、亿元口径、级差判断词），但不能把它的结论当论据。外部机构说「公司竞争地位较强」不能作为你的判断依据；你若认可，要用自己能复算的数据把它重述一遍——比如用产出量占区域总量的比重、可替代供给的数量、客户切换成本来说明。</p>
-
-<h2><span class="n">五</span>提摘要：正面与关注怎么写</h2>
-
-<p>这是全篇最见功力的一步，也是最容易写成套话的一步。顺序错了，后面怎么改都救不回来。</p>
+<p>全篇最容易写成套话的一步，顺序错了后面改不回来。</p>
 
 <div class="fig">
   <div class="two">
@@ -738,7 +813,7 @@ mark.s{background:#fff3b8;color:inherit;padding:0 1px;border-radius:2px}
       </div>
     </div>
     <div class="path yes">
-      <div class="h">✓ 从正文倒抽 —— 摘要与正文一一对应</div>
+      <div class="h">✓ 从正文倒抽 —— 与正文一一对应</div>
       <div class="chain">
         <i>正文定稿</i><span class="ar">→</span>
         <i>逐段回读圈句</i><span class="ar">→</span>
@@ -749,72 +824,42 @@ mark.s{background:#fff3b8;color:inherit;padding:0 1px;border-radius:2px}
       </div>
     </div>
   </div>
-  <div class="cap"><b>两条路径的差别在起点</b> · 左边起点是别人的结论，右边起点是自己写的正文；前者不可核，后者每一句都能在正文里找到出处</div>
+  <div class="cap"><b>差别在起点</b> · 左边起点是别人的结论，右边起点是自己写的正文</div>
 </div>
 
-<h3><span class="n">5.1</span>两个候选池按机制分类，不按行业分类</h3>
+<h3><span class="n">4.1</span>候选池按机制分类</h3>
 
-<p>正文定稿后逐段回读，把每段里「能独立成立、且对偿债有含义」的判断句圈出来形成候选池（10–14 条），再按准入规则筛选、去重、排序、限条。</p>
+<p>正文定稿后逐段回读，把「能独立成立、且对偿债有含义」的判断句圈出来形成候选池（10–14 条），再筛选、去重、排序、限条。</p>
 
-<p><strong>正面看四类来源</strong>：身份与外部支持（谁拥有它、有无制度化的资金或政策通道）；不可替代性（停摆时谁最难受、多久能找到替代）；经营量价与获现（产出、价格、利用率、现金流覆盖）；财务弹性（期限、渠道、授信、可变现资产）。</p>
+<p><strong>正面四类来源</strong>：身份与外部支持（谁拥有它、有无制度化的资金或政策通道）；不可替代性（停摆时谁最难受、多久能找到替代）；经营量价与获现（产出、价格、利用率、现金流覆盖）；财务弹性（期限、渠道、授信、可变现资产）。</p>
 
-<p><strong>关注看四类机制</strong>：天花板与集中度（规模被什么卡住，约束是刚性还是可缓解）；盈利与现金流脆弱性（非经常性依赖、成本传导、现金流与利润背离、应收存货吞现金）；债务与再融资压力（扩张速度、短债集中、渠道依赖、表外承担）；资产质量、或有与治理（受限、减值、担保、诉讼、质押、占用）。</p>
+<p><strong>关注四类机制</strong>：天花板与集中度（规模被什么卡住，约束是刚性还是可缓解）；盈利与现金流脆弱性（非经常性依赖、成本传导、现金流与利润背离）；债务与再融资压力（扩张速度、短债集中、渠道依赖、表外承担）；资产质量、或有与治理（受限、减值、担保、诉讼、质押、占用）。</p>
 
-<p>分类的意义在于穷尽性：一个主体无论多特殊，它的支撑只能来自这四类，风险也只能落在这四类。具体的词——航线、矿权、批文、认证、床位、席位——都只是某一类在当前主体上的具体形态，不能反过来把词写进模板当成必填项。</p>
+<p>分类的意义在于穷尽性：任何主体的支撑只能来自这四类，风险也只能落在这四类。航线、矿权、批文、床位都只是某一类在当前主体上的具体形态，不能反过来写进模板当必填项。</p>
 
-<h3><span class="n">5.2</span>准入三问：缺一问就退回正文</h3>
+<h3><span class="n">4.2</span>准入三问</h3>
 
 <div class="tw">
 <table>
-<thead><tr><th>问题</th><th>过关的样子</th><th>不过关的样子</th></tr></thead>
+<thead><tr><th>问题</th><th>过关</th><th>不过关</th></tr></thead>
 <tbody>
-<tr><td><strong>能被反驳吗？</strong></td><td>「盈利规模很小，对补助依赖较大」——下一年的数据能推翻它</td><td>「公司整体经营稳健」——无法反驳，因此不是判断</td></tr>
-<tr><td><strong>正文里有支撑吗？</strong></td><td>摘要说「债务扩张压力」，债务段就有债务增速与资本支出的具体数</td><td>摘要与正文对不上，要么补正文，要么删这条</td></tr>
-<tr><td><strong>对偿债有含义吗？</strong></td><td>落到偿付来源、弹性、成本、期限或外部支持之一</td><td>「业务布局多元」没说明多元怎样带来现金流与缓冲，只是公司简介</td></tr>
+<tr><td><strong>能被反驳吗</strong></td><td>「盈利规模很小，对补助依赖较大」——下一年的数据能推翻它</td><td>「公司整体经营稳健」——无法反驳，因此不是判断</td></tr>
+<tr><td><strong>正文里有支撑吗</strong></td><td>摘要说「债务扩张压力」，债务段就有债务增速与资本支出的数</td><td>两处对不上，要么补正文，要么删这条</td></tr>
+<tr><td><strong>对偿债有含义吗</strong></td><td>落到偿付来源、弹性、成本、期限或外部支持之一</td><td>「业务布局多元」没说明多元怎样带来现金流，只是公司简介</td></tr>
 </tbody>
 </table>
 </div>
-<div class="tbl-cap">凡是「总体平稳」「持续优化」「有待观察」单独成条的，都是没想清楚。</div>
+<div class="tbl-cap">「总体平稳」「持续优化」「有待观察」单独成条的，都是没想清楚。</div>
 
-<h3><span class="n">5.3</span>一条一事，正反不重叠</h3>
+<h3><span class="n">4.3</span>一条一事，每条有主语</h3>
 
-<p>一条只装一个问题。把两个约束合成一条，评审时无法判断你到底在担心哪个；把「债务扩张」和「盈利薄弱」合成一条，更新数据时也没法只改一半。</p>
+<p>一条只装一个问题。把「债务扩张」和「盈利薄弱」合成一条，评审时无法判断在担心哪个，更新数据也没法只改一半。同一事实不在正面与关注各说一遍：典型错误是正面写「获得政府大力支持」、关注写「盈利依赖政府补助」。若补助是制度性安排（按公式拨付、纳入预算、有文件依据），放正面并说明机制；若波动大、占比高，放关注；两者都不放，只在正文交代金额。</p>
 
-<p>同一事实不在正面与关注中各说一遍。典型错误是正面写「获得政府大力支持」、关注写「盈利依赖政府补助」，读者会认为前者是敷衍。处理办法是二选一：若补助是稳定的制度性安排（按公式拨付、纳入预算、有文件依据），放正面并说明机制；若补助波动大、占比高且不可预期，放关注；两者都不放，只在正文交代金额。</p>
+<p>摘要比正文更容易脱落主语——它从正文抽句，抽的时候顺手把主语删掉了，就成了「区域专营地位较强」这种没有主体的判断。每条单独拎出来读要能答出「是谁」：主语用「公司」，需要点名身份时写「公司为……」「公司作为……」。前一条已明确是公司时后一条可承接省略，但单读读不出主体就要补。</p>
 
-<p>排序按对偿债的影响强度，不按写作顺序：经营约束在前，财务压力居中，资产质量与或有治理在后。正面同理，身份与不可替代性在前，指标改善在后。</p>
+<h3><span class="n">4.4</span>措辞与五种错法</h3>
 
-<h3><span class="n">5.4</span>每条都要有主语</h3>
-
-<p>摘要比正文更容易脱落主语——它是从正文抽句，抽的时候顺手把主语删掉了，就成了「区域专营地位较强」「股权关系清晰稳定」这种没有主体的判断。每条单独拎出来读，要能答出「是谁」：主语用「公司」，需要点名身份时写「公司为……」「公司作为……」。</p>
-
-<div class="two">
-  <div class="path no">
-    <div class="h">✗ 主语脱落</div>
-    <div class="chain"><i>区域专营地位较强，外部支持力度大。</i></div>
-  </div>
-  <div class="path yes">
-    <div class="h">✓ 带主体</div>
-    <div class="chain"><i>公司为区政府全资持有的城市建设主体，区域专营地位较强，资产注入与政府补助构成外部支持的主要来源。</i></div>
-  </div>
-</div>
-
-<p>主语不必每条都堆在句首：前一条已明确是公司，后一条可以承接省略；但只要这条单独拎出来读不出主体，就要补上。</p>
-
-<h3><span class="n">5.5</span>措辞：先定机制，再选句式</h3>
-
-<p>四种句式按机制选用，不是四个模板：</p>
-
-<ul>
-<li><strong>身份型</strong>——一句说清「谁拥有它、这意味着什么」，不停留在称号。「公司实际控制人为××市国资委，控股股东为××集团，在区域内承担××职能，外部支持具备制度基础。」</li>
-<li><strong>外部条件型</strong>——条件要是事实，推论带「有望」「存在可能」。「公司主要服务××区域，该区域××指标连续增长，随××投产，产出规模有望进一步扩大。」</li>
-<li><strong>趋势型</strong>——只给定性趋势与方向，不给数字。「近三年产出规模持续增长，已超过上一轮扩能前的水平。」</li>
-<li><strong>能力型</strong>——比较基准用「自身历史」或「可比的同类主体」，不用无依据的「同行业平均」。「经营性现金流对利息的覆盖保持在较好水平，且高于自身近五年均值。」</li>
-</ul>
-
-<p>关注的四种机制对应四类收尾：约束型给出机制与观察点（「……受××限制，产能释放节奏有待观察」）；传导型写明路径（「××推进带动债务规模扩张，后续仍有较大支出需求，存在一定的再融资压力」）；特征型定性描述（「盈利规模较小，对非经常性项目依赖较大」）；或有型说明后果（「应收类款项占用规模较大，同时存在多起未决诉讼，或有风险需持续关注」）。</p>
-
-<h3><span class="n">5.6</span>五种常见错法</h3>
+<p>四种句式按机制选用：<strong>身份型</strong>（谁拥有它、这意味着什么，不停留在称号）、<strong>外部条件型</strong>（条件要是事实，推论带「有望」）、<strong>趋势型</strong>（只给方向不给数）、<strong>能力型</strong>（比较基准用自身历史或可比同类主体，不用无依据的行业平均）。</p>
 
 <div class="tw">
 <table>
@@ -829,49 +874,76 @@ mark.s{background:#fff3b8;color:inherit;padding:0 1px;border-radius:2px}
 </table>
 </div>
 
-<h3><span class="n">5.7</span>双向校验</h3>
+<p>摘要定稿后做一次双向校验：逐条在正文里找到对应段落，逐段检查正文最要紧的判断是否都进了摘要。前者防「摘要无据」，后者防「正文有料但摘要漏了」。</p>
 
-<p>摘要定稿后做一次双向校验：逐条在正文里找到对应段落，逐段检查正文里最要紧的判断是否都进了摘要。前者防「摘要无据」，后者防「正文有料但摘要漏了」。工作台在生成后会核对一次摘要与正文的覆盖率，对不上的列进待核对。</p>
+<h2><span class="n">五</span>定稿前的检查</h2>
 
-<h2><span class="n">六</span>定稿前的检查</h2>
-
-<p>下面这些走一遍再交。前半是格式与自洽，后半是「有没有写不该写的」——后者更常被漏掉。</p>
+<p>前半是格式与自洽，后半是「有没有写不该写的」——后者更常被漏掉。</p>
 
 <ol class="chk">
 <li>标题行企业全称与基本情况中的名称一致，内部评级代码已填或标【待填】。</li>
-<li>正面与关注各不少于三条，均不含金额、百分比、倍数，且每条单独拎出来能答出「是谁」。</li>
+<li>正面与关注各不少于三条，均不含金额、百分比、倍数，每条单独拎出来能答出「是谁」。</li>
 <li>摘要里没有重复事项，也没有正面与关注互斥的表述。</li>
 <li>基本情况只写身份不写经营与财务，且已写明注册资本与实收资本（不一致时说明差额原因）。</li>
 <li>行业情况独立成段，四个判断都带一个可核实的数，与总述段不重抄同一组数据。</li>
-<li>全文没有「控股股东及持股比例未发生变化」「评级维持原级」「董事长／总经理变更」这类不影响偿债判断的交代。</li>
+<li>全文没有「控股股东及持股比例未发生变化」「评级维持原级」「董事长／总经理变更」这类交代。</li>
 <li>总述段、资产段、盈利段、债务段的段首句加粗且不带数字；分部业务段不加段首加粗。</li>
 <li>业务构成表的板块合计等于营业总收入，占比合计为 100%（有抵销则说明）。</li>
 <li>财务表期次由新到旧、与时点匹配，缺数用 <code>—</code>，盈利类有营业总收入与净利润两行。</li>
-<li>前五大资产科目按最新期次金额降序，占比合计不超过 100%，每个科目都有「主要为…… 」与质量交代。</li>
+<li>前五大资产科目按最新期次金额降序，每个科目都有「主要为……」与质量交代。</li>
 <li>债务段短债加长债等于全部债务，且与财务表一致；或有事项不混在债务段里。</li>
 <li>所有数字能追溯到具体材料与期次；自己算的比率都写得出算式。</li>
-<li>全文没有「本期」「去年」「大幅」这类无法核实的表述，也没有「材料」「披露」「数据显示」这类转述来源的词。</li>
+<li>全文没有「本期」「去年」「大幅」，也没有「材料」「披露」「数据显示」这类转述来源的词。</li>
 </ol>
 
-<h2><span class="n">七</span>让方法不过拟合：三条自我约束</h2>
+<h2><span class="n">六</span>让方法不过拟合</h2>
 
-<p>写过一批报告之后，最容易发生的事是把某一类主体的写法当成通用写法，把某一份样本的结构当成标准结构。三条约束用来防这件事。</p>
+<p>写过一批报告之后，最容易发生的是把某一类主体的写法当成通用写法。三条约束用来防这件事。</p>
 
-<p><strong>不从样本倒推规则。</strong>一份报告写得好，不代表它的段落顺序、字数、取舍就是标准。规则只从两处来：读者的阅读需要（一页半到三页、先结论后依据），以及事实的可得性（有什么数据才能写什么）。凡是想加一条「这类主体一般要写××」，先问：这是读者的需要，还是上一份样本的习惯。</p>
+<p><strong>不从样本倒推规则。</strong>一份报告写得好，不代表它的段落顺序、字数、取舍就是标准。规则只从两处来：读者的阅读需要（一页半到三页、先结论后依据），以及事实的可得性（有什么数据才能写什么）。</p>
 
-<p><strong>不把行业词写成必填项。</strong>一旦模板里出现「此处写空域限制」「此处写矿权」，写作者与模型就会去找这些词，找不到也硬写，最后形成的是套词而不是分析。正确的写法是留下机制问句（「此处写规模被什么卡住」），让具体主体自己长出词。</p>
+<p><strong>不把行业词写成必填项。</strong>模板里一旦出现「此处写空域限制」「此处写矿权」，写作者与模型就会去找这些词，找不到也硬写，最后形成套词而不是分析。正确做法是留下机制问句（「此处写规模被什么卡住」），让具体主体自己长出词。</p>
 
-<p><strong>不复用结论。</strong>上一家的判断句即使句式漂亮也不能直接搬，因为判断的对象变了。可以复用句式，不可以复用结论；可以复用结构，不可以复用取舍。</p>
+<p><strong>不复用结论。</strong>上一家的判断句即使句式漂亮也不能直接搬，因为对象变了。可以复用句式，不可以复用结论；可以复用结构，不可以复用取舍。</p>
 
 <div class="quote">
-判断是否过拟合，用一句话检验：<b>把这家企业换成一家业务完全不同、但同样需要评级的公司，这份模板或这段方法还成立吗。</b>成立，是通则；不成立，就是个案，应该写进示例而不是模板。
+检验：<b>把这家企业换成一家业务完全不同、但同样需要评级的公司，这份模板或这段方法还成立吗。</b>成立是通则；不成立就是个案，应该写进示例而不是模板。
 </div>
 
-<h2><span class="n">八</span>机器起草：程序替你查了什么</h2>
+<h2><span class="n">七</span>实现链路：一次请求经过什么</h2>
 
-<p>「人在环内」是先取齐材料、按第三、四节写正文，再按第五节倒抽摘要，最后走一遍检查，适合首次覆盖、结构复杂、报告要上会的场合。「机器起草」是把材料交给程序，由程序完成取数、填表、按骨架拼装段落，人只做两步：补摘要层、改判断句，适合跟踪期更新、材料齐全、体例已定的场合。</p>
+<p>四步对应四个后台任务，每个任务把结果写进 <code>STATE</code>（按主体名归位）并落一份快照。前端只轮询进度，不在本地攒状态。</p>
 
-<p>工作台走的是第二条路。它替人做的是「写」和「查」，不替人做「判断」——查不出来的地方列成待核对，判断仍由人下。</p>
+<div class="tw">
+<table>
+<thead><tr><th>接口</th><th>函数</th><th>做的事</th><th>写完存哪</th></tr></thead>
+<tbody>
+<tr><td><code>/api/jobs/search</code></td><td><code>do_search</code> → <code>facts.collect_materials</code></td><td>一次宽查询 120 条 → <code>classify_material</code> 分四类 → <code>_matter_score</code> 排序 → <code>_dedupe</code> 去重 → 截断</td><td><code>STATE[key].facts</code></td></tr>
+<tr><td><code>/api/jobs/fetch</code></td><td><code>do_fetch</code></td><td>逐份 <code>_budget_for(kind)</code> → <code>load_material</code> → <code>download</code> → <code>extract_pages</code> → <code>excerpt(kind)</code></td><td><code>STATE[key].materials</code></td></tr>
+<tr><td><code>/api/jobs/generate</code></td><td><code>do_generate</code> → <code>generator.generate</code></td><td><code>build_user_prompt</code> → <code>llm.chat</code> → 解析 JSON → <code>polish_draft</code> → <code>validate</code></td><td><code>STATE[key].draft</code> + <code>history</code></td></tr>
+<tr><td><code>/api/export</code></td><td><code>docx_writer</code></td><td>按模板排版写 Word，段距由 <code>--pgap</code> 与「段落空行」开关同吃</td><td><code>output/*.docx</code></td></tr>
+</tbody>
+</table>
+</div>
+
+<h3><span class="n">7.1</span>提示词怎么拼</h3>
+
+<p><code>build_user_prompt()</code> 拼四块：模板摘要（只取 id／title／type／字数区间／beats，不把整份 json 塞进去）→ 事实台账（企业名、结构特征、工商指标、股权、评级历史、存量债券、财务指标、期次写法、主营构成）→ 材料原文（每份带 <code>（日期｜类别）</code> 头）→ 输出 JSON 样张（字段即段落，注释即要求）。</p>
+
+<p>没有结构化台账时（只上传 PDF），台账块换成三条口径提示：一律以材料原文为准、期次照抄材料表述、财务表由模型从「主要财务数据」整理。这决定模型是「核对者」还是「摘录者」的角色。</p>
+
+<h3><span class="n">7.2</span>生成之后按顺序做的四件事</h3>
+
+<ol>
+<li><code>_ensure_structure()</code>：补齐缺失字段与默认值，行业段有内容才让它进 docx 的编号（否则点评退回「2、点评」，不跳号）。</li>
+<li><code>polish_draft()</code>：无损改写——删来源交代语、去重复句、合并粘连句、补千分位、清理「该板块风险在于」这类引导语。只改写法，不改判断。</li>
+<li>表格清洗：财务表逐格溯源，找不到出处的置「—」并记下哪一行哪一期；业务构成表补占比列。</li>
+<li><code>validate()</code>：四类检查，产出 <code>issues</code>（人读）、<code>issue_items</code>（带定位）、<code>auto_checks</code>（机器已复算，附算式）。</li>
+</ol>
+
+<h2><span class="n">八</span>校验与待核对</h2>
+
+<p>程序替人做「写」与「查」，不做「判断」。查不出来的列成待核对，判断仍由人下。</p>
 
 <div class="fig">
   <div class="figbody">
@@ -901,20 +973,20 @@ mark.s{background:#fff3b8;color:inherit;padding:0 1px;border-radius:2px}
     <text x="340" y="146" text-anchor="middle" style="fill:var(--ink2);font-size:12.5px;font-weight:600">程序先查一遍</text>
   </svg>
   </div>
-  <div class="note" id="loopcard" style="margin-top:10px"></div>
-  <div class="cap"><b>把鼠标放到节点上</b>看那一步在做什么 · 环上的虚线在走，表示这是循环而不是单程</div>
+  <div class="note" id="loopcard" style="margin-top:9px"></div>
+  <div class="cap"><b>鼠标放到节点上</b>看那一步在做什么 · 环上虚线在走，表示这是循环不是单程</div>
 </div>
 
-<h3><span class="n">8.1</span>四类校验，各有各的防线</h3>
+<h3><span class="n">8.1</span>四类通道</h3>
 
 <div class="tw">
 <table>
-<thead><tr><th>通道</th><th>查什么</th><th>查不出时会怎样</th></tr></thead>
+<thead><tr><th>通道</th><th>查什么</th><th>查不出时</th></tr></thead>
 <tbody>
-<tr><td><strong>数字溯源</strong></td><td>正文里每个数能不能在材料里找到；自己算的能不能复算。交底的算式按「两个以上操作数 + 操作数在材料里 + 结果在正文里」三条同时成立才销账</td><td>进待核对，标出是哪一段哪一句，点一下跳到那一句并选中</td></tr>
-<tr><td><strong>财务表逐格</strong></td><td>每一格要能在材料里找到，或由同一列的其他数算出（资产负债率、总资本化比率这类）</td><td>该格直接置为「—」，并列出是哪一行、哪一期、原值多少</td></tr>
-<tr><td><strong>结构与写法</strong></td><td>缺行业段／行业段没有一个数、基本情况缺注册资本或实收资本、资产段只给金额不给占比、缺盈利段、亏损没写成亏损、写了没有变化的事</td><td>进待核对，给出改法而不是只给结论</td></tr>
-<tr><td><strong>措辞与主语</strong></td><td>摘要用了没有刻度的词、一条塞了两件事、正面与关注说同一事实、加粗句看不出主体、同一句话出现两遍</td><td>进待核对，附原句</td></tr>
+<tr><td><strong>数字溯源</strong></td><td>正文每个数能否在材料里找到；自己算的能否复算。交底算式按「两个以上操作数 + 操作数在材料里 + 结果在正文里」三条同时成立才销账</td><td>进待核对，标出段与句，点一下跳到那一句并选中</td></tr>
+<tr><td><strong>表格逐格</strong></td><td>每一格能在材料里找到，或由同列其他数算出（资产负债率、总资本化比率）</td><td>该格置「—」，列出哪一行、哪一期、原值多少</td></tr>
+<tr><td><strong>结构与写法</strong></td><td>缺行业段／行业段没有一个数、缺注册资本或实收资本、资产段只给金额不给占比、缺盈利段、亏损没写成亏损、写了没有变化的事、审计意见非标准而正文没写</td><td>进待核对，给改法而不只是结论</td></tr>
+<tr><td><strong>措辞与主语</strong></td><td>摘要用了没刻度的词、一条塞了两件事、正反说同一事实、加粗句看不出主体、同一句出现两遍</td><td>进待核对，附原句</td></tr>
 </tbody>
 </table>
 </div>
@@ -922,69 +994,96 @@ mark.s{background:#fff3b8;color:inherit;padding:0 1px;border-radius:2px}
 <div class="note warn">
 <span class="h">两条防止「假核对」的硬约束</span>
 <b>一、不拿材料全文做算式反推。</b>几千个数两两组合几乎能凑出任何值，那是假核对，比不核对更糟。差额与合计只在句子本身写着「增加／减少／合计」时才认。<br>
-<b>二、操作数不能是结果自身。</b>「净利润 −8.39 亿元」曾被「13.49 − 5.11 = 8.39」验成机器核对通过，而这两项与净利润毫无关系。小于 1 的「倍数」也只认差额，不给除法那一档。
+<b>二、操作数不能是结果自身。</b>「净利润 −8.39 亿元」曾被「13.49 − 5.11 = 8.39」验成机器通过，而这两项与净利润毫无关系。小于 1 的「倍数」只认差额，不给除法那一档。
 </div>
 
 <h3><span class="n">8.2</span>待核对怎么用</h3>
 
-<p>按问题的类型分组，一组一卡，组头有三态复选框。每条能点开跳到正文对应的那一句并选中——长句会收到「含目标数字的那个分句」，而不是选中两百多字一整段。机器已经自己复算过的收进「机器已自动核对」折叠块，附算式，不需要人工看，但要留痕。</p>
+<p>按问题类型分组，一组一卡，组头三态复选框，顶部「全勾」可反向撤销。每条点开跳到正文对应那一句并选中——长句收到「含目标数字的那个分句」，而不是选中两百多字一整段。机器已复算过的收进折叠块，附算式，不需要人工看但要留痕。</p>
 
-<p>勾掉表示「我看过了、没问题」，它不会从报告里消失——报告要导出的是完整稿子，不是待办清单。</p>
+<p>勾掉表示「看过了、没问题」，它不会从报告里消失——导出的是完整稿子，不是待办清单。</p>
 
-<h3><span class="n">8.3</span>两份分析附件</h3>
+<h3><span class="n">8.3</span>更新模式</h3>
 
-<p>生成之后另出两份纯文本，供核对与留痕：</p>
+<p>已有旧报告时走同一条流程，产出是修订清单：位置、原文、改后、理由、依据，可勾选可改写，分「可执行／要先处理／待人工」。执行顺序固定为插入 → 删除 → 替换，否则插入会落空；同一句被两条替换或删除引用时标为冲突，不猜该听哪条。修订以 Word 原生修订标记落到 docx，可用「拒绝全部修订」逐字还原原文——这是检验修订版有没有越界改动最直接的办法。</p>
 
-<ul>
-<li><strong>发债情况</strong>——从财汇取的全量债券清单（含已到期与私募债），按品种分组，一行一只「简称｜代码｜规模｜期限｜起始日」，末尾附主体评级、性质、实控人与口径说明。不从 PDF 猜：评级报告只列存续那几只，代码和历史券不在里面。</li>
-<li><strong>关键财务信息</strong>——四项固定：市场地位（定位、持股、评级与机构日期、区域财力、资产与营收、业务结构）、财报可靠性（审计机构 + 意见类型）、受限资产占比（金额、占比、明细、原因）、应收账款账龄（一年以上占比，未披露就写【未披露】并给余额序列作替代）。</li>
-</ul>
+<h2><span class="n">九</span>六个技术点</h2>
 
-<p>右侧栏点开可先看一眼，打包下载与发邮件时可勾选。金额与占比必须取自同一句、同一期次——这一条就是被实践逼出来的（见 3.5 的提示）。</p>
+<h3><span class="n">9.1</span>数字溯源的三道防线</h3>
 
-<h3><span class="n">8.4</span>更新模式：同一套流程，产出的是修订清单</h3>
+<p><b>问题。</b>材料只写「计提大额减值导致净利润亏损」，模型能写出「净利润 −8.39 亿元、上年 75.29 亿元」——8.39 是 13.49 减 5.11 凑的，75.29 是子公司 75.28 抄错的。两个数材料里都没有，而且旧规则把它判成「机器已核对通过」。</p>
 
-<p>手上已有旧报告、只需要按新材料更新时，走同一条流程，产出不是整篇新稿，而是一张修订清单：位置、原文、改后、理由、依据，可勾选可改写，分「可执行／要先处理／待人工」。</p>
+<p><b>做法。</b>①财务表逐格溯源，带符号比对，找不到置「—」并列出哪行哪期；②差额与合计只在数字旁 ±8 字内确有「增加／减少／合计」时才认；③句中一个数 + 材料里另一个数反解（<code>diff: c = a − target</code>、<code>growth: c = a ÷ (1 + target)</code>），容差 0.05、多候选、回代验算。</p>
 
-<p>执行顺序固定为 插入 → 删除 → 替换，否则插入会落空；同一句被两条替换或删除引用时标为冲突，不猜该听哪条。修订以 Word 原生修订标记落到 docx 里，可以用「拒绝全部修订」逐字还原原文——这是检验修订版有没有越界改动最直接的办法。</p>
+<p><b>验证。</b>提示词里写「不许编」挡不住模型，最终靠「表里没有就置空 + 正文报了金额就报矛盾」。这条改动后自动核对从 0 项升到 21 项，且没有再出现无源净利润。</p>
 
-<h3><span class="n">8.5</span>会话快照</h3>
+<h3><span class="n">9.2</span>算式交底与复算</h3>
 
-<p>材料清单、已生成的草稿、分析附件都落在服务端，进程重启后自动读回。材料是逐份解析 PDF 换来的（每份十几秒），不该因为一次重启就重读一遍。它解决的是「进程重启」，不是「容器重建」——后者要对象存储，是另一件事。</p>
+<p><b>问题。</b>占比、增速、差额这类自算值，程序无法判断真假；不查就等于全放行，全查又会产生大量误报。</p>
 
-<h2><span class="n">九</span>与上一版的变化</h2>
+<p><b>做法。</b>让模型把每条自算值的算式写进 <code>data_notes</code>，格式固定为「指标名 = 操作数A 运算符 操作数B」。程序解析算式，要求操作数在材料里能找到、算出结果与正文一致、操作数不是结果自身，三条同时成立才销账，否则进待核对。<code>_parse_formula</code> 容忍末尾「= 结果」的写法。</p>
 
-<p>本页合并了原来的「模板 v1.1」与「方法论 v1.1」，并把两份文档更新到当前实现（8.1）。主要变化：</p>
+<p><b>验证。</b>口径统一后，21 条算式全部可复算；错误凑数的算式会因操作数在材料里查不到而落网。</p>
+
+<h3><span class="n">9.3</span>句子级定位</h3>
+
+<p><b>问题。</b>待核对只说「第 3 段有个数不对」，人还要自己找；一段两百多字，找起来比核对本身费时。</p>
+
+<p><b>做法。</b>两条腿同时留着：①后端 <code>issue_items</code> 给 <code>field</code>（段落字段）、<code>full</code>（整句）、<code>si</code>（句序号），准；②前端按「数字 + 引文」在正文里自己搜句，耐久——任何旧记录都能用。长句再收到「含目标数字的分句」（<code>narrowHighlight</code>），但重复句与点题句不切，它们的目标就是整句。</p>
+
+<p><b>验证。</b>只靠 ① 时，旧记录升级后全部退化成段落级，被用户当场抓到；补上 ② 之后存量记录也能跳到句。</p>
+
+<h3><span class="n">9.4</span>无损改写</h3>
+
+<p><b>问题。</b>模型爱写「材料显示」「从外部条件看」「该板块风险在于」，这些是作业痕迹，不是报告语言；但整段重写会动判断，风险更大。</p>
+
+<p><b>做法。</b>只做可逆的机械操作：擦掉来源交代前缀、删重复句、合并被拆开的同一句、补千分位、摘除「该板块风险在于」引导语后并句。判断层面的事（比如「该不该补一个条件」）不自动做，转为校验提示。</p>
+
+<p><b>验证。</b>擦不干净的句子（「××方面，材料未披露」）最后按小句摘除；改写前后数字集合与句意不变，可逐句对照。</p>
+
+<h3><span class="n">9.5</span>材料分类与摘录预算</h3>
+
+<p><b>问题。</b>审计报告的摘要页在打分上不占优：页首无表名、关键词少，几十页报表附注却数字密集。按通用打分挑页，审计意见必然被挤出去，而它恰是唯一必须引用的一段。另一头，「××年度经审计的合并及母公司财务报告」通篇没有「审计报告」四个字，按标题定预算会拿默认值。</p>
+
+<p><b>做法。</b>分类先于预算：<code>classify_material</code> 定类别，<code>_budget_for(kind)</code> 按类别定额（跟踪 3.2 万／募集 2.6 万／审计 1.4 万／公告 0.6 万）；审计报告摘录顺序改为「意见页先占 45%，三表页次之」；定期报告虽归在「其他公告」，内容就是几张表，仍走财务页优先。</p>
+
+<p><b>验证。</b>120 页的审计报告保留 13 页、1.39 万字，意见段与合并资产负债表都在；四类材料合计 7.7 万字，未超 8 万上限。</p>
+
+<h3><span class="n">9.6</span>会话快照</h3>
+
+<p><b>问题。</b>材料是逐份解析 PDF 换来的，每份十几秒。进程一重启就丢，等于让人重读一遍。</p>
+
+<p><b>做法。</b>按主体把 <code>facts/materials/base/draft</code> 落到 <code>data/state/&lt;hash16&gt;.json</code>，三个时点写盘（检索完、读材料完、生成完），启动时读回。边界：单主体 20 份文件、12MB、14 天，空会话不落盘。</p>
+
+<p><b>验证。</b>强杀进程后重启，<code>/api/prompt</code> 34,625 字与强杀前一致，两份分析附件字数一致。它解决「进程重启」，不解决「容器重建」——后者要对象存储。</p>
+
+<h2><span class="n">十</span>最近的变化</h2>
 
 <div class="tw">
 <table>
-<thead><tr><th>位置</th><th>上一版</th><th>现在</th></tr></thead>
+<thead><tr><th>版本</th><th>改了什么</th></tr></thead>
 <tbody>
-<tr><td>正文结构</td><td>1、基本情况 → 2、点评</td><td>1、基本情况 → 2、行业情况 → 3、点评；行业单列并回答量价</td></tr>
-<tr><td>基本情况</td><td>列了注册资本、实收资本，但没强制</td><td>两者都写，不一致说明差额原因</td></tr>
-<tr><td>例行交代</td><td>未约束，跟踪报告的固定栏目常被照抄</td><td>没有变化的事与无关人事变动不写；反向清单（控制权变更、评级下调等）必须写</td></tr>
-<tr><td>点评块序列</td><td>七件（无盈利段）</td><td>八件，新增盈利段：收入拆量价结构，亏损逐项归因</td></tr>
-<tr><td>资产段</td><td>要求说明「是什么」</td><td>句式固定为「科目　金额（占资产总额 ××.××%），主要为×××」，四个要素缺一不可</td></tr>
-<tr><td>财务表</td><td>缺数填 <code>--</code></td><td>缺数填 <code>—</code>；逐格可溯源，找不到出处的置空并提示；盈利类必须有营业总收入与净利润</td></tr>
-<tr><td>摘要主语</td><td>未要求</td><td>每条都要能答出「是谁」；属性词开头的判断句判定为脱落主语</td></tr>
-<tr><td>校验</td><td>基本靠人工</td><td>四类通道自动查，进待核对可跳句；机器已复算的单独收起</td></tr>
-<tr><td>分析附件</td><td>无</td><td>发债情况、关键财务信息两份纯文本，可预览、可打包、可随邮件发出</td></tr>
+<tr><td>8.3</td><td>材料从两类扩到四类：补审计报告与其他公告；审计意见非标准而正文没写，列一条待核对</td></tr>
+<tr><td>8.1</td><td>正文分三节，行业情况单列；基本情况补实收资本；没有变化的事不写</td></tr>
+<tr><td>8.2</td><td>方法论与模板合并为本页，四张流程图</td></tr>
+<tr><td>7.9</td><td>主语写进生成规则：正文与摘要生成时即带主体</td></tr>
 </tbody>
 </table>
 </div>
 
 <div class="note">
-<span class="h">这一页与程序是同源的</span>
-本页写的要求，<code>app/generator.py</code> 的提示词在生成时就用；方法里说「必需」的，校验会查；查不出的（比如「这个归因是不是废话」），列进待核对由人判断。改方法要同时改提示词与校验，否则页面写一套、生成是另一套——这是本项目吃过一次的亏。
+<span class="h">页面与程序同源</span>
+本页写的要求，<code>app/generator.py</code> 的提示词在生成时就用；说「必需」的，<code>validate()</code> 会查；查不出的（比如「这个归因是不是废话」），列进待核对由人判断。改方法要同时改提示词与校验，否则页面写一套、生成是另一套。
 </div>
 
+      </div><!-- /v-full -->
     </article>
     <nav class="pager" id="pager"></nav>
     <div class="foot">
       <div>配套文件：<a href="template-v1.1.docx" download>Word 骨架（.docx）</a> ·
         <a href="template-v1.1.json" download>机器可读槽位（.json）</a> ·
         <a href="../versions/">版本历史</a></div>
-      <div>本页与 <code>app/generator.py</code> 的提示词、校验规则同源：页面写的要求，程序在生成时就用；程序查不出的，列进待核对由人判断。</div>
+      <div>本页与 <code>app/generator.py</code> 的提示词、校验规则同源：页面写的要求，程序生成时就用；程序查不出的，列进待核对由人判断。</div>
     </div>
   </main>
 </div>
@@ -992,14 +1091,27 @@ mark.s{background:#fff3b8;color:inherit;padding:0 1px;border-radius:2px}
 <button class="toTop" id="toTop" title="回到顶部">↑</button>
 
 <script>
-/* 目录由正文标题生成，改内容不用同步改导航 */
+/* 两个视图共用一套目录、搜索、进度与主题逻辑。
+   目录与搜索结果都只针对当前视图，切换时重建——否则简版里会列出详版的章节。 */
 (function(){
   const art = document.getElementById('art');
   const toc = document.getElementById('toc');
-  const heads = [...art.querySelectorAll('h2, h3')];
-  const items = [];
-  /* 标题里序号是独立的 span，textContent 拼起来会变成「一方法总览」。
-     目录要按人读的写法加分隔：大节「一、方法总览」，小节「1.1 三个产出」。 */
+  const side = document.getElementById('side');
+  const tocT = document.getElementById('tocT');
+  const hint = document.getElementById('tocHint');
+  const pager = document.getElementById('pager');
+  const views = { brief: document.getElementById('v-brief'), full: document.getElementById('v-full') };
+  const HINTS = {
+    brief: '详版另有九节：认料、取数、写正文、提摘要、定稿检查、实现链路、校验闭环、六个技术点、最近的变化。',
+    full: '简版在一屏里讲完四步流程、涉及的文件、模板与提示词的结构。'
+  };
+  let curView = 'brief';
+  let items = [];          // [{a, h}]，仅当前视图
+  let h2s = [];
+  const expanded = new Set();
+  let curH2 = '';
+
+  /* 标题里的序号是独立的 span，textContent 拼起来会变成「一四步」。 */
   function labelOf(h){
     const nEl = h.querySelector('.n');
     const num = nEl ? nEl.textContent.trim() : '';
@@ -1007,34 +1119,51 @@ mark.s{background:#fff3b8;color:inherit;padding:0 1px;border-radius:2px}
     if(!num) return rest;
     return h.tagName === 'H2' ? num + '、' + rest : num + ' ' + rest;
   }
-  /* 41 个小节全铺在侧栏要滚两屏，反而不好找。默认只显示 9 个大节，
-     小节跟着「当前在读哪一节」自动展开；手动点过的记住。 */
-  const expanded = new Set();
-  let curH2 = '';
-  heads.forEach((h, i) => {
-    if(!h.id) h.id = 's' + i;
-    const a = document.createElement('a');
-    const label = labelOf(h);
-    a.href = '#' + h.id;
-    a.textContent = label;
-    a.dataset.id = h.id;
-    if(h.tagName === 'H3'){
-      a.className = 'lv3';
-      a.dataset.parent = curH2;
-    } else {
-      a.className = 'lv2';
-      curH2 = h.id;
-      a.dataset.kids = '';
-    }
-    a.dataset.kw = label.toLowerCase() + ' ' + (h.nextElementSibling ? h.nextElementSibling.textContent : '').toLowerCase();
-    toc.appendChild(a);
-    items.push({a, h});
-  });
-  /* 每个大节后面记下它有几个小节，用于折叠判断 */
-  const h2s = [...toc.querySelectorAll('a.lv2')];
-  h2s.forEach(a => {
-    a.dataset.kids = String(items.filter(it => it.a.dataset.parent === a.dataset.id).length);
-  });
+
+  function buildToc(){
+    toc.innerHTML = '';
+    items = [];
+    h2s = [];
+    curH2 = '';
+    const root = views[curView];
+    const heads = [...root.querySelectorAll('h2, h3')];
+    heads.forEach((h, i) => {
+      if(!h.id) h.id = curView + '-s' + i;
+      const label = labelOf(h);
+      const a = document.createElement('a');
+      a.href = '#' + h.id;
+      a.textContent = label;
+      a.dataset.id = h.id;
+      if(h.tagName === 'H3'){
+        a.className = 'lv3';
+        a.dataset.parent = curH2;
+      } else {
+        a.className = 'lv2';
+        curH2 = h.id;
+      }
+      const nxt = h.nextElementSibling;
+      a.dataset.kw = (label + ' ' + (nxt ? nxt.textContent : '')).toLowerCase();
+      toc.appendChild(a);
+      items.push({a, h});
+    });
+    h2s = [...toc.querySelectorAll('a.lv2')];
+    h2s.forEach(a => {
+      a.dataset.kids = String(items.filter(it => it.a.dataset.parent === a.dataset.id).length);
+    });
+    if(!heads.length) toc.innerHTML = '<div class="none">本视图没有小节</div>';
+    /* 进页面先展开第一节的小节：全收起时侧栏只剩六个大节，
+       看上去像没有子目录，得先滚一下才知道有。 */
+    curH2 = h2s.length ? h2s[0].dataset.id : '';
+    paintToc();
+    buildPager();
+    tocT.textContent = '目录';
+    hint.innerHTML = HINTS[curView] +
+      (curView === 'brief' ? ' <a href="#" id="hintGo" style="white-space:nowrap">切到详版</a>'
+                           : '');
+    const go = document.getElementById('hintGo');
+    if(go) go.addEventListener('click', e => { e.preventDefault(); setView('full'); });
+  }
+
   function paintToc(){
     const openSet = new Set(expanded);
     if(curH2) openSet.add(curH2);
@@ -1050,11 +1179,21 @@ mark.s{background:#fff3b8;color:inherit;padding:0 1px;border-radius:2px}
       a.style.setProperty('--kn', '"' + k + '"');
     });
   }
-  paintToc();
-  if(!heads.length) toc.innerHTML = '<div class="none">无小节</div>';
 
-  /* 当前节高亮：取最后一个已越过顶部的标题 */
-  const side = document.getElementById('side');
+  /* 上一节 / 下一节只在大节之间走 */
+  function buildPager(){
+    const hs = [...views[curView].querySelectorAll('h2')];
+    if(hs.length > 1){
+      pager.style.display = '';
+      pager.innerHTML =
+        '<a href="#' + hs[0].id + '"><span>首节</span>' + labelOf(hs[0]) + '</a>' +
+        '<a class="r" href="#' + hs[hs.length - 1].id + '"><span>末节</span>' + labelOf(hs[hs.length - 1]) + '</a>';
+    } else {
+      pager.style.display = 'none';
+    }
+  }
+
+  /* 当前节高亮 + 读到哪节自动展开哪节的小节 */
   let ticking = false;
   function onScroll(){
     const y = window.scrollY + 90;
@@ -1064,7 +1203,6 @@ mark.s{background:#fff3b8;color:inherit;padding:0 1px;border-radius:2px}
       else break;
     }
     items.forEach(it => it.a.classList.toggle('on', it === cur));
-    /* 读到哪一节就展开哪一节的小节 */
     let h2 = null;
     for(const it of items){
       if(it.h.tagName === 'H2' && it.h.getBoundingClientRect().top + window.scrollY <= y) h2 = it.a.dataset.id;
@@ -1084,10 +1222,34 @@ mark.s{background:#fff3b8;color:inherit;padding:0 1px;border-radius:2px}
   window.addEventListener('scroll', () => {
     if(!ticking){ ticking = true; requestAnimationFrame(onScroll); }
   }, {passive:true});
-  onScroll();
+
+  /* 视图切换 */
+  function setView(v){
+    if(v !== 'brief' && v !== 'full') v = 'brief';
+    curView = v;
+    Object.entries(views).forEach(([k, el]) => el.classList.toggle('on', k === v));
+    document.querySelectorAll('#seg button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+    expanded.clear();
+    buildToc();
+    clearMarks(art);
+    document.getElementById('q').value = '';
+    toc.classList.remove('searching');
+    try{ localStorage.setItem('wikiView', v); }catch(e){}
+    window.scrollTo({top:0, behavior:'auto'});
+    requestAnimationFrame(onScroll);
+  }
+  document.getElementById('seg').addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if(b) setView(b.dataset.v);
+  });
+  document.querySelectorAll('[data-v]').forEach(el => {
+    if(el.tagName === 'BUTTON' && !el.closest('#seg')){
+      el.addEventListener('click', () => setView(el.dataset.v));
+    }
+  });
 
   /* 手机上的目录折叠 */
-  document.getElementById('tocT').addEventListener('click', () => {
+  tocT.addEventListener('click', () => {
     if(window.matchMedia('(max-width:920px)').matches) side.classList.toggle('open');
   });
   toc.addEventListener('click', e => {
@@ -1096,16 +1258,7 @@ mark.s{background:#fff3b8;color:inherit;padding:0 1px;border-radius:2px}
     }
   });
 
-  /* 上一节 / 下一节：只在大节之间走 */
-  const hs = [...art.querySelectorAll('h2')];
-  const pg = document.getElementById('pager');
-  if(hs.length > 1){
-    pg.innerHTML =
-      '<a href="#' + hs[0].id + '"><span>首节</span>' + labelOf(hs[0]) + '</a>' +
-      '<a class="r" href="#' + hs[hs.length-1].id + '"><span>末节</span>' + labelOf(hs[hs.length-1]) + '</a>';
-  } else { pg.style.display = 'none'; }
-
-  /* 搜索：过滤目录 + 正文高亮（从纯文本重建，不嵌套） */
+  /* 搜索：过滤目录 + 正文高亮（从纯文本重建，反复搜索不嵌套） */
   const q = document.getElementById('q');
   let timer = null;
   function clearMarks(root){
@@ -1150,29 +1303,24 @@ mark.s{background:#fff3b8;color:inherit;padding:0 1px;border-radius:2px}
   }
   function doSearch(){
     const kw = q.value.trim();
-    clearMarks(art);
-    /* 搜索时把折叠的小节全展开：命中项藏在收起的分组里等于没搜到。
-       清空后交还给滚动逻辑，恢复成「只展开当前节」。 */
+    clearMarks(views[curView]);
+    /* 搜索时把折叠的小节全展开：命中项藏在收起的分组里等于没搜到 */
     toc.classList.toggle('searching', !!kw);
-    let first = null, hits = 0;
     for(const it of items){
-      if(!kw){
-        it.a.classList.remove('hide');
-        continue;
-      }
+      if(!kw){ it.a.classList.remove('hide'); continue; }
       const hit = it.a.textContent.toLowerCase().includes(kw.toLowerCase()) ||
                   (it.a.dataset.kw || '').includes(kw.toLowerCase());
       it.a.classList.toggle('hide', !hit);
     }
     if(kw){
-      hits = markText(art, kw);
-      first = art.querySelector('mark.s');
+      const hits = markText(views[curView], kw);
+      const first = views[curView].querySelector('mark.s');
       if(first) first.scrollIntoView({block:'center', behavior:'smooth'});
       const vis = items.filter(it => !it.a.classList.contains('hide')).length;
-      document.getElementById('tocT').textContent = '目录 · ' + hits + ' 处命中' + (vis ? '' : '（无匹配小节）');
+      tocT.textContent = '目录 · ' + hits + ' 处命中' + (vis ? '' : '（无匹配小节）');
       if(window.matchMedia('(max-width:920px)').matches) side.classList.add('open');
     } else {
-      document.getElementById('tocT').textContent = '目录';
+      tocT.textContent = '目录';
       paintToc();
     }
   }
@@ -1197,12 +1345,12 @@ mark.s{background:#fff3b8;color:inherit;padding:0 1px;border-radius:2px}
   document.getElementById('home').addEventListener('click', () => { location.href = '../'; });
   document.getElementById('toTop').addEventListener('click', () => window.scrollTo({top:0, behavior:'smooth'}));
 
-  /* 主流程节点：点一下换下方的说明 */
+  /* 主流程节点：点一下换下方说明 */
   const steps = {
-    s0:{t:'认料', b:'<' + 'b>先看清手里有什么。<' + '/b>跟踪评级报告、募集说明书、年报、公告、结构化数据，可信度和期次都不同。同一事实出现两个值时按优先级采信，低优先级来源的冲突值不采用但要留痕。材料不全要降级降得明确，不用推测填补缺料。'},
-    s1:{t:'取数', b:'<' + 'b>先定期次，再定单位，最后定口径。<' + '/b>资产负债取最新期末，收入盈利取最近一个完整年度；金额统一亿元两位小数；全篇合并口径。凡自己算的比率都要写得出算式，量级用这家主体自己的历史区间比对，不用行业均值。'},
-    s2:{t:'写正文', b:'<' + 'b>一段一条因果链。<' + '/b>驱动因素 → 中间量 → 财务结果 → 偿债含义，链路走不通的部分宁可删掉，不要并列罗列。每段一句加粗汇总句，句带判断不带数字，且必须能答出「是谁」。'},
-    s3:{t:'提摘要', b:'<' + 'b>从正文倒抽，不从材料正推。<' + '/b>正文定稿后逐段回读，圈出能独立成立、且对偿债有含义的判断句形成候选池，再过准入三问、去重、排序、限条。倒过来做，摘要与正文必然两层皮。'}
+    s0:{t:'认料', b:'<b>先看清手里有什么。</b>四类材料各有各的用处：评级报告是判断主线，募集说明书补穿透细节，审计报告给财务口径与审计意见，其他公告找报告期内的变化。同一事实两个值时按优先级采信，材料不全就降级，不用推测填补。'},
+    s1:{t:'取数', b:'<b>先定期次，再定单位，最后定口径。</b>资产负债取最新期末，收入盈利取最近完整年度；金额统一亿元两位小数；全篇合并口径。凡自己算的比率都要写得出算式，量级用这家主体自己的历史区间比对，不用行业均值。'},
+    s2:{t:'写正文', b:'<b>一段一条因果链。</b>驱动因素 → 中间量 → 财务结果 → 偿债含义，走不通的部分宁可删掉，不并列罗列。每段一句加粗汇总句，带判断不带数字，且要能答出「是谁」。'},
+    s3:{t:'提摘要', b:'<b>从正文倒抽，不从材料正推。</b>正文定稿后逐段回读，圈出能独立成立且对偿债有含义的判断句形成候选池，再准入三问、去重、排序、限条。倒过来做，摘要与正文必然两层皮。'}
   };
   const card = document.getElementById('stepcard');
   function pickStep(k){
@@ -1214,14 +1362,14 @@ mark.s{background:#fff3b8;color:inherit;padding:0 1px;border-radius:2px}
     n.addEventListener('click', () => pickStep(n.dataset.k));
     n.addEventListener('mouseenter', () => pickStep(n.dataset.k));
   });
-  if(card) pickStep('s0');
+  pickStep('s0');
 
   /* 校验回路节点 */
   const loops = {
     l0:'生成一次草稿：材料进提示词，模型按骨架输出正文与摘要。',
-    l1:'程序随即做四类检查：数字能否溯源、财务表逐格是否有出处、结构与写法是否到位、措辞与主语是否合格。',
-    l2:'查不出的进「待核对」清单：一条一处，可点击跳到正文那一句，机器已经复算过的单独收起。',
-    l3:'人工逐条看：改、或勾掉。改完再导出，导出的就是屏幕上看到的那份。'
+    l1:'程序随即做四类检查：数字能否溯源、表格逐格是否有出处、结构与写法是否到位、措辞与主语是否合格。',
+    l2:'查不出的进「待核对」：一条一处，可点击跳到正文那一句；机器已复算过的单独收起。',
+    l3:'人工逐条看，改或勾掉。改完再导出，导出的就是屏幕上看到的那份。'
   };
   const lcard = document.getElementById('loopcard');
   function pickLoop(k){
@@ -1233,6 +1381,11 @@ mark.s{background:#fff3b8;color:inherit;padding:0 1px;border-radius:2px}
     n.addEventListener('mouseenter', () => pickLoop(n.dataset.k));
   });
   if(lcard) pickLoop('l0');
+
+  /* 首屏版本：上次看的是哪个视图就回到哪个 */
+  let init = 'brief';
+  try{ init = localStorage.getItem('wikiView') || 'brief'; }catch(e){}
+  setView(init);
 })();
 </script>
 </body>
