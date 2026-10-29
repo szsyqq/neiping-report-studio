@@ -270,11 +270,11 @@ select{width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 8px
    （这条必须写在上面基础规则之后，否则被同权重的单栏规则盖掉。） */
 @media(min-width:1500px){
   main{padding-left:28px;padding-right:28px}
-  .docgrid{grid-template-columns:190px minmax(0,1fr) 214px;gap:18px;
-    max-width:1196px;margin:0 auto;align-items:start}
+  .docgrid{grid-template-columns:182px minmax(0,1fr) 288px;gap:20px;
+    max-width:1292px;margin:0 auto;align-items:start}
   .doccol{max-width:none}
-  .docgrid.nol{grid-template-columns:minmax(0,1fr) 214px;max-width:970px}
-  .docgrid.nor{grid-template-columns:190px minmax(0,1fr);max-width:946px}
+  .docgrid.nol{grid-template-columns:minmax(0,1fr) 288px;max-width:1044px}
+  .docgrid.nor{grid-template-columns:182px minmax(0,1fr);max-width:946px}
   .docgrid.nol.nor{grid-template-columns:minmax(0,1fr);max-width:756px}
   .rail{position:sticky;top:6px;max-height:calc(100vh - 52px - 18px);overflow-y:auto;
     overscroll-behavior:contain;padding:3px 2px 26px;scrollbar-width:thin}
@@ -284,9 +284,9 @@ select{width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 8px
   .rail-r{padding-top:120px}
 }
 @media(min-width:1780px){
-  .docgrid{grid-template-columns:212px minmax(0,1fr) 238px;gap:24px;max-width:1278px}
-  .docgrid.nol{grid-template-columns:minmax(0,1fr) 238px;max-width:1042px}
-  .docgrid.nor{grid-template-columns:212px minmax(0,1fr);max-width:1016px}
+  .docgrid{grid-template-columns:204px minmax(0,1fr) 330px;gap:26px;max-width:1420px}
+  .docgrid.nol{grid-template-columns:minmax(0,1fr) 330px;max-width:1170px}
+  .docgrid.nor{grid-template-columns:204px minmax(0,1fr);max-width:1016px}
   .docgrid.nol.nor{grid-template-columns:minmax(0,1fr);max-width:780px}
 }
 
@@ -601,6 +601,13 @@ body.dragging .item-ghost{display:flex}
 .rail-r.collapsed .ck-list,.rail-r.collapsed .ck-bar,.rail-r.collapsed .ck-auto{display:none}
 .rail-r.collapsed .ana{display:none}
 .rail-r.collapsed .ck-h{margin-bottom:0}
+/* 这一栏只放需人工核验的数字问题，标题下面给一句说明，
+   免得人以为「表述问题怎么不管了」——是程序改完才没剩几条。 */
+.ck-sub{font-size:10.5px;color:#a8aeb8;line-height:1.55;margin:-2px 0 8px}
+.rail-r.collapsed .ck-sub,.rail-r.collapsed .ck-sec{display:none}
+.ck-empty{font-size:11.5px;color:var(--muted);padding:6px 2px 10px}
+.ck-sec{font-size:10.5px;color:#9a6700;letter-spacing:.04em;margin:12px 0 5px;
+  padding-top:8px;border-top:1px dashed var(--line)}
 .ck-bar{height:2px;background:var(--line2);border-radius:2px;margin:0 0 9px;overflow:hidden}
 .ck-bar i{display:block;height:100%;width:0;background:var(--ink);transition:width .25s ease}
 
@@ -2825,8 +2832,12 @@ function ckItems(v){
       const rows = ckRowsFromItem(it);
       return { k: ckHash(it.t + "|" + rows.map(r => r.k).join(",")),
         title: it.t, note: it.note || "", anchor: it.a || "d-doc",
+        /* fix：auto=表述与结构问题（程序会自己改），manual=数字类需人来核，
+           hint=不是错误、只是「这里还能补一段」，不该占待核对的位子。
+           存量记录没有这个字段，一律当 manual——那会儿还没分过类。 */
+        fix: it.fix || "manual",
         rows, derived: true };
-    });
+    }).filter(it => it.fix !== "hint");
   }
   // 旧版记录：从 issues 文本里拆出「数字 / 引文 / 段落」，句级定位交给前端搜
   const out = [];
@@ -2870,25 +2881,11 @@ function ckItems(v){
   }
   return out;
 }
-function ckHtml(v){
-  const items = ckItems(v);
-  const auto = (v.auto_checks || []);
-  if(!items.length && !auto.length) return "";
-  const done = ckDoneSet();
-  const allRows = items.reduce((a, x) => a.concat(x.rows), []);
-  const n = allRows.filter(r => done.has(r.k)).length;
-  const pct = allRows.length ? (n / allRows.length * 100).toFixed(1) : 0;
-  let h = `<div class="ck-h"><button class="ck-fold" onclick="ckFold(this)" title="收起核对项">▾</button><b>待核对</b>
-      <span class="n"><i id="ckDoneN">${n}</i>/${allRows.length}</span>
-      <button class="ck-all" onclick="ckAllDone()" title="把所有待核对都标为已核对">全勾</button>
-      <button class="ck-reset" onclick="ckReset()" title="清空勾选">清空</button></div>
-    <div class="ck-bar"><i id="ckBar" style="width:${pct}%"></i></div>
-    <div class="ck-list">`;
-  h += items.map(it => {
-    const on = it.rows.filter(r => done.has(r.k)).length;
-    const full = on === it.rows.length;
-    const part = on > 0 && !full;
-    return `<div class="ckg${full ? " done" : ""}" data-k="${it.k}">
+function ckGroupHtml(it, done){
+  const on = it.rows.filter(r => done.has(r.k)).length;
+  const full = on === it.rows.length;
+  const part = on > 0 && !full;
+  return `<div class="ckg${full ? " done" : ""}" data-k="${it.k}">
       <div class="ckg-h">
         <input type="checkbox"${full ? " checked" : ""} data-part="${part ? 1 : 0}"
           aria-label="整组标为已核对" onchange="ckGroup(this)"/>
@@ -2912,11 +2909,45 @@ function ckHtml(v){
           <span class="go">↗</span>
         </label>`;
       }).join("") + `</div></div>`;
-  }).join("") + `</div>`;
-  // 机器已经自己核对过的：默认收起，点开能看算式，避免「数字怎么少了」的疑虑
+}
+
+function ckHtml(v){
+  const all = ckItems(v);
+  // 这一栏只放「程序判断不了、必须人来核」的事。表述与结构问题在生成时
+  // 已走过一轮自动修订，改掉了的不该再让人看第二遍。
+  const items = all.filter(it => it.fix !== "auto");
+  const leftAuto = all.filter(it => it.fix === "auto");
+  const fixedList = v.auto_fixed || [];
+  const auto = (v.auto_checks || []);
+  if(!items.length && !leftAuto.length && !auto.length && !fixedList.length) return "";
+  const done = ckDoneSet();
+  const allRows = items.reduce((a, x) => a.concat(x.rows), []);
+  const n = allRows.filter(r => done.has(r.k)).length;
+  const pct = allRows.length ? (n / allRows.length * 100).toFixed(1) : 0;
+  let h = `<div class="ck-h"><button class="ck-fold" onclick="ckFold(this)" title="收起核对项">▾</button><b>需人工核验</b>
+      <span class="n"><i id="ckDoneN">${n}</i>/${allRows.length}</span>
+      <button class="ck-all" onclick="ckAllDone()" title="把所有待核对都标为已核对">全勾</button>
+      <button class="ck-reset" onclick="ckReset()" title="清空勾选">清空</button></div>
+    <div class="ck-sub">这里只有程序判断不了的：数字有没有出处、算式对不对得上。表述与结构已自动改过。</div>
+    <div class="ck-bar"><i id="ckBar" style="width:${pct}%"></i></div>
+    <div class="ck-list">`;
+  if(!items.length){
+    h += `<div class="ck-empty">没有需要人工核验的数字问题。</div>`;
+  }
+  h += items.map(it => ckGroupHtml(it, done)).join("") + `</div>`;
+  // 自动修订后仍有残留的表述问题：说明程序改不动（多与材料有关），降级给人看
+  if(leftAuto.length){
+    h += `<div class="ck-sec">自动修订后仍未解决</div>`
+       + leftAuto.map(it => ckGroupHtml(it, done)).join("");
+  }
+  // 已经自动改掉的：折起来只留一句话，证明「不是没查，是查了并改了」
+  if(fixedList.length){
+    h += `<details class="ck-auto"><summary>已自动修正 ${fixedList.length} 处表述问题</summary>
+      <div class="lst">` + fixedList.map(x => `<div>${esc(x)}</div>`).join("") + `</div></details>`;
+  }
   if(auto.length){
     const lines = auto.join("\n").split("\n").filter(x => x.trim());
-    h += `<details class="ck-auto"><summary>机器已自动核对 ${v.auto_count || 0} 项</summary>
+    h += `<details class="ck-auto"><summary>机器已自动核对 ${v.auto_count || 0} 项数字</summary>
       <div class="lst">` + lines.map(x => `<div>${esc(x.replace(/^[·•]\s*/, ""))}</div>`).join("") + `</div></details>`;
   }
   return h;

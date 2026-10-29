@@ -1822,6 +1822,116 @@ def _nochange_rows(draft: dict) -> list[dict]:
 # 用户打开旧报告就看不到新提示，等于没上。
 VALIDATOR_REV = 8
 
+# 校验项分三类，决定它出现在哪儿：
+#   auto   —— 表述与结构问题，程序能改。生成后自动走一轮修订，改掉了就不给人看。
+#   manual —— 数字类问题，程序判断不了对错，必须人来核：算式对不对、这个数有没有出处。
+#   hint   —— 不是错误，是「这里还可以补一段」的提醒，进右侧的补充建议，不进待核对。
+# 判据只有一条：改它需要不需要做事实判断。需要，就是 manual。
+FIX_AUTO = (
+    "摘要层措辞没有刻度", "摘要一条塞了两件事", "加粗句缺主语",
+    "缺行业情况段", "行业情况偏薄", "行业段没有数据",
+    "写了没有变化的事", "正面与关注说了同一件事",
+    "资产段缺金额占比", "缺盈利段", "只写收入没写利润", "亏损没写成亏损",
+    "亏损原因没说清", "归因还被空话占着", "财务表缺净利润行",
+    "还有交代来源的句子", "同一句话出现了两遍", "程度词要换成数据",
+    "还在给风险贴标签", "正面不足 3 条", "关注不足 3 条", "总述段缺加粗句",
+    "板块段内容偏薄", "审计意见非标准，正文没写", "正文偏长", "正文偏短",
+)
+# 带变量的类型名（f-string 拼出来的），按前缀认
+FIX_AUTO_PREFIX = ("正面条目主语", "关注条目主语")
+FIX_HINT = (
+    "或有事项没落到段落", "输出被截断（已自动补齐）",
+)
+
+
+def _fix_kind(title: str) -> str:
+    """这条校验归谁处理。默认 manual——宁可多让人看一眼，也不把该核的数字当措辞改掉。"""
+    if title in FIX_AUTO or title.startswith(FIX_AUTO_PREFIX):
+        return "auto"
+    if title in FIX_HINT:
+        return "hint"
+    return "manual"
+
+
+def _auto_issues(val: dict) -> list[dict]:
+    return [it for it in (val.get("issue_items") or []) if it.get("fix") == "auto"]
+
+
+def _revisable(val: dict) -> bool:
+    """这一轮的自动问题值不值得再花一次模型调用。
+
+    门槛定在 2：只改一条措辞就发一次全文修订，成本高于收益；但两条已经
+    足以让用户在右栏看到「加粗句缺主语」「摘要塞了两件事」这种本该程序
+    解决的问题，所以不能再高。只发一次，不为了「清零」反复改写。
+    """
+    return len(_auto_issues(val)) >= 2
+
+
+REVISE_PROMPT = """你是同一份内评简评报告的责任编辑。下面给你一份已成型的草稿 JSON 和一份「需要修改的点」清单。
+
+你的任务：只按清单逐条改，改完输出完整的 JSON（结构与字段名保持不变）。
+
+铁律：
+1. 清单之外的内容一个字都不要动——数字、期次、表格、段落顺序、已有判断全部保持原样。
+2. 不要新增材料里没有的数字、名称、事项。清单要求补的内容如果材料里没有依据，就跳过这一条，不要编。
+3. 不要为了「让清单消失」而删掉正文里本来合格的内容。
+4. 摘要层（positive / concern）不能出现金额、百分比、倍数、占比；每条只讲一件事，30–50 字，且要能答出「是谁」。
+5. 判断词只用有共同刻度的那些：很强／较强／一般／较弱、充足／尚可／承压／不足、偏高／合理、顺畅／受限。
+6. **不许把稿子改长**。修订后正文总字数不得多于原文；已经超过 4000 字时，顺手压到 4000 字以内（删重复与空话，不删事实）。
+7. 只输出 JSON，不要解释你改了什么。"""
+
+
+def _revise_draft(draft: dict, facts: dict, materials: list[dict], todo: list[dict],
+                  model_id: str | None, progress=None, usage_out: dict | None = None) -> dict | None:
+    """按「需要修改的点」清单做一次定向修订，返回新草稿；失败返回 None。
+
+    给模型的只有草稿本身 + 清单 + 与清单相关的材料摘句。不传整份材料：
+    这一轮改的是措辞与结构，不需要重读八万字，传了反而让模型重新摘抄一遍。
+    """
+    if not todo:
+        return None
+    lines = []
+    for it in todo:
+        rows = it.get("d") or []
+        detail = ""
+        if rows:
+            bits = []
+            for r in rows[:4]:
+                t = (r.get("full") or r.get("where") or "").strip()
+                if t:
+                    bits.append(t[:80])
+            detail = "；".join(bits)
+        lines.append(f"- 【{it.get('t')}】" + (f"涉及：{detail}" if detail else ""))
+    # 相关材料摘句：按清单里的关键词在材料里找一句带金额的原话做参照
+    keys = ("注册资本", "实收资本", "审计意见", "净利润", "资产总额", "受限", "担保", "诉讼")
+    quotes = []
+    for mat in materials:
+        text = mat.get("text") or ""
+        for k in keys:
+            i = text.find(k)
+            if i >= 0:
+                quotes.append(f"- {k}：{text[i:i + 110].replace(chr(10), ' ')}")
+                break
+    payload = {
+        "草稿": draft,
+        "需要修改的点": lines,
+        "材料参考（只能引用这里或草稿里已有的数）": quotes[:12],
+    }
+    try:
+        raw = llm.chat([
+            {"role": "system", "content": REVISE_PROMPT},
+            {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
+        ], model_id=model_id, temperature=0.2, max_tokens=32000, timeout=900,
+            thinking=False, usage_out=usage_out)
+        new = llm.parse_json(raw)
+    except Exception:                                          # noqa: BLE001
+        return None
+    if isinstance(new, list):
+        new = new[0] if new else None
+    if not isinstance(new, dict) or _looks_empty(new):
+        return None
+    return new
+
 # 审计意见的判定表，按严重程度从高到低。只认这三种非标准意见与「持续经营重大
 # 不确定性」段落：标准无保留意见不必写（19.2），而「强调事项」在部分事务所的
 # 模板里是常设栏目，拿来当漏项会大批误报，所以不进校验，只在提示词里提一句。
@@ -2897,6 +3007,11 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
                       "需要的话少勾一份材料重生成，或手工补这两处。")
         issue_items.append({"t": "输出被截断（已自动补齐）", "a": "d-doc", "d": []})
 
+    # 每条校验都有一半是「程序能自己改」，一半才是「必须人来核」。混在一起
+    # 让人逐条去改措辞，是最没必要的活：措辞是程序该负责的，人来核的是数字。
+    for it in issue_items:
+        it["fix"] = _fix_kind(it.get("t") or "")
+
     return {"issues": issues, "body_chars": body_len,
             "issue_items": issue_items,          # 结构化，带段/句定位
             "auto_checks": auto_notes,           # 机器已自己核对过的（附算式），仅留痕
@@ -3125,12 +3240,56 @@ def generate(facts: dict, materials: list[dict], model_id: str | None = None,
     for _k in ("financial_table", "segment_table"):
         if isinstance(draft["commentary"].get(_k), dict):
             draft["commentary"][_k] = reorder_table(draft["commentary"][_k])
+    _p(progress, 95, "语言清理", "去重复句、清来源交代语")
+    # 这一步以前只在导出前做，于是页面上看到的草稿是没清过的：同一句话出现两遍、
+    # 「材料显示」这类词都还挂着，校验把它们逐条报出来让人改。规则能删的就不该
+    # 交给人——在校验之前先清一遍，报出来的才是规则改不动的那些。
+    draft = polish_draft(draft)
     _p(progress, 96, "校验", "数字溯源、期次写法、财务表自洽")
     # 模型漏给「可补充段落」时用材料摘句兜底：提醒不到位，用户就不知道
     # 或有事项其实还有一段可以写。放在校验之前——校验也要看有没有建议。
     draft["add_on_sections"] = _clean_advice(
         merge_advice(draft.get("add_on_sections"), materials))
     draft["validation"] = validate(draft, facts, materials)
+
+    # 表述与结构问题不交给用户改：再走一轮定向修订。
+    # 改掉的不进待核对，只记「已自动修正 N 处」；没改掉的才降级给人看。
+    _auto_before = _auto_issues(draft["validation"])
+    if _revisable(draft["validation"]):
+        _p(progress, 97, "自动修订", f"改写 {len(_auto_before)} 处表述与结构问题")
+        _rv: dict = {}
+        fixed = _revise_draft(draft, facts, materials, _auto_before, model_id,
+                              progress=progress, usage_out=_rv)
+        if fixed:
+            for _k in ("company_full_name", "internal_rating_code", "positive", "concern",
+                       "positive_pool", "concern_pool", "basic_info", "commentary",
+                       "data_notes", "sources", "special_topics"):
+                if _k in fixed and fixed[_k] not in (None, "", [], {}):
+                    draft[_k] = fixed[_k]
+            draft = _ensure_structure(draft, facts)
+            draft["truncated"] = was_truncated
+            # 修订稿再走一遍本地清洗：重复句、来源交代语、粘连句这类机械问题
+            # 用规则删比让模型改更可靠，也省一次调用。改的是文字，不动结构与数字。
+            draft = polish_draft(draft)
+            draft["commentary"] = dict(draft.get("commentary") or {})
+            for _k in ("financial_table", "segment_table"):
+                if isinstance(draft["commentary"].get(_k), dict):
+                    draft["commentary"][_k] = reorder_table(draft["commentary"][_k])
+            draft["add_on_sections"] = _clean_advice(
+                merge_advice(draft.get("add_on_sections"), materials))
+            after = validate(draft, facts, materials)
+            # 记下这一轮修掉了什么：前端把「已自动修正」折起来，只留需人工核验的
+            left = {(it.get("t")) for it in _auto_issues(after)}
+            done = [it.get("t") for it in _auto_before if it.get("t") not in left]
+            after["auto_fixed"] = sorted(set(done))
+            after["revise_calls"] = 1
+            draft["validation"] = after
+            for _k in ("prompt_tokens", "completion_tokens", "total_tokens", "cached_tokens"):
+                used[_k] = used.get(_k, 0) + _rv.get(_k, 0)
+            used["calls"] = used.get("calls", 0) + _rv.get("calls", 0)
+            secs = time.time() - t0
+            _p(progress, 98, "自动修订", f"已修正 {len(set(done))} 处，剩 "
+                                        f"{len(after['issue_items'])} 条需人工核验")
 
     # 记一行用量：主体名取草稿里的全称，便于回看「哪家花了多少」
     usage_mod.record("generate",
