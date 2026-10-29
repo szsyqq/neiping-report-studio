@@ -3022,7 +3022,9 @@ def generate(facts: dict, materials: list[dict], model_id: str | None = None,
     t0 = time.time()
     used: dict = {}
     try:
-        raw = llm.chat(messages, model_id=model_id, temperature=0.3, max_tokens=16000,
+        # 首次就给足模型自己的输出上限（chat 内部会按配置 min 一次）：
+        # 线上实测给 16000 时，一份报告写到一半就撞上限，白烧 1.6 万 token 再重试。
+        raw = llm.chat(messages, model_id=model_id, temperature=0.3, max_tokens=32000,
                        timeout=900, thinking=False, usage_out=used)
     except Exception as e:
         # 失败也记：token 可能已经消耗（超时、空返回），不记会让统计偏低
@@ -3092,7 +3094,7 @@ def generate(facts: dict, materials: list[dict], model_id: str | None = None,
         raw = llm.chat([
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": build_user_prompt(facts, materials2) + RETRY_NOTE},
-        ], model_id=model_id, temperature=0.3, max_tokens=16000, timeout=900,
+        ], model_id=model_id, temperature=0.3, max_tokens=32000, timeout=900,
             thinking=False, usage_out=used2)
         for k in ("prompt_tokens", "completion_tokens", "total_tokens", "cached_tokens"):
             used[k] = used.get(k, 0) + used2.get(k, 0)

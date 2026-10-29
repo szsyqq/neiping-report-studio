@@ -245,7 +245,7 @@ def analyze(old: dict, materials: list[dict], model_id: str | None = None,
     used: dict = {}
     try:
         raw = llm.chat(messages, model_id=model_id, temperature=0.2,
-                       max_tokens=16000, usage_out=used)
+                       max_tokens=32000, usage_out=used)
     finally:
         stop.set()
         th.join(timeout=1)
