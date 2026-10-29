@@ -2966,6 +2966,24 @@ def _too_incomplete(draft) -> list[str]:
             if not ((c.get(k) or {}).get("body") or "").strip()]
 
 
+def _looks_empty(draft) -> bool:
+    """解析出来了，但正文几乎没有——不是截断，是模型没写出东西。
+
+    JSON 合法不等于内容成立：一个 {"a": 1} 也能被结构补全成一份空壳报告，
+    页面上看是「报告出来了」，实际一个字都得重写。这种情况按失败处理，
+    让它走重试或如实报错，比交一份空稿强。
+    """
+    if not isinstance(draft, dict):
+        return True
+    c = draft.get("commentary") or {}
+    body = (draft.get("basic_info") or "")
+    for k in ("industry", "overview", "asset", "profit", "debt"):
+        body += (c.get(k) or {}).get("body") or ""
+    for s in (c.get("segments") or []):
+        body += s.get("body") or ""
+    return len(body.strip()) < 800
+
+
 def generate(facts: dict, materials: list[dict], model_id: str | None = None,
              progress=None) -> dict:
     import threading
@@ -3033,10 +3051,12 @@ def generate(facts: dict, materials: list[dict], model_id: str | None = None,
     _p(progress, 90, "解析结构", "检查 JSON 与字段完整性")
 
     def _parse(raw_text: str):
-        """解析一次；截断修出来的残稿缺块太多时按解析失败处理。"""
+        """解析一次；截断修出来的残稿缺块太多、或干脆没内容时，按解析失败处理。"""
         d = llm.parse_json(raw_text)
         if isinstance(d, list):
             d = d[0] if d else {}
+        if _looks_empty(d):
+            raise ValueError("解析出的草稿正文不足 800 字，等于没写出报告")
         if used.get("finish_reason") == "length" and len(_too_incomplete(d)) >= 2:
             raise ValueError("截断修出来的草稿缺 " + "、".join(_too_incomplete(d)))
         return d
@@ -3044,6 +3064,23 @@ def generate(facts: dict, materials: list[dict], model_id: str | None = None,
     try:
         draft = _parse(raw)
     except ValueError as e:
+        # 解析失败以前什么都不记：模型调用是成功的（token 已经花掉），只是内容
+        # 不完整。结果统计里既没有成功也没有失败，排查时无从下手——这次就是
+        # 靠「stats 最后一条停在 17:29、而用户 17:39 报了错」才反推出这条盲区。
+        try:
+            usage_mod.record("generate", company=facts.get("company", {}).get("name") or "",
+                             model=used.get("model") or (model_id or ""),
+                             prompt_tokens=used.get("prompt_tokens", 0),
+                             completion_tokens=used.get("completion_tokens", 0),
+                             total_tokens=used.get("total_tokens", 0),
+                             cached_tokens=used.get("cached_tokens", 0),
+                             seconds=time.time() - t0, chars=chars, ok=False,
+                             estimated=bool(used.get("estimated")),
+                             note=(f"解析失败（finish={used.get('finish_reason') or '?'}，"
+                                   f"输出 {used.get('completion_tokens') or 0} token）："
+                                   f"{str(e)[:60]}"))
+        except Exception:                                      # noqa: BLE001
+            pass
         # 修不回来基本只有一个原因：输出到上限被砍断（finish_reason=length）。
         # 这种不怪模型理解，只怪这次材料多、写出来的 JSON 长——按精简材料
         # 重试一次，比让用户自己减材料再点一遍强。
@@ -3075,10 +3112,11 @@ def generate(facts: dict, materials: list[dict], model_id: str | None = None,
                 "或在设置里换输出上限更大的模型。") from e
     if isinstance(draft, list):
         draft = draft[0] if draft else {}
-    # 被截断但修回来了：正文与表格齐全，尾部（来源清单、部分补充建议）可能少几条。
-    # 不静默接受——记一个标记，校验里单列一条，让人知道该不该补。
-    draft["truncated"] = (used.get("finish_reason") == "length")
+    # 注意：_ensure_structure 是按白名单重建 dict 的，任何额外键都会丢，
+    # 所以「这次被截断」的标记必须写在它之后。
+    was_truncated = (used.get("finish_reason") == "length")
     draft = _ensure_structure(draft, facts)
+    draft["truncated"] = was_truncated
     # 期次列在这里就排好，而不是等到导出才排：页面上看到的表必须和 Word 里一致，
     # 否则用户改的是「2024年那一列」，导出后它会跑到最右边。
     draft["commentary"] = dict(draft.get("commentary") or {})

@@ -325,6 +325,11 @@ def _get_model(model_id: str) -> dict:
     raise RuntimeError(f"未找到模型 {model_id}")
 
 
+# 截断修复至少留下的字符数。一份报告的 JSON 约 1.4 万字，短于这个数说明
+# 不是「差一点」，而是模型压根没写出东西——那种情况该报错，不该补成空壳。
+MIN_REPAIR_CHARS = 3000
+
+
 def context_limit(model_id: str | None = None) -> int:
     """这个模型能吃多少输入 token。取不到就给个保守值，调用方据此裁材料。
 
@@ -453,6 +458,11 @@ def _repair_truncated(t: str, start: int) -> str | None:
     已闭合的对象/数组），截断到那里再补上剩余括号，多半就能解析。
     补出来的可能缺尾部字段（sources、data_notes 的后几条），那些由
     _ensure_structure 补默认值，比让用户重跑一次划算。
+
+    **但要防止修过头**：一份报告的 JSON 少说几千字。若「修好」之后只剩
+    几百字，那不是截断，是模型压根没写出东西（或者输出被网关截成了残片），
+    补成 {"a": 1} 这种空壳再交给结构补全，最后会产出的一份空报告，
+    比直接报错更糟。所以要求保留下来的内容占原输出的大头。
     """
     stack, in_str = _scan(t, start)
     if not stack and not in_str:
@@ -473,15 +483,20 @@ def _repair_truncated(t: str, start: int) -> str | None:
         tail = "".join("}" if c == "{" else "]" for c in reversed(st2))
         try:
             json.loads(head + tail)
-            return head + tail
         except json.JSONDecodeError:
             continue
+        # 保留下来的部分要够长：短于此说明不是「差一点」，而是本来就没内容
+        if len(head) < max(MIN_REPAIR_CHARS, int(len(body) * 0.55)):
+            return None
+        return head + tail
     # 退一步：只补括号，赌它正好断在字段边界上
-    try:
-        json.loads(body + closers)
-        return body + closers
-    except json.JSONDecodeError:
-        return None
+    if len(body) >= MIN_REPAIR_CHARS:
+        try:
+            json.loads(body + closers)
+            return body + closers
+        except json.JSONDecodeError:
+            pass
+    return None
 
 
 def parse_json(text: str) -> Any:
