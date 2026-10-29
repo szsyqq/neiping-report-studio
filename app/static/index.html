@@ -1322,7 +1322,7 @@ function resetSession(){
   // 补充说明与手动查询都是「对这一家的判断」，换主体必须清掉——
   // 上一家的结论跟着过去，比没有更危险。
   if($("#userNotes")){ $("#userNotes").value = ""; paintNotesSum(); }
-  S.manQ = ""; S.manSeg = "";
+  S.manQ = ""; S.manSeg = ""; S.fillAsked = false;
   if($("#upList")) $("#upList").innerHTML = "";
   if($("#matList")) renderMaterials(null);
   if($("#draftArea")){ $("#draftArea").innerHTML = ""; $("#draftArea").style.display = "none"; }
@@ -2278,6 +2278,7 @@ async function doGenerate(){
     setStep("export", { state: "wait", pct: 0, detail: "可编辑后导出" });
     // 生成完先进「补充完善」：这一步会告诉用户哪几处偏薄、打算搜什么。
     // 没有偏薄段落时它自己显示「本轮无需补充」，不会挡住导出。
+    S.fillAsked = false;
     const _wf = (S.draft.web_plan || {});
     const _nt = (_wf.targets || []).length;
     setStep("fill", { state: "wait", pct: 0,
@@ -3213,6 +3214,20 @@ function renderFill(){
   const box = document.getElementById("fillBox");
   if(!box) return;
   box.innerHTML = fillHtml(S.draft || {});
+  // 从历史恢复的草稿、以及更新模式的草稿都没有评估结果，按需补算一次。
+  // 生成路径已经算过，不重复调接口。
+  if(S.draft && !S.draft.web_plan && !S.fillAsked){
+    S.fillAsked = true;
+    // 主体名仍以输入框为准；只有输入框空着（例如从历史恢复）才退回上次检索过的那家
+    api("/api/web-plan", { company: curCo() || S.company || "" })
+      .then(p => {
+        if(!S.draft) return;
+        S.draft.web_plan = p || { targets: [], ready: false };
+        box.innerHTML = fillHtml(S.draft);
+      })
+      // 失败不再自动重试：反复调接口没有意义，留手动刷新（重新进这一步）即可
+      .catch(() => {});
+  }
 }
 
 async function doFill(btn){
