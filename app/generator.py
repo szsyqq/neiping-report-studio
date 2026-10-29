@@ -470,7 +470,7 @@ SYSTEM_PROMPT = """你是信用评级机构的分析员，负责撰写内部「�
 【输出】只输出一个 JSON 对象，不要任何解释文字。"""
 
 
-def build_user_prompt(facts: dict, materials: list[dict]) -> str:
+def build_user_prompt(facts: dict, materials: list[dict], user_notes: str = "") -> str:
     tpl = _load_template()
     tmpl_brief = {
         "sections": [
@@ -550,6 +550,22 @@ def build_user_prompt(facts: dict, materials: list[dict]) -> str:
   "data_notes": ["自算值的算式，一行一条，照此写：『比率·毛利率同比上升6.40个百分点 = 73.84 − 67.44』；口径差异或不确定处同样写在这里"],
   "sources": [{"claim": "文中的关键判断或数字", "where": "材料名+页码/章节"}]
 }"""
+    # 用户读材料后自己补的话。它不是材料，优先级也不同：可以决定「重点写什么」，
+    # 但不能成为数字的来源——分析员的判断写进正文时仍需材料或台账支撑。
+    notes = (user_notes or "").strip()
+    notes_block = ""
+    if notes:
+        notes_block = (
+            "\n【分析员补充说明】\n"
+            "以下是分析员读完材料后的判断与关注点，不是材料摘录。要求：\n"
+            "1. 它决定写作重心：提到的板块、事项、判断要在正文里有对应分量；\n"
+            "2. 它不能作为数字来源。其中出现的金额、比例若无材料支撑，不得写进正文，"
+            "也不要据此推算别的数；\n"
+            "3. 若它与材料明显冲突（如说某项资产已处置、材料显示仍在），以材料为准，"
+            "并在该处按材料照写，不要解释冲突；\n"
+            "4. 不要复述这段说明本身，也不要在正文里出现「分析员」「补充说明」这类字样。\n"
+            f"{notes}\n"
+        )
     return f"""请为下列主体撰写内评简评报告，按给定 JSON 结构输出。
 
 【模板结构】{json.dumps(tmpl_brief, ensure_ascii=False)}
@@ -559,7 +575,7 @@ def build_user_prompt(facts: dict, materials: list[dict]) -> str:
 
 【材料原文】
 {mat_block}
-
+{notes_block}
 【输出 JSON 结构】
 {schema}
 
@@ -1010,8 +1026,7 @@ def fallback_advice(materials: list[dict]) -> list[dict]:
                 # 摘出来的原句放 body，why 只说明来历——同一句话不要在卡片上出现两遍。
                 # 这句也不能过 polish_language：那一层会删掉「材料」「披露」这类词，
                 # 「材料原文」会被改写成「未改写）」这样的残句。
-                "why": "原文里有这一节可写，这里是程序摘出的那句作起点；"
-                       "要不要补、按什么语体重写，由你定。",
+                "why": "材料涉及该事项，可据此补写一段。",
                 "lead": "", "body": s, "auto": True,
             })
             break
@@ -1062,9 +1077,17 @@ def _clean_advice(raw) -> list[dict]:
     return advice
 
 
+# 这些键不属于报告内容，但会贯穿整个流程。_ensure_structure 按白名单重建 dict，
+# 不过一遍就会把它们弄丢——修订轮里它被调用两次，user_notes 就这么丢过一次。
+_META_KEYS = ("truncated", "user_notes", "web_plan", "auto_fixed", "revise_calls")
+
+
 def _ensure_structure(draft: dict, facts: dict) -> dict:
     """补齐缺省字段，并把程序生成的表格塞进去。"""
     out: dict[str, Any] = {}
+    for _k in _META_KEYS:
+        if _k in (draft or {}):
+            out[_k] = draft[_k]
     out["company_full_name"] = draft.get("company_full_name") or facts.get("company", {}).get("name") or facts.get("query_name", "")
     out["internal_rating_code"] = draft.get("internal_rating_code") or ""
     out["traits"] = describe_traits(facts)
@@ -3019,33 +3042,43 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
             "rev": VALIDATOR_REV}                # 校验规则版本：变了就要重算存量记录
 
 
-def _web_fill(draft: dict, facts: dict, progress=None) -> list[dict]:
-    """搜外网补薄板块，返回候选清单（不写进正文）。
+def web_plan(draft: dict, facts: dict) -> dict:
+    """生成之后的「第 5 步」评审：哪些地方值得去外网找补充。
 
-    每个候选带 where（写到哪一段）、query（搜了什么）、results（搜到几条，
-    各带来源与日期）。前端逐条勾选后才把 snippet 交给模型改写进正文。
-    搜不到、没配 key、接口报错都只记一条 note，不影响已经出来的稿子。
+    只做评估、不搜——搜索要花额度，而且搜什么该让人看见再决定。返回：
+      targets  该补的位置（含建议查询词与理由）
+      ready    有没有配搜索通道
+    没有偏薄段落时 targets 为空，前端这一步显示「无需补充」。
     """
     try:
         import search as search_mod
     except Exception:                                          # noqa: BLE001
-        return []
-    if not search_mod.available():
-        return []
-    plans = search_mod.plan_queries(draft, facts)
-    out: list[dict] = []
-    for i, p in enumerate(plans):
-        if progress:
-            progress(98 + min(1, i * 0.5), "联网补充", f"搜索：{p['query'][:26]}")
-        try:
-            rows = search_mod.search(p["query"])
-        except Exception as e:                                 # noqa: BLE001
-            out.append({**p, "results": [], "note": f"搜索失败：{str(e)[:80]}"})
-            continue
-        # 只留带日期的：没有日期的外部信息无法判断新旧，写进报告里风险最大
-        rows = [r for r in rows if r.get("date") or r.get("url")]
-        out.append({**p, "results": rows[:5],
-                    "note": "" if rows else "没有搜到可用结果"})
+        return {"targets": [], "ready": False}
+    targets = search_mod.plan_queries(draft, facts)
+    for t in targets:
+        t["results"] = []
+        t["note"] = ""
+    return {"targets": targets, "ready": search_mod.available()}
+
+
+def web_search_one(plan_item: dict) -> dict:
+    """按评估结果搜一处，返回带 results 的同一结构。"""
+    import search as search_mod
+    q = (plan_item or {}).get("query") or ""
+    out = {**(plan_item or {}), "results": [], "note": ""}
+    if not q:
+        out["note"] = "没有查询词"
+        return out
+    try:
+        rows = search_mod.search(q)
+    except Exception as e:                                     # noqa: BLE001
+        out["note"] = f"搜索失败：{str(e)[:100]}"
+        return out
+    # 只留带网址的；日期缺失的保留但由前端标「无日期」，写入时提示词会要求
+    # 「来源或时间不明的就不引」，所以不必在这里删掉——删了人也看不到有这条。
+    rows = [r for r in rows if r.get("url") or r.get("snippet")]
+    out["results"] = rows[:5]
+    out["note"] = "" if rows else "没有搜到可用结果"
     return out
 
 
@@ -3200,12 +3233,12 @@ def _looks_empty(draft) -> bool:
 
 
 def generate(facts: dict, materials: list[dict], model_id: str | None = None,
-             progress=None) -> dict:
+             progress=None, user_notes: str = "") -> dict:
     import threading
     import time
 
     _p(progress, 3, "组装提示词", "合并台账与材料原文")
-    prompt = build_user_prompt(facts, materials)
+    prompt = build_user_prompt(facts, materials, user_notes)
     # 输入预算：模型上下文不够时先裁材料，别等 API 回 400 让用户看到一句
     # 「模型调用失败」。裁的比例写进进度，用户知道这次少给了多少。
     keep = _fit_ratio(len(SYSTEM_PROMPT) + len(prompt),
@@ -3213,7 +3246,7 @@ def generate(facts: dict, materials: list[dict], model_id: str | None = None,
                       llm.context_limit(model_id))
     if keep < 1.0:
         materials = _trim_materials(materials, keep)
-        prompt = build_user_prompt(facts, materials)
+        prompt = build_user_prompt(facts, materials, user_notes)
         _p(progress, 5, "组装提示词", f"材料超出模型上下文，按 {keep:.0%} 裁剪后重拼")
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
@@ -3308,7 +3341,7 @@ def generate(facts: dict, materials: list[dict], model_id: str | None = None,
         used2: dict = {}
         raw = llm.chat([
             {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": build_user_prompt(facts, materials2) + RETRY_NOTE},
+            {"role": "user", "content": build_user_prompt(facts, materials2, user_notes) + RETRY_NOTE},
         ], model_id=model_id, temperature=0.3, max_tokens=32000, timeout=900,
             thinking=False, usage_out=used2)
         for k in ("prompt_tokens", "completion_tokens", "total_tokens", "cached_tokens"):
@@ -3334,6 +3367,7 @@ def generate(facts: dict, materials: list[dict], model_id: str | None = None,
     was_truncated = (used.get("finish_reason") == "length")
     draft = _ensure_structure(draft, facts)
     draft["truncated"] = was_truncated
+    draft["user_notes"] = (user_notes or "").strip()
     # 期次列在这里就排好，而不是等到导出才排：页面上看到的表必须和 Word 里一致，
     # 否则用户改的是「2024年那一列」，导出后它会跑到最右边。
     draft["commentary"] = dict(draft.get("commentary") or {})
@@ -3391,9 +3425,10 @@ def generate(facts: dict, materials: list[dict], model_id: str | None = None,
             _p(progress, 98, "自动修订", f"已修正 {len(set(done))} 处，剩 "
                                         f"{len(after['issue_items'])} 条需人工核验")
 
-    # 外网补充：正文写完之后，针对写得薄的地方搜一次，结果只列出来给人勾，
-    # 不自动进正文。没配搜索 key 时 search.available() 为假，整段跳过。
-    draft["web_fill"] = _web_fill(draft, facts, progress=progress)
+    # 外网补充：生成后只做评估、不直接搜。搜什么、搜几处，让人在「补充完善」
+    # 这一步看见并点一下再花额度——自动搜会让人不知道钱花在哪、也不知道
+    # 结果从哪来。
+    draft["web_plan"] = web_plan(draft, facts)
 
     # 记一行用量：主体名取草稿里的全称，便于回看「哪家花了多少」
     usage_mod.record("generate",

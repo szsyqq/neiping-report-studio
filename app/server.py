@@ -261,7 +261,8 @@ def _guess_company(base_title: str, materials: list[dict]) -> str:
 
 
 def do_generate(company: str, model: str | None, progress=None,
-                titles: list[str] | None = None, mode: str = "new") -> dict:
+                titles: list[str] | None = None, mode: str = "new",
+                user_notes: str = "") -> dict:
     with LOCK:
         st = STATE.get(_key(company)) or {}
         facts = st.get("facts") or {}
@@ -306,7 +307,7 @@ def do_generate(company: str, model: str | None, progress=None,
     if not materials:
         raise ValueError("请先拉取材料，或上传评级报告/募集说明书 PDF")
     draft = generator.generate(facts or facts_mod.empty_facts(company), materials,
-                               model_id=model, progress=progress)
+                               model_id=model, progress=progress, user_notes=user_notes)
     # 落一条历史：draft 全文 + 用了哪几份材料，之后可回看、接着改、重新导出
     rid = history.save(draft, materials, model=(draft.get("usage") or {}).get("model", ""),
                        seconds=(draft.get("usage") or {}).get("seconds", 0))
@@ -443,6 +444,30 @@ def api_settings(payload: dict) -> dict:
             raise ValueError(str(e)) from None
         return {"ok": True, **auth_mod.issue(), "settings": settings_store.overview()}
     return {"ok": True, "settings": settings_store.overview()}
+
+
+def api_web_plan(payload: dict) -> dict:
+    """第 5 步的评估：哪些地方值得去外网找补充。只算不搜。"""
+    company = (payload.get("company") or "").strip()
+    with LOCK:
+        st = STATE.get(_key(company)) or {}
+        draft = st.get("draft")
+    if not draft:
+        raise ValueError("没有草稿，先生成一次")
+    plan = generator.web_plan(draft, st.get("facts") or {})
+    # 存回草稿：前端刷新后还能看到这一步的评估结果，不用重算
+    with LOCK:
+        STATE.setdefault(_key(company), {})["draft"] = {**draft, "web_plan": plan}
+    _persist(company)
+    return plan
+
+
+def api_web_search(payload: dict) -> dict:
+    """按评估结果搜一处。前端一次一个目标地点，按钮才对得上「正在搜什么」。"""
+    if not settings_store.search_config()["ready"]:
+        raise ValueError("没有配置联网搜索。请到「设置 → 联网搜索」填一个 API Key")
+    item = payload.get("target") or {}
+    return generator.web_search_one(item)
 
 
 def api_web_fill(payload: dict) -> dict:
@@ -998,8 +1023,9 @@ def api_job(kind: str, payload: dict) -> dict:
         model = payload.get("model")
         titles = [t for t in (payload.get("titles") or []) if t]
         mode = payload.get("mode") or "new"
+        notes = str(payload.get("notes") or "")[:4000]
         job = jobs.submit("generate",
-                          lambda p: do_generate(company, model, p, titles, mode))
+                          lambda p: do_generate(company, model, p, titles, mode, notes))
     else:
         raise ValueError("未知任务类型")
     return {"job": job["id"]}
@@ -1278,6 +1304,8 @@ class Handler(BaseHTTPRequestHandler):
             "/api/settings": api_settings,
             "/api/model/pick": api_model_pick,
             "/api/web-fill": api_web_fill,
+            "/api/web-plan": api_web_plan,
+            "/api/web-search": api_web_search,
         }
         try:
             if p.startswith("/api/jobs/"):

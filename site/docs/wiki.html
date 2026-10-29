@@ -374,17 +374,19 @@ mark.s{background:#fff3b8;color:inherit;padding:0 1px;border-radius:2px}
 
 <h2><span class="n">二</span>一次生成经过哪几步</h2>
 
-<p class="lead-in">工作台把四步串成一条链路，每步有独立进度与产出。材料只解析一次，草稿、附件、导出读的是同一份数据。</p>
+<p class="lead-in">步骤条上是五步：检索主体 → 读取材料 → 生成草稿 → 补充完善 → 导出报告。中间还夹着三道不出现在步骤条上的工序——清洗、校验、自动修订，它们跑在生成与导出之间。</p>
 
 <div class="tw">
 <table>
-<thead><tr><th>步</th><th>程序做的事</th><th>产出</th><th>耗时</th></tr></thead>
+<thead><tr><th>环节</th><th>程序做的事</th><th>产出</th><th>耗时</th></tr></thead>
 <tbody>
 <tr><td>检索</td><td>一次宽查询取回最近 120 条公告，本地分成四类并去重、滤掉程序性公告</td><td>四类材料清单</td><td>3–8 秒</td></tr>
 <tr><td>读取</td><td>逐份下载 PDF，按类别决定摘录策略，压到 3.2／2.6／1.4／0.6 万字符</td><td>摘录文本 + 页数</td><td>每份 10–40 秒</td></tr>
-<tr><td>生成</td><td>模板骨架 + 事实台账 + 材料原文拼成提示词，模型按 JSON 结构输出</td><td>正文、摘要、两张表</td><td>30–90 秒</td></tr>
+<tr><td>生成</td><td>模板骨架 + 事实台账 + 材料原文 + 分析员补充说明拼成提示词，模型按 JSON 结构输出</td><td>正文、摘要、两张表</td><td>30–90 秒</td></tr>
 <tr><td>清洗</td><td>无损改写：删来源交代语、去重复句、合并粘连句、补千分位，不动判断</td><td>可读的正文</td><td>1–2 秒</td></tr>
-<tr><td>校验</td><td>数字溯源、表格逐格、结构写法、措辞主语四类自动检查</td><td>待核对清单</td><td>2–5 秒</td></tr>
+<tr><td>校验</td><td>数字溯源、表格逐格、结构写法、措辞主语四类自动检查；每条标好由谁处理</td><td>需人工核验清单</td><td>2–5 秒</td></tr>
+<tr><td>修订</td><td>表述与结构类问题交给模型定向改一轮，只发草稿与问题清单，不重发材料；改不掉的才留给人</td><td>改后的草稿</td><td>20–40 秒</td></tr>
+<tr><td>补充</td><td>评估哪几处缺口值得联网补（风险事项只提了名字、行业段没有可核实的数、段落偏薄），人点搜索才去搜</td><td>候选外部资料，勾选后写入</td><td>按需</td></tr>
 <tr><td>导出</td><td>按 <code>docx_writer</code> 的排版参数生成 Word；可另出两份文本附件</td><td>.docx + 打包 zip</td><td>1–3 秒</td></tr>
 </tbody>
 </table>
@@ -494,7 +496,7 @@ mark.s{background:#fff3b8;color:inherit;padding:0 1px;border-radius:2px}
 
 <h2><span class="n">五</span>提示词长什么样</h2>
 
-<p class="lead-in">系统提示词约 1.0 万字、46 条规则，分四段：<b>体例</b>（报告有哪几层）→ <b>硬规则</b>（24 组编号规则，管句式、口径、禁令）→ <b>写作风格</b>（语体基准与用词分级）→ <b>输出</b>（只要一个 JSON）。用户提示词另附实例：模板摘要、事实台账、材料原文（约 8 万字符）、输出结构样张。</p>
+<p class="lead-in">系统提示词约 1.0 万字、46 条规则，分四段：<b>体例</b>（报告有哪几层）→ <b>硬规则</b>（24 组编号规则，管句式、口径、禁令）→ <b>写作风格</b>（语体基准与用词分级）→ <b>输出</b>（只要一个 JSON）。用户提示词另附实例：模板摘要、事实台账、材料原文（约 8 万字符）、输出结构样张，以及可选的<b>分析员补充说明</b>——它决定写作重心，但不作为数字来源。</p>
 
 <div class="tw">
 <table>
@@ -520,6 +522,8 @@ mark.s{background:#fff3b8;color:inherit;padding:0 1px;border-radius:2px}
 </tbody>
 </table>
 </div>
+
+<p>生成之前可以补一段<b>分析员补充说明</b>：读完材料后的判断、要强调的重点、发现的疑点。它进用户提示词的【分析员补充说明】块，附四条约束——决定写作重心；不能当数字来源；与材料冲突时以材料为准；不复述说明本身、正文不出现「分析员」字样。</p>
 
 <div class="note warn">
 <span class="h">提示词与校验是同一条规则的两种写法</span>
@@ -1103,7 +1107,7 @@ mark.s{background:#fff3b8;color:inherit;padding:0 1px;border-radius:2px}
   const views = { brief: document.getElementById('v-brief'), full: document.getElementById('v-full') };
   const HINTS = {
     brief: '详版另有九节：认料、取数、写正文、提摘要、定稿检查、实现链路、校验闭环、六个技术点、最近的变化。',
-    full: '简版在一屏里讲完四步流程、涉及的文件、模板与提示词的结构。'
+    full: '简版在一屏里讲完五步流程、涉及的文件、模板与提示词的结构。'
   };
   let curView = 'brief';
   let items = [];          // [{a, h}]，仅当前视图
