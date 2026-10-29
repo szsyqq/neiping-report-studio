@@ -3019,6 +3019,106 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
             "rev": VALIDATOR_REV}                # 校验规则版本：变了就要重算存量记录
 
 
+def _web_fill(draft: dict, facts: dict, progress=None) -> list[dict]:
+    """搜外网补薄板块，返回候选清单（不写进正文）。
+
+    每个候选带 where（写到哪一段）、query（搜了什么）、results（搜到几条，
+    各带来源与日期）。前端逐条勾选后才把 snippet 交给模型改写进正文。
+    搜不到、没配 key、接口报错都只记一条 note，不影响已经出来的稿子。
+    """
+    try:
+        import search as search_mod
+    except Exception:                                          # noqa: BLE001
+        return []
+    if not search_mod.available():
+        return []
+    plans = search_mod.plan_queries(draft, facts)
+    out: list[dict] = []
+    for i, p in enumerate(plans):
+        if progress:
+            progress(98 + min(1, i * 0.5), "联网补充", f"搜索：{p['query'][:26]}")
+        try:
+            rows = search_mod.search(p["query"])
+        except Exception as e:                                 # noqa: BLE001
+            out.append({**p, "results": [], "note": f"搜索失败：{str(e)[:80]}"})
+            continue
+        # 只留带日期的：没有日期的外部信息无法判断新旧，写进报告里风险最大
+        rows = [r for r in rows if r.get("date") or r.get("url")]
+        out.append({**p, "results": rows[:5],
+                    "note": "" if rows else "没有搜到可用结果"})
+    return out
+
+
+def apply_web_fill(draft: dict, updates: list[dict], model_id: str | None = None,
+                   progress=None) -> dict:
+    """把用户勾中的外部材料写进正文对应段落，返回新草稿。
+
+    updates 每项：{where, seg, snippets:[...]}。只改指定段落，其余不动；
+    模型只被允许使用 snippets 里出现的事实，用不到就原样返回。
+    """
+    if not updates:
+        return draft
+    c = dict(draft.get("commentary") or {})
+    todo = []
+    for u in updates:
+        tgt = (u.get("where") or "")
+        seg = u.get("seg") or 0
+        cur = ""
+        if "分部" in tgt and seg:
+            arr = c.get("segments") or []
+            if 0 < seg <= len(arr):
+                cur = arr[seg - 1].get("body") or ""
+        elif "行业" in tgt:
+            cur = (c.get("industry") or {}).get("body") or ""
+        if not cur.strip():
+            continue
+        todo.append({"段落": tgt, "现有正文": cur,
+                     "可用的外部材料": (u.get("snippets") or [])[:4]})
+    if not todo:
+        return draft
+    prompt = """下面是报告里的几段正文，以及为它们查到的外部资料。请把外部资料里真正有用的信息
+并入对应段落，输出 JSON：{"段落": [{"target": "段落名", "body": "改写后的正文"}]}。
+
+要求：
+1. 只允许使用「可用的外部材料」里出现的数字与事实，不得补充任何别的数据。
+2. 引外部数据时要交代来源与时间，写成「据××协会 2026 年 3 月数据」这种形式；
+   来源或时间不明的就不引。
+3. 没有可用信息时原样返回该段正文，不要为了用上资料而硬写。
+4. 段落原有的事实、数字、判断一律保留，只在合适位置补一到两句。
+5. 篇幅不得超出原文的两倍，能一句话说清就不用两句。"""
+    try:
+        raw = llm.chat([
+            {"role": "system", "content": prompt},
+            {"role": "user", "content": json.dumps(todo, ensure_ascii=False)},
+        ], model_id=model_id, temperature=0.2, max_tokens=16000, timeout=600,
+            thinking=False)
+        got = llm.parse_json(raw)
+    except Exception:                                          # noqa: BLE001
+        return draft
+    rows = (got or {}).get("段落") if isinstance(got, dict) else None
+    if not isinstance(rows, list):
+        return draft
+    for r in rows:
+        tgt = (r.get("target") or "")
+        body = (r.get("body") or "").strip()
+        if not body:
+            continue
+        for u in updates:
+            t = u.get("where") or ""
+            if t and (t == tgt or t in tgt or tgt in t):
+                seg = u.get("seg") or 0
+                if "分部" in t and seg:
+                    arr = list(c.get("segments") or [])
+                    if 0 < seg <= len(arr):
+                        arr[seg - 1] = {**arr[seg - 1], "body": body}
+                        c["segments"] = arr
+                elif "行业" in t:
+                    c["industry"] = {**(c.get("industry") or {}), "body": body}
+                break
+    draft = {**draft, "commentary": c}
+    return draft
+
+
 def _est_tokens(chars: int) -> int:
     """按字符粗估 token。中文实测约 1.6 字 1 token（91,457 字 → 51,923 token），
     估小了会在 API 侧吃 400，估大了只会白裁材料，所以取保守的 1.6。"""
@@ -3290,6 +3390,10 @@ def generate(facts: dict, materials: list[dict], model_id: str | None = None,
             secs = time.time() - t0
             _p(progress, 98, "自动修订", f"已修正 {len(set(done))} 处，剩 "
                                         f"{len(after['issue_items'])} 条需人工核验")
+
+    # 外网补充：正文写完之后，针对写得薄的地方搜一次，结果只列出来给人勾，
+    # 不自动进正文。没配搜索 key 时 search.available() 为假，整段跳过。
+    draft["web_fill"] = _web_fill(draft, facts, progress=progress)
 
     # 记一行用量：主体名取草稿里的全称，便于回看「哪家花了多少」
     usage_mod.record("generate",

@@ -603,6 +603,42 @@ body.dragging .item-ghost{display:flex}
 .rail-r.collapsed .ck-h{margin-bottom:0}
 /* 这一栏只放需人工核验的数字问题，标题下面给一句说明，
    免得人以为「表述问题怎么不管了」——是程序改完才没剩几条。 */
+/* 联网补充：搜到的外部材料，勾了才写进正文 */
+.wf{border:1px solid var(--line);border-radius:8px;padding:9px 10px;margin:0 0 14px;background:#fff}
+.wf-h{display:flex;align-items:baseline;gap:6px}
+.wf-h b{font-size:11px;color:var(--muted);letter-spacing:.06em;font-weight:600}
+.wf-h .n{font-size:11px;color:var(--ink2);margin-left:auto;font-variant-numeric:tabular-nums}
+.wf-fold{border:0;background:none;color:#b9bfc8;font-size:9px;padding:0 1px;cursor:pointer;line-height:1}
+.wf-sub{font-size:10.5px;color:#a8aeb8;line-height:1.55;margin:3px 0 7px}
+.wf.collapsed .wf-sub,.wf.collapsed .wf-list,.wf.collapsed .wf-foot{display:none}
+.wfg{border-top:1px dashed var(--line);padding:7px 0 4px}
+.wfg:first-child{border-top:0}
+.wfg-h{font-size:11.5px;color:var(--ink);font-weight:600}
+.wfg-h .why{font-weight:400;color:var(--muted);margin-left:5px;font-size:10.5px}
+.wfg-q{font-size:10.5px;color:var(--muted);margin:1px 0 5px;word-break:break-all}
+.wfr{display:grid;grid-template-columns:13px minmax(0,1fr);gap:6px;align-items:start;
+  padding:5px 0;cursor:pointer}
+.wfr input{margin:2px 0 0;width:12px;height:12px;accent-color:var(--ink)}
+.wfr .m{min-width:0}
+.wfr .t{display:block;font-size:11.5px;color:var(--ink);line-height:1.45}
+.wfr .d{display:block;font-size:10px;color:var(--muted);margin-top:1px}
+.wfr .s{display:block;font-size:10.5px;color:var(--ink2);line-height:1.5;margin-top:2px;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.wfr-none{font-size:10.5px;color:var(--muted);padding:4px 0}
+.wf-foot{display:flex;align-items:center;gap:8px;margin-top:8px;padding-top:7px;
+  border-top:1px solid var(--line2)}
+.wf-hint{font-size:10.5px;color:var(--muted)}
+/* 搜索进行中的动画：一条来回扫的进度条 + 当前查询词，让人知道在等什么 */
+.wf-live{border:1px solid #dbe4f5;background:#f6f9ff;border-radius:8px;padding:9px 10px;margin:0 0 14px}
+.wf-live .lb{font-size:11px;color:#2f5fd0;font-weight:600;display:flex;align-items:center;gap:6px}
+.wf-live .dot{width:6px;height:6px;border-radius:50%;background:#2f5fd0;animation:wfpulse 1.1s ease-in-out infinite}
+@keyframes wfpulse{0%,100%{opacity:.25;transform:scale(.8)}50%{opacity:1;transform:scale(1.15)}}
+.wf-live .q{font-size:10.5px;color:#5a6b85;margin:4px 0 0;word-break:break-all}
+.wf-live .track{height:2px;background:#e3e9f5;border-radius:2px;overflow:hidden;margin-top:7px}
+.wf-live .track i{display:block;height:100%;width:36%;border-radius:2px;
+  background:linear-gradient(90deg,transparent,#2f5fd0,transparent);animation:wfscan 1.3s linear infinite}
+@keyframes wfscan{0%{transform:translateX(-100%)}100%{transform:translateX(320%)}}
+
 .ck-sub{font-size:10.5px;color:#a8aeb8;line-height:1.55;margin:-2px 0 8px}
 .rail-r.collapsed .ck-sub,.rail-r.collapsed .ck-sec{display:none}
 .ck-empty{font-size:11.5px;color:var(--muted);padding:6px 2px 10px}
@@ -2120,6 +2156,13 @@ async function doGenerate(){
     const j = await runJob("generate", { company: curCo(), model: mid,
       titles: S.loaded.slice(), mode: S.mode }, j => {
       setStep("generate", { state: "run", pct: j.pct, detail: j.detail || j.stage });
+      // 联网补充阶段单独给一块动画：显示正在搜什么。进度条只说明「在等」，
+      // 说不清等的是什么；这一步最容易被误以为卡住。
+      if(/联网补充/.test(j.stage || "") || /搜索：/.test(j.detail || "")){
+        wfLive(j.detail || "");
+      } else if(j.stage && !/联网补充/.test(j.stage)) {
+        wfLive("");
+      }
     });
     S.draft = j.result.draft;
     S.company = curCo() || S.company;
@@ -2277,7 +2320,7 @@ function renderActions(d){
       </div>
     </div>
   </div>
-  <aside class="rail rail-r" id="railR"><div id="d-ana"></div>${ckHtml(v)}</aside>
+  <aside class="rail rail-r" id="railR"><div id="d-ana"></div>${webFillHtml(d)}${ckHtml(v)}</aside>
 </div>`;
 
   $("#draftArea").innerHTML = h;
@@ -2557,7 +2600,7 @@ function renderDraft(){
       </div>
     </div>
   </div></div>
-  <aside class="rail rail-r" id="railR"><div id="d-ana"></div>${ckHtml(v)}</aside>
+  <aside class="rail rail-r" id="railR"><div id="d-ana"></div>${webFillHtml(d)}${ckHtml(v)}</aside>
 </div>`;
 
   $("#draftArea").innerHTML = h;
@@ -2881,6 +2924,98 @@ function ckItems(v){
   }
   return out;
 }
+/* 联网补充：正文写完后针对薄板块搜到的外部材料。
+   默认收着一行不给正文让位；点开逐条勾，勾完点「写入正文」才对稿子动手。
+   没配搜索 key 时后端返回空数组，这一段整块不出现。 */
+function webFillHtml(d){
+  const wf = d && d.web_fill;
+  if(!wf || !wf.length) return "";
+  const n = wf.reduce((a,x) => a + (x.results || []).length, 0);
+  return `<div class="wf">
+    <div class="wf-h"><b>联网补充</b><span class="n">${wf.length} 处 · ${n} 条</span>
+      <button class="wf-fold" onclick="wfFold(this)" title="收起">▾</button></div>
+    <div class="wf-sub">这些是外网搜到的，勾了才写进正文。来源与时间会一并标在正文里。</div>
+    <div class="wf-list">` + wf.map((x, i) => `
+      <div class="wfg" data-i="${i}">
+        <div class="wfg-h">${esc(x.where || "")}<span class="why">${esc(x.why || "")}</span></div>
+        <div class="wfg-q">搜：${esc(x.query || "")}</div>
+        ${(x.results || []).length ? (x.results || []).map((r, j) => `
+          <label class="wfr">
+            <input type="checkbox" class="wfk" data-i="${i}" data-j="${j}"/>
+            <span class="m">
+              <span class="t">${esc(r.title || "")}</span>
+              <span class="d">${esc([r.site, r.date].filter(Boolean).join(" · "))}</span>
+              <span class="s">${esc(r.snippet || "")}</span>
+            </span>
+          </label>`).join("") : `<div class="wfr-none">${esc(x.note || "没有搜到可用结果")}</div>`}
+      </div>`).join("") + `</div>
+    <div class="wf-foot"><button class="btn-sm" onclick="wfApply(this)">写入正文</button>
+      <span class="wf-hint" id="wfHint"></span></div>
+  </div>`;
+}
+/* 生成过程中「正在搜什么」的动画。传空字符串即撤掉。 */
+function wfLive(detail){
+  const box = document.getElementById("wfLive");
+  const q = String(detail || "").replace(/^搜索：/, "").trim();
+  if(!q){
+    if(box) box.remove();
+    return;
+  }
+  if(box){
+    const el = box.querySelector(".q");
+    if(el) el.textContent = "正在搜：" + q;
+    return;
+  }
+  const div = document.createElement("div");
+  div.id = "wfLive";
+  div.className = "wf-live";
+  div.innerHTML = `<div class="lb"><span class="dot"></span>联网补充中</div>
+    <div class="q">正在搜：${esc(q)}</div>
+    <div class="track"><i></i></div>`;
+  const rail = document.querySelector(".rail-r");
+  const host = rail || document.getElementById("draftArea") || document.body;
+  host.insertBefore(div, host.firstChild);
+}
+
+function wfFold(btn){
+  const box = btn.closest(".wf");
+  if(!box) return;
+  const off = box.classList.toggle("collapsed");
+  btn.textContent = off ? "▸" : "▾";
+}
+async function wfApply(btn){
+  const picks = [...document.querySelectorAll(".wfk:checked")];
+  const hint = document.getElementById("wfHint");
+  if(!picks.length){ if(hint) hint.textContent = "先勾一条"; return; }
+  const wf = (S.draft && S.draft.web_fill) || [];
+  const byWhere = {};
+  picks.forEach(c => {
+    const x = wf[+c.dataset.i]; if(!x) return;
+    const r = (x.results || [])[+c.dataset.j]; if(!r) return;
+    const key = x.where;
+    byWhere[key] = byWhere[key] || { where: x.where, seg: x.seg || 0, snippets: [] };
+    byWhere[key].snippets.push(
+      [r.title, r.site, r.date].filter(Boolean).join("｜") + "：" + (r.snippet || ""));
+  });
+  const updates = Object.values(byWhere);
+  btn.disabled = true;
+  if(hint) hint.textContent = "正在改写正文…";
+  try{
+    const d = await api("/api/web-fill", { company: curCo(), updates,
+      model: ($("#model") && $("#model").value) || "" });
+    if(d && d.draft){
+      S.draft = d.draft;
+      if(S.draft.web_fill) S.draft.web_fill = [];
+      saveDraft(true);
+      renderDraft();
+      toast(`已写入 ${updates.length} 段`);
+    }
+  }catch(e){
+    if(hint) hint.textContent = e.message || "写入失败";
+    toast(e.message || "写入失败", true);
+  }finally{ btn.disabled = false; }
+}
+
 function ckGroupHtml(it, done){
   const on = it.rows.filter(r => done.has(r.k)).length;
   const full = on === it.rows.length;
@@ -3977,6 +4112,7 @@ function badge(ok, okText, badText){
 function renderSettings(){
   const d = SET.data || {};
   const pw = d.password || {}, llm = d.llm || {}, mail = d.mail || {}, ch = d.caihui || {};
+  const se = d.search || {};
 
   let h = `<div class="sh"><b>设置</b><button class="x" onclick="closeSettings()">×</button></div><div class="sets">`;
 
@@ -4041,6 +4177,28 @@ function renderSettings(){
 
   // 口令
   h += `<div class="setsec">
+    <div class="st">联网搜索 ${badge(se.ready, "已配置", "未配置")}
+      ${se.source ? `<span class="badge">${se.source === "env" ? "来自环境变量" : "页面填写"}</span>` : ""}</div>
+    <div class="sd">可选。配了之后，正文写完会针对<b>写得偏薄的板块</b>去外网找补充材料，
+      结果列在右侧「联网补充」里，你勾了才写进正文，来源与时间会一并标注。
+      不配也能正常生成，只是不会去外网找。存本机 <code>data/search.json</code>。</div>
+    <div class="setgrid">
+      <label>服务商</label>
+      <select id="stSchProv" onchange="schProvChange()">
+        ${(se.providers || []).map(x => `<option value="${esc(x.id)}" ${se.provider === x.id ? "selected" : ""}>${esc(x.name)}</option>`).join("")}
+      </select>
+      <label>接口地址</label>
+      <input id="stSchUrl" value="${esc(se.url || "")}" placeholder="https://api.bochaai.com/v1/web-search" spellcheck="false"/>
+      <label>API Key</label>
+      <input id="stSchKey" type="password" placeholder="${se.has_key ? "已保存，留空表示不改" : "填服务商控制台的 key"}" spellcheck="false"/>
+      <label>每处几条</label>
+      <input id="stSchMax" value="${esc(se.max_results || 5)}" placeholder="5" spellcheck="false"/>
+    </div>
+    <div class="setact"><span class="msg" id="msgSch">${se.hint ? esc(se.hint) : ""}</span>
+      <button class="btn-sm solid" onclick="saveSettings('search')">保存</button></div>
+  </div>`;
+
+  h += `<div class="setsec">
     <div class="st">访问口令 ${badge(!pw.is_default, "已自定义", "仍是默认口令")}</div>
     <div class="sd">别人打开这个网址要先输口令。改完所有旧登录立即失效。</div>
     <div class="setgrid">
@@ -4059,13 +4217,26 @@ function renderSettings(){
 
 function _val(id){ const el = $("#"+id); return el ? el.value.trim() : ""; }
 
+/* 换服务商时把接口地址换成该家的默认值——留空的话后端也会按 provider 兜底，
+   但让人看见地址才能判断是不是填错了。 */
+function schProvChange(){
+  const sel = $("#stSchProv"), url = $("#stSchUrl");
+  if(!sel || !url) return;
+  const se = (SET.data || {}).search || {};
+  const hit = (se.providers || []).find(x => x.id === sel.value);
+  if(hit && hit.url) url.value = hit.url;
+}
+
 async function saveSettings(section){
-  const msgId = { llm: "msgLlm", mail: "msgMail", caihui: "msgCh", password: "msgPw" }[section];
+  const msgId = { llm: "msgLlm", mail: "msgMail", caihui: "msgCh",
+    search: "msgSch", password: "msgPw" }[section];
   const msg = msgId ? $("#"+msgId) : null;
   const say = (t, kind) => { if(msg){ msg.className = "msg" + (kind ? " " + kind : ""); msg.textContent = t; } };
   const body = { section };
   if(section === "llm"){ body.url = _val("stLlmUrl"); body.model = _val("stLlmModel"); body.apiKey = _val("stLlmKey"); }
   if(section === "caihui"){ body.url = _val("stChUrl"); body.key = _val("stChKey"); }
+  if(section === "search"){ body.provider = _val("stSchProv"); body.url = _val("stSchUrl");
+    body.apiKey = _val("stSchKey"); body.maxResults = _val("stSchMax"); }
   if(section === "mail"){ body.host = _val("stMailHost"); body.port = _val("stMailPort");
     body.tls = _val("stMailTls"); body.user = _val("stMailUser"); body.password = _val("stMailPass"); }
   if(section === "password"){ body.old = _val("stPwOld"); body.new = _val("stPwNew"); }

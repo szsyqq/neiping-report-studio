@@ -24,6 +24,7 @@ DATA = BASE / "data"
 
 LLM_JSON = DATA / "llm.json"
 CAIHUI_JSON = DATA / "caihui.json"
+SEARCH_JSON = DATA / "search.json"
 
 
 def _read(path: Path) -> dict:
@@ -113,6 +114,53 @@ def save_caihui(patch: dict) -> dict:
     return caihui_config()
 
 
+# ── 外网搜索 ────────────────────────────────────────────────────────────
+# 补材料里没有的东西（行业数据、近期事件）时用。不是必需：没配就当这个功能不存在，
+# 生成照常跑，只是不会去外网找。
+SEARCH_PROVIDERS = {
+    "bocha": {"name": "博查", "url": "https://api.bochaai.com/v1/web-search",
+              "note": "国内直连，可选公众号（summary=true 带摘要）"},
+    "serper": {"name": "Serper（Google）", "url": "https://google.serper.dev/search",
+               "note": "结果更全，需要能连 Google 的网络"},
+    "tavily": {"name": "Tavily", "url": "https://api.tavily.com/search",
+               "note": "为问答场景优化，返回内容较长"},
+}
+
+
+def search_file() -> dict:
+    return _read(SEARCH_JSON)
+
+
+def search_config() -> dict:
+    """外网搜索配置。环境变量 > data/search.json。"""
+    f = search_file()
+    key = _env("SEARCH_API_KEY") or str(f.get("apiKey") or "")
+    prov = (_env("SEARCH_PROVIDER") or str(f.get("provider") or "") or "bocha").strip()
+    url = (_env("SEARCH_API_URL") or str(f.get("url") or "")
+           or (SEARCH_PROVIDERS.get(prov) or {}).get("url", ""))
+    src = "env" if _env("SEARCH_API_KEY") else ("file" if f.get("apiKey") else "")
+    return {"provider": prov, "url": url, "apiKey": key, "source": src,
+            "ready": bool(key and url), "max_results": int(f.get("maxResults") or 5)}
+
+
+def save_search(patch: dict) -> dict:
+    cur = search_file()
+    for k in ("provider", "url"):
+        if patch.get(k) is not None:
+            cur[k] = str(patch[k]).strip()
+    if patch.get("maxResults") is not None:
+        try:
+            cur["maxResults"] = max(1, min(10, int(patch["maxResults"])))
+        except (TypeError, ValueError):
+            pass
+    if (patch.get("apiKey") or "").strip():
+        cur["apiKey"] = str(patch["apiKey"]).strip()
+    if patch.get("clear"):
+        cur = {}
+    _write(SEARCH_JSON, cur)
+    return search_config()
+
+
 # ── 汇总（给页面用；密钥只报有没有，不回显） ──────────────────────────
 def overview() -> dict:
     from auth import is_default
@@ -122,6 +170,7 @@ def overview() -> dict:
     lc = llm_config()
     mc = mailer.describe()
     cc = caihui_config()
+    sc = search_config()
     try:
         models, skipped = llm.usable_models()
         hint = "" if models else (llm.diagnose().get("hint") or "")
@@ -151,4 +200,13 @@ def overview() -> dict:
                        "CAIHUI_MCP_KEY 并用 bash start.sh 启动，或在本页「财汇」一栏直接填；"
                        "本机可从 ~/.workbuddy/mcp.json 的 caihui_mcp 条目读取。"),
                    "env_loaded": bool(_env("CAIHUI_MCP_URL"))},
+        "search": {"provider": sc["provider"], "url": sc["url"], "ready": sc["ready"],
+                   "has_key": bool(sc["apiKey"]), "source": sc["source"],
+                   "max_results": sc["max_results"],
+                   "providers": [{"id": k, "name": v["name"], "url": v["url"],
+                                  "note": v["note"]}
+                                 for k, v in SEARCH_PROVIDERS.items()],
+                   "hint": "" if sc["ready"] else (
+                       "没配外网搜索。不配也能用——生成时不会去外网找补充材料；"
+                       "要补材料里没有的行业数据与近期事件，在这一栏填一个搜索 API 的 key。")},
     }

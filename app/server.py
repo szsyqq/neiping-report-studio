@@ -429,6 +429,8 @@ def api_settings(payload: dict) -> dict:
         llm.check_all()          # 改完立刻探活，下拉马上反映
     elif sec == "caihui":
         settings_store.save_caihui(payload)
+    elif sec == "search":
+        settings_store.save_search(payload)
     elif sec == "mail":
         mailer.save_config(payload)
     elif sec == "password":
@@ -441,6 +443,35 @@ def api_settings(payload: dict) -> dict:
             raise ValueError(str(e)) from None
         return {"ok": True, **auth_mod.issue(), "settings": settings_store.overview()}
     return {"ok": True, "settings": settings_store.overview()}
+
+
+def api_web_fill(payload: dict) -> dict:
+    """把勾中的外网材料写进正文。
+
+    只接受前端传来的 snippets 列表（原文摘要），不接受任意 url——那等于让人
+    通过这个接口让服务端去访问任意地址。
+    """
+    company = (payload.get("company") or "").strip()
+    updates = payload.get("updates") or []
+    with LOCK:
+        st = STATE.get(_key(company)) or {}
+        draft = st.get("draft")
+    if not draft:
+        raise ValueError("没有草稿，先生成一次")
+    if not updates:
+        raise ValueError("没有勾选任何外部材料")
+    before = sum(len((s.get("body") or "")) for s in
+                 (draft.get("commentary") or {}).get("segments") or [])
+    new = generator.apply_web_fill(draft, updates, model_id=payload.get("model"),
+                                   progress=None)
+    new["validation"] = generator.validate(new, st.get("facts") or {},
+                                           st.get("materials") or [])
+    after = sum(len((s.get("body") or "")) for s in
+                (new.get("commentary") or {}).get("segments") or [])
+    with LOCK:
+        STATE.setdefault(_key(company), {})["draft"] = new
+    _persist(company)
+    return {"draft": new, "added_chars": after - before}
 
 
 def api_model_pick(payload: dict) -> dict:
@@ -1246,6 +1277,7 @@ class Handler(BaseHTTPRequestHandler):
             "/api/mail/config": api_mail_config,
             "/api/settings": api_settings,
             "/api/model/pick": api_model_pick,
+            "/api/web-fill": api_web_fill,
         }
         try:
             if p.startswith("/api/jobs/"):
