@@ -1096,6 +1096,9 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
   transform:rotate(45deg);border-radius:2px}
 .tour-tip[data-arrow="up"]::before{top:-5px;left:var(--ax,50%)}
 .tour-tip[data-arrow="down"]::before{bottom:-5px;left:var(--ax,50%)}
+/* 目标比视口还高时气泡挪到侧面，箭头改成横向 */
+.tour-tip[data-arrow="left"]::before{left:-5px;top:var(--ay,50%);margin-top:-6px}
+.tour-tip[data-arrow="right"]::before{right:-5px;top:var(--ay,50%);margin-top:-6px}
 .tour-tip[data-arrow="none"]::before{display:none}
 .tour-tip h4{margin:0 0 6px;font-size:14.5px;font-weight:600;color:var(--ink);
   letter-spacing:.01em;display:flex;align-items:center;gap:7px}
@@ -1156,7 +1159,7 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
   border-radius:6px;padding:0 7px;height:26px;line-height:16px;font-size:10.5px;
   color:var(--ink2);margin-bottom:5px;position:relative;z-index:2}
 .td-row .td-num{color:var(--muted);flex:none;font-variant-numeric:tabular-nums}
-.td-row .td-line{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.td-row .td-line{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .td-row.mv{animation:tdragMove 4.6s ease-in-out infinite}
 /* 被拖的那条下移一格，下面这条同时让开，和真实拖动一样 */
 .td-row.yield{animation:tYield 4.6s ease-in-out infinite}
@@ -1182,8 +1185,9 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
   84%,100%{opacity:0;transform:scale(.6)}}
 /* 新增块：按钮被按下，然后新块展开 */
 .tadd{min-height:0}
-.td-blk{background:#fff;border:1px solid var(--line);border-radius:6px;padding:0 7px;
+.td-blk{display:flex;align-items:center;background:#fff;border:1px solid var(--line);border-radius:6px;padding:0 7px;
   height:26px;line-height:24px;font-size:10.5px;color:var(--ink2);margin-bottom:5px}
+.td-blk .ln{flex:1}
 .td-blk.fresh{overflow:hidden;border-style:dashed;border-color:#b9c6de;color:var(--ink);
   height:26px;opacity:0;animation:tnewBlk 4.4s ease-in-out infinite}
 @keyframes tnewBlk{0%,46%{height:0;opacity:0;padding-top:0;padding-bottom:0;margin-bottom:0}
@@ -1195,17 +1199,6 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
 @keyframes tpress{0%,34%{transform:scale(1);background:#fff;color:var(--muted)}
   39%{transform:scale(.92);background:var(--ink);color:#fff;border-color:var(--ink)}
   44%,100%{transform:scale(1);background:#fff;color:var(--muted)}}
-/* 点哪里能改：三个热区依次亮起 */
-.thot{display:flex;gap:5px;flex-wrap:wrap}
-.thot span{font-size:10.5px;color:var(--ink2);background:#fff;border:1px solid var(--line);
-  border-radius:20px;padding:2px 9px;animation:thot 4.5s ease-in-out infinite}
-.thot span:nth-child(2){animation-delay:.5s}
-.thot span:nth-child(3){animation-delay:1s}
-.thot span:nth-child(4){animation-delay:1.5s}
-.thot span:nth-child(5){animation-delay:2s}
-@keyframes thot{0%,12%{border-color:var(--ink);color:var(--ink);background:#f6f7f9}
-  22%,100%{border-color:var(--line);color:var(--ink2);background:#fff}}
-
 /* ── 演示：不用示意图，直接摆一块「迷你真界面」，内容取自真实草稿 ── */
 .tdwin{border:1px solid var(--line);border-radius:7px;background:#fff;overflow:hidden}
 .tdq{padding:6px 9px;font-size:11px;color:var(--ink);border-bottom:1px solid var(--line2);
@@ -1216,22 +1209,6 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
   padding:1px 7px;background:#fff;font-variant-numeric:tabular-nums}
 .tdchips span b{color:var(--ink);font-weight:600}
 
-/* 材料清单：真标题、真字数、默认勾选状态 */
-.tdmats{display:flex;flex-direction:column;gap:1px}
-.tdmat{display:grid;grid-template-columns:13px minmax(0,1fr);gap:7px;align-items:start;
-  padding:5px 7px;border-radius:6px}
-.tdmat:nth-child(odd){background:#fbfcfd}
-.tdbox{width:11px;height:11px;border:1px solid #c9ced5;border-radius:3px;margin-top:3px;
-  background:#fff;flex:none}
-.tdbox.on{background:var(--ink);border-color:var(--ink);position:relative}
-.tdbox.on::after{content:"";position:absolute;left:2.5px;top:1px;width:4px;height:7px;
-  border-right:1.5px solid #fff;border-bottom:1.5px solid #fff;transform:rotate(42deg)}
-.tdmat .m{min-width:0}
-.tdmat .t{display:block;font-size:10.5px;color:var(--ink);line-height:1.45;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tdmat .i{display:block;font-size:9.5px;color:var(--muted);margin-top:1px;
-  font-variant-numeric:tabular-nums}
-
 /* 补充说明：一个填好的输入框 */
 .tdta{border:1px solid var(--line);border-radius:6px;background:#fff;padding:7px 9px;
   font-size:10.8px;color:var(--ink);line-height:1.7}
@@ -1239,42 +1216,7 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
   vertical-align:-1px;margin-left:1px;animation:tdblink 1.1s step-end infinite}
 @keyframes tdblink{0%,49%{opacity:1}50%,100%{opacity:0}}
 
-/* 缺口评估：一条真实缺口 + 建议查询词 + 按钮 */
-.tdgap{background:#fff;border:1px solid var(--line);border-radius:6px;padding:6px 8px}
-.tdgap .g1{font-size:11px;color:var(--ink);font-weight:600}
-.tdgap .g2{font-size:9.5px;color:var(--muted);margin-top:1px}
-.tdgap .g3{font-size:9.8px;color:var(--ink2);margin-top:4px;padding-top:4px;
-  border-top:1px dashed var(--line2);word-break:break-all}
-.tdgap .g4{display:inline-block;margin-top:5px;font-size:9.8px;color:var(--muted);
-  border:1px solid var(--line);border-radius:5px;padding:1px 8px;background:#fff}
-
-/* 成品片段：真实正文，按报告纸面排版 */
-.tdrep{background:#fff;border:1px solid var(--line);border-radius:6px;padding:8px 10px;
-  font-size:10.8px;line-height:1.85;color:#22262c;text-align:justify;
-  max-height:112px;overflow:hidden;position:relative}
-.tdrep b{font-weight:700}
-.tdrep::after{content:"";position:absolute;left:0;right:0;bottom:0;height:26px;
-  background:linear-gradient(transparent,#fff)}
 .tdcap{font-size:9.5px;color:var(--muted);margin-top:5px;line-height:1.5}
-
-/* 右栏待核对：真实的几条 */
-.tdck{border:1px solid var(--line);border-radius:6px;background:#fff;overflow:hidden}
-.tdckh{display:flex;align-items:center;gap:5px;padding:5px 8px;border-bottom:1px solid var(--line2);
-  font-size:10px;color:var(--muted);letter-spacing:.04em}
-.tdckh b{font-size:10.5px;color:var(--ink);letter-spacing:0}
-.tdcki{padding:5px 8px;border-top:1px solid var(--line2);display:grid;
-  grid-template-columns:7px minmax(0,1fr);gap:6px;align-items:start}
-.tdcki:first-of-type{border-top:0}
-.tddot{width:5px;height:5px;border-radius:50%;background:#d7dade;margin-top:5px}
-.tdcki.man .tddot{background:var(--amber)}
-.tdcki .c{min-width:0}
-.tdcki .c .t{display:block;font-size:10.3px;color:var(--ink)}
-.tdcki .c .q{display:block;font-size:9.3px;color:var(--muted);margin-top:1px;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tdcki.done{opacity:.5}
-/* 「自动修订后仍未解决」是另一个分区，与需人工核验分开 */
-.tdckh2{padding:5px 8px 3px;font-size:9.3px;color:var(--muted);border-top:1px solid var(--line2);
-  background:#fafbfc;letter-spacing:.04em}
 
 /* 专题菜单：真实预设名 */
 .tdmenu{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
@@ -1284,6 +1226,91 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
 /* 欢迎页那行「真实案例」注脚 */
 .tdreal{font-size:9.8px;color:var(--muted);margin-top:6px;line-height:1.5;
   padding-top:6px;border-top:1px dashed var(--line2)}
+
+/* ── 气泡里只演动作：内容在界面上，这里用骨架条代替文字 ──────────
+   一条灰条就读作「这里有一行字」。抄一遍原文会让气泡和界面抢注意力，
+   而且两边一旦不同步就露馅。 */
+.ln{display:block;height:7px;border-radius:4px;
+  background:linear-gradient(90deg,#e7ebef 0%,#f4f6f9 45%,#e7ebef 90%);
+  background-size:220% 100%;animation:tshim 2.6s linear infinite}
+.ln + .ln{margin-top:5px}
+.ln.w1{width:38%}
+.ln.w2{width:62%}
+.ln.w3{width:86%}
+.ln.sm{height:5px;opacity:.75}
+@keyframes tshim{to{background-position:-220% 0}}
+
+/* 检索：输入框里打字，四类结果随后依次落地 */
+.tdq .ty{display:inline-block;white-space:nowrap;overflow:hidden;vertical-align:bottom;
+  border-right:1px solid var(--ink);animation:ttype 4.6s steps(13,end) infinite}
+@keyframes ttype{0%{clip-path:inset(0 100% 0 0)}56%,100%{clip-path:inset(0 -1px 0 0)}}
+.tdchips span{opacity:0;animation:tchipIn 4.6s ease-in-out infinite}
+.tdchips span:nth-child(1){animation-delay:.9s}
+.tdchips span:nth-child(2){animation-delay:1.1s}
+.tdchips span:nth-child(3){animation-delay:1.3s}
+.tdchips span:nth-child(4){animation-delay:1.5s}
+@keyframes tchipIn{0%,18%{opacity:0;transform:translateY(3px)}
+  26%,100%{opacity:1;transform:none}}
+
+/* 材料：四行依次勾上，底部进度条走完 */
+.tdsk{display:flex;flex-direction:column;gap:6px}
+.tdsk .r{display:grid;grid-template-columns:12px minmax(0,1fr);gap:8px;align-items:center}
+.tdsk .bx{width:11px;height:11px;border:1px solid #c9ced5;border-radius:3px;background:#fff;
+  position:relative;animation:tbox 5s ease-in-out infinite}
+.tdsk .bx::after{content:"";position:absolute;left:2.5px;top:1px;width:4px;height:7px;
+  border-right:1.5px solid #fff;border-bottom:1.5px solid #fff;transform:rotate(42deg);
+  opacity:0;animation:ttick 5s ease-in-out infinite}
+.tdsk .r:nth-child(2) .bx,.tdsk .r:nth-child(2) .bx::after{animation-delay:.35s}
+.tdsk .r:nth-child(3) .bx,.tdsk .r:nth-child(3) .bx::after{animation-delay:.7s}
+.tdsk .r:nth-child(4) .bx,.tdsk .r:nth-child(4) .bx::after{animation-delay:1.05s}
+@keyframes tbox{0%,10%{background:#fff;border-color:#c9ced5}
+  16%,100%{background:var(--ink);border-color:var(--ink)}}
+@keyframes ttick{0%,10%{opacity:0}16%,100%{opacity:1}}
+.tdbar{height:3px;border-radius:2px;background:#ebeef2;overflow:hidden;margin-top:2px}
+.tdbar i{display:block;height:100%;width:0;background:var(--ink);
+  animation:tbar 5s ease-in-out infinite}
+@keyframes tbar{0%{width:0}18%{width:8%}62%{width:78%}88%,100%{width:100%}}
+
+/* 补充说明：两行字写到一半，光标在末尾闪 */
+.tdta .l2{display:flex;align-items:center;gap:2px;margin-top:5px}
+.tdta .l2 .ln{flex:none}
+.tdta .l2 .caret{margin-left:1px}
+
+/* 缺口：按钮按下 → 两条结果落地 */
+.tdhk{background:#fff;border:1px solid var(--line);border-radius:6px;padding:7px 8px}
+.tdhk .h1{display:flex;align-items:center;gap:8px}
+.tdhk .h1 .ln{flex:1;width:auto}
+.tdhk .go{flex:none;font-size:9.8px;color:var(--muted);border:1px solid var(--line);
+  border-radius:5px;padding:1px 8px;background:#fff;animation:tpress2 4.8s ease-in-out infinite}
+@keyframes tpress2{0%,24%{transform:scale(1);background:#fff;color:var(--muted)}
+  29%{transform:scale(.93);background:var(--ink);color:#fff;border-color:var(--ink)}
+  36%,100%{transform:scale(1);background:#fff;color:var(--muted)}}
+.tdhk .h2{margin-top:7px;padding-top:6px;border-top:1px dashed var(--line2)}
+.tdhk .rs{margin-top:6px;padding-top:6px;border-top:1px solid var(--line2);opacity:0;
+  animation:trs 4.8s ease-in-out infinite}
+.tdhk .rs.b{animation-delay:.18s}
+@keyframes trs{0%,46%{opacity:0;transform:translateY(3px)}
+  56%,100%{opacity:1;transform:none}}
+
+/* 右栏：一条一条打勾 */
+.tdcl{background:#fff;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.tdcl .r{display:grid;grid-template-columns:7px minmax(0,1fr) 11px;gap:7px;align-items:center;
+  padding:6px 8px;border-top:1px solid var(--line2)}
+.tdcl .r:first-child{border-top:0}
+.tdcl .dot{width:5px;height:5px;border-radius:50%;background:#d7dade}
+.tdcl .tk{width:9px;height:9px;border-right:2px solid #2f9e6f;border-bottom:2px solid #2f9e6f;
+  transform:rotate(42deg) scale(0);opacity:0;animation:ttk 4.6s ease-out infinite}
+.tdcl .r:nth-child(1) .tk{animation-delay:.2s}
+.tdcl .r:nth-child(2) .tk{animation-delay:1.1s}
+.tdcl .r:nth-child(3) .tk{animation-delay:2s}
+@keyframes ttk{0%{transform:rotate(42deg) scale(0);opacity:0}
+  9%{transform:rotate(42deg) scale(1.15);opacity:1}
+  15%,100%{transform:rotate(42deg) scale(1);opacity:1}}
+
+/* 演示标记：界面里摆的是示例数据，必须一眼看得出来 */
+.demotag{display:inline-flex;align-items:center;font-family:-apple-system,"PingFang SC",sans-serif;
+  font-size:10.5px;font-weight:600;color:#fff;background:#a97b12;border-radius:20px;
+  padding:1px 8px;letter-spacing:.04em}
 
 /* 已完成的步骤整体淡出，避免留下一个空标记 */
 .tour-done{animation:tourOut .22s ease forwards}
@@ -1301,9 +1328,7 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
   .tour-tip h4{font-size:14px}
   .tdrag{min-height:0}
   /* 手机上十个点太挤，只留「3/10」 */
-  .tdrep{max-height:96px;font-size:10.4px;line-height:1.8}
-  .tdmat .t{font-size:10.2px}
-  .tdck .tdcki .c .q{font-size:9.1px}
+  .tdsk{gap:5px}
   .tour-dots i{display:none}
   .tour-dots i.on{display:block}
   .tour-n{margin-left:2px}
@@ -1313,6 +1338,12 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
   .tdemo *{animation:none !important}
   .td-blk.fresh{opacity:1;height:26px}
   .td-ph{opacity:1}
+  /* 动画停了，被动画藏着的东西要露出来：结果条、勾、进度、勾选框 */
+  .tdchips span,.tdhk .rs{opacity:1;transform:none}
+  .tdcl .tk{opacity:1;transform:rotate(42deg) scale(1)}
+  .tdsk .bx{background:var(--ink);border-color:var(--ink)}
+  .tdsk .bx::after{opacity:1}
+  .tdbar i{width:100%}
 }
 </style>
 </head>
@@ -2949,7 +2980,7 @@ function collectActions(){
 /* 刷新或切回页面时，把这一轮用过的补充说明填回输入框。
    只在输入框为空时填——否则会把用户正在改的内容盖掉。 */
 function restoreNotes(d){
-  const t = $("userNotes");
+  const t = $("#userNotes");
   if(!t || t.value.trim()) return;
   const saved = (d && d.user_notes) || "";
   if(saved){ t.value = saved; paintNotesSum(); }
@@ -3093,6 +3124,8 @@ function renderDraft(){
 const ANA = { files: [], key: "", text: "", open: false };
 
 async function loadAna(){
+  // 引导演示里的草稿不是这一轮的，服务端算不出分析附件，也不该为演示去查一次
+  if(DEMO.on) return renderAna([]);
   if(!S.draft) return renderAna([]);
   try{
     // 带上当前页面上的草稿：分析附件是按「现在这一稿」算的，不是按生成那一刻。
@@ -5413,187 +5446,813 @@ const TOUR_STEPS = [
   { title: "一页走完一份简评",
     body: `填主体 → 读材料 → 出草稿 → 补薄处 → 导出 Word。数字核对与表述修订由程序做，
       你只需要看它挑出来的那几条。`,
-    demo: "flow" },
+    demo: "flow", wiz: "search" },
 
-  { sel: ["#ws-search"], title: "第一步 · 检索主体",
+  { sel: ["#ws-search"], title: "第一步 · 检索主体", wiz: "search",
     body: `填工商全称，简称也能命中。上方两个模式：<b>首次覆盖</b>直接检索；
       <b>跟踪期更新</b>要先上传上一版内评报告，系统比对出差异再改写，不重写全文。`,
     demo: "search" },
 
-  { sel: ["#matList"], title: "材料一次取齐",
+  { sel: ["#matList"], title: "材料一次取齐", wiz: "materials",
     when: () => document.querySelectorAll("#matList .mat").length > 0,
-    body: `四类一起列：<b>跟踪评级报告</b>是判断主线，<b>募集说明书</b>看募投与条款，
+    body: () => `四类一起列：<b>跟踪评级报告</b>是判断主线，<b>募集说明书</b>看募投与条款，
       <b>审计报告</b>定财务口径与审计意见，<b>其他公告</b>找报告期内的变化。
-      默认只勾最新一份评级报告与募集说明书，其余按需。
+      默认只勾前两类，其余按需。${DEMO.on ? "<p>这一轮四类都读了，摘录 7.7 万字。</p>" : ""}
       <p>本机 PDF 也能拖进上面的框，不接财汇同样可用。</p>`,
     demo: "mats" },
 
-  { sel: ["#ws-generate"], title: "先把你的判断写进去",
-    body: `<b>分析员补充说明</b>是可选的：读完材料后的判断、要强调的重点、发现的疑点，
+  { sel: ["#ws-generate"], title: "先把你的判断写进去", wiz: "generate",
+    body: () => `<b>分析员补充说明</b>是可选的：读完材料后的判断、要强调的重点、发现的疑点，
       都在这里写给模型，它决定正文的写作重心。
+      ${DEMO.on ? "<p>这一轮只写了一句「土地指标写清结算方式」——短不要紧，说清该往哪写就够了。</p>" : ""}
       <p>涉及金额时以材料为准——没有材料支撑的数字不会写进正文。</p>`,
     demo: "notes" },
 
-  { sel: ["#ws-fill"], title: "第四步 · 补充完善",
-    body: `生成后先<b>评估</b>哪几处内容有缺口：风险事项只提了名字却没给金额、行业段没有可核实的数、
+  { sel: ["#ws-fill"], title: "第四步 · 补充完善", wiz: "fill",
+    body: () => `生成后先<b>评估</b>哪几处内容有缺口：风险事项只提了名字却没给金额、行业段没有可核实的数、
       某段写得太薄。每处标出建议查什么，<b>点「搜索」才真去外网</b>，勾中的结果才写进正文，
-      并注明来源与时间。程序判不出的缺口，用「自己搜一条」。`,
+      并注明来源与时间。
+      ${DEMO.on ? `<p>这一轮评下来是「未发现缺口」——可正文里「对外担保余额较大」只给了定性、
+      没给金额，这种程序看不出来，用「自己搜一条」补。</p>` : "<p>程序判不出的缺口，用「自己搜一条」。</p>"}`,
     demo: "hotfill" },
 
-  { sel: [".docbar", "#ws-export"], title: "导出",
+  { sel: [".docbar", "#ws-export"], title: "导出", wiz: "export",
     body: `按模板的排版参数生成 Word，文件名带日期。正文工具条上还有几个开关：
       <b>段落空行</b>（页面与 Word 同步）、<b>发送</b>到邮箱、<b>下载</b>打包（报告+底稿+附件）。` },
 
-  { sel: ["#blk-asset", "#blk-industry", ".doccol"], title: "成品长什么样",
+  { sel: ["#blk-asset", "#blk-industry", ".doccol"], title: "成品长什么样", wiz: "export",
     when: () => !!(S.draft && S.draft.commentary),
-    body: `资产段每一句都是同一个句式：<b>科目 + 金额 +（占资产总额比例）+ 主要为…… + 能否变现</b>。
-      <p>下面演示框里那段，就是中山城建 2026 年跟踪期报告里的原文——不是编的示例。</p>`,
-    demo: "report" },
+    body: () => DEMO.on
+      ? `右边这份就是中山城建 2026 年跟踪期的成稿：5,534 字、财务表 12 行。
+        资产段每一句都是同一个句式：<b>科目 + 金额 +（占资产总额比例）+ 主要为…… + 能否变现</b>——
+        比方存货那句，金额、占比、52 宗土地 2,158.71 亩、未办证与未缴出让金 16.51 亿元，一句说完。
+        <p>不是编的示例：整份稿子就是从材料里写出来的那一版。</p>`
+      : `资产段每一句都是同一个句式：<b>科目 + 金额 +（占资产总额比例）+ 主要为…… + 能否变现</b>。
+        能不能变现、有没有受限，要写在句子里，不能只写「主要为土地开发成本」就收笔。` },
 
-  { sel: ["#blk-pos", "#blk-con", "#blk-overview", ".doccol"], title: "正文哪里都能改",
+  { sel: ["#blk-pos", "#blk-con", "#blk-overview", ".doccol"], title: "正文哪里都能改", wiz: "export",
     body: `生成草稿后，正文出现在右侧这片区域。每一段都是输入框，直接改，改的是同一份草稿——
       导出、打包、发邮件都读它，不会出现「屏幕上一版、Word 里另一版」。
       <p>条目左侧的序号 <b>1）2）</b> 按住就能拖动排序，拖的是整条，文字不会丢。</p>`,
     demo: "drag" },
 
-  { sel: ["#blk-segments .add", "#blk-segments", ".doccol"], title: "还能往里加",
+  { sel: ["#blk-segments .add", "#blk-segments", ".doccol"], title: "还能往里加", wiz: "export",
     body: `正文里每节下面都能加：<b>+ 条目</b>（摘要的正面与关注）、<b>+ 板块</b>（分部业务）、
       <b>+ 专题</b>（带预设：或有事项、在建工程与资本支出、政府补助依赖…）。
       <p>新增的内容同样会进校验，写得不合格一样会被挑出来。</p>`,
     demo: "add" },
 
-  { sel: [".rail-r .ck-h", "#d-ana", "#railR"], title: "右栏只剩你要判断的",
-    body: `草稿右侧那一栏。表述与结构问题在生成时就改掉了，改不动的才留在这里。
+  { sel: [".rail-r .ck-h", "#railR"], title: "右栏只剩你要判断的", wiz: "export",
+    body: () => `草稿右侧那一栏。表述与结构问题在生成时就改掉了，改不动的才留在这里。
       <b>需人工核验</b>只放数字类：算式复算不通过、数字对不上、表格里找不到出处——
       这些程序判断不了对错。
-      <p>上面是<b>分析附件</b>（债券代码清单、财务专项指标），可预览、可随邮件发出。</p>`,
+      ${DEMO.on ? "<p>这一轮右边留了 5 条待核；下面还有 1 条改不动的、3 处已自动修正的表述问题。</p>" : ""}
+      <p>点一条就跳回正文对应的那句话，核完打勾，勾选进度记在本机。</p>`,
     demo: "rail" },
 
   { sel: ["#tourBtn", "#docLink"], title: "想了解怎么写的",
     body: `这个问号随时可以重看本引导。旁边的「说明」讲了流程、涉及哪些文件、模板与提示词的结构，
       详版另讲写作判据与实现细节。
+      <p>退出后界面会回到空白，演示里那份中山城建的稿子不会留下。</p>
       <p>键盘 <span class="tour-kbd">←</span>
       <span class="tour-kbd">→</span> 翻页，<span class="tour-kbd">Esc</span> 退出。</p>` },
 ];
 
 const TOUR = { on: false, i: 0, raf: 0, scrollTo: null };
 
-/* 演示用真实样本：中山城市建设集团有限公司 2026 年跟踪期。
-   材料标题、条数、字数、摘要条目、待核对提示、正文片段，全部取自
-   data/state/cdb3e642cae52b2e.json 那一轮真实草稿与材料，不编造。
-   改这里的数字之前先回那份快照核对一遍——演示里写错一个数，
-   比不给演示更糟，因为读者会以为产品就是这么算的。
-   唯一不是「原文」的是补充说明——那是分析员自己写的话，这里示范一种写法。 */
-const TOUR_SAMPLE = {
-  company: "中山城市建设集团有限公司",
-  scale: "4 份材料、摘录 7.7 万字，正文 5,534 字",
-  materials: [
-    { kind: "跟踪评级报告", chars: "3.2 万字", count: 7, on: true,
-      title: "2026年度中山城市建设集团有限公司信用评级报告" },
-    { kind: "募集说明书", chars: "2.5 万字", count: 6, on: true,
-      title: "中山城市建设集团有限公司2026年度第一期中期票据募集说明书" },
-    { kind: "审计报告", chars: "1.4 万字", count: 5, on: false,
-      title: "中山城市建设集团有限公司2025年度经审计的合并及母公司财务报告" },
-    { kind: "其他公告", chars: "0.6 万字", count: 24, on: false,
-      title: "中山城市建设集团有限公司2026年1-6月未经审计的合并和母公司财务报表" },
+/* ══ 引导用的那一轮真实数据 ═══════════════════════════════════════
+   中山城市建设集团有限公司 2026 年跟踪期：4 份材料、摘录 7.7 万字、
+   正文 5,534 字、财务表 12 行、5 条待核对。除「分析员补充说明」是分析员
+   自己写的一句话外，全部原文取自 data/state/cdb3e642cae52b2e.json。
+   引导时把它灌进真实界面——材料清单、正文、右栏走的是同一套渲染代码，
+   不是另画一份示意图。改数字之前先回那份快照核对：演示里错一个数，
+   比不给演示更糟，因为读者会以为产品就是这么算的。 */
+const TOUR_DATA = {
+ "company": "中山城市建设集团有限公司",
+ "facts": {
+  "materials": {
+   "跟踪评级报告": [
+    {
+     "title": "2026年度中山城市建设集团有限公司信用评级报告",
+     "url": "",
+     "date": "",
+     "category": "跟踪评级报告"
+    }
+   ],
+   "募集说明书": [
+    {
+     "title": "中山城市建设集团有限公司2026年度第一期中期票据募集说明书",
+     "url": "",
+     "date": "",
+     "category": "募集说明书"
+    }
+   ],
+   "审计报告": [
+    {
+     "title": "中山城市建设集团有限公司2025年度经审计的合并及母公司财务报告",
+     "url": "",
+     "date": "",
+     "category": "审计报告"
+    }
+   ],
+   "其他公告": [
+    {
+     "title": "中山城市建设集团有限公司2026年1-6月未经审计的合并和母公司财务报表",
+     "url": "",
+     "date": "",
+     "category": "其他公告"
+    }
+   ]
+  }
+ },
+ "mats": [
+  {
+   "title": "2026年度中山城市建设集团有限公司信用评级报告",
+   "kind": "跟踪评级报告",
+   "chars": 32021,
+   "label": "摘录 3.2 万字"
+  },
+  {
+   "title": "中山城市建设集团有限公司2026年度第一期中期票据募集说明书",
+   "kind": "募集说明书",
+   "chars": 25109,
+   "label": "摘录 2.5 万字"
+  },
+  {
+   "title": "中山城市建设集团有限公司2025年度经审计的合并及母公司财务报告",
+   "kind": "审计报告",
+   "chars": 13859,
+   "label": "摘录 1.4 万字"
+  },
+  {
+   "title": "中山城市建设集团有限公司2026年1-6月未经审计的合并和母公司财务报表",
+   "kind": "其他公告",
+   "chars": 6085,
+   "label": "摘录 0.6 万字"
+  }
+ ],
+ "counts": {
+  "跟踪评级报告": 7,
+  "募集说明书": 6,
+  "审计报告": 5,
+  "其他公告": 24
+ },
+ "draft": {
+  "company_full_name": "中山城市建设集团有限公司",
+  "internal_rating_code": "",
+  "user_notes": "土地指标写清结算方式",
+  "positive": [
+   "公司为中山市政府控股的城市建设投资管理服务运营商，区域专营地位较强。",
+   "公司土地指标业务为中山市唯一实施主体，存量指标按省公开市场成交均价定价。",
+   "公司公共交通业务由市财政按成本规制全额补贴亏损，补贴构成该板块亏损的主要对冲来源。",
+   "公司银行授信总额较高且未使用额度充足，备用流动性对到期债务的接续形成支撑。"
   ],
+  "concern": [
+   "公司园区开发及土地转让收入占营业收入比重很高，回款依赖市土地储备中心与镇级财政结算。",
+   "公司存货以土地开发成本为主，部分土地未办证或未足额缴纳出让金，变现取决于收储与出让进度。",
+   "公司有息债务持续增长，总资本化比率逐年抬升，非受限货币资金不足以覆盖短期债务。",
+   "公司涉及多起未决诉讼且对外担保余额较大，被担保方出现偿付困难时公司将面临代偿压力。"
+  ],
+  "positive_pool": [
+   "公司物业资产多位于中山市城区，商业及公建配套类出租率尚可，租金收入对营业收入形成稳定补充。",
+   "公司债务以长期借款和债券融资为主，短期债务占比在2026年6月末回落至三成以下，期限结构尚可。",
+   "公司基础设施建设业务以委托代建和自营模式开展，在建及拟建项目储备较充足，业务可持续性较强。",
+   "公司2025年经营活动现金流转为净流出主要系购置土地资产支出增加，2026年上半年已恢复净流入。"
+  ],
+  "concern_pool": [
+   "公司公交客运板块毛利率持续为负，经营亏损依靠财政补贴平衡，补贴实际到位金额随当年财力波动。",
+   "公司期间费用率较高，管理费用与财务费用对利润形成持续侵蚀。",
+   "公司土地一级整理业务可整理存量土地不多，后续土地出让收入面临可持续性压力。",
+   "公司投资性房地产中部分物业尚未办妥产权证书，处置变现存在障碍。"
+  ],
+  "basic_info": "公司前身为中山市公建物业投资管理有限公司，2008年3月成立，后经多次更名与增资，现为中山市城市建设投资管理服务运营商，聚焦城市综合开发、产业园区投资建设运营、基础设施建设三大主业，业务涵盖城市基础设施建设、土地开发、土地指标、物业租赁、公共交通等板块，收入主要来自园区开发及土地转让、物业租赁、公交客运与土地指标出售。截至2026年6月末，公司注册资本42.32亿元，实收资本46.98亿元，实收资本高于注册资本主要系2025年股东将资本公积转增实收资本所致；中山市人民政府持股90.92%，广东省财政厅持股9.08%，中山市政府为控股股东及实际控制人。2026年上半年中山市国资委对公司注资，工商信息暂未变更。截至2026年6月末，公司纳入合并范围的子公司共35家。",
+  "commentary": {
+   "industry": {
+    "lead": "基础设施投融资行业进入化债攻坚收尾阶段，城投企业融资渠道由非标向银行贷款调整，但存量经营性债务仍需长期市场化消化。",
+    "body": "供需格局方面，2026年上半年中央与地方延续“化债与发展”一体推进，8,000亿元“两重”超长期特别国债全部下达，城市更新“十五五”专项规划落地，基建投资仍是需求端的主要支撑；但2025年中山市固定资产投资同比下降22.6%，2026年上半年降幅收窄至5.7%，区域基建投资力度直接决定公司代建项目结算与土地指标出售的量。价格与成本方面，公司土地指标销售单价按上一年度广东省补充耕地指标公开市场成交均价确定、按年调整，2024年2月调价后单价有所提升；土地二级转让价格则取决于中山市土地市场行情与收储定价，2025年公司转让约1,266.34亩土地实现21.39亿元收入，均价水平受地块区位影响较大。政策方面，2027年退平台硬时限要求推动城投企业实质转型，公司代建项目须与预算单位补签协议后方能结算管理费，这一条直接决定已完工代建项目的回款节奏。传导上，区域基建投资力度决定公司土地指标出售面积与代建结算进度，土地市场行情决定土地转让价格与去化速度，两者共同作用于公司园区开发及土地转让板块的收入与毛利。"
+   },
+   "overview": {
+    "lead": "公司收入高度集中于园区开发及土地转让板块，利润对政府补助与投资收益依赖较重，2026年上半年转为亏损。",
+    "body": "公司作为中山市城市建设投资管理服务运营商，收入来源分为三类：一是园区开发及土地转让，由子公司板芙城投、中山城投等负责，土地由市土地储备中心收储或出让后按成本加成与镇级财政结算；二是物业租赁、公交客运、土地指标出售等经营性业务，对手方为市场化租户、乘客与用地单位；三是代建管理费与设计测绘等服务性收入，对手方为市财政及政府单位。2025年公司营业总收入30.04亿元，其中园区开发及土地转让收入22.76亿元、占比75.76%，物业租赁收入2.46亿元、占比8.20%，公交客运收入1.83亿元、占比6.11%，土地指标收入0.45亿元、占比1.50%，其余板块合计占比不足一成。收入结构决定了公司盈利主线：园区开发及土地转让的结算进度与毛利率主导整体毛利，公交客运常年亏损、依靠财政补贴平衡，物业租赁提供稳定但规模有限的租金。2025年公司综合毛利率0.61%，净利润0.55亿元；2026年1-6月营业总收入4.08亿元，净利润-1.64亿元，由盈转亏。"
+   },
+   "segment_table": {
+    "unit_line": "单位：亿元",
+    "header": [
+     "业务板块",
+     "营业收入",
+     "收入占比",
+     "毛利率"
+    ],
+    "rows": [
+     [
+      "园区开发及土地转让",
+      "22.76",
+      "75.76%",
+      "25.11%"
+     ],
+     [
+      "物业租赁",
+      "2.46",
+      "8.20%",
+      "28.16%"
+     ],
+     [
+      "公交客运",
+      "1.83",
+      "6.11%",
+      "-405.23%"
+     ],
+     [
+      "资产处置",
+      "0.62",
+      "2.07%",
+      "70.35%"
+     ],
+     [
+      "设计测绘",
+      "0.55",
+      "1.84%",
+      "19.72%"
+     ],
+     [
+      "运营管理",
+      "0.47",
+      "1.55%",
+      "-26.20%"
+     ],
+     [
+      "土地指标",
+      "0.45",
+      "1.50%",
+      "79.36%"
+     ],
+     [
+      "公墓业务",
+      "0.26",
+      "0.86%",
+      "87.51%"
+     ],
+     [
+      "保税物流",
+      "0.21",
+      "0.71%",
+      "16.44%"
+     ],
+     [
+      "代建收入",
+      "0.10",
+      "0.33%",
+      "90.65%"
+     ],
+     [
+      "广告业务",
+      "0.10",
+      "0.34%",
+      "-23.89%"
+     ],
+     [
+      "咨询服务费",
+      "0.02",
+      "0.07%",
+      "100.00%"
+     ],
+     [
+      "其他",
+      "0.20",
+      "0.65%",
+      "0.26%"
+     ],
+     [
+      "营业总收入",
+      "30.04",
+      "100.00%",
+      "0.61%"
+     ]
+    ]
+   },
+   "segments": [
+    {
+     "name": "城市基础设施建设",
+     "body": "公司采用政府回购、委托代建和自营三种模式开展基建业务，是中山市城市建设投资管理服务运营商，基建业务专营性较强。政府回购模式下，公司先后竣工明和楼、弘义楼、公明楼等项目，建设成本约17.11亿元，项目成本加投资回报合计23.58亿元，截至2026年6月末已收到回购金额22.70亿元，剩余资金正与市财政局沟通回笼安排，且不再以此方式开展项目建设。委托代建方面，截至2026年6月末主要已完工代建项目总投资12.76亿元，已确认管理费1,737.92万元、管理费回款985.51万元，大部分已完工项目尚未与政府签署代建协议，管理费回款进度较缓慢；在建的中山科技创新园总投资27.86亿元、已投资14.95亿元，尚需投资约12.91亿元，资金来源于专项债并由财政直接支付至工程单位。自营项目方面，截至2026年6月末在建自营项目总投资13.23亿元、已投资8.88亿元，尚需投资约4.35亿元，另有拟建项目总投资20.75亿元。公司代建管理费能否收回取决于预算单位补签协议与年度预算安排，自营项目投运后的租售去化决定投资回收进度。"
+    },
+    {
+     "name": "土地开发",
+     "body": "公司土地开发业务由中山城投、民众城投、板芙城投等负责，分为一级整理出让和二级转让两种模式，一级整理经过十余年发展已接近尾声，可整理的存量土地不多。2025年公司转让约1,266.34亩土地，实现土地处置收入21.39亿元，是当年营业收入的主要来源；截至2026年6月末，尚有31.18亿元土地处置收入未收到回款，对手方为中山市土地储备中心，回款节奏取决于收储资金安排与财政拨付进度。土地一级整理方面，板芙智能制造装备产业园已投资22.47亿元、总投资23.78亿元，已供工业地1,807亩，后续出让进度受区域招商与土地市场行情制约。"
+    },
+    {
+     "name": "土地指标",
+     "body": "公司是中山市土地指标业务的唯一实施主体，通过出售早期低价购入的存量补充耕地指标实现收入，指标购入时计入存货—开发成本，转让时确认主营业务收入并结转成本，收到款项计入销售商品、提供劳务收到的现金。2025年公司出售指标750亩、实现销售收入0.45亿元，出售面积较2024年的862亩有所下滑，但受益于单价上涨，收入较2024年的0.43亿元略有增长；截至2026年6月末指标结余5,739.66亩、结余价值3.77亿元，2026年上半年无指标出售。该业务收入取决于中山市路桥基建投资力度带来的指标需求，以及省公开市场成交均价决定的销售单价，指标结余消化进度受市场供给价格制约。"
+    },
+    {
+     "name": "物业租赁",
+     "body": "公司承担商业及行政事业类、公建配套类、住宅租赁类等物业的日常维护和租赁经营，商业类物业多位于中心城区商圈，通过公开拍租、协议租赁等方式招租，商铺租期一般为三年、租期内租金不变、按月支付，公租房月租金为4～6元/平方米。截至2026年6月末，公司可出租面积152.54万平方米，综合出租率64.42%，其中商业及行政事业类出租率67.20%、公建配套类83.04%、住宅租赁类43.56%。2025年公司物业租赁收入2.46亿元、毛利率28.16%，收入较2024年的2.12亿元增加约0.34亿元，主要系可出租面积增加及出租率回升；2026年1-6月租赁收入1.32亿元、毛利率41.18%。租金收入取决于出租率与租约到期后的续租定价，住宅租赁类出租率偏低，该部分物业的租金回收对整体收入形成拖累。"
+    },
+    {
+     "name": "公共交通",
+     "body": "公司公共交通业务由子公司中山公交负责，包括公交客运、包车客运等，是中山市除小榄镇外公交资源的统一运营主体，区域垄断性较强。2025年公司营运公交车辆2,185辆、公交线路204条、客运量0.96亿人次，较2024年的1.02亿人次有所下滑；受益于深中通道票价较高且客流量逐步培育，当年客运收入1.21亿元，较2024年的1.18亿元略有增长。受低票价及票价优惠政策影响，该板块毛利率持续为负，2025年为-405.23%，经营亏损依靠市财政成本规制补贴平衡，2025年实际收到财政补贴5.89亿元，较2024年的4.37亿元有所增加。补贴实际到位金额视当年财力状况波动，2026年1-6月收到补贴2.31亿元，补贴能否足额及时到位直接决定该板块亏损的对冲程度。"
+    },
+    {
+     "name": "其他业务",
+     "body": "公司其他业务包括资产处置、设计测绘、运营管理、保税物流、广告、代建、公墓及咨询服务等，单个板块收入占比均不足5%。2025年资产处置收入0.62亿元、毛利率70.35%，主要系公司本部处置零散房产；设计测绘收入0.55亿元、毛利率19.72%，由规划设计院公司为中山市国有企业及政府单位提供城乡规划编制与测绘服务；公墓业务自2025年纳入合并范围，当年收入0.26亿元、毛利率87.51%，2026年1-6月收入0.40亿元。上述板块收入规模有限且部分为单宗资产处置，对营业收入的补充作用受处置节奏与服务订单量制约。"
+    }
+   ],
+   "asset": {
+    "lead": "公司资产以存货、投资性房地产和应收类款项为主，土地开发成本与应收土地处置款占用资金规模较大，整体资产流动性一般。",
+    "body": "截至2026年6月末，公司资产总额248.12亿元，流动资产占比66.44%，资产结构以流动资产为主。存货801,045.21万元（占资产总额32.28%），主要为土地开发成本及购置的商品房，其中52宗土地有土地证面积合计2,158.71亩、土地使用权账面价值30.57亿元（占资产总额12.32%），未足额缴纳出让金及未办证土地账面价值合计16.51亿元，变现取决于收储与出让进度。投资性房地产506,786.24万元（占资产总额20.42%），主要为公司采用成本计量模式的商业及公建配套物业，其中约7.40亿元物业（占资产总额2.98%）因资料不全、存在房屋加建等原因尚未办妥产权证书，且部分物业因借款抵质押而受限。其他应收款395,818.47万元（占资产总额15.95%），主要为应收市土地储备中心的土地处置款、应收市交通运输局的公交补贴、应收板芙镇人民政府的土地补偿价款及应收市财政局的往来款，回收节奏取决于财政与镇级结算安排。应收账款118,690.65万元（占资产总额4.78%），2025年末同比增长主要系对中山市土地储备中心的应收土地处置款增加，当年末该对手方占应收账款总额的75.21%，2026年6月末较上年末有所下降。预付款项73,540.06万元（占资产总额2.96%），主要为预付方直花园等商品房购房款，随部分商品房交付转入存货而下降。前五大科目合计占资产总额约76.39%。截至2026年6月末，公司受限资产合计37.97亿元，占资产总额15.30%，主要为银行贷款抵押的投资性房地产、固定资产、存货、在建工程及无形资产，以及受限货币资金796.52万元。"
+   },
+   "financial_table": {
+    "caption": "公司主要财务数据和财务指标（合并口径）",
+    "unit_line": "单位：亿元",
+    "periods": [
+     "2026年1-6月",
+     "2025年",
+     "2024年"
+    ],
+    "rows": [
+     [
+      "资产总额",
+      "248.12",
+      "244.71",
+      "226.71"
+     ],
+     [
+      "负债总额",
+      "171.32",
+      "166.26",
+      "146.57"
+     ],
+     [
+      "经调整的所有者权益",
+      "76.81",
+      "78.44",
+      "80.14"
+     ],
+     [
+      "营业总收入",
+      "4.08",
+      "30.04",
+      "29.49"
+     ],
+     [
+      "利润总额",
+      "-1.57",
+      "2.82",
+      "3.50"
+     ],
+     [
+      "净利润",
+      "-1.64",
+      "0.55",
+      "2.23"
+     ],
+     [
+      "经营活动产生的现金流量净额",
+      "1.40",
+      "-0.92",
+      "7.13"
+     ],
+     [
+      "总债务",
+      "144.31",
+      "133.76",
+      "120.11"
+     ],
+     [
+      "短期债务占比",
+      "28.24%",
+      "35.00%",
+      "27.45%"
+     ],
+     [
+      "资产负债率",
+      "69.04%",
+      "67.94%",
+      "64.65%"
+     ],
+     [
+      "总资本化比率",
+      "65.26%",
+      "63.03%",
+      "59.98%"
+     ],
+     [
+      "EBITDA利息保障倍数",
+      "—",
+      "2.66",
+      "2.84"
+     ]
+    ],
+    "from_materials": true
+   },
+   "profit": {
+    "lead": "2026年上半年公司由盈转亏，亏损主要来自园区开发及土地转让收入确认减少与公交客运板块毛利为负，期间费用与减值损失进一步侵蚀利润。",
+    "body": "收入侧，2026年1-6月公司营业总收入4.08亿元，较上年同期的3.63亿元增长12.31%，增量主要来自公交客运收入由0.91亿元增至1.53亿元（含乘车优惠补贴口径变化）及公墓业务收入由0.04亿元增至0.40亿元；园区开发收入由0.26亿元降至0.16亿元，土地指标业务当期无出售、收入为零，资产处置收入由0.44亿元降至0.04亿元。收入结构上，园区开发及土地转让的结算进度是收入波动的主要来源，2025年该板块确认收入22.76亿元、较2024年的22.94亿元下降0.79%，主要系当年土地转让面积与结算节奏变化。利润侧，2026年1-6月公司利润总额-1.57亿元、上年同期为盈利，净利润-1.64亿元、由盈转亏；2025年利润总额2.82亿元、同比下降19.51%，净利润0.55亿元、同比下降75.24%。亏损归因按影响从大到小：一是毛利变动，2026年1-6月营业毛利率-51.12%，公交客运板块收入占比升至37.48%而毛利率为-203.51%，该板块毛利亏损约3.11亿元，是整体毛利为负的主因；二是期间费用，2026年1-6月期间费用2.68亿元、期间费用率65.74%，其中财务费用1.59亿元、管理费用等构成刚性支出；三是其他收益，2026年1-6月政府补助3.80亿元，较上年同期的3.84亿元略有下降，补助未能完全对冲公交亏损；四是投资收益，2026年1-6月仅4.95万元，较2025年全年的0.33亿元减少。2025年净利润下滑则主要受所得税费用增至2.27亿元及投资收益由0.59亿元降至0.33亿元影响。上述亏损中，公交客运的票价与成本倒挂具有持续性，需依靠财政补贴平衡；园区开发收入确认取决于土地出让与结算进度，若2026年下半年无土地转让结算，全年亏损难以扭转；政府补助与资产处置属可调节项，下一期能否重演取决于财政预算与处置计划。"
+   },
+   "debt": {
+    "lead": "公司债务规模持续增长，财务杠杆逐年抬升，短期债务占比回落但非受限货币资金对短债的覆盖不足，偿债依赖再融资与政府支持。",
+    "body": "截至2026年6月末，公司负债总额171.32亿元，资产负债率69.04%，较2025年末的67.94%上升1.10个百分点，主要系对外融资用于业务投资所致。全部债务144.31亿元，其中短期债务40.76亿元、占比28.24%，较2025年末的35.00%回落6.76个百分点，长期债务103.55亿元、占比71.76%，债务期限结构以长期为主。有息债务融资构成上，银行贷款115.58亿元、公司信用类债券23.90亿元、非银行金融机构贷款2.08亿元、其他有息债务2.47亿元；从到期分布看，6个月以内到期17.64亿元、6个月至1年到期23.05亿元、超过1年到期103.34亿元，一年内到期合计40.69亿元。利息保障方面，2025年EBITDA 10.85亿元、EBITDA利息保障倍数2.66倍，较2024年的2.84倍有所下降，主要系利息支出增至4.08亿元；2025年经营活动现金流量净额-0.92亿元，经营获现不足以覆盖利息支出。非受限货币资金22.34亿元，对短期债务40.76亿元的覆盖倍数为0.55倍，覆盖不足。授信方面，截至2026年6月末公司银行授信总额217.96亿元，尚未使用额度102.38亿元，备用流动性较充足。公司总债务与有息债务口径差额主要系其他应付款中带息债务调入长期债务所致。"
+   },
+   "special_topics": []
+  },
+  "validation": {
+   "issues": [
+    "行业段的加粗汇总句里没有出现受评主体，读起来不知道在说谁。判断句要有主语：「公司为……」「公司作为……」，或明确换成行业、政策这类外部主语。",
+    "4 条算式复算不通过（操作数在材料里找不到，或算出来与正文不符）",
+    "1 个数字既对不上材料原文，也没能用同段数据复原算式（差额 1 个），已逐条定位到句，请核对",
+    "5 个数字标为推算值，核对算式口径是否与正文一致",
+    "正文偏长（约5534字），建议压缩到 4000 字以内"
+   ],
+   "body_chars": 5534,
+   "issue_items": [
+    {
+     "t": "加粗句缺主语",
+     "a": "blk-industry",
+     "d": [
+      {
+       "num": "",
+       "where": "行业段加粗句",
+       "kind": "主语",
+       "full": "基础设施投融资行业进入化债攻坚收尾阶段，城投企业融资渠道由非标向银行贷款调整，但存量经营性债务仍需长期市场化消化。",
+       "si": 0,
+       "anchor": "blk-industry",
+       "field": "in-lead",
+       "note": "补主语：公司为……／公司作为……；主语是外部条件时改成明写行业、政策"
+      }
+     ],
+     "fix": "auto"
+    },
+    {
+     "t": "交底的算式复算不通过",
+     "a": "d-doc",
+     "d": [
+      {
+       "num": "12.40",
+       "where": "2026年1-6月营业总收入同比增速",
+       "full": "",
+       "si": 0,
+       "formula": "2026年1-6月营业总收入同比增速 = (4.08 − 3.63) ÷ 3.63 × 100%",
+       "kind": "算式",
+       "note": "算出来的值在正文里找不到",
+       "anchor": "d-doc",
+       "field": "",
+       "seg": 0
+      },
+      {
+       "num": "-19.43",
+       "where": "2025年利润总额同比降幅",
+       "full": "",
+       "si": 0,
+       "formula": "2025年利润总额同比降幅 = (2.82 − 3.50) ÷ 3.50 × 100%",
+       "kind": "算式",
+       "note": "算出来的值在正文里找不到",
+       "anchor": "d-doc",
+       "field": "",
+       "seg": 0
+      },
+      {
+       "num": "4.65",
+       "where": "2025年土地指标销售收入同比变动",
+       "full": "",
+       "si": 0,
+       "formula": "2025年土地指标销售收入同比变动 = (0.45 − 0.43) ÷ 0.43 × 100%",
+       "kind": "算式",
+       "note": "算出来的值在正文里找不到",
+       "anchor": "d-doc",
+       "field": "",
+       "seg": 0
+      },
+      {
+       "num": "2.54",
+       "where": "2025年公交客运收入同比变动",
+       "full": "",
+       "si": 0,
+       "formula": "2025年公交客运收入同比变动 = (1.21 − 1.18) ÷ 1.18 × 100%",
+       "kind": "算式",
+       "note": "算出来的值在正文里找不到",
+       "anchor": "d-doc",
+       "field": "",
+       "seg": 0
+      }
+     ],
+     "fix": "manual"
+    },
+    {
+     "t": "数字对不上，算式也复原不了",
+     "a": "d-doc",
+     "note": "差额 1 个",
+     "d": [
+      {
+       "num": "0.91亿元",
+       "where": "盈利段",
+       "sent": "…较上年同期的3.63亿元增长12.31%，增量主要来自公交客运收入由0.91亿元增至1.53亿元（含乘车优惠补贴口径变化）及公墓业务收入由0.04亿…",
+       "full": "收入侧，2026年1-6月公司营业总收入4.08亿元，较上年同期的3.63亿元增长12.31%，增量主要来自公交客运收入由0.91亿元增至1.53亿元（含乘车优惠补贴口径变化）及公墓业务收入由0.04亿元增至0.40亿元；园区开发收入由0.26亿元降至0.16亿元，土地指标业务当期无出售、收入为零，资产处置收入由0.44亿元降至0.04亿元。",
+       "si": 1,
+       "kind": "差额",
+       "anchor": "blk-profit",
+       "field": "pf-body",
+       "seg": 0
+      }
+     ],
+     "fix": "manual"
+    },
+    {
+     "t": "推算值要说清口径",
+     "a": "d-doc",
+     "d": [
+      {
+       "num": "12.31%",
+       "where": "盈利段",
+       "sent": "…6年1-6月公司营业总收入4.08亿元，较上年同期的3.63亿元增长12.31%，增量主要来自公交客运收入由0.91亿元增至1.53亿元（含乘车优惠…",
+       "full": "收入侧，2026年1-6月公司营业总收入4.08亿元，较上年同期的3.63亿元增长12.31%，增量主要来自公交客运收入由0.91亿元增至1.53亿元（含乘车优惠补贴口径变化）及公墓业务收入由0.04亿元增至0.40亿元；园区开发收入由0.26亿元降至0.16亿元，土地指标业务当期无出售、收入为零，资产处置收入由0.44亿元降至0.04亿元。",
+       "si": 1,
+       "kind": "增速",
+       "anchor": "blk-profit",
+       "field": "pf-body",
+       "seg": 0,
+       "formula": "(203.51 − 181.20) ÷ 181.20 × 100% = 12.31%",
+       "rule": "增速"
+      },
+      {
+       "num": "19.51%",
+       "where": "盈利段",
+       "sent": "…润-1.64亿元、由盈转亏；2025年利润总额2.82亿元、同比下降19.51%，净利润0.55亿元、同比下降75.24%。",
+       "full": "利润侧，2026年1-6月公司利润总额-1.57亿元、上年同期为盈利，净利润-1.64亿元、由盈转亏；2025年利润总额2.82亿元、同比下降19.51%，净利润0.55亿元、同比下降75.24%。",
+       "si": 3,
+       "kind": "增速",
+       "anchor": "blk-profit",
+       "field": "pf-body",
+       "seg": 0,
+       "formula": "(75.24 − 62.96) ÷ 62.96 × 100% = 19.51%",
+       "rule": "增速"
+      },
+      {
+       "num": "75.24%",
+       "where": "盈利段",
+       "sent": "…总额2.82亿元、同比下降19.51%，净利润0.55亿元、同比下降75.24%。",
+       "full": "利润侧，2026年1-6月公司利润总额-1.57亿元、上年同期为盈利，净利润-1.64亿元、由盈转亏；2025年利润总额2.82亿元、同比下降19.51%，净利润0.55亿元、同比下降75.24%。",
+       "si": 3,
+       "kind": "增速",
+       "anchor": "blk-profit",
+       "field": "pf-body",
+       "seg": 0,
+       "formula": "(22.94 − 13.09) ÷ 13.09 × 100% = 75.24%",
+       "rule": "增速"
+      },
+      {
+       "num": "3.11亿元",
+       "where": "盈利段",
+       "sent": "…收入占比升至37.48%而毛利率为-203.51%，该板块毛利亏损约3.11亿元，是整体毛利为负的主因；二是期间费用，2026年1-6月期间费用2.…",
+       "full": "亏损归因按影响从大到小：一是毛利变动，2026年1-6月营业毛利率-51.12%，公交客运板块收入占比升至37.48%而毛利率为-203.51%，该板块毛利亏损约3.11亿元，是整体毛利为负的主因；二是期间费用，2026年1-6月期间费用2.68亿元、期间费用率65.74%，其中财务费用1.59亿元、管理费用等构成刚性支出；三是其他收益，2026年1-6月政府补助3.80亿元，较上年同期的3.84亿元略有下降，补助未能完全对冲公交亏损；四是投资收益，2026年1-6月仅4.95万元，较2025年全年的0.33亿元减少。",
+       "si": 4,
+       "kind": "金额",
+       "anchor": "blk-profit",
+       "field": "pf-body",
+       "seg": 0,
+       "formula": "",
+       "rule": "声明为推算值"
+      },
+      {
+       "num": "6.76个百分点",
+       "where": "债务段",
+       "sent": "…务40.76亿元、占比28.24%，较2025年末的35.00%回落6.76个百分点，长期债务103.55亿元、占比71.76%，债务期限结构以长期为主…",
+       "full": "全部债务144.31亿元，其中短期债务40.76亿元、占比28.24%，较2025年末的35.00%回落6.76个百分点，长期债务103.55亿元、占比71.76%，债务期限结构以长期为主。",
+       "si": 2,
+       "kind": "变动幅度",
+       "anchor": "blk-debt",
+       "field": "db-body",
+       "seg": 0,
+       "formula": "35 − 28.24 = 6.76 个百分点",
+       "rule": "差额"
+      }
+     ],
+     "fix": "manual"
+    }
+   ],
+   "auto_checks": [
+    "机器自动核对通过 6 个自算值（占比 1、算式复算通过 5）：\n· 12.32% —— 30.57 ÷ 248.12 × 100% = 12.32%　（资产段）\n· 2.98% —— 预付款项占总资产比重 = 73,540.06 ÷ 2,481,247.98 × 100%　（资产段）\n· 15.95% —— 其他应收款占总资产比重 = 395,818.47 ÷ 2,481,247.98 × 100%　（资产段）\n· 76.39% —— 前五大科目合计占资产总额比重 = 32.28% + 20.42% + 15.95% + 4.78% + 2.96%　（资产段）\n· 71.76% —— 2026年6月末长期债务占比 = 103.55 ÷ 144.31 × 100%　（债务段）\n· 40.69亿元 —— 2026年6月末一年内到期有息债务合计 = 17.64 + 23.05　（债务段）"
+   ],
+   "auto_count": 6,
+   "rev": 8,
+   "auto_fixed": [
+    "同一句话出现了两遍",
+    "摘要一条塞了两件事",
+    "资产段缺金额占比"
+   ],
+   "revise_calls": 1
+  },
+  "add_on_sections": [
+   {
+    "where": "债务段之后",
+    "title": "对外担保",
+    "why": "可据此补写一段。",
+    "lead": "",
+    "body": "表19：截至2026年6月末，截至2026年6月末，公司对外担保金额11.25亿元……",
+    "auto": true
+   },
+   {
+    "where": "债务段之后",
+    "title": "未决诉讼",
+    "why": "可据此补写一段。",
+    "lead": "",
+    "body": "表18：近年来公司偿债能力情况（亿元、%、X）项目2023202420252026.6/2026.1~6总债务107.96120.11133.76144.31短期债务占比26.6327.4535.0028.24EBITDA7.2010.7610.85--EBITDA利息保障倍数2.012.842.6……",
+    "auto": true
+   },
+   {
+    "where": "债务段之后",
+    "title": "在建项目与资本支出",
+    "why": "可据此补写一段。",
+    "lead": "",
+    "body": "在建委托代建项目中，中山科技创新园自2020年开工，2022年公司与政府签署代建协议，该项目包括低温研究院、工研院和光子研究院三个子项目，截至2026年6月末尚需投资约12.91亿元，资金来源于专项债，由财政直接支付至工程单位",
+    "auto": true
+   }
+  ],
+  "web_plan": {
+   "targets": [],
+   "ready": true
+  },
+  "usage": {
+   "cost": 0.0667,
+   "cap": 2.0,
+   "model": "deepseek-v4-flash",
+   "prompt_tokens": 63403,
+   "completion_tokens": 18272,
+   "total_tokens": 81675,
+   "cached_tokens": 50816,
+   "calls": 2,
+   "seconds": 78.6,
+   "estimated": false,
+   "finish_reason": "stop"
+  }
+ }
 };
 
+/* 气泡里只留「动」的那一下。
+   内容既然已经摆在界面上了，气泡再抄一遍只会分散注意力——所以这里每一块
+   都用骨架条代替文字，只演示这一步里最难用文字讲清的动作：输入、勾选、
+   读取、按下、让位、弹出、勾掉。 */
 const TOUR_DEMO = {
-  /* 欢迎页：链路 + 一句交代「后面都是真的」 */
+  /* 欢迎：整条链路，加一句交代「界面里摆的就是真的」 */
   flow: () => `<div class="tdemo">
       <div class="td-h">整条链路</div>
       <div class="tflow">
         <span>检索</span><i>→</i><span>材料</span><i>→</i><span>草稿</span><i>→</i><span>补薄</span><i>→</i><span>导出</span>
       </div>
-      <div class="tdreal">下面用 ${esc(TOUR_SAMPLE.company)} 的真实一轮演示：${esc(TOUR_SAMPLE.scale)}。</div>
+      <div class="tdreal">${DEMO.on
+        ? `界面里摆的是${esc(TOUR_DATA.company)}的真实一轮：4 份材料、摘录 7.7 万字、正文 5,534 字。`
+        : "下面每一步都指向界面上真实的位置，不放示意图。"}</div>
     </div>`,
 
-  /* 检索：真主体名、四类真实条数 */
+  /* 检索：把主体名打进输入框，四类结果依次落地。
+     主体名已经填在左边输入框里，这里只演示「一次宽查询、本地分四类」。 */
   search: () => `<div class="tdemo">
       <div class="td-h">一次宽查询，本地分四类</div>
       <div class="tdwin">
-        <div class="tdq">${esc(TOUR_SAMPLE.company)}</div>
-        <div class="tdchips">${TOUR_SAMPLE.materials.map(m =>
-          `<span>${esc(m.kind)} <b>${m.count}</b></span>`).join("")}</div>
+        <div class="tdq"><span class="ty">${esc(TOUR_DATA.company)}</span></div>
+        <div class="tdchips">${Object.keys(TOUR_DATA.counts).map(k =>
+          `<span>${esc(k)} <b>${TOUR_DATA.counts[k]}</b></span>`).join("")}</div>
       </div>
       <div class="tdcap">付息兑付、上市流通这类程序性公告已滤掉；同一年审计报告只留一份</div>
     </div>`,
 
-  /* 材料：真标题、真字数、默认只勾前两类 */
+  /* 材料：四行依次勾上、进度条走完。标题与字数就在左边清单里 */
   mats: () => `<div class="tdemo">
-      <div class="td-h">读取前勾选 · 默认只勾前两类</div>
-      <div class="tdmats">${TOUR_SAMPLE.materials.map(m => `
-        <div class="tdmat">
-          <span class="tdbox${m.on ? " on" : ""}"></span>
-          <span class="m"><span class="t">${esc(m.title)}</span>
-            <span class="i">${esc(m.kind)} · 摘录 ${esc(m.chars)}</span></span>
-        </div>`).join("")}</div>
+      <div class="td-h">勾选 → 读进 → 摘录</div>
+      <div class="tdsk">${[0, 1, 2, 3].map(() => `
+        <div class="r"><span class="bx"></span>
+          <span class="m"><span class="ln w3"></span><span class="ln w2 sm"></span></span></div>`).join("")}
+        <div class="tdbar"><i></i></div>
+      </div>
+      <div class="tdcap">默认勾前两类；这一轮四类都读了，摘录 7.7 万字</div>
     </div>`,
 
-  /* 补充说明：一个填好的输入框，示范写法 */
+  /* 补充说明：写到一半的那一句。真实那句已经在上面的输入框里 */
   notes: () => `<div class="tdemo">
-      <div class="td-h">分析员补充说明 · 示例写法</div>
-      <div class="tdta">土地指标为全市唯一实施主体，存量指标按省公开市场成交均价定价——重点写清定价机制与去化节奏。<span class="caret"></span></div>
-      <div class="tdcap">它决定写作重心，但不作数字来源；与材料冲突时以材料为准</div>
+      <div class="td-h">读完材料再写，不是先写</div>
+      <div class="tdta">
+        <span class="ln w3"></span>
+        <span class="l2"><span class="ln w2"></span><span class="caret"></span></span>
+      </div>
+      <div class="tdcap">它决定写作重心，但不当数字来源；与材料冲突时以材料为准</div>
     </div>`,
 
-  /* 补充完善：真实缺口（正文提了对外担保却没给金额）*/
+  /* 缺口：评估出一条 → 按钮按下 → 结果落地。具体缺口在第 4 步那个面板里 */
   hotfill: () => `<div class="tdemo">
       <div class="td-h">评估 → 你点 → 才去搜</div>
-      <div class="tdgap">
-        <div class="g1">关注事项 · 诉讼</div>
-        <div class="g2">正文提到但未给金额、期次或进展</div>
-        <div class="g3">搜：中山城市建设集团有限公司 诉讼 被执行 2026</div>
-        <div class="g4">搜索</div>
+      <div class="tdhk">
+        <div class="h1"><span class="ln w2"></span><span class="go">搜索</span></div>
+        <div class="h2"><span class="ln w3"></span></div>
+        <div class="rs a"><span class="ln w3"></span><span class="ln w1 sm"></span></div>
+        <div class="rs b"><span class="ln w3"></span><span class="ln w1 sm"></span></div>
       </div>
-      <div class="tdcap">正文原句「公司涉及多起未决诉讼且对外担保余额较大」——只说了有诉讼，没说金额与进展。担保那条不在这套规则里，用「自己搜一条」补</div>
+      <div class="tdcap">搜到的东西要你勾中才写进正文，并注明来源与时间</div>
     </div>`,
 
-  /* 正文能改：真实关注条目，拖动其中一条 */
+  /* 拖动：序号按住，整条下移一格，下面这条同时让开，原位留虚线。
+     行里的字就在正文里，这里只看动作 */
   drag: () => `<div class="tdemo tdrag">
       <div class="td-h">按住序号拖动排序</div>
-      <div class="td-row"><span class="td-num">1）</span><span class="td-line">公司园区开发及土地转让收入占营业收入比重很高，回款依赖市土地储备中心与镇级财政结算</span></div>
-      <div class="td-row mv"><span class="td-num">2）</span><span class="td-line">公司存货以土地开发成本为主，部分土地未办证或未足额缴纳出让金，变现取决于收储与出让进度</span></div>
-      <div class="td-row yield"><span class="td-num">3）</span><span class="td-line">公司有息债务持续增长，总资本化比率逐年抬升，非受限货币资金不足以覆盖短期债务</span></div>
+      <div class="td-row"><span class="td-num">1）</span><span class="td-line"><span class="ln w3"></span></span></div>
+      <div class="td-row mv"><span class="td-num">2）</span><span class="td-line"><span class="ln w2"></span></span></div>
+      <div class="td-row yield"><span class="td-num">3）</span><span class="td-line"><span class="ln w3"></span></span></div>
       <div class="td-ph"></div><div class="td-finger"></div>
     </div>`,
 
-  /* 还能加：真分部序号 + 真专题预设名 */
+  /* 加：按钮按下 → 新块展开 → 专题菜单弹出（菜单只有点了才看得到） */
   add: () => `<div class="tdemo tadd">
       <div class="td-h">+ 板块 / + 专题</div>
-      <div class="td-blk">6）其他业务</div>
+      <div class="td-blk"><span class="ln w2"></span></div>
       <div class="td-add">+ 板块</div>
-      <div class="td-blk fresh">7）新板块（可直接写）</div>
+      <div class="td-blk fresh"><span class="ln w2"></span></div>
       <div class="tdmenu"><span>或有事项</span><span>在建工程与资本支出</span><span>政府补助依赖</span></div>
     </div>`,
 
-  /* 成品：真实资产段片段 */
-  report: () => `<div class="tdemo">
-      <div class="td-h">成品长什么样 · 资产段真实片段</div>
-      <div class="tdrep"><b>存货</b>801,045.21万元（占资产总额32.28%），主要为土地开发成本及购置的商品房，其中52宗土地有土地证面积合计2,158.71亩、土地使用权账面价值30.57亿元（占资产总额12.32%），未足额缴纳出让金及未办证土地账面价值合计16.51亿元，变现取决于收储与出让进度。</div>
-      <div class="tdcap">科目 + 金额（括号里只放占资产总额比例）+「主要为……」+ 能否变现</div>
-    </div>`,
-
-  /* 右栏：三条真实待核对 */
+  /* 右栏：一条一条勾掉。条目本身就在右侧那栏 */
   rail: () => `<div class="tdemo">
-      <div class="td-h">右栏只剩数字类</div>
-      <div class="tdck">
-        <div class="tdckh"><b>需人工核验</b>0/2</div>
-        <div class="tdcki man"><span class="tddot"></span><span class="c">
-          <span class="t">数字对不上，算式也复原不了</span>
-          <span class="q">收入侧，2026年1-6月公司营业总收入4.08亿元，较上年同期的3.63亿元增长12.31%</span></span></div>
-        <div class="tdcki man"><span class="tddot"></span><span class="c">
-          <span class="t">推算值要说清口径</span>
-          <span class="q">增量主要来自公交客运收入由0.91亿元增至1.53亿元（含乘车优惠补贴口径变化）</span></span></div>
-        <div class="tdckh2">自动修订后仍未解决</div>
-        <div class="tdcki done"><span class="tddot"></span><span class="c">
-          <span class="t">加粗句缺主语</span>
-          <span class="q">基础设施投融资行业进入化债攻坚收尾阶段，城投企业融资渠道由非标向银行贷款调整</span></span></div>
+      <div class="td-h">一条一条核对</div>
+      <div class="tdcl">
+        <div class="r"><span class="dot"></span><span class="ln w3"></span><span class="tk"></span></div>
+        <div class="r"><span class="dot"></span><span class="ln w2"></span><span class="tk"></span></div>
+        <div class="r"><span class="dot"></span><span class="ln w3"></span><span class="tk"></span></div>
       </div>
-      <div class="tdcap">表述类已经在生成时改掉，留在这里的都是程序判断不了对错的数</div>
+      <div class="tdcap">核完打勾，进度记在本机；点一条回到正文那一句</div>
     </div>`,
 };
+
+/* 演示态：把真实一轮灌进真实界面。
+   只在手上一片空白时做——已经有草稿或材料时演示会盖掉用户的活，
+   那种情况下引导只指位置，不填内容（demoEnter 返回 false）。 */
+const DEMO = { on: false };
+
+function demoEnter(){
+  if(DEMO.on) return true;
+  if(S.draft || S.loaded.length || (S.facts && S.facts.materials)) return false;
+  DEMO.on = true;
+  document.body.classList.add("demo");
+
+  const d = JSON.parse(JSON.stringify(TOUR_DATA.draft));
+  S.company = TOUR_DATA.company;
+  const co = $("#company");
+  if(co) co.value = TOUR_DATA.company;
+
+  // 材料清单：四类都读过了，勾选态与「读完了」的状态都按真实那一轮摆。
+  // keepChecked 留着不清：演示期间任何一次重绘（展开某一类）都要保持四份全勾。
+  S.facts = TOUR_DATA.facts;
+  S.keepChecked = new Set(TOUR_DATA.mats.map(m => m.title));
+  renderMaterials(S.facts);
+  TOUR_DATA.mats.forEach(m => setMS(m.title, { state: "done", pct: 100, detail: m.label }));
+  S.loaded = TOUR_DATA.mats.map(m => m.title);
+  paintMatStates();
+
+  // 草稿：整套正文、财务表、右栏待核对都由 renderDraft 自己画
+  S.draft = d;
+  renderDraft();
+  const sub = document.querySelector("#draftArea .doc-sub");
+  if(sub) sub.insertAdjacentHTML("afterbegin",
+    `<span class="demotag" title="引导演示：中山城建 2026 年跟踪期的真实一轮，退出引导即清除">示例</span>`);
+  // 补充说明是折叠的，不展开就看不出里面写着话；记下原状态，退出时还原
+  const nb = $("#niBody");
+  DEMO.notesWasOpen = !!(nb && nb.classList.contains("open"));
+  if(nb && !DEMO.notesWasOpen) toggleNotes();
+  renderFill();
+
+  // 五步都走完：步骤条讲的是同一轮的事，不能停在「待检索」
+  setStep("search", { state: "done", pct: 100, detail: "4 类公告" });
+  setStep("materials", { state: "done", pct: 100, detail: "4 份 · 摘录 7.7 万字" });
+  setStep("generate", { state: "done", pct: 100, detail: "正文 5,534 字" });
+  setStep("fill", { state: "done", pct: 100, detail: "无需补充" });
+  paintSpent(d.usage || null);
+  return true;
+}
+
+function demoExit(){
+  if(!DEMO.on) return;
+  DEMO.on = false;
+  document.body.classList.remove("demo");
+  S.company = "";
+  const co = $("#company");
+  if(co) co.value = "";
+  const fb = $("#fillBox");
+  if(fb) fb.innerHTML = "";
+  ANA.files = [];
+  resetSession();      // 材料、草稿、补充说明、步骤一起回到空白
+  // 演示时帮用户展开的那块折回去，别在空白工作台上留一个开着的输入框
+  const nb = $("#niBody");
+  if(nb && nb.classList.contains("open") && !DEMO.notesWasOpen) toggleNotes();
+  paintMode();         // 材料区恢复占位文案
+  refreshCostHint();
+  // 引导可能一路滚到正文深处（手机上万像素），退出后回到顶部，别让人对着中段空页面
+  try{ scrollTo({ top: 0, behavior: "auto" }); }catch(e){ scrollTo(0, 0); }
+  toast("演示内容已清除，可以填自己的主体了");
+}
+
+/* 引导讲到第几步，左侧就把那一步展开。
+   直接改 OPEN_STEP 而不调 openStep：后者会自己平滑滚动，
+   和 tourPaint 的「把目标滚进视野」互相拉扯，孔会落到半路。 */
+function demoFocus(key){
+  if(!DEMO.on || !key || OPEN_STEP === key) return;
+  OPEN_STEP = key;
+  paintSteps();
+}
 
 function tourEl(q){
   try{ return document.querySelector(q); }catch(e){ return null; }
@@ -5612,6 +6271,8 @@ function tourTarget(step){
 
 function startTour(idx){
   if(TOUR.on) { /* 重看时从头来 */ }
+  // 先铺演示：讲第 2 步时要指的清单、第 7 步要指的正文，得先存在
+  demoEnter();
   TOUR.on = true; TOUR.i = Math.max(0, idx || 0);
   const mask = $("#tourMask");
   mask.classList.add("show");
@@ -5640,6 +6301,8 @@ function tourEnd(){
   window.removeEventListener("resize", tourRepaint);
   window.removeEventListener("scroll", tourRepaint, true);
   if(TOUR.scrollTo){ TOUR.scrollTo = null; }
+  // 演示内容一律收回：看完引导，工作台要是空的，否则下一轮会把中山城建那份稿子当成自己的
+  demoExit();
 }
 
 function tourNext(){ if(TOUR.i >= TOUR_STEPS.length - 1) tourEnd(); else tourGo(1); }
@@ -5671,8 +6334,8 @@ function tourPaint(scroll){
   const last = TOUR.i === TOUR_STEPS.length - 1;
 
   tip.innerHTML = `<button class="tour-skip" onclick="tourEnd()" title="跳过引导（Esc）">×</button>
-    <h4>${TOUR.i === 0 || TOUR_STEPS[TOUR.i].sel ? "" : ""}${esc(step.title)}</h4>
-    <p>${step.body}</p>
+    <h4>${esc(step.title)}</h4>
+    <p>${typeof step.body === "function" ? step.body() : step.body}</p>
     ${step.demo && TOUR_DEMO[step.demo] ? TOUR_DEMO[step.demo]() : ""}
     <div class="tour-foot">
       <div class="tour-dots">${TOUR_STEPS.map((_, k) =>
@@ -5683,9 +6346,22 @@ function tourPaint(scroll){
     </div>`;
 
   tourDemoInit(tip);
+  // 讲到第几步，左侧手风琴就展开那一步；同步改完再量孔，位置才对得上
+  if(DEMO.on && step.wiz) demoFocus(step.wiz);
   const el = tourTarget(step);
   const tw = tip.offsetWidth, th = tip.offsetHeight;
   const vw = innerWidth, vh = innerHeight;
+
+  // 先把它滚进视野，再量位置（目标比视口还高就只滚到顶）。
+  // 手机也要滚：演示内容摆在真实界面里，正文在流程区下方几千像素处，
+  // 不滚过去的话孔只能落在屏幕边缘，剩一条十几像素的缝。
+  if(scroll && el){
+    const r0 = el.getBoundingClientRect();
+    if(r0.top < 72 || r0.bottom > vh - 40){
+      try{ el.scrollIntoView({ block: r0.height > vh - 120 ? "start" : "center",
+                               behavior: "smooth" }); }catch(e){ el.scrollIntoView(); }
+    }
+  }
 
   // 手机：气泡贴着目标的反方向放，孔按目标走，且不许被气泡压住
   if(innerWidth <= 640){
@@ -5731,15 +6407,7 @@ function tourPaint(scroll){
     return;
   }
 
-  // 需要时先把它滚进视野（目标比视口还高就只滚到顶）
-  if(scroll){
-    const r0 = el.getBoundingClientRect();
-    if(r0.top < 72 || r0.bottom > vh - 40){
-      try{ el.scrollIntoView({ block: r0.height > vh - 120 ? "start" : "center",
-                               behavior: "smooth" }); }catch(e){ el.scrollIntoView(); }
-    }
-  }
-
+  // 需要时先把它滚进视野——已在上面统一处理
   const r = el.getBoundingClientRect();
   const pad = 5;
   const hl = Math.max(2, r.left - pad), ht = Math.max(2, r.top - pad);
@@ -5750,21 +6418,32 @@ function tourPaint(scroll){
   hole.style.width = hw + "px"; hole.style.height = hh + "px";
 
   const gap = 14;
-  let top, arrow, ax;
-  const holeBottom = ht + hh, holeTop = ht;
+  let top, left, arrow;
+  const holeBottom = ht + hh, holeTop = ht, holeRight = hl + hw, holeLeft = hl;
   if(holeBottom + gap + th <= vh - 12){ top = holeBottom + gap; arrow = "up"; }
   else if(holeTop - gap - th >= 12){ top = holeTop - gap - th; arrow = "down"; }
-  else {                                    // 上下都放不开：贴底，遮住就遮住
+  else if(vw - holeRight - 12 >= tw + gap || holeLeft - 12 >= tw + gap){
+    // 上下都放不开（多半是目标比视口还高，比如整段正文）：正文两侧通常还有空档，
+    // 挪到旁边去，别把气泡压在要看的那块内容上。
+    const toRight = vw - holeRight - 12 >= tw + gap;
+    left = toRight ? holeRight + gap : holeLeft - tw - gap;
+    arrow = toRight ? "left" : "right";
+    top = Math.max(12, Math.min(vh - th - 12, r.top + r.height / 2 - th / 2));
+  } else {                                  // 实在没地方：贴底，遮住就遮住
     top = Math.max(12, vh - th - 16); arrow = "none";
   }
-  let left = Math.round(r.left + r.width / 2 - tw / 2);
-  left = Math.max(12, Math.min(left, vw - tw - 12));
+  if(left === undefined){
+    left = Math.round(r.left + r.width / 2 - tw / 2);
+    left = Math.max(12, Math.min(left, vw - tw - 12));
+  }
   tip.dataset.arrow = arrow;
   tip.style.left = left + "px";
   tip.style.top = Math.round(top) + "px";
   // 箭头对准目标中心，但不许跑出气泡圆角之外
   const cx = Math.round(r.left + r.width / 2 - left);
   tip.style.setProperty("--ax", Math.max(18, Math.min(tw - 18, cx)) + "px");
+  const cy = Math.round(r.top + r.height / 2 - Math.round(top));
+  tip.style.setProperty("--ay", Math.max(18, Math.min(th - 18, cy)) + "px");
 }
 
 /* 演示块里需要量一下再说的地方。
