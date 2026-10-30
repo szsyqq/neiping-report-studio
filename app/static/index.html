@@ -1051,9 +1051,166 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
 }
 
 
+/* 顶栏的引导入口：做成一个圆圈问号，不占正常按钮的视觉重量 */
+.tourbtn{width:20px;height:20px;border-radius:50%;border:1px solid var(--line);
+  background:#fff;color:var(--muted);font-size:12px;line-height:1;padding:0;
+  display:inline-flex;align-items:center;justify-content:center;flex:none}
+.tourbtn:hover{border-color:#c9ced5;color:var(--ink);background:var(--hover)}
+
+/* ══ 首次引导 ═══════════════════════════════════════════════════
+   遮罩挖洞 + 气泡。挖洞用 box-shadow 撑出整屏遮罩，比四块拼边省事，
+   也不用管圆角接缝。引导期间遮罩吃掉所有点击，避免边看边误触。
+   不引入任何依赖，纯 CSS 动画做拖动与新增的演示。 */
+#tourMask{position:fixed;inset:0;z-index:100;display:none}
+#tourMask.show{display:block}
+.tour-hole{position:fixed;border-radius:10px;pointer-events:none;
+  box-shadow:0 0 0 9999px rgba(17,20,24,.58), 0 0 0 2px rgba(255,255,255,.92),
+             0 8px 26px rgba(0,0,0,.28);
+  transition:left .3s cubic-bezier(.4,0,.2,1), top .3s cubic-bezier(.4,0,.2,1),
+             width .3s cubic-bezier(.4,0,.2,1), height .3s cubic-bezier(.4,0,.2,1),
+             opacity .2s}
+.tour-hole.off{opacity:0}
+
+.tour-tip{position:fixed;width:336px;max-width:calc(100vw - 24px);background:#fff;
+  border-radius:14px;padding:16px 18px 14px;
+  box-shadow:0 18px 48px rgba(17,20,24,.26), 0 2px 8px rgba(17,20,24,.12);
+  transition:left .3s cubic-bezier(.4,0,.2,1), top .3s cubic-bezier(.4,0,.2,1);
+  font-size:13px;color:var(--ink2);line-height:1.72}
+.tour-tip::before{content:"";position:absolute;width:12px;height:12px;background:#fff;
+  transform:rotate(45deg);border-radius:2px}
+.tour-tip[data-arrow="up"]::before{top:-5px;left:var(--ax,50%)}
+.tour-tip[data-arrow="down"]::before{bottom:-5px;left:var(--ax,50%)}
+.tour-tip[data-arrow="none"]::before{display:none}
+.tour-tip h4{margin:0 0 6px;font-size:14.5px;font-weight:600;color:var(--ink);
+  letter-spacing:.01em;display:flex;align-items:center;gap:7px}
+.tour-tip h4 .tn{font-size:10.5px;font-weight:500;color:#fff;background:var(--ink);
+  border-radius:20px;padding:1px 7px;flex:none;letter-spacing:.04em;
+  font-variant-numeric:tabular-nums}
+.tour-tip p{margin:0 0 8px}
+.tour-tip p:last-of-type{margin-bottom:0}
+.tour-tip b{color:var(--ink);font-weight:600}
+.tour-tip code{background:#f4f5f7;border-radius:4px;padding:0 4px;font-size:12px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--ink)}
+.tour-kbd{display:inline-block;min-width:17px;text-align:center;border:1px solid var(--line);
+  border-bottom-width:2px;border-radius:4px;padding:0 4px;font-size:11px;
+  font-family:ui-monospace,Menlo,monospace;background:#fcfcfd;color:var(--ink2)}
+
+.tour-foot{display:flex;align-items:center;gap:8px;margin-top:13px;padding-top:11px;
+  border-top:1px solid var(--line2)}
+.tour-dots{display:flex;gap:5px;align-items:center;margin-right:auto}
+.tour-dots i{width:5px;height:5px;border-radius:50%;background:#d7dade;cursor:pointer;
+  transition:width .2s,background .2s}
+.tour-dots i.on{width:15px;border-radius:3px;background:var(--ink)}
+.tour-n{font-size:10.5px;color:#b6bcc4;margin-left:6px;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.tour-btn{border:1px solid var(--line);background:#fff;color:var(--ink2);
+  border-radius:7px;padding:5px 12px;font-size:12.5px;line-height:1.5;cursor:pointer}
+.tour-btn:hover{background:var(--hover);color:var(--ink)}
+.tour-btn.primary{background:var(--ink);border-color:var(--ink);color:#fff}
+.tour-btn.primary:hover{background:#000;color:#fff}
+.tour-btn.ghost{border-color:transparent;padding:5px 8px;color:var(--muted)}
+.tour-btn.ghost:hover{color:var(--ink)}
+.tour-skip{position:absolute;top:9px;right:11px;border:0;background:none;
+  color:#c2c7ce;font-size:16px;line-height:1;cursor:pointer;padding:3px 4px}
+.tour-skip:hover{color:var(--ink2)}
+
+/* 演示区：全部用 CSS 动画，不加载任何资源 */
+.tdemo{margin:10px 0 2px;border:1px solid var(--line);border-radius:9px;
+  background:#fbfcfd;padding:10px 11px;overflow:hidden;position:relative}
+.tdemo .td-h{font-size:10.5px;color:var(--muted);letter-spacing:.06em;margin-bottom:7px}
+/* 五步流动 */
+.tflow{display:flex;align-items:center;gap:4px}
+.tflow span{flex:1;text-align:center;font-size:10.5px;color:var(--ink2);background:#fff;
+  border:1px solid var(--line);border-radius:6px;padding:4px 2px;position:relative;
+  animation:tflowOn 5s ease-in-out infinite}
+.tflow span:nth-child(1){animation-delay:0s}
+.tflow span:nth-child(2){animation-delay:.5s}
+.tflow span:nth-child(3){animation-delay:1s}
+.tflow span:nth-child(4){animation-delay:1.5s}
+.tflow span:nth-child(5){animation-delay:2s}
+.tflow i{color:#cfd4da;font-style:normal;font-size:9px;flex:none}
+@keyframes tflowOn{0%,14%{background:var(--ink);color:#fff;border-color:var(--ink)}
+  22%,100%{background:#fff;color:var(--ink2);border-color:var(--line)}}
+/* 拖动排序：序号被按住，整条让位，原位留虚线 */
+.tdrag{min-height:96px}
+.td-row{display:flex;gap:6px;align-items:center;background:#fff;border:1px solid var(--line);
+  border-radius:6px;padding:5px 7px;font-size:10.5px;color:var(--ink2);margin-bottom:5px;
+  position:relative;z-index:2}
+.td-row .td-num{color:var(--muted);flex:none;font-variant-numeric:tabular-nums}
+.td-row .td-line{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.td-row.mv{animation:tdragMove 4.6s ease-in-out infinite}
+.td-row.mv .td-num{color:var(--ink);font-weight:600}
+@keyframes tdragMove{
+  0%,16%{transform:translateY(0);box-shadow:none}
+  20%{box-shadow:0 6px 16px rgba(17,20,24,.18);transform:translateY(0) scale(1.015)}
+  40%,62%{transform:translateY(40px);box-shadow:0 6px 16px rgba(17,20,24,.18)}
+  78%{transform:translateY(40px)}
+  92%,100%{transform:translateY(0);box-shadow:none}}
+.td-ph{position:absolute;left:0;right:0;height:29px;border:1px dashed #c3c9d1;
+  border-radius:6px;top:29px;opacity:0;animation:tph 4.6s ease-in-out infinite}
+@keyframes tph{0%,18%{opacity:0}24%,72%{opacity:1}86%,100%{opacity:0}}
+.td-finger{position:absolute;width:16px;height:16px;border-radius:50%;
+  border:2px solid #2f5fd0;background:rgba(47,95,208,.14);left:1px;top:6px;
+  animation:tfinger 4.6s ease-in-out infinite;pointer-events:none;z-index:3}
+@keyframes tfinger{0%,10%{opacity:0;transform:scale(.6)}
+  16%{opacity:1;transform:scale(1)}70%{opacity:1;transform:scale(1)}
+  84%,100%{opacity:0;transform:scale(.6)}}
+/* 新增块：按钮被按下，然后新块展开 */
+.tadd{min-height:104px}
+.td-blk{background:#fff;border:1px solid var(--line);border-radius:6px;padding:5px 7px;
+  font-size:10.5px;color:var(--ink2);margin-bottom:5px}
+.td-blk.fresh{overflow:hidden;border-style:dashed;border-color:#b9c6de;color:var(--ink);
+  height:26px;opacity:0;animation:tnewBlk 4.4s ease-in-out infinite}
+@keyframes tnewBlk{0%,46%{height:0;opacity:0;padding-top:0;padding-bottom:0;margin-bottom:0}
+  58%,86%{height:26px;opacity:1;padding-top:5px;padding-bottom:5px;margin-bottom:5px}
+  96%,100%{height:0;opacity:0;padding-top:0;padding-bottom:0;margin-bottom:0}}
+.td-add{display:inline-flex;align-items:center;gap:3px;border:1px dashed #c3c9d1;
+  background:#fff;color:var(--muted);border-radius:6px;padding:3px 9px;font-size:10.5px;
+  margin-bottom:5px;animation:tpress 4.4s ease-in-out infinite}
+@keyframes tpress{0%,34%{transform:scale(1);background:#fff;color:var(--muted)}
+  39%{transform:scale(.92);background:var(--ink);color:#fff;border-color:var(--ink)}
+  44%,100%{transform:scale(1);background:#fff;color:var(--muted)}}
+/* 点哪里能改：三个热区依次亮起 */
+.thot{display:flex;gap:5px;flex-wrap:wrap}
+.thot span{font-size:10.5px;color:var(--ink2);background:#fff;border:1px solid var(--line);
+  border-radius:20px;padding:2px 9px;animation:thot 4.5s ease-in-out infinite}
+.thot span:nth-child(2){animation-delay:.5s}
+.thot span:nth-child(3){animation-delay:1s}
+.thot span:nth-child(4){animation-delay:1.5s}
+.thot span:nth-child(5){animation-delay:2s}
+@keyframes thot{0%,12%{border-color:var(--ink);color:var(--ink);background:#f6f7f9}
+  22%,100%{border-color:var(--line);color:var(--ink2);background:#fff}}
+
+/* 已完成的步骤整体淡出，避免留下一个空标记 */
+.tour-done{animation:tourOut .22s ease forwards}
+@keyframes tourOut{to{opacity:0;transform:scale(.98)}}
+
+@media (max-width:640px){
+  .tour-tip{width:auto;left:12px !important;right:12px;max-width:none;
+    padding:14px 15px 12px;max-height:66vh;overflow-y:auto}
+  /* 目标在上半屏，气泡贴底；目标在下半屏，气泡贴顶——否则气泡会盖住要看的那个孔 */
+  .tour-tip.mob-bottom{bottom:calc(12px + env(safe-area-inset-bottom,0px)) !important;top:auto !important}
+  .tour-tip.mob-top{top:12px !important;bottom:auto !important}
+  .tour-tip::before{display:none}
+  .tour-tip h4{font-size:14px}
+  .tdrag{min-height:88px}
+  /* 手机上十个点太挤，只留「3/10」 */
+  .tour-dots i{display:none}
+  .tour-dots i.on{display:block}
+  .tour-n{margin-left:2px}
+}
+@media (prefers-reduced-motion:reduce){
+  .tour-hole,.tour-tip{transition:none}
+  .tdemo *{animation:none !important}
+  .td-blk.fresh{opacity:1;height:26px}
+  .td-ph{opacity:1}
+}
 </style>
 </head>
 <body class="locked">
+<div id="tourMask" aria-hidden="true">
+  <div class="tour-hole" id="tourHole"></div>
+  <div class="tour-tip" id="tourTip" role="dialog" aria-label="使用引导"></div>
+</div>
 <div id="gate" class="show">
   <div class="gcard">
     <div class="gt">内评简评报告</div>
@@ -1085,8 +1242,11 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
   <span class="sep"></span>
   <button class="usage" id="lockBtn" onclick="logout()" title="退出，重新需要口令">锁定</button>
   <span class="sep"></span>
+  <button class="tourbtn" id="tourBtn" onclick="startTour(0)"
+    title="重看使用引导：五个步骤、哪里能改、哪里能拖、哪里能加" aria-label="使用引导">?</button>
+  <span class="sep"></span>
   <a href="docs/wiki.html" id="docLink" target="_blank"
-     title="说明与方法：四步流程、涉及哪些文件、模板与提示词的结构；详版另讲写作判据与实现细节">说明</a>
+     title="说明与方法：五步流程、涉及哪些文件、模板与提示词的结构；详版另讲写作判据与实现细节">说明</a>
 </header>
 
 <div class="wrap">
@@ -5028,7 +5188,291 @@ document.addEventListener("click", e => {
 
 // 口令校验通过后才去拉数据：没进来之前不发任何要 token 的请求
 let booted = false;
+
+/* ══ 首次引导 ═══════════════════════════════════════════════════
+   十个点：五步流程各一句，加上正文区能改/能拖/能加、右栏只剩什么、
+   说明页在哪。只讲「这里能做什么」，不复述操作手册——手册在说明页。
+   拖动与新增用 CSS 动画演示：首屏没有草稿，指不到真实元素，讲一百遍
+   「按住序号能拖」不如看它动一下。 */
+
+const TOUR_KEY = "nr_tour_v1";
+
+const TOUR_STEPS = [
+  { title: "一页走完一份简评",
+    body: `填主体 → 读材料 → 出草稿 → 补薄处 → 导出 Word。数字核对与表述修订由程序做，
+      你只需要看它挑出来的那几条。`,
+    demo: "flow" },
+
+  { sel: ["#ws-search"], title: "第一步 · 检索主体",
+    body: `填工商全称，简称也能命中。上方两个模式：<b>首次覆盖</b>直接检索；
+      <b>跟踪期更新</b>要先上传上一版内评报告，系统比对出差异再改写，不重写全文。` },
+
+  { sel: ["#matList"], title: "材料一次取齐",
+    when: () => document.querySelectorAll("#matList .mat").length > 0,
+    body: `四类一起列：<b>跟踪评级报告</b>是判断主线，<b>募集说明书</b>看募投与条款，
+      <b>审计报告</b>定财务口径与审计意见，<b>其他公告</b>找报告期内的变化。
+      默认只勾最新一份评级报告与募集说明书，其余按需。
+      <p>本机 PDF 也能拖进上面的框，不接财汇同样可用。</p>`,
+    demo: "mats" },
+
+  { sel: ["#ws-generate"], title: "先把你的判断写进去",
+    body: `<b>分析员补充说明</b>是可选的：读完材料后的判断、要强调的重点、发现的疑点，
+      都在这里写给模型，它决定正文的写作重心。
+      <p>涉及金额时以材料为准——没有材料支撑的数字不会写进正文。</p>` },
+
+  { sel: ["#ws-fill"], title: "第四步 · 补充完善",
+    body: `生成后先<b>评估</b>哪几处内容有缺口：风险事项只提了名字却没给金额、行业段没有可核实的数、
+      某段写得太薄。每处标出建议查什么，<b>点「搜索」才真去外网</b>，勾中的结果才写进正文，
+      并注明来源与时间。程序判不出的缺口，用「自己搜一条」。`,
+    demo: "hotfill" },
+
+  { sel: [".docbar", "#ws-export"], title: "导出",
+    body: `按模板的排版参数生成 Word，文件名带日期。正文工具条上还有几个开关：
+      <b>段落空行</b>（页面与 Word 同步）、<b>发送</b>到邮箱、<b>下载</b>打包（报告+底稿+附件）。` },
+
+  { sel: ["#blk-pos", "#blk-con", "#blk-overview", ".doccol"], title: "正文哪里都能改",
+    body: `生成草稿后，正文出现在右侧这片区域。每一段都是输入框，直接改，改的是同一份草稿——
+      导出、打包、发邮件都读它，不会出现「屏幕上一版、Word 里另一版」。
+      <p>条目左侧的序号 <b>1）2）</b> 按住就能拖动排序，拖的是整条，文字不会丢。</p>`,
+    demo: "drag" },
+
+  { sel: ["#blk-segments .add", "#blk-segments", ".doccol"], title: "还能往里加",
+    body: `正文里每节下面都能加：<b>+ 条目</b>（摘要的正面与关注）、<b>+ 板块</b>（分部业务）、
+      <b>+ 专题</b>（带预设：或有事项、对外担保、诉讼、受限资产…）。
+      <p>新增的内容同样会进校验，写得不合格一样会被挑出来。</p>`,
+    demo: "add" },
+
+  { sel: [".rail-r .ck-h", "#d-ana", "#railR"], title: "右栏只剩你要判断的",
+    body: `草稿右侧那一栏。表述与结构问题在生成时就改掉了，改不动的才留在这里。
+      <b>需人工核验</b>只放数字类：算式复算不通过、数字对不上、表格里找不到出处——
+      这些程序判断不了对错。
+      <p>上面是<b>分析附件</b>（债券代码清单、财务专项指标），可预览、可随邮件发出。</p>`,
+    demo: "rail" },
+
+  { sel: ["#tourBtn", "#docLink"], title: "想了解怎么写的",
+    body: `这个问号随时可以重看本引导。旁边的「说明」讲了流程、涉及哪些文件、模板与提示词的结构，
+      详版另讲写作判据与实现细节。
+      <p>键盘 <span class="tour-kbd">←</span>
+      <span class="tour-kbd">→</span> 翻页，<span class="tour-kbd">Esc</span> 退出。</p>` },
+];
+
+const TOUR = { on: false, i: 0, raf: 0, scrollTo: null };
+
+const TOUR_DEMO = {
+  flow: () => `<div class="tdemo">
+      <div class="td-h">整条链路</div>
+      <div class="tflow">
+        <span>检索</span><i>→</i><span>材料</span><i>→</i><span>草稿</span><i>→</i><span>补薄</span><i>→</i><span>导出</span>
+      </div></div>`,
+  mats: () => `<div class="tdemo">
+      <div class="td-h">四类材料</div>
+      <div class="thot"><span>跟踪评级报告</span><span>募集说明书</span><span>审计报告</span><span>其他公告</span></div>
+    </div>`,
+  hotfill: () => `<div class="tdemo">
+      <div class="td-h">评估 → 你点 → 才去搜</div>
+      <div class="thot"><span>风险事项未给金额</span><span>行业段无数据</span><span>某段偏薄</span></div>
+    </div>`,
+  drag: () => `<div class="tdemo tdrag">
+      <div class="td-h">按住序号拖动排序</div>
+      <div class="td-row"><span class="td-num">1）</span><span class="td-line">土地整理收入 12.4 亿元</span></div>
+      <div class="td-row mv"><span class="td-num">2）</span><span class="td-line">土地指标收入 0.45 亿元</span></div>
+      <div class="td-row"><span class="td-num">3）</span><span class="td-line">物业租赁收入 0.8 亿元</span></div>
+      <div class="td-ph"></div><div class="td-finger"></div>
+    </div>`,
+  add: () => `<div class="tdemo tadd">
+      <div class="td-h">+ 板块 / + 专题</div>
+      <div class="td-blk">资产段</div>
+      <div class="td-add">+ 板块</div>
+      <div class="td-blk fresh">新板块（可直接写）</div>
+    </div>`,
+  rail: () => `<div class="tdemo">
+      <div class="td-h">右栏放什么</div>
+      <div class="thot"><span>算式复算不通过</span><span>数字对不上</span><span>表里找不到出处</span></div>
+    </div>`,
+};
+
+function tourEl(q){
+  try{ return document.querySelector(q); }catch(e){ return null; }
+}
+
+function tourTarget(step){
+  if(step.when && !step.when()) return null;
+  for(const q of (step.sel || [])){
+    const el = tourEl(q);
+    if(!el) continue;
+    const r = el.getBoundingClientRect();
+    if(r.width > 4 && r.height > 8) return el;
+  }
+  return null;
+}
+
+function startTour(idx){
+  if(TOUR.on) { /* 重看时从头来 */ }
+  TOUR.on = true; TOUR.i = Math.max(0, idx || 0);
+  const mask = $("#tourMask");
+  mask.classList.add("show");
+  mask.setAttribute("aria-hidden", "false");
+  // 锁滚动会顺带收掉滚动条，内容整体右移十几像素——补一段右侧留白抵消，
+  // 否则气泡与孔在第一步就被量到了旧位置。
+  const sbw = innerWidth - document.documentElement.clientWidth;
+  document.body.style.overflow = "hidden";
+  document.body.style.paddingRight = sbw > 0 ? sbw + "px" : "";
+  document.addEventListener("keydown", tourKey);
+  window.addEventListener("resize", tourRepaint);
+  window.addEventListener("scroll", tourRepaint, true);
+  tourPaint(true);
+}
+
+function tourEnd(){
+  TOUR.on = false;
+  try{ localStorage.setItem(TOUR_KEY, "1"); }catch(e){}
+  const mask = $("#tourMask");
+  mask.classList.remove("show");
+  mask.setAttribute("aria-hidden", "true");
+  document.body.style.overflow = "";
+  document.body.style.paddingRight = "";
+  $("#tourTip").innerHTML = "";
+  document.removeEventListener("keydown", tourKey);
+  window.removeEventListener("resize", tourRepaint);
+  window.removeEventListener("scroll", tourRepaint, true);
+  if(TOUR.scrollTo){ TOUR.scrollTo = null; }
+}
+
+function tourNext(){ if(TOUR.i >= TOUR_STEPS.length - 1) tourEnd(); else tourGo(1); }
+function tourPrev(){ tourGo(-1); }
+function tourGo(d){
+  const n = TOUR.i + d;
+  if(n < 0 || n >= TOUR_STEPS.length) return;
+  TOUR.i = n;
+  tourPaint(true);
+}
+function tourJump(n){ TOUR.i = n; tourPaint(true); }
+
+function tourKey(e){
+  if(!TOUR.on) return;
+  if(e.key === "Escape"){ e.preventDefault(); tourEnd(); }
+  else if(e.key === "ArrowRight" || e.key === "Enter"){ e.preventDefault(); tourNext(); }
+  else if(e.key === "ArrowLeft"){ e.preventDefault(); tourPrev(); }
+}
+
+function tourRepaint(){
+  if(!TOUR.on) return;
+  if(TOUR.raf) return;
+  TOUR.raf = requestAnimationFrame(() => { TOUR.raf = 0; tourPaint(false); });
+}
+
+function tourPaint(scroll){
+  const step = TOUR_STEPS[TOUR.i];
+  const hole = $("#tourHole"), tip = $("#tourTip");
+  const last = TOUR.i === TOUR_STEPS.length - 1;
+
+  tip.innerHTML = `<button class="tour-skip" onclick="tourEnd()" title="跳过引导（Esc）">×</button>
+    <h4>${TOUR.i === 0 || TOUR_STEPS[TOUR.i].sel ? "" : ""}${esc(step.title)}</h4>
+    <p>${step.body}</p>
+    ${step.demo && TOUR_DEMO[step.demo] ? TOUR_DEMO[step.demo]() : ""}
+    <div class="tour-foot">
+      <div class="tour-dots">${TOUR_STEPS.map((_, k) =>
+        `<i class="${k === TOUR.i ? "on" : ""}" onclick="tourJump(${k})" title="第 ${k + 1} 步"></i>`).join("")}
+        <span class="tour-n">${TOUR.i + 1}/${TOUR_STEPS.length}</span></div>
+      ${TOUR.i > 0 ? `<button class="tour-btn ghost" onclick="tourPrev()">上一步</button>` : ""}
+      <button class="tour-btn primary" id="tourNextBtn" onclick="tourNext()">${last ? "开始使用" : (TOUR.i === 0 ? "看一遍" : "下一步")}</button>
+    </div>`;
+
+  const el = tourTarget(step);
+  const tw = tip.offsetWidth, th = tip.offsetHeight;
+  const vw = innerWidth, vh = innerHeight;
+
+  // 手机：气泡贴着目标的反方向放，孔按目标走，且不许被气泡压住
+  if(innerWidth <= 640){
+    tip.style.left = tip.style.top = "";
+    tip.dataset.arrow = "none";
+    if(el){
+      const r = el.getBoundingClientRect();
+      const pad = 4;
+      const cy = r.top + r.height / 2;
+      // 气泡放哪边，先定下来，才好算孔的可用空间
+      const atBottom = cy < vh * 0.52;
+      tip.classList.toggle("mob-bottom", atBottom);
+      tip.classList.toggle("mob-top", !atBottom);
+      const th2 = tip.offsetHeight;
+      const room = atBottom ? (vh - th2 - 28) : (vh - 12);
+      const topLimit = atBottom ? 2 : (th2 + 22);
+      let hTop = Math.max(topLimit, Math.min(r.top - pad, room - 40));
+      let hH = Math.min(r.height + pad * 2, (atBottom ? room : vh - 12) - hTop);
+      hH = Math.max(28, hH);
+      hole.style.left = Math.max(2, r.left - pad) + "px";
+      hole.style.top = hTop + "px";
+      hole.style.width = Math.min(vw - 4, r.width + pad * 2) + "px";
+      hole.style.height = hH + "px";
+      hole.classList.remove("off");
+    } else {
+      tip.classList.add("mob-bottom");
+      tip.classList.remove("mob-top");
+      hole.classList.add("off");
+      hole.style.width = hole.style.height = "0px";
+      hole.style.left = hole.style.top = "-999px";
+    }
+    return;
+  }
+
+  if(!el){
+    hole.classList.add("off");
+    hole.style.width = hole.style.height = "0px";
+    hole.style.left = hole.style.top = "-999px";
+    tip.dataset.arrow = "none";
+    const left = Math.round((vw - tw) / 2);
+    const top = Math.round(Math.max(16, Math.min(vh - th - 16, vh / 2 - th / 2 + 10)));
+    tip.style.left = left + "px"; tip.style.top = top + "px";
+    return;
+  }
+
+  // 需要时先把它滚进视野（目标比视口还高就只滚到顶）
+  if(scroll){
+    const r0 = el.getBoundingClientRect();
+    if(r0.top < 72 || r0.bottom > vh - 40){
+      try{ el.scrollIntoView({ block: r0.height > vh - 120 ? "start" : "center",
+                               behavior: "smooth" }); }catch(e){ el.scrollIntoView(); }
+    }
+  }
+
+  const r = el.getBoundingClientRect();
+  const pad = 5;
+  const hl = Math.max(2, r.left - pad), ht = Math.max(2, r.top - pad);
+  const hw = Math.min(vw - 4, r.width + pad * 2);
+  const hh = Math.min(vh - 4, r.height + pad * 2);
+  hole.classList.remove("off");
+  hole.style.left = hl + "px"; hole.style.top = ht + "px";
+  hole.style.width = hw + "px"; hole.style.height = hh + "px";
+
+  const gap = 14;
+  let top, arrow, ax;
+  const holeBottom = ht + hh, holeTop = ht;
+  if(holeBottom + gap + th <= vh - 12){ top = holeBottom + gap; arrow = "up"; }
+  else if(holeTop - gap - th >= 12){ top = holeTop - gap - th; arrow = "down"; }
+  else {                                    // 上下都放不开：贴底，遮住就遮住
+    top = Math.max(12, vh - th - 16); arrow = "none";
+  }
+  let left = Math.round(r.left + r.width / 2 - tw / 2);
+  left = Math.max(12, Math.min(left, vw - tw - 12));
+  tip.dataset.arrow = arrow;
+  tip.style.left = left + "px";
+  tip.style.top = Math.round(top) + "px";
+  // 箭头对准目标中心，但不许跑出气泡圆角之外
+  const cx = Math.round(r.left + r.width / 2 - left);
+  tip.style.setProperty("--ax", Math.max(18, Math.min(tw - 18, cx)) + "px");
+}
+
+/* 首次进入自动弹一次。写在 bootData 里而不是页面加载：
+   没登录时工作台是锁着的，那时候讲什么都看不到。 */
+function maybeTour(){
+  let done = "";
+  try{ done = localStorage.getItem(TOUR_KEY) || ""; }catch(e){}
+  if(done) return;
+  setTimeout(() => { if(!TOUR.on && !document.body.classList.contains("locked")) startTour(0); }, 900);
+}
+
 function bootData(){
+  maybeTour();
   // 模型清单与用量每次都重拉：token 过期→重新登录时 booted 已经是 true，
   // 早退的话下拉会一直停在「没有可用模型」「未连接服务」那行占位上。
   loadModels();
@@ -5040,6 +5484,12 @@ function bootData(){
   syncButtons();  // 初始状态：无材料时两个动作都灰着
 }
 gateBoot();
+/* 点遮罩空白处翻到下一步：手机上不必去够按钮。
+   只认遮罩本身——气泡里的按钮照常工作。 */
+$("#tourMask").addEventListener("click", e => {
+  if(!TOUR.on) return;
+  if(e.target.id === "tourMask" || e.target.id === "tourHole") tourNext();
+});
 $("#company").addEventListener("keydown", e => { if(e.key === "Enter") doSearch(); });
 /* 改了企业名就当作换主体：上一家的材料、草稿、邮件与打包缓存全部作废，
    否则第二次生成会沿用上一家的清单（附件多出来、标题还是上一家的）。 */
