@@ -1147,22 +1147,32 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
 @keyframes tflowOn{0%,14%{background:var(--ink);color:#fff;border-color:var(--ink)}
   22%,100%{background:#fff;color:var(--ink2);border-color:var(--line)}}
 /* 拖动排序：序号被按住，整条让位，原位留虚线 */
-.tdrag{min-height:96px}
+/* 行高与位移必须同一个数：行 26 + 间距 5 = 31，translateY 按 31。
+   占位块的位置不能用固定 top——它上面还有一行标题，标题高度随字体变，
+   所以在 tourPaint 里量第 2 行的 offsetTop 再赋值。
+   底部要留出 31 的空间：第 3 行会下移一格，不留就被 overflow:hidden 裁掉。 */
+.tdrag{min-height:0;padding-bottom:calc(31px + 12px)}
 .td-row{display:flex;gap:6px;align-items:center;background:#fff;border:1px solid var(--line);
-  border-radius:6px;padding:5px 7px;font-size:10.5px;color:var(--ink2);margin-bottom:5px;
-  position:relative;z-index:2}
+  border-radius:6px;padding:0 7px;height:26px;line-height:16px;font-size:10.5px;
+  color:var(--ink2);margin-bottom:5px;position:relative;z-index:2}
 .td-row .td-num{color:var(--muted);flex:none;font-variant-numeric:tabular-nums}
 .td-row .td-line{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .td-row.mv{animation:tdragMove 4.6s ease-in-out infinite}
+/* 被拖的那条下移一格，下面这条同时让开，和真实拖动一样 */
+.td-row.yield{animation:tYield 4.6s ease-in-out infinite}
+@keyframes tYield{
+  0%,16%{transform:translateY(0)}
+  40%,78%{transform:translateY(31px)}
+  92%,100%{transform:translateY(0)}}
 .td-row.mv .td-num{color:var(--ink);font-weight:600}
 @keyframes tdragMove{
   0%,16%{transform:translateY(0);box-shadow:none}
   20%{box-shadow:0 6px 16px rgba(17,20,24,.18);transform:translateY(0) scale(1.015)}
-  40%,62%{transform:translateY(40px);box-shadow:0 6px 16px rgba(17,20,24,.18)}
-  78%{transform:translateY(40px)}
+  40%,62%{transform:translateY(31px);box-shadow:0 6px 16px rgba(17,20,24,.18)}
+  78%{transform:translateY(31px)}
   92%,100%{transform:translateY(0);box-shadow:none}}
-.td-ph{position:absolute;left:0;right:0;height:29px;border:1px dashed #c3c9d1;
-  border-radius:6px;top:29px;opacity:0;animation:tph 4.6s ease-in-out infinite}
+.td-ph{position:absolute;left:11px;right:11px;height:26px;border:1px dashed #c3c9d1;
+  border-radius:6px;top:0;opacity:0;animation:tph 4.6s ease-in-out infinite}
 @keyframes tph{0%,18%{opacity:0}24%,72%{opacity:1}86%,100%{opacity:0}}
 .td-finger{position:absolute;width:16px;height:16px;border-radius:50%;
   border:2px solid #2f5fd0;background:rgba(47,95,208,.14);left:1px;top:6px;
@@ -1171,9 +1181,9 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
   16%{opacity:1;transform:scale(1)}70%{opacity:1;transform:scale(1)}
   84%,100%{opacity:0;transform:scale(.6)}}
 /* 新增块：按钮被按下，然后新块展开 */
-.tadd{min-height:104px}
-.td-blk{background:#fff;border:1px solid var(--line);border-radius:6px;padding:5px 7px;
-  font-size:10.5px;color:var(--ink2);margin-bottom:5px}
+.tadd{min-height:0}
+.td-blk{background:#fff;border:1px solid var(--line);border-radius:6px;padding:0 7px;
+  height:26px;line-height:24px;font-size:10.5px;color:var(--ink2);margin-bottom:5px}
 .td-blk.fresh{overflow:hidden;border-style:dashed;border-color:#b9c6de;color:var(--ink);
   height:26px;opacity:0;animation:tnewBlk 4.4s ease-in-out infinite}
 @keyframes tnewBlk{0%,46%{height:0;opacity:0;padding-top:0;padding-bottom:0;margin-bottom:0}
@@ -1196,20 +1206,104 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
 @keyframes thot{0%,12%{border-color:var(--ink);color:var(--ink);background:#f6f7f9}
   22%,100%{border-color:var(--line);color:var(--ink2);background:#fff}}
 
+/* ── 演示：不用示意图，直接摆一块「迷你真界面」，内容取自真实草稿 ── */
+.tdwin{border:1px solid var(--line);border-radius:7px;background:#fff;overflow:hidden}
+.tdq{padding:6px 9px;font-size:11px;color:var(--ink);border-bottom:1px solid var(--line2);
+  background:#fcfcfd}
+.tdq::before{content:"⌕ ";color:var(--muted)}
+.tdchips{display:flex;flex-wrap:wrap;gap:4px;padding:6px 8px}
+.tdchips span{font-size:10px;color:var(--ink2);border:1px solid var(--line);border-radius:20px;
+  padding:1px 7px;background:#fff;font-variant-numeric:tabular-nums}
+.tdchips span b{color:var(--ink);font-weight:600}
+
+/* 材料清单：真标题、真字数、默认勾选状态 */
+.tdmats{display:flex;flex-direction:column;gap:1px}
+.tdmat{display:grid;grid-template-columns:13px minmax(0,1fr);gap:7px;align-items:start;
+  padding:5px 7px;border-radius:6px}
+.tdmat:nth-child(odd){background:#fbfcfd}
+.tdbox{width:11px;height:11px;border:1px solid #c9ced5;border-radius:3px;margin-top:3px;
+  background:#fff;flex:none}
+.tdbox.on{background:var(--ink);border-color:var(--ink);position:relative}
+.tdbox.on::after{content:"";position:absolute;left:2.5px;top:1px;width:4px;height:7px;
+  border-right:1.5px solid #fff;border-bottom:1.5px solid #fff;transform:rotate(42deg)}
+.tdmat .m{min-width:0}
+.tdmat .t{display:block;font-size:10.5px;color:var(--ink);line-height:1.45;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tdmat .i{display:block;font-size:9.5px;color:var(--muted);margin-top:1px;
+  font-variant-numeric:tabular-nums}
+
+/* 补充说明：一个填好的输入框 */
+.tdta{border:1px solid var(--line);border-radius:6px;background:#fff;padding:7px 9px;
+  font-size:10.8px;color:var(--ink);line-height:1.7}
+.tdta .caret{display:inline-block;width:1px;height:11px;background:var(--ink);
+  vertical-align:-1px;margin-left:1px;animation:tdblink 1.1s step-end infinite}
+@keyframes tdblink{0%,49%{opacity:1}50%,100%{opacity:0}}
+
+/* 缺口评估：一条真实缺口 + 建议查询词 + 按钮 */
+.tdgap{background:#fff;border:1px solid var(--line);border-radius:6px;padding:6px 8px}
+.tdgap .g1{font-size:11px;color:var(--ink);font-weight:600}
+.tdgap .g2{font-size:9.5px;color:var(--muted);margin-top:1px}
+.tdgap .g3{font-size:9.8px;color:var(--ink2);margin-top:4px;padding-top:4px;
+  border-top:1px dashed var(--line2);word-break:break-all}
+.tdgap .g4{display:inline-block;margin-top:5px;font-size:9.8px;color:var(--muted);
+  border:1px solid var(--line);border-radius:5px;padding:1px 8px;background:#fff}
+
+/* 成品片段：真实正文，按报告纸面排版 */
+.tdrep{background:#fff;border:1px solid var(--line);border-radius:6px;padding:8px 10px;
+  font-size:10.8px;line-height:1.85;color:#22262c;text-align:justify;
+  max-height:112px;overflow:hidden;position:relative}
+.tdrep b{font-weight:700}
+.tdrep::after{content:"";position:absolute;left:0;right:0;bottom:0;height:26px;
+  background:linear-gradient(transparent,#fff)}
+.tdcap{font-size:9.5px;color:var(--muted);margin-top:5px;line-height:1.5}
+
+/* 右栏待核对：真实的几条 */
+.tdck{border:1px solid var(--line);border-radius:6px;background:#fff;overflow:hidden}
+.tdckh{display:flex;align-items:center;gap:5px;padding:5px 8px;border-bottom:1px solid var(--line2);
+  font-size:10px;color:var(--muted);letter-spacing:.04em}
+.tdckh b{font-size:10.5px;color:var(--ink);letter-spacing:0}
+.tdcki{padding:5px 8px;border-top:1px solid var(--line2);display:grid;
+  grid-template-columns:7px minmax(0,1fr);gap:6px;align-items:start}
+.tdcki:first-of-type{border-top:0}
+.tddot{width:5px;height:5px;border-radius:50%;background:#d7dade;margin-top:5px}
+.tdcki.man .tddot{background:var(--amber)}
+.tdcki .c{min-width:0}
+.tdcki .c .t{display:block;font-size:10.3px;color:var(--ink)}
+.tdcki .c .q{display:block;font-size:9.3px;color:var(--muted);margin-top:1px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tdcki.done{opacity:.5}
+/* 「自动修订后仍未解决」是另一个分区，与需人工核验分开 */
+.tdckh2{padding:5px 8px 3px;font-size:9.3px;color:var(--muted);border-top:1px solid var(--line2);
+  background:#fafbfc;letter-spacing:.04em}
+
+/* 专题菜单：真实预设名 */
+.tdmenu{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+.tdmenu span{font-size:9.8px;color:var(--ink2);border:1px solid var(--line);border-radius:5px;
+  padding:1px 7px;background:#fff}
+
+/* 欢迎页那行「真实案例」注脚 */
+.tdreal{font-size:9.8px;color:var(--muted);margin-top:6px;line-height:1.5;
+  padding-top:6px;border-top:1px dashed var(--line2)}
+
 /* 已完成的步骤整体淡出，避免留下一个空标记 */
 .tour-done{animation:tourOut .22s ease forwards}
 @keyframes tourOut{to{opacity:0;transform:scale(.98)}}
 
 @media (max-width:640px){
+  /* 78vh 而不是 66：材料清单与待核对那两屏内容本来就长，压到 66 会出现
+     气泡内部滚动条——引导里滚动很难看，宁肯让气泡再高一点。 */
   .tour-tip{width:auto;left:12px !important;right:12px;max-width:none;
-    padding:14px 15px 12px;max-height:66vh;overflow-y:auto}
+    padding:14px 15px 12px;max-height:78vh;overflow-y:auto}
   /* 目标在上半屏，气泡贴底；目标在下半屏，气泡贴顶——否则气泡会盖住要看的那个孔 */
   .tour-tip.mob-bottom{bottom:calc(12px + env(safe-area-inset-bottom,0px)) !important;top:auto !important}
   .tour-tip.mob-top{top:12px !important;bottom:auto !important}
   .tour-tip::before{display:none}
   .tour-tip h4{font-size:14px}
-  .tdrag{min-height:88px}
+  .tdrag{min-height:0}
   /* 手机上十个点太挤，只留「3/10」 */
+  .tdrep{max-height:96px;font-size:10.4px;line-height:1.8}
+  .tdmat .t{font-size:10.2px}
+  .tdck .tdcki .c .q{font-size:9.1px}
   .tour-dots i{display:none}
   .tour-dots i.on{display:block}
   .tour-n{margin-left:2px}
@@ -5323,7 +5417,8 @@ const TOUR_STEPS = [
 
   { sel: ["#ws-search"], title: "第一步 · 检索主体",
     body: `填工商全称，简称也能命中。上方两个模式：<b>首次覆盖</b>直接检索；
-      <b>跟踪期更新</b>要先上传上一版内评报告，系统比对出差异再改写，不重写全文。` },
+      <b>跟踪期更新</b>要先上传上一版内评报告，系统比对出差异再改写，不重写全文。`,
+    demo: "search" },
 
   { sel: ["#matList"], title: "材料一次取齐",
     when: () => document.querySelectorAll("#matList .mat").length > 0,
@@ -5336,7 +5431,8 @@ const TOUR_STEPS = [
   { sel: ["#ws-generate"], title: "先把你的判断写进去",
     body: `<b>分析员补充说明</b>是可选的：读完材料后的判断、要强调的重点、发现的疑点，
       都在这里写给模型，它决定正文的写作重心。
-      <p>涉及金额时以材料为准——没有材料支撑的数字不会写进正文。</p>` },
+      <p>涉及金额时以材料为准——没有材料支撑的数字不会写进正文。</p>`,
+    demo: "notes" },
 
   { sel: ["#ws-fill"], title: "第四步 · 补充完善",
     body: `生成后先<b>评估</b>哪几处内容有缺口：风险事项只提了名字却没给金额、行业段没有可核实的数、
@@ -5348,6 +5444,12 @@ const TOUR_STEPS = [
     body: `按模板的排版参数生成 Word，文件名带日期。正文工具条上还有几个开关：
       <b>段落空行</b>（页面与 Word 同步）、<b>发送</b>到邮箱、<b>下载</b>打包（报告+底稿+附件）。` },
 
+  { sel: ["#blk-asset", "#blk-industry", ".doccol"], title: "成品长什么样",
+    when: () => !!(S.draft && S.draft.commentary),
+    body: `资产段每一句都是同一个句式：<b>科目 + 金额 +（占资产总额比例）+ 主要为…… + 能否变现</b>。
+      <p>下面演示框里那段，就是中山城建 2026 年跟踪期报告里的原文——不是编的示例。</p>`,
+    demo: "report" },
+
   { sel: ["#blk-pos", "#blk-con", "#blk-overview", ".doccol"], title: "正文哪里都能改",
     body: `生成草稿后，正文出现在右侧这片区域。每一段都是输入框，直接改，改的是同一份草稿——
       导出、打包、发邮件都读它，不会出现「屏幕上一版、Word 里另一版」。
@@ -5356,7 +5458,7 @@ const TOUR_STEPS = [
 
   { sel: ["#blk-segments .add", "#blk-segments", ".doccol"], title: "还能往里加",
     body: `正文里每节下面都能加：<b>+ 条目</b>（摘要的正面与关注）、<b>+ 板块</b>（分部业务）、
-      <b>+ 专题</b>（带预设：或有事项、对外担保、诉讼、受限资产…）。
+      <b>+ 专题</b>（带预设：或有事项、在建工程与资本支出、政府补助依赖…）。
       <p>新增的内容同样会进校验，写得不合格一样会被挑出来。</p>`,
     demo: "add" },
 
@@ -5376,36 +5478,120 @@ const TOUR_STEPS = [
 
 const TOUR = { on: false, i: 0, raf: 0, scrollTo: null };
 
+/* 演示用真实样本：中山城市建设集团有限公司 2026 年跟踪期。
+   材料标题、条数、字数、摘要条目、待核对提示、正文片段，全部取自
+   data/state/cdb3e642cae52b2e.json 那一轮真实草稿与材料，不编造。
+   改这里的数字之前先回那份快照核对一遍——演示里写错一个数，
+   比不给演示更糟，因为读者会以为产品就是这么算的。
+   唯一不是「原文」的是补充说明——那是分析员自己写的话，这里示范一种写法。 */
+const TOUR_SAMPLE = {
+  company: "中山城市建设集团有限公司",
+  scale: "4 份材料、摘录 7.7 万字，正文 5,534 字",
+  materials: [
+    { kind: "跟踪评级报告", chars: "3.2 万字", count: 7, on: true,
+      title: "2026年度中山城市建设集团有限公司信用评级报告" },
+    { kind: "募集说明书", chars: "2.5 万字", count: 6, on: true,
+      title: "中山城市建设集团有限公司2026年度第一期中期票据募集说明书" },
+    { kind: "审计报告", chars: "1.4 万字", count: 5, on: false,
+      title: "中山城市建设集团有限公司2025年度经审计的合并及母公司财务报告" },
+    { kind: "其他公告", chars: "0.6 万字", count: 24, on: false,
+      title: "中山城市建设集团有限公司2026年1-6月未经审计的合并和母公司财务报表" },
+  ],
+};
+
 const TOUR_DEMO = {
+  /* 欢迎页：链路 + 一句交代「后面都是真的」 */
   flow: () => `<div class="tdemo">
       <div class="td-h">整条链路</div>
       <div class="tflow">
         <span>检索</span><i>→</i><span>材料</span><i>→</i><span>草稿</span><i>→</i><span>补薄</span><i>→</i><span>导出</span>
-      </div></div>`,
-  mats: () => `<div class="tdemo">
-      <div class="td-h">四类材料</div>
-      <div class="thot"><span>跟踪评级报告</span><span>募集说明书</span><span>审计报告</span><span>其他公告</span></div>
+      </div>
+      <div class="tdreal">下面用 ${esc(TOUR_SAMPLE.company)} 的真实一轮演示：${esc(TOUR_SAMPLE.scale)}。</div>
     </div>`,
+
+  /* 检索：真主体名、四类真实条数 */
+  search: () => `<div class="tdemo">
+      <div class="td-h">一次宽查询，本地分四类</div>
+      <div class="tdwin">
+        <div class="tdq">${esc(TOUR_SAMPLE.company)}</div>
+        <div class="tdchips">${TOUR_SAMPLE.materials.map(m =>
+          `<span>${esc(m.kind)} <b>${m.count}</b></span>`).join("")}</div>
+      </div>
+      <div class="tdcap">付息兑付、上市流通这类程序性公告已滤掉；同一年审计报告只留一份</div>
+    </div>`,
+
+  /* 材料：真标题、真字数、默认只勾前两类 */
+  mats: () => `<div class="tdemo">
+      <div class="td-h">读取前勾选 · 默认只勾前两类</div>
+      <div class="tdmats">${TOUR_SAMPLE.materials.map(m => `
+        <div class="tdmat">
+          <span class="tdbox${m.on ? " on" : ""}"></span>
+          <span class="m"><span class="t">${esc(m.title)}</span>
+            <span class="i">${esc(m.kind)} · 摘录 ${esc(m.chars)}</span></span>
+        </div>`).join("")}</div>
+    </div>`,
+
+  /* 补充说明：一个填好的输入框，示范写法 */
+  notes: () => `<div class="tdemo">
+      <div class="td-h">分析员补充说明 · 示例写法</div>
+      <div class="tdta">土地指标为全市唯一实施主体，存量指标按省公开市场成交均价定价——重点写清定价机制与去化节奏。<span class="caret"></span></div>
+      <div class="tdcap">它决定写作重心，但不作数字来源；与材料冲突时以材料为准</div>
+    </div>`,
+
+  /* 补充完善：真实缺口（正文提了对外担保却没给金额）*/
   hotfill: () => `<div class="tdemo">
       <div class="td-h">评估 → 你点 → 才去搜</div>
-      <div class="thot"><span>风险事项未给金额</span><span>行业段无数据</span><span>某段偏薄</span></div>
+      <div class="tdgap">
+        <div class="g1">关注事项 · 诉讼</div>
+        <div class="g2">正文提到但未给金额、期次或进展</div>
+        <div class="g3">搜：中山城市建设集团有限公司 诉讼 被执行 2026</div>
+        <div class="g4">搜索</div>
+      </div>
+      <div class="tdcap">正文原句「公司涉及多起未决诉讼且对外担保余额较大」——只说了有诉讼，没说金额与进展。担保那条不在这套规则里，用「自己搜一条」补</div>
     </div>`,
+
+  /* 正文能改：真实关注条目，拖动其中一条 */
   drag: () => `<div class="tdemo tdrag">
       <div class="td-h">按住序号拖动排序</div>
-      <div class="td-row"><span class="td-num">1）</span><span class="td-line">土地整理收入 12.4 亿元</span></div>
-      <div class="td-row mv"><span class="td-num">2）</span><span class="td-line">土地指标收入 0.45 亿元</span></div>
-      <div class="td-row"><span class="td-num">3）</span><span class="td-line">物业租赁收入 0.8 亿元</span></div>
+      <div class="td-row"><span class="td-num">1）</span><span class="td-line">公司园区开发及土地转让收入占营业收入比重很高，回款依赖市土地储备中心与镇级财政结算</span></div>
+      <div class="td-row mv"><span class="td-num">2）</span><span class="td-line">公司存货以土地开发成本为主，部分土地未办证或未足额缴纳出让金，变现取决于收储与出让进度</span></div>
+      <div class="td-row yield"><span class="td-num">3）</span><span class="td-line">公司有息债务持续增长，总资本化比率逐年抬升，非受限货币资金不足以覆盖短期债务</span></div>
       <div class="td-ph"></div><div class="td-finger"></div>
     </div>`,
+
+  /* 还能加：真分部序号 + 真专题预设名 */
   add: () => `<div class="tdemo tadd">
       <div class="td-h">+ 板块 / + 专题</div>
-      <div class="td-blk">资产段</div>
+      <div class="td-blk">6）其他业务</div>
       <div class="td-add">+ 板块</div>
-      <div class="td-blk fresh">新板块（可直接写）</div>
+      <div class="td-blk fresh">7）新板块（可直接写）</div>
+      <div class="tdmenu"><span>或有事项</span><span>在建工程与资本支出</span><span>政府补助依赖</span></div>
     </div>`,
+
+  /* 成品：真实资产段片段 */
+  report: () => `<div class="tdemo">
+      <div class="td-h">成品长什么样 · 资产段真实片段</div>
+      <div class="tdrep"><b>存货</b>801,045.21万元（占资产总额32.28%），主要为土地开发成本及购置的商品房，其中52宗土地有土地证面积合计2,158.71亩、土地使用权账面价值30.57亿元（占资产总额12.32%），未足额缴纳出让金及未办证土地账面价值合计16.51亿元，变现取决于收储与出让进度。</div>
+      <div class="tdcap">科目 + 金额（括号里只放占资产总额比例）+「主要为……」+ 能否变现</div>
+    </div>`,
+
+  /* 右栏：三条真实待核对 */
   rail: () => `<div class="tdemo">
-      <div class="td-h">右栏放什么</div>
-      <div class="thot"><span>算式复算不通过</span><span>数字对不上</span><span>表里找不到出处</span></div>
+      <div class="td-h">右栏只剩数字类</div>
+      <div class="tdck">
+        <div class="tdckh"><b>需人工核验</b>0/2</div>
+        <div class="tdcki man"><span class="tddot"></span><span class="c">
+          <span class="t">数字对不上，算式也复原不了</span>
+          <span class="q">收入侧，2026年1-6月公司营业总收入4.08亿元，较上年同期的3.63亿元增长12.31%</span></span></div>
+        <div class="tdcki man"><span class="tddot"></span><span class="c">
+          <span class="t">推算值要说清口径</span>
+          <span class="q">增量主要来自公交客运收入由0.91亿元增至1.53亿元（含乘车优惠补贴口径变化）</span></span></div>
+        <div class="tdckh2">自动修订后仍未解决</div>
+        <div class="tdcki done"><span class="tddot"></span><span class="c">
+          <span class="t">加粗句缺主语</span>
+          <span class="q">基础设施投融资行业进入化债攻坚收尾阶段，城投企业融资渠道由非标向银行贷款调整</span></span></div>
+      </div>
+      <div class="tdcap">表述类已经在生成时改掉，留在这里的都是程序判断不了对错的数</div>
     </div>`,
 };
 
@@ -5496,6 +5682,7 @@ function tourPaint(scroll){
       <button class="tour-btn primary" id="tourNextBtn" onclick="tourNext()">${last ? "开始使用" : (TOUR.i === 0 ? "看一遍" : "下一步")}</button>
     </div>`;
 
+  tourDemoInit(tip);
   const el = tourTarget(step);
   const tw = tip.offsetWidth, th = tip.offsetHeight;
   const vw = innerWidth, vh = innerHeight;
@@ -5578,6 +5765,19 @@ function tourPaint(scroll){
   // 箭头对准目标中心，但不许跑出气泡圆角之外
   const cx = Math.round(r.left + r.width / 2 - left);
   tip.style.setProperty("--ax", Math.max(18, Math.min(tw - 18, cx)) + "px");
+}
+
+/* 演示块里需要量一下再说的地方。
+   拖动演示的虚线占位块要落在第 2 行原位——它上面还有一行标题，标题高度
+   随字体与缩放变，用固定 top 会偏三十几像素（实测偏 35px）。 */
+function tourDemoInit(tip){
+  const drag = tip.querySelector(".tdrag");
+  if(!drag) return;
+  const rows = drag.querySelectorAll(".td-row");
+  const ph = drag.querySelector(".td-ph");
+  if(rows.length > 1 && ph){
+    ph.style.top = rows[1].offsetTop + "px";
+  }
 }
 
 /* 首次进入自动弹一次。写在 bootData 里而不是页面加载：
