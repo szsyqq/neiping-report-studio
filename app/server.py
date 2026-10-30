@@ -499,7 +499,8 @@ def api_web_search(payload: dict) -> dict:
     n = len(out.get("results") or [])
     if n:
         usage_mod.record("websearch", company=company, search_calls=1,
-                     note=f"{out.get('where') or ''}：{n} 条")
+                         note=f"{out.get('where') or ''}：{n} 条")
+    return out
 
 
 def api_web_fill(payload: dict) -> dict:
