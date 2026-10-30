@@ -3061,8 +3061,11 @@ def web_plan(draft: dict, facts: dict) -> dict:
     return {"targets": targets, "ready": search_mod.available()}
 
 
-def web_search_one(plan_item: dict) -> dict:
-    """按评估结果搜一处，返回带 results 的同一结构。"""
+def web_search_one(plan_item: dict, known_titles: list[str] | None = None) -> dict:
+    """按评估结果搜一处，返回带 results 的同一结构。
+
+    known_titles：已读材料的标题，用来排掉「搜回来的就是手里那份报告」。
+    """
     import search as search_mod
     q = (plan_item or {}).get("query") or ""
     out = {**(plan_item or {}), "results": [], "note": ""}
@@ -3070,7 +3073,7 @@ def web_search_one(plan_item: dict) -> dict:
         out["note"] = "没有查询词"
         return out
     try:
-        rows = search_mod.search(q)
+        rows = search_mod.search(q, known_titles=known_titles)
     except Exception as e:                                     # noqa: BLE001
         out["note"] = f"搜索失败：{str(e)[:100]}"
         return out
@@ -3232,6 +3235,44 @@ def _looks_empty(draft) -> bool:
     return len(body.strip()) < 800
 
 
+# 预估输出按「一份报告 + 一轮修订」的经验值。宁可高估：估低了要到生成完
+# 才发现超支，那时钱已经花掉了。
+EXPECT_OUT_TOKENS = 14000
+MIN_KEEP = 0.30          # 材料最多裁到这个比例；再低就写不出东西了
+
+
+def cost_guard(facts: dict, materials: list[dict], model_id: str | None = None,
+               user_notes: str = "") -> dict:
+    """生成前的花费预检：这次大概要多少钱、超没超上限、要不要先裁材料。
+
+    返回 {model, est, cap, over, keep}。keep 是建议的保留比例（1.0 表示不用裁）。
+    """
+    import pricing
+    try:
+        mid = llm.pick_default(llm.list_models()) if not model_id else model_id
+    except Exception:                                          # noqa: BLE001
+        mid = model_id or ""
+    prompt_chars = len(SYSTEM_PROMPT) + len(build_user_prompt(facts, materials, user_notes))
+    est = pricing.estimate(mid, int(_est_tokens(prompt_chars)), EXPECT_OUT_TOKENS)
+    import settings_store
+    cap = settings_store.budget()["maxCost"]
+    over = bool(cap and est > cap)
+    keep = 1.0
+    if over:
+        # 输入按字符线性，输出固定——只裁材料能省下的部分按输入占比算
+        body = sum(len(m.get("text") or "") for m in materials) or 1
+        fixed = max(0, prompt_chars - body)
+        out_cost = pricing.cost(mid, 0, EXPECT_OUT_TOKENS)
+        room = max(0.0, cap - out_cost)                       # 留给输入的钱
+        in_cost = max(1e-9, est - out_cost)
+        keep = min(1.0, max(MIN_KEEP, (room / in_cost) * (prompt_chars / max(1, body))
+                            - fixed / max(1, body)))
+        keep = round(min(1.0, keep), 3)
+    return {"model": mid, "est": round(est, 4), "cap": cap, "over": over,
+            "keep": keep, "out_tokens": EXPECT_OUT_TOKENS,
+            "rate": pricing.rate(mid)}
+
+
 def generate(facts: dict, materials: list[dict], model_id: str | None = None,
              progress=None, user_notes: str = "") -> dict:
     import threading
@@ -3248,6 +3289,22 @@ def generate(facts: dict, materials: list[dict], model_id: str | None = None,
         materials = _trim_materials(materials, keep)
         prompt = build_user_prompt(facts, materials, user_notes)
         _p(progress, 5, "组装提示词", f"材料超出模型上下文，按 {keep:.0%} 裁剪后重拼")
+    # 成本上限：按当前单价预估一次，超了先裁材料。裁到底仍超就如实拒绝——
+    # 与其花掉 4 块钱再告诉用户「这次有点贵」，不如生成前就说清。
+    guard = cost_guard(facts, materials, model_id, user_notes)
+    if guard["over"]:
+        if guard["keep"] <= MIN_KEEP + 1e-6:
+            import pricing as _pr
+            raise RuntimeError(
+                f"这一次预计 {_pr.fmt(guard['est'])}，超过单次上限 "
+                f"{_pr.fmt(guard['cap'])}。材料已压到最少仍不达标："
+                "可以少勾一两份材料、换单价更低的模型，或到「设置 → 花费」把上限调高。")
+        materials = _trim_materials(materials, guard["keep"])
+        prompt = build_user_prompt(facts, materials, user_notes)
+        guard2 = cost_guard(facts, materials, model_id, user_notes)
+        import pricing as _pr
+        _p(progress, 6, "组装提示词",
+           f"预计花费超上限，材料按 {guard['keep']:.0%} 裁剪（约 {_pr.fmt(guard2['est'])}）")
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": prompt},
@@ -3384,7 +3441,18 @@ def generate(facts: dict, materials: list[dict], model_id: str | None = None,
     # 或有事项其实还有一段可以写。放在校验之前——校验也要看有没有建议。
     draft["add_on_sections"] = _clean_advice(
         merge_advice(draft.get("add_on_sections"), materials))
+    import pricing
+    _cost = pricing.cost(used.get("model") or (model_id or ""),
+                         used.get("prompt_tokens", 0), used.get("completion_tokens", 0),
+                         used.get("cached_tokens", 0))
     draft["validation"] = validate(draft, facts, materials)
+    # 花超了要说：钱已经花掉，拦不住，但人得知道是这一次、因为什么
+    if guard["cap"] and _cost > guard["cap"]:
+        import pricing as _pr
+        draft["validation"]["issues"].insert(
+            0, f"本次花费 {_pr.fmt(_cost)}，超过单次上限 {_pr.fmt(guard['cap'])}："
+               f"{len(materials)} 份材料共 {draft['usage']['prompt_tokens']:,} 输入 token。"
+               "下次可少勾材料，或到「设置 → 花费」调整上限。")
 
     # 表述与结构问题不交给用户改：再走一轮定向修订。
     # 改掉的不进待核对，只记「已自动修正 N 处」；没改掉的才降级给人看。
@@ -3443,6 +3511,8 @@ def generate(facts: dict, materials: list[dict], model_id: str | None = None,
               estimated=bool(used.get("estimated")),
               note=f"{len(materials)} 份材料 · 正文 {draft['validation'].get('body_chars', 0)} 字")
     draft["usage"] = {
+        "cost": _cost,
+        "cap": guard["cap"],
         "model": used.get("model") or (model_id or ""),
         "prompt_tokens": used.get("prompt_tokens", 0),
         "completion_tokens": used.get("completion_tokens", 0),

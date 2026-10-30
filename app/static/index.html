@@ -603,6 +603,22 @@ body.dragging .item-ghost{display:flex}
 .rail-r.collapsed .ck-h{margin-bottom:0}
 /* 这一栏只放需人工核验的数字问题，标题下面给一句说明，
    免得人以为「表述问题怎么不管了」——是程序改完才没剩几条。 */
+/* 设置页的单价表：三列，窄屏折行 */
+.costtbl{margin-top:9px;border:1px solid var(--line);border-radius:8px;padding:9px 11px;background:var(--bg2)}
+.costrow{display:flex;gap:10px;flex-wrap:wrap;align-items:baseline;font-size:11.5px;
+  padding:3px 0;color:var(--ink2)}
+.costrow .cm{font-weight:600;color:var(--ink);flex:0 0 auto;min-width:132px}
+.costrow .cp{color:var(--muted);font-variant-numeric:tabular-nums}
+.costnote{font-size:10.5px;color:var(--muted);line-height:1.6;margin-top:6px;
+  padding-top:6px;border-top:1px dashed var(--line)}
+
+/* 模型选择与花费：一行放，花费贴右侧，随时能看到这次大概多少钱 */
+.modelrow{display:flex;align-items:center;gap:8px;margin-top:8px}
+.modelrow select{flex:1 1 auto;min-width:0}
+.costhint{font-size:11px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums;
+  flex:none}
+.costhint.warn{color:var(--amber)}
+
 /* 分析员补充说明：生成前的可折叠输入，默认收起不占地方 */
 .note-in{border:1px solid var(--line);border-radius:8px;margin:8px 0 0;background:#fff}
 .ni-h{display:flex;align-items:center;gap:7px;padding:8px 11px;cursor:pointer;user-select:none}
@@ -1313,7 +1329,6 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
         <div class="wbar"><i></i></div>
       </div>
       <div class="wbody"><div class="winner"><div class="wpad">
-        <select id="model"></select>
         <div class="note-in">
           <div class="ni-h" onclick="toggleNotes()">
             <span class="ni-t">分析员补充说明<span class="ni-opt">可选</span></span>
@@ -1324,6 +1339,10 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
             <textarea id="userNotes" rows="4" placeholder="读完材料后想让它写进去的东西：要强调的重点、发现的疑点、需要核的方向。&#10;例：&#10;· 土地指标收入确认与回款差得远，重点写这一块&#10;· 对外担保 30 亿，被担保方已出现展期，务必单列一段&#10;· 本期评级下调真正的原因是资产划出，不要只写经营下滑"></textarea>
             <div class="ni-tip">用于记录你读完材料后的判断，决定正文的写作重心。涉及金额时以材料为准：没有材料支撑的数字不会写入正文。</div>
           </div>
+        </div>
+        <div class="modelrow">
+          <select id="model"></select>
+          <span class="costhint" id="costHint"></span>
         </div>
         <div class="wfoot">
           <span class="whint grow" id="genHint">约 30–60 秒，可先离开</span>
@@ -1661,6 +1680,8 @@ function openStep(key){
   const prev = OPEN_STEP;
   OPEN_STEP = key;
   paintSteps();
+  // 进生成步骤就把花费算出来，别等到点按钮才让人知道多少钱
+  if(key === "generate") setTimeout(refreshCostHint, 60);
   if(prev !== key){
     // 展开后把它滚进视野：手机上第 2 步内容较长，不滚一下看不到刚展开的那一步
     const el = stepEl(key);
@@ -1797,6 +1818,59 @@ async function pingConn(){
       否则每次刷新都按偏好顺序重挑，选了也不生效。 */
 const MODEL_IDS = [];
 
+/* ---------------- 花费 ---------------- */
+/* 金额显示与后端 pricing.fmt 对齐：一分钱以下也给到四位，免得看起来像免费 */
+function fmtYuan(y){
+  y = Number(y || 0);
+  if(!y) return "¥0";
+  if(y < 0.01) return "¥" + y.toFixed(4);
+  if(y < 1) return "¥" + y.toFixed(3);
+  return "¥" + y.toFixed(2);
+}
+
+/* 生成步骤里那行「这次约多少钱」。进步骤、换模型、改补充说明都重算一次。 */
+let costTimer = 0;
+function refreshCostHint(){
+  const el = $("#costHint");
+  if(!el) return;
+  const model = ($("#model") && $("#model").value) || "";
+  if(!model || !MODEL_IDS.includes(model)){ el.textContent = ""; return; }
+  clearTimeout(costTimer);
+  costTimer = setTimeout(async () => {
+    try{
+      const d = await api("/api/cost/preview", { company: curCo() || S.company || "",
+        model, notes: notesText() });
+      if(!d || !d.est){ el.textContent = ""; return; }
+      const parts = [`约 ${d.estText}`];
+      if(d.over){
+        parts.push(d.keep > 0.31 ? `超上限·裁到 ${Math.round(d.keep * 100)}%` : "超上限");
+        el.classList.add("warn");
+        el.title = `预计 ${d.estText}，超过单次上限 ${d.capText}。`
+          + (d.keep > 0.31 ? `会先把材料裁到 ${Math.round(d.keep * 100)}% 再生成。`
+                           : "材料裁到最少仍超，会直接拒绝——请减材料或调上限。")
+          + "\n单价按 DeepSeek 官方价目表、当前时段计算。";
+      }else{
+        el.classList.remove("warn");
+        el.title = `${d.materials} 份材料 ${fmtTok(d.chars)} 字；`
+          + `上限 ${d.capText}。单价按 DeepSeek 官方价目表、当前时段计算。`;
+      }
+      el.textContent = parts.join(" · ");
+    }catch(e){ /* 预估失败就不显示，不打断流程 */ }
+  }, 260);
+}
+
+/* 生成完成后把实际花费写进步骤提示：预估是预估，人更关心真花了多少 */
+function paintSpent(usage){
+  if(!usage || !usage.cost) return;
+  const el = $("#genHint");
+  if(!el) return;
+  const over = usage.cap && usage.cost > usage.cap;
+  el.innerHTML = `本次花费 <b style="color:${over ? "var(--amber)" : "var(--ink)"}">`
+    + `${fmtYuan(usage.cost)}</b>`
+    + (usage.cap ? ` ／上限 ${fmtYuan(usage.cap)}` : "")
+    + ` · ${usage.calls || 1} 次调用`;
+}
+
 async function loadModels(retry){
   const sel = $("#model");
   let d = {}, r = null;
@@ -1845,7 +1919,9 @@ async function loadModels(retry){
   sel.onchange = () => {
     if(!MODEL_IDS.includes(sel.value)) return;
     api("/api/model/pick", { model: sel.value }).catch(() => {});
+    refreshCostHint();
   };
+  refreshCostHint();
 }
 
 /* ---------------- 用量统计 ---------------- */
@@ -1868,9 +1944,13 @@ async function refreshUsage(){
   try{
     const s = await (await fetch(apiUrl("/api/stats"))).json();
     S.stats = s;
-    const t = s.total || {}, mcp = s.mcp || {};
-    $("#usageBtn").textContent = `累计 ${t.calls || 0} 次 · 财汇 ${mcp.total || 0} 点`;
-    $("#usageBtn").title = `累计生成 ${t.calls || 0} 次、${fmtNum(t.total_tokens)} token；财汇接口调用 ${mcp.total || 0} 次；点击看明细`;
+    const t = s.total || {}, mcp = s.mcp || {}, money = s.money || {};
+    $("#usageBtn").textContent = money.total
+      ? `累计 ${t.calls || 0} 次 · ${fmtYuan(money.total)}`
+      : `累计 ${t.calls || 0} 次 · 财汇 ${mcp.total || 0} 点`;
+    $("#usageBtn").title = `累计生成 ${t.calls || 0} 次、${fmtNum(t.total_tokens)} token，`
+      + `约 ${fmtYuan(money.total)}（今日 ${fmtYuan(money.today)}）；`
+      + `财汇接口调用 ${mcp.total || 0} 次；点击看明细`;
     if(statsOpen) renderUsage();
   }catch(e){ /* 没连上服务时不打扰 */ }
 }
@@ -1889,8 +1969,13 @@ function renderUsage(){
   const est = t.estimated ? `<span style="color:var(--amber)">· 含估算</span>` : "";
   const per = t.calls ? `${fmtTok(Math.round(t.total_tokens / t.calls))} · ${fmtSec(t.seconds / t.calls)}` : "—";
   const hit = t.prompt_tokens ? Math.round((t.cached_tokens || 0) / t.prompt_tokens * 100) + "%" : "—";
+  const money = s.money || {};
   let h = `<div class="uh">调用统计</div>
     <div class="usub">${s.since ? "自 " + esc(String(s.since).slice(0, 10)) + " 起累计 " + est : "还没有记录"}</div>
+    <div class="uk"><span class="k">今日花费</span><b>${fmtYuan(money.today)}${money.today_gen ? ` <i style="font-style:normal;color:var(--muted)">（生成 ${fmtYuan(money.today_gen)}）</i>` : ""}</b></div>
+    <div class="uk"><span class="k">累计花费</span><b>${fmtYuan(money.total)}</b></div>
+    <div class="uk"><span class="k">单次成本</span><b>平均 ${fmtYuan(money.avg)} · 最高 ${fmtYuan(money.max)}</b></div>
+    <div class="div"></div>
     <div class="uk"><span class="k">今日</span><b>${d.calls || 0} 次生成 · 财汇 ${mcp.today || 0} 点</b></div>
     <div class="uk"><span class="k">累计</span><b>${t.calls || 0} 次生成 · 财汇 ${mcp.total || 0} 点</b></div>
     <div class="uk"><span class="k">今日 token</span><b>${fmtTok(d.total_tokens)}</b></div>
@@ -1911,8 +1996,8 @@ function renderUsage(){
   if(tl.length){
     h += `<div class="um">最近调用</div>` + tl.map(x => {
       const right = x.kind === "generate"
-        ? `${fmtTok(x.total_tokens)} token`
-        : (x.mcp_calls ? `财汇 ${x.mcp_calls} 点` : "—");
+        ? `${fmtTok(x.total_tokens)} token · ${fmtYuan(x.cost)}`
+        : (x.cost ? fmtYuan(x.cost) : (x.mcp_calls ? `财汇 ${x.mcp_calls} 点` : "—"));
       return `<div class="ur"><span>${esc(fmtTs(x.ts))} ${esc(KIND_CN[x.kind] || x.kind)} · ${esc(String(x.company || "未命名").slice(0, 10))}</span>
         <span class="n">${esc(right)}</span></div>`;
     }).join("");
@@ -2444,6 +2529,8 @@ async function doGenerate(){
     setStep("fill", { state: "wait", pct: 0,
       detail: S.mode === "update" ? "更新模式不评估"
             : (_nt ? `${_nt} 处偏薄` : "无需补充") });
+    paintSpent((S.draft && S.draft.usage) || null);
+    refreshUsage();
     renderDraft();
     renderFill();
     const u = S.draft.usage || {};
@@ -3230,6 +3317,7 @@ function toggleNotes(){
   const open = body.classList.toggle("open");
   const chev = document.getElementById("niChev");
   if(chev) chev.textContent = open ? "⌄" : "›";
+  if(open) refreshCostHint();
 }
 function notesText(){
   const t = document.getElementById("userNotes");
@@ -4523,6 +4611,7 @@ function renderSettings(){
   const d = SET.data || {};
   const pw = d.password || {}, llm = d.llm || {}, mail = d.mail || {}, ch = d.caihui || {};
   const se = d.search || {};
+  const bu = d.budget || {}, pr = d.pricing || {};
 
   let h = `<div class="sh"><b>设置</b><button class="x" onclick="closeSettings()">×</button></div><div class="sets">`;
 
@@ -4587,11 +4676,35 @@ function renderSettings(){
 
   // 口令
   h += `<div class="setsec">
+    <div class="st">花费 ${badge(true, bu.maxCost ? `单次上限 ${fmtYuan(bu.maxCost)}` : "不限")}
+      ${pr.peak ? `<span class="badge">高峰时段</span>` : `<span class="badge">空闲时段（半价）</span>`}</div>
+    <div class="sd">生成前按当前单价预估一次，超过上限会先把材料裁一裁再生成；裁到底仍超就拒绝，
+      不至于花完才告诉你。上限填 0 表示不限制。存本机 <code>data/budget.json</code>。</div>
+    <div class="setgrid">
+      <label>单次上限（元）</label>
+      <input id="stMaxCost" value="${esc(bu.maxCost ?? 2)}" placeholder="2" spellcheck="false"/>
+    </div>
+    ${(pr.rates || []).length ? `<div class="costtbl">
+      ${pr.rates.map(r => `<div class="costrow">
+        <span class="cm">${esc(r.label)}</span>
+        <span class="cp">输入 ¥${r.in_miss}/M（命中 ¥${r.in_hit}）</span>
+        <span class="cp">输出 ¥${r.out}/M</span>
+      </div>`).join("")}
+      <div class="costnote">单价取自 ${esc(pr.based_on)}；搜索另计每千次 5 元。
+        ${pr.peak ? "当前为高峰时段（工作日 9–12、14–18）。" : "当前为空闲时段，单价为高峰的一半。"}</div>
+    </div>` : ""}
+    <div class="setact"><span class="msg" id="msgCost"></span>
+      <button class="btn-sm solid" onclick="saveSettings('cost')">保存</button></div>
+  </div>`;
+
+  h += `<div class="setsec">
     <div class="st">联网搜索 ${badge(se.ready, "已配置", "未配置")}
-      ${se.source ? `<span class="badge">${se.source === "env" ? "来自环境变量" : "页面填写"}</span>` : ""}</div>
-    <div class="sd">可选。配了之后，生成完会多出<b>第 4 步「补充完善」</b>：先评估哪几处写得偏薄，
+      ${se.source ? `<span class="badge">${se.source === "env" ? "来自环境变量"
+        : (se.source === "llm" ? "复用模型 Key" : "页面填写")}</span>` : ""}</div>
+    <div class="sd">生成完会多出<b>第 4 步「补充完善」</b>：先评估哪几处内容有缺口，
       并说明打算搜什么；你在那一步点「搜索」才真正去外网找，勾中的结果才写进正文，来源与时间一并标注。
-      不配也能正常生成，只是第 4 步会提示尚未配置。存本机 <code>data/search.json</code>。</div>
+      <br/>默认用 <b>DeepSeek 搜索</b>——与模型同一个 Key，不必另申请账号，每千次成功请求 5 元、无结果不计费。
+      换成别家才需要单独填 Key。存本机 <code>data/search.json</code>。</div>
     <div class="setgrid">
       <label>服务商</label>
       <select id="stSchProv" onchange="schProvChange()">
@@ -4599,8 +4712,12 @@ function renderSettings(){
       </select>
       <label>接口地址</label>
       <input id="stSchUrl" value="${esc(se.url || "")}" placeholder="https://api.bochaai.com/v1/web-search" spellcheck="false"/>
-      <label>API Key</label>
-      <input id="stSchKey" type="password" placeholder="${se.has_key ? "已保存，留空表示不改" : "填服务商控制台的 key"}" spellcheck="false"/>
+      ${se.own_key === false ? `<label>密钥来源</label>
+        <div class="kv">${se.has_key
+          ? `<span class="badge ok">复用模型里的 DeepSeek Key</span>`
+          : `<span class="badge warn">模型里没有 DeepSeek Key</span>`}</div>`
+      : `<label>API Key</label>
+        <input id="stSchKey" type="password" placeholder="${se.has_key ? "已保存，留空表示不改" : "填服务商控制台的 key"}" spellcheck="false"/>`}
       <label>每处几条</label>
       <input id="stSchMax" value="${esc(se.max_results || 5)}" placeholder="5" spellcheck="false"/>
     </div>
@@ -4639,7 +4756,7 @@ function schProvChange(){
 
 async function saveSettings(section){
   const msgId = { llm: "msgLlm", mail: "msgMail", caihui: "msgCh",
-    search: "msgSch", password: "msgPw" }[section];
+    search: "msgSch", cost: "msgCost", password: "msgPw" }[section];
   const msg = msgId ? $("#"+msgId) : null;
   const say = (t, kind) => { if(msg){ msg.className = "msg" + (kind ? " " + kind : ""); msg.textContent = t; } };
   const body = { section };
@@ -4647,6 +4764,7 @@ async function saveSettings(section){
   if(section === "caihui"){ body.url = _val("stChUrl"); body.key = _val("stChKey"); }
   if(section === "search"){ body.provider = _val("stSchProv"); body.url = _val("stSchUrl");
     body.apiKey = _val("stSchKey"); body.maxResults = _val("stSchMax"); }
+  if(section === "cost"){ body.maxCost = _val("stMaxCost"); }
   if(section === "mail"){ body.host = _val("stMailHost"); body.port = _val("stMailPort");
     body.tls = _val("stMailTls"); body.user = _val("stMailUser"); body.password = _val("stMailPass"); }
   if(section === "password"){ body.old = _val("stPwOld"); body.new = _val("stPwNew"); }

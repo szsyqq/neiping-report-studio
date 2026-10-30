@@ -27,6 +27,10 @@ KEYS = (
     "LLM_BASE_URL", "LLM_API_KEY", "LLM_MODEL",
     "LLM_MAX_INPUT", "LLM_MAX_OUTPUT",
     "SMTP_HOST", "SMTP_PORT", "SMTP_TLS", "SMTP_USER", "SMTP_PASS", "SMTP_FROM",
+    # 搜索默认复用 LLM_API_KEY，这三项只在换成博查／Serper／Tavily 时才需要
+    "SEARCH_PROVIDER", "SEARCH_API_KEY", "SEARCH_API_URL",
+    # 单次花费上限（元），不写就用 data/budget.json 或默认 2 元
+    "MAX_COST_PER_REPORT",
 )
 
 

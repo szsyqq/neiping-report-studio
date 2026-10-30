@@ -432,6 +432,8 @@ def api_settings(payload: dict) -> dict:
         settings_store.save_caihui(payload)
     elif sec == "search":
         settings_store.save_search(payload)
+    elif sec == "cost":
+        settings_store.save_budget(payload)
     elif sec == "mail":
         mailer.save_config(payload)
     elif sec == "password":
@@ -444,6 +446,28 @@ def api_settings(payload: dict) -> dict:
             raise ValueError(str(e)) from None
         return {"ok": True, **auth_mod.issue(), "settings": settings_store.overview()}
     return {"ok": True, "settings": settings_store.overview()}
+
+
+def api_cost_preview(payload: dict) -> dict:
+    """这次生成大概要多少钱。只读当前状态，不调用模型。"""
+    company = (payload.get("company") or "").strip()
+    model = (payload.get("model") or "").strip() or None
+    notes = str(payload.get("notes") or "")[:4000]
+    with LOCK:
+        st = STATE.get(_key(company)) or {}
+        facts = st.get("facts") or facts_mod.empty_facts(company)
+        mats = st.get("materials") or []
+    import pricing
+    g = generator.cost_guard(facts, mats, model, notes)
+    return {"est": g["est"], "cap": g["cap"], "over": g["over"], "keep": g["keep"],
+            "materials": len(mats), "chars": sum(len(m.get("text") or "") for m in mats),
+            "rate": g["rate"], "estText": pricing.fmt(g["est"]),
+            "capText": pricing.fmt(g["cap"]) if g["cap"] else "不限"}
+
+
+def api_cost_save(payload: dict) -> dict:
+    """改单次上限。0 表示不限制。"""
+    return settings_store.save_budget({"maxCost": payload.get("maxCost")})
 
 
 def api_web_plan(payload: dict) -> dict:
@@ -467,7 +491,15 @@ def api_web_search(payload: dict) -> dict:
     if not settings_store.search_config()["ready"]:
         raise ValueError("没有配置联网搜索。请到「设置 → 联网搜索」填一个 API Key")
     item = payload.get("target") or {}
-    return generator.web_search_one(item)
+    company = (payload.get("company") or "").strip()
+    with LOCK:
+        mats = (STATE.get(_key(company)) or {}).get("materials") or []
+    out = generator.web_search_one(item, known_titles=[m.get("title") or "" for m in mats])
+    # 搜索按次计费（每次 0.005 元，无结果不计费），落一行台账才看得出钱花在哪
+    n = len(out.get("results") or [])
+    if n:
+        usage_mod.record("websearch", company=company, search_calls=1,
+                     note=f"{out.get('where') or ''}：{n} 条")
 
 
 def api_web_fill(payload: dict) -> dict:
@@ -1305,6 +1337,8 @@ class Handler(BaseHTTPRequestHandler):
             "/api/model/pick": api_model_pick,
             "/api/web-fill": api_web_fill,
             "/api/web-plan": api_web_plan,
+            "/api/cost/preview": api_cost_preview,
+            "/api/cost/save": api_cost_save,
             "/api/web-search": api_web_search,
         }
         try:

@@ -26,6 +26,7 @@ KIND_LABEL = {
     "fetch": "读取材料",
     "export": "导出报告",
     "mail": "发送邮件",
+    "websearch": "联网搜索",
 }
 
 
@@ -44,9 +45,18 @@ def _load() -> dict:
 def record(kind: str, *, company: str = "", model: str = "", prompt_tokens: int = 0,
            completion_tokens: int = 0, total_tokens: int = 0, cached_tokens: int = 0,
            seconds: float = 0.0, chars: int = 0, ok: bool = True,
-           estimated: bool = False, note: str = "", mcp_calls: int = 0) -> dict:
-    """记一行。token 三项只在 generate 时有值；mcp_calls 是本次消耗的财汇点数。"""
+           estimated: bool = False, note: str = "", mcp_calls: int = 0,
+           search_calls: int = 0) -> dict:
+    """记一行。token 三项只在 generate 时有值；mcp_calls 是财汇点数。
+
+    cost 不在这里算：价格分高峰/空闲、命中/未命中四档，而且会变，
+    统一由 pricing 按记录时间戳算——历史记录因此永远反映当时的价，
+    不会被后来调价改写。
+    """
+    import pricing
     total = int(total_tokens or (prompt_tokens + completion_tokens))
+    cost = (pricing.cost(model, prompt_tokens, completion_tokens, cached_tokens)
+            + pricing.SEARCH_UNIT * int(search_calls or 0))
     ev = {
         "ts": datetime.now().isoformat(timespec="seconds"),
         "kind": kind,
@@ -62,6 +72,8 @@ def record(kind: str, *, company: str = "", model: str = "", prompt_tokens: int 
         "estimated": bool(estimated),
         "note": (note or "")[:160],
         "mcp_calls": int(mcp_calls or 0),
+        "search_calls": int(search_calls or 0),
+        "cost": round(cost, 4),
     }
     with LOCK:
         data = _load()
@@ -75,9 +87,19 @@ def record(kind: str, *, company: str = "", model: str = "", prompt_tokens: int 
     return ev
 
 
+def _cost_of(e: dict) -> float:
+    """一条记录的钱。老记录没有 cost 字段，按它的 token 现算（用当前价，只作补齐）。"""
+    if "cost" in e:
+        return float(e.get("cost") or 0)
+    import pricing
+    return pricing.cost(e.get("model") or "", e.get("prompt_tokens") or 0,
+                        e.get("completion_tokens") or 0, e.get("cached_tokens") or 0)
+
+
 def _bucket(events: list[dict]) -> dict:
     gen = [e for e in events if e["kind"] == "generate"]
     return {
+        "cost": round(sum(_cost_of(e) for e in events), 4),
         "calls": len(gen),
         "prompt_tokens": sum(e["prompt_tokens"] for e in gen),
         "completion_tokens": sum(e["completion_tokens"] for e in gen),
@@ -127,11 +149,28 @@ def summary() -> dict:
         {"ts": e["ts"], "kind": e["kind"], "company": e.get("company", ""),
          "model": e.get("model", ""), "mcp_calls": int(e.get("mcp_calls") or 0),
          "total_tokens": e["total_tokens"], "seconds": e["seconds"],
+         "cost": round(_cost_of(e), 4),
+         "search_calls": int(e.get("search_calls") or 0),
          "ok": e.get("ok", True), "note": e.get("note", "")}
         for e in reversed(events)
     ][:40]
 
+    gen_all = [e for e in events if e["kind"] == "generate"]
+    gen_today = [e for e in today if e["kind"] == "generate"]
+    money = {
+        "today": round(sum(_cost_of(e) for e in today), 4),
+        "total": round(sum(_cost_of(e) for e in events), 4),
+        # 单次成本用「只算生成」的口径：检索与导出也花钱，但人问「一次多少钱」
+        # 指的是出一份稿，混进检索会把数压低
+        "avg": round(sum(_cost_of(e) for e in gen_all) / len(gen_all), 4) if gen_all else 0,
+        "max": round(max((_cost_of(e) for e in gen_all), default=0), 4),
+        "today_gen": round(sum(_cost_of(e) for e in gen_today), 4),
+        "searches": {"today": sum(int(e.get("search_calls") or 0) for e in today),
+                     "total": sum(int(e.get("search_calls") or 0) for e in events)},
+    }
+
     return {
+        "money": money,
         "today": _bucket(today),
         "total": _bucket(events),
         "mcp": {"today": mcp_sum(today), "total": mcp_sum(events)},
