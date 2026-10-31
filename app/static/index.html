@@ -1087,6 +1087,13 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
              opacity .2s}
 .tour-hole.off{opacity:0}
 
+/* 讲到「可以自己试一下」那一步：遮罩让开点击，页面照常能操作，
+   只有气泡本身还接着事件——否则用户在引导里试不了拖动。 */
+#tourMask.passthru{pointer-events:none}
+#tourMask.passthru .tour-tip{pointer-events:auto}
+#tourMask.passthru .tour-hole{box-shadow:0 0 0 9999px rgba(17,20,24,.34),
+  0 0 0 2px rgba(255,255,255,.95), 0 0 0 4px rgba(47,95,208,.45)}
+
 .tour-tip{position:fixed;width:336px;max-width:calc(100vw - 24px);background:#fff;
   border-radius:14px;padding:16px 18px 14px;
   box-shadow:0 18px 48px rgba(17,20,24,.26), 0 2px 8px rgba(17,20,24,.12);
@@ -1135,7 +1142,6 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
 /* 演示区：全部用 CSS 动画，不加载任何资源 */
 .tdemo{margin:10px 0 2px;border:1px solid var(--line);border-radius:9px;
   background:#fbfcfd;padding:10px 11px;overflow:hidden;position:relative}
-.tdemo .td-h{font-size:10.5px;color:var(--muted);letter-spacing:.06em;margin-bottom:7px}
 /* 五步流动 */
 .tflow{display:flex;align-items:center;gap:4px}
 .tflow span{flex:1;text-align:center;font-size:10.5px;color:var(--ink2);background:#fff;
@@ -1149,40 +1155,6 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
 .tflow i{color:#cfd4da;font-style:normal;font-size:9px;flex:none}
 @keyframes tflowOn{0%,14%{background:var(--ink);color:#fff;border-color:var(--ink)}
   22%,100%{background:#fff;color:var(--ink2);border-color:var(--line)}}
-/* 拖动排序：序号被按住，整条让位，原位留虚线 */
-/* 行高与位移必须同一个数：行 26 + 间距 5 = 31，translateY 按 31。
-   占位块的位置不能用固定 top——它上面还有一行标题，标题高度随字体变，
-   所以在 tourPaint 里量第 2 行的 offsetTop 再赋值。
-   底部要留出 31 的空间：第 3 行会下移一格，不留就被 overflow:hidden 裁掉。 */
-.tdrag{min-height:0;padding-bottom:calc(31px + 12px)}
-.td-row{display:flex;gap:6px;align-items:center;background:#fff;border:1px solid var(--line);
-  border-radius:6px;padding:0 7px;height:26px;line-height:16px;font-size:10.5px;
-  color:var(--ink2);margin-bottom:5px;position:relative;z-index:2}
-.td-row .td-num{color:var(--muted);flex:none;font-variant-numeric:tabular-nums}
-.td-row .td-line{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.td-row.mv{animation:tdragMove 4.6s ease-in-out infinite}
-/* 被拖的那条下移一格，下面这条同时让开，和真实拖动一样 */
-.td-row.yield{animation:tYield 4.6s ease-in-out infinite}
-@keyframes tYield{
-  0%,16%{transform:translateY(0)}
-  40%,78%{transform:translateY(31px)}
-  92%,100%{transform:translateY(0)}}
-.td-row.mv .td-num{color:var(--ink);font-weight:600}
-@keyframes tdragMove{
-  0%,16%{transform:translateY(0);box-shadow:none}
-  20%{box-shadow:0 6px 16px rgba(17,20,24,.18);transform:translateY(0) scale(1.015)}
-  40%,62%{transform:translateY(31px);box-shadow:0 6px 16px rgba(17,20,24,.18)}
-  78%{transform:translateY(31px)}
-  92%,100%{transform:translateY(0);box-shadow:none}}
-.td-ph{position:absolute;left:11px;right:11px;height:26px;border:1px dashed #c3c9d1;
-  border-radius:6px;top:0;opacity:0;animation:tph 4.6s ease-in-out infinite}
-@keyframes tph{0%,18%{opacity:0}24%,72%{opacity:1}86%,100%{opacity:0}}
-.td-finger{position:absolute;width:16px;height:16px;border-radius:50%;
-  border:2px solid #2f5fd0;background:rgba(47,95,208,.14);left:1px;top:6px;
-  animation:tfinger 4.6s ease-in-out infinite;pointer-events:none;z-index:3}
-@keyframes tfinger{0%,10%{opacity:0;transform:scale(.6)}
-  16%{opacity:1;transform:scale(1)}70%{opacity:1;transform:scale(1)}
-  84%,100%{opacity:0;transform:scale(.6)}}
 /* 新增块：按钮被按下，然后新块展开 */
 .tadd{min-height:0}
 .td-blk{display:flex;align-items:center;background:#fff;border:1px solid var(--line);border-radius:6px;padding:0 7px;
@@ -1209,14 +1181,30 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
   padding:1px 7px;background:#fff;font-variant-numeric:tabular-nums}
 .tdchips span b{color:var(--ink);font-weight:600}
 
-/* 补充说明：一个填好的输入框 */
-.tdta{border:1px solid var(--line);border-radius:6px;background:#fff;padding:7px 9px;
-  font-size:10.8px;color:var(--ink);line-height:1.7}
-.tdta .caret{display:inline-block;width:1px;height:11px;background:var(--ink);
-  vertical-align:-1px;margin-left:1px;animation:tdblink 1.1s step-end infinite}
-@keyframes tdblink{0%,49%{opacity:1}50%,100%{opacity:0}}
-
 .tdcap{font-size:9.5px;color:var(--muted);margin-top:5px;line-height:1.5}
+
+/* 候选观点：点一条，列表里多一条 */
+.tdp{display:flex;flex-direction:column;gap:5px}
+.tdp .chi{display:flex;align-items:center;height:22px;padding:0 9px;background:#fff;
+  border:1px solid var(--line);border-radius:20px}
+.tdp .chi .ln{flex:1;width:auto;margin:0}
+.tdp .pl{flex:none;margin-left:6px;font-size:11px;line-height:1;color:var(--muted)}
+.tdp .chi.a{animation:tchipGo 4.6s ease-in-out infinite}
+@keyframes tchipGo{
+  0%,12%{background:#fff;border-color:var(--line);transform:scale(1);opacity:1}
+  17%{background:var(--ink);border-color:var(--ink);transform:scale(.97);opacity:1}
+  24%,30%{background:#fff;border-color:var(--line);transform:scale(.97);opacity:0}
+  88%,100%{background:#fff;border-color:var(--line);transform:scale(1);opacity:1}}
+.tdp-ar{font-size:9.5px;color:var(--muted);padding-left:2px}
+.tdpl{background:#fff;border:1px solid var(--line);border-radius:6px;padding:4px 7px}
+.tdpl .row{display:flex;align-items:center;gap:6px;height:22px}
+.tdpl .n{font-size:10px;color:var(--muted);flex:none;font-variant-numeric:tabular-nums}
+.tdpl .row .ln{flex:1;width:auto;margin:0}
+.tdpl .row.fresh{overflow:hidden;height:0;opacity:0;animation:tfreshRow 4.6s ease-in-out infinite}
+@keyframes tfreshRow{
+  0%,24%{height:0;opacity:0}
+  32%,86%{height:22px;opacity:1}
+  94%,100%{height:0;opacity:0}}
 
 /* 专题菜单：真实预设名 */
 .tdmenu{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
@@ -1272,10 +1260,6 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
 @keyframes tbar{0%{width:0}18%{width:8%}62%{width:78%}88%,100%{width:100%}}
 
 /* 补充说明：两行字写到一半，光标在末尾闪 */
-.tdta .l2{display:flex;align-items:center;gap:2px;margin-top:5px}
-.tdta .l2 .ln{flex:none}
-.tdta .l2 .caret{margin-left:1px}
-
 /* 缺口：按钮按下 → 两条结果落地 */
 .tdhk{background:#fff;border:1px solid var(--line);border-radius:6px;padding:7px 8px}
 .tdhk .h1{display:flex;align-items:center;gap:8px}
@@ -1291,21 +1275,6 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
 .tdhk .rs.b{animation-delay:.18s}
 @keyframes trs{0%,46%{opacity:0;transform:translateY(3px)}
   56%,100%{opacity:1;transform:none}}
-
-/* 右栏：一条一条打勾 */
-.tdcl{background:#fff;border:1px solid var(--line);border-radius:6px;overflow:hidden}
-.tdcl .r{display:grid;grid-template-columns:7px minmax(0,1fr) 11px;gap:7px;align-items:center;
-  padding:6px 8px;border-top:1px solid var(--line2)}
-.tdcl .r:first-child{border-top:0}
-.tdcl .dot{width:5px;height:5px;border-radius:50%;background:#d7dade}
-.tdcl .tk{width:9px;height:9px;border-right:2px solid #2f9e6f;border-bottom:2px solid #2f9e6f;
-  transform:rotate(42deg) scale(0);opacity:0;animation:ttk 4.6s ease-out infinite}
-.tdcl .r:nth-child(1) .tk{animation-delay:.2s}
-.tdcl .r:nth-child(2) .tk{animation-delay:1.1s}
-.tdcl .r:nth-child(3) .tk{animation-delay:2s}
-@keyframes ttk{0%{transform:rotate(42deg) scale(0);opacity:0}
-  9%{transform:rotate(42deg) scale(1.15);opacity:1}
-  15%,100%{transform:rotate(42deg) scale(1);opacity:1}}
 
 /* 演示标记：界面里摆的是示例数据，必须一眼看得出来 */
 .demotag{display:inline-flex;align-items:center;font-family:-apple-system,"PingFang SC",sans-serif;
@@ -1326,7 +1295,8 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
   .tour-tip.mob-top{top:12px !important;bottom:auto !important}
   .tour-tip::before{display:none}
   .tour-tip h4{font-size:14px}
-  .tdrag{min-height:0}
+  /* 目标太高、气泡又占着半屏时，收掉动画块——内容本来就在孔里 */
+  .tour-tip.nodemo .tdemo{display:none}
   /* 手机上十个点太挤，只留「3/10」 */
   .tdsk{gap:5px}
   .tour-dots i{display:none}
@@ -1337,13 +1307,12 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
   .tour-hole,.tour-tip{transition:none}
   .tdemo *{animation:none !important}
   .td-blk.fresh{opacity:1;height:26px}
-  .td-ph{opacity:1}
   /* 动画停了，被动画藏着的东西要露出来：结果条、勾、进度、勾选框 */
   .tdchips span,.tdhk .rs{opacity:1;transform:none}
-  .tdcl .tk{opacity:1;transform:rotate(42deg) scale(1)}
   .tdsk .bx{background:var(--ink);border-color:var(--ink)}
   .tdsk .bx::after{opacity:1}
   .tdbar i{width:100%}
+  .tdp .row.fresh{height:22px;opacity:1}
 }
 </style>
 </head>
@@ -5444,81 +5413,56 @@ const TOUR_KEY = "nr_tour_v1";
 
 const TOUR_STEPS = [
   { title: "一页走完一份简评",
-    body: `填主体 → 读材料 → 出草稿 → 补薄处 → 导出 Word。数字核对与表述修订由程序做，
-      你只需要看它挑出来的那几条。`,
+    body: () => DEMO.on
+      ? `填主体 → 读材料 → 生成 → 补薄处 → 导出。下面拿中山城建那一轮真稿走一遍。`
+      : `填主体 → 读材料 → 生成 → 补薄处 → 导出。流程区五步，正文在右边。`,
     demo: "flow", wiz: "search" },
 
-  { sel: ["#ws-search"], title: "第一步 · 检索主体", wiz: "search",
-    body: `填工商全称，简称也能命中。上方两个模式：<b>首次覆盖</b>直接检索；
-      <b>跟踪期更新</b>要先上传上一版内评报告，系统比对出差异再改写，不重写全文。`,
+  { sel: ["#ws-search .wbody"], title: "第 1 步 · 检索主体", wiz: "search",
+    body: `填工商全称（简称也认），点检索；要改上一版报告，切「更新既有报告」。`,
     demo: "search" },
 
-  { sel: ["#matList"], title: "材料一次取齐", wiz: "materials",
+  { sel: ["#matList"], title: "第 2 步 · 读取材料", wiz: "materials",
     when: () => document.querySelectorAll("#matList .mat").length > 0,
-    body: () => `四类一起列：<b>跟踪评级报告</b>是判断主线，<b>募集说明书</b>看募投与条款，
-      <b>审计报告</b>定财务口径与审计意见，<b>其他公告</b>找报告期内的变化。
-      默认只勾前两类，其余按需。${DEMO.on ? "<p>这一轮四类都读了，摘录 7.7 万字。</p>" : ""}
-      <p>本机 PDF 也能拖进上面的框，不接财汇同样可用。</p>`,
+    body: `四类公告都会列出来，勾好点「读取选中材料」；本机 PDF 也能直接拖进来。`,
     demo: "mats" },
 
-  { sel: ["#ws-generate"], title: "先把你的判断写进去", wiz: "generate",
-    body: () => `<b>分析员补充说明</b>是可选的：读完材料后的判断、要强调的重点、发现的疑点，
-      都在这里写给模型，它决定正文的写作重心。
-      ${DEMO.on ? "<p>这一轮只写了一句「土地指标写清结算方式」——短不要紧，说清该往哪写就够了。</p>" : ""}
-      <p>涉及金额时以材料为准——没有材料支撑的数字不会写进正文。</p>`,
-    demo: "notes" },
+  { sel: [".note-in"], title: "第 3 步 · 先写判断再生成", wiz: "generate",
+    when: () => !!document.querySelector(".note-in"),
+    body: `把读完材料的判断写在这里，决定正文往哪写；留空也行。` },
 
-  { sel: ["#ws-fill"], title: "第四步 · 补充完善", wiz: "fill",
-    body: () => `生成后先<b>评估</b>哪几处内容有缺口：风险事项只提了名字却没给金额、行业段没有可核实的数、
-      某段写得太薄。每处标出建议查什么，<b>点「搜索」才真去外网</b>，勾中的结果才写进正文，
-      并注明来源与时间。
-      ${DEMO.on ? `<p>这一轮评下来是「未发现缺口」——可正文里「对外担保余额较大」只给了定性、
-      没给金额，这种程序看不出来，用「自己搜一条」补。</p>` : "<p>程序判不出的缺口，用「自己搜一条」。</p>"}`,
+  { sel: ["#ws-fill"], title: "第 4 步 · 补充完善", wiz: "fill",
+    body: `先评估哪几处有缺口，点「搜索」才去外网，勾中的结果才写进正文。`,
     demo: "hotfill" },
 
-  { sel: [".docbar", "#ws-export"], title: "导出", wiz: "export",
-    body: `按模板的排版参数生成 Word，文件名带日期。正文工具条上还有几个开关：
-      <b>段落空行</b>（页面与 Word 同步）、<b>发送</b>到邮箱、<b>下载</b>打包（报告+底稿+附件）。` },
+  { sel: [".docbar .end"], title: "第 5 步 · 导出报告", wiz: "export",
+    when: () => !!document.querySelector(".docbar .end"),
+    body: `导出 Word 按模板排版；<b>发送</b>当附件发到邮箱；<b>下载</b>把报告、底稿、材料打成包。` },
 
-  { sel: ["#blk-asset", "#blk-industry", ".doccol"], title: "成品长什么样", wiz: "export",
-    when: () => !!(S.draft && S.draft.commentary),
-    body: () => DEMO.on
-      ? `右边这份就是中山城建 2026 年跟踪期的成稿：5,534 字、财务表 12 行。
-        资产段每一句都是同一个句式：<b>科目 + 金额 +（占资产总额比例）+ 主要为…… + 能否变现</b>——
-        比方存货那句，金额、占比、52 宗土地 2,158.71 亩、未办证与未缴出让金 16.51 亿元，一句说完。
-        <p>不是编的示例：整份稿子就是从材料里写出来的那一版。</p>`
-      : `资产段每一句都是同一个句式：<b>科目 + 金额 +（占资产总额比例）+ 主要为…… + 能否变现</b>。
-        能不能变现、有没有受限，要写在句子里，不能只写「主要为土地开发成本」就收笔。` },
+  { sel: ["#railL", "#p-pos"], title: "候选观点：手动补一条", wiz: "export",
+    when: () => !!(document.querySelector("#p-pos .chip") || document.querySelector("#p-con .chip")),
+    body: `正文没用上的判断句留在这里，点一条就追加进正面或关注，加过的自动消失。`,
+    demo: "pool" },
 
-  { sel: ["#blk-pos", "#blk-con", "#blk-overview", ".doccol"], title: "正文哪里都能改", wiz: "export",
-    body: `生成草稿后，正文出现在右侧这片区域。每一段都是输入框，直接改，改的是同一份草稿——
-      导出、打包、发邮件都读它，不会出现「屏幕上一版、Word 里另一版」。
-      <p>条目左侧的序号 <b>1）2）</b> 按住就能拖动排序，拖的是整条，文字不会丢。</p>`,
-    demo: "drag" },
+  { sel: ["#blk-basic", "#blk-overview"], title: "正文每一段都能改", wiz: "export",
+    body: `每段都是输入框，直接改；导出、发送、下载读的都是这一份。` },
 
-  { sel: ["#blk-segments .add", "#blk-segments", ".doccol"], title: "还能往里加", wiz: "export",
-    body: `正文里每节下面都能加：<b>+ 条目</b>（摘要的正面与关注）、<b>+ 板块</b>（分部业务）、
-      <b>+ 专题</b>（带预设：或有事项、在建工程与资本支出、政府补助依赖…）。
-      <p>新增的内容同样会进校验，写得不合格一样会被挑出来。</p>`,
+  { sel: ["#blk-segments .add", "#blk-segments"], title: "自己加一节", wiz: "export",
+    when: () => !!document.querySelector("#blk-segments"),
+    body: `点「+ 板块」空一节出来，标题正文都能直接写；摘要「+ 条目」、末尾「+ 专题段」同理。`,
     demo: "add" },
 
-  { sel: [".rail-r .ck-h", "#railR"], title: "右栏只剩你要判断的", wiz: "export",
-    body: () => `草稿右侧那一栏。表述与结构问题在生成时就改掉了，改不动的才留在这里。
-      <b>需人工核验</b>只放数字类：算式复算不通过、数字对不上、表格里找不到出处——
-      这些程序判断不了对错。
-      ${DEMO.on ? "<p>这一轮右边留了 5 条待核；下面还有 1 条改不动的、3 处已自动修正的表述问题。</p>" : ""}
-      <p>点一条就跳回正文对应的那句话，核完打勾，勾选进度记在本机。</p>`,
-    demo: "rail" },
+  { sel: ["#blk-pos"], title: "顺序可以拖", wiz: "export", try: true,
+    body: `按住条目左边的序号上下拖就能换位置——这一步不用看，现在就能试。` },
 
-  { sel: ["#tourBtn", "#docLink"], title: "想了解怎么写的",
-    body: `这个问号随时可以重看本引导。旁边的「说明」讲了流程、涉及哪些文件、模板与提示词的结构，
-      详版另讲写作判据与实现细节。
-      <p>退出后界面会回到空白，演示里那份中山城建的稿子不会留下。</p>
-      <p>键盘 <span class="tour-kbd">←</span>
-      <span class="tour-kbd">→</span> 翻页，<span class="tour-kbd">Esc</span> 退出。</p>` },
+  { sel: ["#railR .ck-list", ".rail-r .ck-h"], title: "核验栏：只核数字", wiz: "export",
+    body: `这里只留程序判不了的数字问题，点一条跳到正文那句，核完打勾。` },
+
+  { sel: ["#tourBtn", "#docLink"], title: "随时可以重看",
+    body: `点右上角的 ? 重看；「说明」讲流程与写法。← → 翻页，Esc 退出。` },
 ];
 
-const TOUR = { on: false, i: 0, raf: 0, scrollTo: null };
+const TOUR = { on: false, i: 0, raf: 0, scrollTo: null, settle: 0, openWas: undefined, notesOpened: false };
 
 /* ══ 引导用的那一轮真实数据 ═══════════════════════════════════════
    中山城市建设集团有限公司 2026 年跟踪期：4 份材料、摘录 7.7 万字、
@@ -6091,90 +6035,66 @@ const TOUR_DATA = {
    都用骨架条代替文字，只演示这一步里最难用文字讲清的动作：输入、勾选、
    读取、按下、让位、弹出、勾掉。 */
 const TOUR_DEMO = {
-  /* 欢迎：整条链路，加一句交代「界面里摆的就是真的」 */
+  /* 欢迎：整条链路，一行交代「界面里摆的就是真的」 */
   flow: () => `<div class="tdemo">
-      <div class="td-h">整条链路</div>
       <div class="tflow">
-        <span>检索</span><i>→</i><span>材料</span><i>→</i><span>草稿</span><i>→</i><span>补薄</span><i>→</i><span>导出</span>
+        <span>检索</span><i>→</i><span>材料</span><i>→</i><span>生成</span><i>→</i><span>补薄</span><i>→</i><span>导出</span>
       </div>
       <div class="tdreal">${DEMO.on
-        ? `界面里摆的是${esc(TOUR_DATA.company)}的真实一轮：4 份材料、摘录 7.7 万字、正文 5,534 字。`
-        : "下面每一步都指向界面上真实的位置，不放示意图。"}</div>
+        ? `界面里是${esc(TOUR_DATA.company)} 2026 年跟踪期的真稿，退出引导即清空。`
+        : "每一步都指向界面上真实的位置，不放示意图。"}</div>
     </div>`,
 
-  /* 检索：把主体名打进输入框，四类结果依次落地。
-     主体名已经填在左边输入框里，这里只演示「一次宽查询、本地分四类」。 */
+  /* 检索：主体名打进输入框，四类结果依次落地 */
   search: () => `<div class="tdemo">
-      <div class="td-h">一次宽查询，本地分四类</div>
       <div class="tdwin">
         <div class="tdq"><span class="ty">${esc(TOUR_DATA.company)}</span></div>
         <div class="tdchips">${Object.keys(TOUR_DATA.counts).map(k =>
           `<span>${esc(k)} <b>${TOUR_DATA.counts[k]}</b></span>`).join("")}</div>
       </div>
-      <div class="tdcap">付息兑付、上市流通这类程序性公告已滤掉；同一年审计报告只留一份</div>
+      <div class="tdcap">一次宽查询，本地分四类</div>
     </div>`,
 
-  /* 材料：四行依次勾上、进度条走完。标题与字数就在左边清单里 */
+  /* 材料：四行依次勾上、进度条走完 */
   mats: () => `<div class="tdemo">
-      <div class="td-h">勾选 → 读进 → 摘录</div>
       <div class="tdsk">${[0, 1, 2, 3].map(() => `
         <div class="r"><span class="bx"></span>
           <span class="m"><span class="ln w3"></span><span class="ln w2 sm"></span></span></div>`).join("")}
         <div class="tdbar"><i></i></div>
       </div>
-      <div class="tdcap">默认勾前两类；这一轮四类都读了，摘录 7.7 万字</div>
+      <div class="tdcap">勾选 → 读进 → 摘录</div>
     </div>`,
 
-  /* 补充说明：写到一半的那一句。真实那句已经在上面的输入框里 */
-  notes: () => `<div class="tdemo">
-      <div class="td-h">读完材料再写，不是先写</div>
-      <div class="tdta">
-        <span class="ln w3"></span>
-        <span class="l2"><span class="ln w2"></span><span class="caret"></span></span>
-      </div>
-      <div class="tdcap">它决定写作重心，但不当数字来源；与材料冲突时以材料为准</div>
-    </div>`,
-
-  /* 缺口：评估出一条 → 按钮按下 → 结果落地。具体缺口在第 4 步那个面板里 */
+  /* 缺口：评估出一条 → 你点搜索 → 结果落地 */
   hotfill: () => `<div class="tdemo">
-      <div class="td-h">评估 → 你点 → 才去搜</div>
       <div class="tdhk">
         <div class="h1"><span class="ln w2"></span><span class="go">搜索</span></div>
         <div class="h2"><span class="ln w3"></span></div>
         <div class="rs a"><span class="ln w3"></span><span class="ln w1 sm"></span></div>
         <div class="rs b"><span class="ln w3"></span><span class="ln w1 sm"></span></div>
       </div>
-      <div class="tdcap">搜到的东西要你勾中才写进正文，并注明来源与时间</div>
+      <div class="tdcap">勾中的才写进正文，并注明来源与时间</div>
     </div>`,
 
-  /* 拖动：序号按住，整条下移一格，下面这条同时让开，原位留虚线。
-     行里的字就在正文里，这里只看动作 */
-  drag: () => `<div class="tdemo tdrag">
-      <div class="td-h">按住序号拖动排序</div>
-      <div class="td-row"><span class="td-num">1）</span><span class="td-line"><span class="ln w3"></span></span></div>
-      <div class="td-row mv"><span class="td-num">2）</span><span class="td-line"><span class="ln w2"></span></span></div>
-      <div class="td-row yield"><span class="td-num">3）</span><span class="td-line"><span class="ln w3"></span></span></div>
-      <div class="td-ph"></div><div class="td-finger"></div>
+  /* 候选观点：点一条 → 它从候选里消失 → 列表里多一条 */
+  pool: () => `<div class="tdemo">
+      <div class="tdp">
+        <div class="chi a"><span class="ln w3"></span><span class="pl">+</span></div>
+        <div class="chi b"><span class="ln w2"></span><span class="pl">+</span></div>
+      </div>
+      <div class="tdp-ar">↓ 点一条，追加到列表末尾</div>
+      <div class="tdpl">
+        <div class="row"><span class="n">3）</span><span class="ln w3"></span></div>
+        <div class="row fresh"><span class="n">4）</span><span class="ln w2"></span></div>
+      </div>
     </div>`,
 
-  /* 加：按钮按下 → 新块展开 → 专题菜单弹出（菜单只有点了才看得到） */
+  /* 加：按钮按下 → 新块展开 → 专题菜单弹出 */
   add: () => `<div class="tdemo tadd">
-      <div class="td-h">+ 板块 / + 专题</div>
       <div class="td-blk"><span class="ln w2"></span></div>
       <div class="td-add">+ 板块</div>
       <div class="td-blk fresh"><span class="ln w2"></span></div>
       <div class="tdmenu"><span>或有事项</span><span>在建工程与资本支出</span><span>政府补助依赖</span></div>
-    </div>`,
-
-  /* 右栏：一条一条勾掉。条目本身就在右侧那栏 */
-  rail: () => `<div class="tdemo">
-      <div class="td-h">一条一条核对</div>
-      <div class="tdcl">
-        <div class="r"><span class="dot"></span><span class="ln w3"></span><span class="tk"></span></div>
-        <div class="r"><span class="dot"></span><span class="ln w2"></span><span class="tk"></span></div>
-        <div class="r"><span class="dot"></span><span class="ln w3"></span><span class="tk"></span></div>
-      </div>
-      <div class="tdcap">核完打勾，进度记在本机；点一条回到正文那一句</div>
     </div>`,
 };
 
@@ -6240,18 +6160,42 @@ function demoExit(){
   if(nb && nb.classList.contains("open") && !DEMO.notesWasOpen) toggleNotes();
   paintMode();         // 材料区恢复占位文案
   refreshCostHint();
-  // 引导可能一路滚到正文深处（手机上万像素），退出后回到顶部，别让人对着中段空页面
+  // 引导可能一路滚到正文深处（手机上万像素），退出后回到顶部，别让人对着中段空页面。
+  // 流程区在 aside 里、正文在 main 里，各自滚，光 reset window 不够。
   try{ scrollTo({ top: 0, behavior: "auto" }); }catch(e){ scrollTo(0, 0); }
+  document.querySelectorAll("aside, main").forEach(x => { x.scrollTop = 0; });
   toast("演示内容已清除，可以填自己的主体了");
 }
 
 /* 引导讲到第几步，左侧就把那一步展开。
    直接改 OPEN_STEP 而不调 openStep：后者会自己平滑滚动，
-   和 tourPaint 的「把目标滚进视野」互相拉扯，孔会落到半路。 */
-function demoFocus(key){
-  if(!DEMO.on || !key || OPEN_STEP === key) return;
-  OPEN_STEP = key;
-  paintSteps();
+   和 tourPaint 的「把目标滚进视野」互相拉扯，孔会落到半路。
+   没有演示（手上有活）时也要展开——折起来的步骤高度近乎 0，
+   框会落在空壳上，看起来就是「框和内容对不上」。 */
+function tourFocus(key){
+  if(!key || !STEPS.some(s => s.key === key)) return false;
+  if(!reached(key)) return false;    // 还没走到的步骤不硬开，开了也没有内容
+  if(TOUR.openWas === undefined) TOUR.openWas = OPEN_STEP;
+  let moved = false;
+  if(OPEN_STEP !== key){ OPEN_STEP = key; paintSteps(); moved = true; }
+  // 补充说明讲的是框里面，框折着就只剩一个标题条，替用户展开、退出时再折回去
+  if(key === "generate"){
+    const nb = $("#niBody");
+    if(nb && !nb.classList.contains("open")){ toggleNotes(); TOUR.notesOpened = true; moved = true; }
+  }
+  return moved;
+}
+
+/* 最近的纵向滚动容器：手机上流程区在 aside 里、正文在 main 里，两者各自滚。
+   取错了会把整页当成滚动条，滚不动。 */
+function scrollHost(el){
+  let p = el && el.parentElement;
+  while(p && p !== document.body && p !== document.documentElement){
+    const st = getComputedStyle(p);
+    if(/(auto|scroll)/.test(st.overflowY) && p.scrollHeight > p.clientHeight + 4) return p;
+    p = p.parentElement;
+  }
+  return document.scrollingElement || document.documentElement;
 }
 
 function tourEl(q){
@@ -6273,6 +6217,8 @@ function startTour(idx){
   if(TOUR.on) { /* 重看时从头来 */ }
   // 先铺演示：讲第 2 步时要指的清单、第 7 步要指的正文，得先存在
   demoEnter();
+  TOUR.openWas = OPEN_STEP;
+  TOUR.notesOpened = false;
   TOUR.on = true; TOUR.i = Math.max(0, idx || 0);
   const mask = $("#tourMask");
   mask.classList.add("show");
@@ -6297,10 +6243,23 @@ function tourEnd(){
   document.body.style.overflow = "";
   document.body.style.paddingRight = "";
   $("#tourTip").innerHTML = "";
+  mask.classList.remove("passthru");
   document.removeEventListener("keydown", tourKey);
   window.removeEventListener("resize", tourRepaint);
   window.removeEventListener("scroll", tourRepaint, true);
   if(TOUR.scrollTo){ TOUR.scrollTo = null; }
+  // 手上有活时只借用了展开状态（和补充说明的折叠），退出就还回去。
+  // 演示态交给 demoExit：它整套复位，不用这里再关一次。
+  if(!DEMO.on){
+    if(TOUR.notesOpened){
+      const nb = $("#niBody");
+      if(nb && nb.classList.contains("open")) toggleNotes();
+    }
+    if(TOUR.openWas !== undefined && OPEN_STEP !== TOUR.openWas){
+      OPEN_STEP = TOUR.openWas; paintSteps();
+    }
+  }
+  TOUR.openWas = undefined; TOUR.notesOpened = false;
   // 演示内容一律收回：看完引导，工作台要是空的，否则下一轮会把中山城建那份稿子当成自己的
   demoExit();
 }
@@ -6345,9 +6304,20 @@ function tourPaint(scroll){
       <button class="tour-btn primary" id="tourNextBtn" onclick="tourNext()">${last ? "开始使用" : (TOUR.i === 0 ? "看一遍" : "下一步")}</button>
     </div>`;
 
-  tourDemoInit(tip);
-  // 讲到第几步，左侧手风琴就展开那一步；同步改完再量孔，位置才对得上
-  if(DEMO.on && step.wiz) demoFocus(step.wiz);
+  // 讲到第几步，左侧手风琴就展开那一步；同步改完再量孔，位置才对得上。
+  // 有草稿时（没有演示）也要展开——否则孔落在折起来的空壳上，框与内容对不上。
+  const moved = step.wiz ? tourFocus(step.wiz) : false;
+  // 「自己试一下」那一步：遮罩让开点击，页面照常能操作，气泡自己还接事件
+  $("#tourMask").classList.toggle("passthru", !!step.try);
+  // 手风琴展开是 .32s 的过渡：刚换步那一帧量到的是中途高度，孔会落在旧位置。
+  // 等它走完再量一次，框才和内容对得上（第 2 步曾偏 116px）。
+  if(moved){
+    clearTimeout(TOUR.settle);
+    TOUR.settle = setTimeout(() => {
+      TOUR.settle = 0;
+      if(TOUR.on) tourPaint(false);
+    }, 420);
+  }
   const el = tourTarget(step);
   const tw = tip.offsetWidth, th = tip.offsetHeight;
   const vw = innerWidth, vh = innerHeight;
@@ -6358,29 +6328,44 @@ function tourPaint(scroll){
   if(scroll && el){
     const r0 = el.getBoundingClientRect();
     if(r0.top < 72 || r0.bottom > vh - 40){
-      try{ el.scrollIntoView({ block: r0.height > vh - 120 ? "start" : "center",
-                               behavior: "smooth" }); }catch(e){ el.scrollIntoView(); }
+      try{ el.scrollIntoView({ block: r0.height > vh - 120 ? "start" : "center" }); }
+      catch(e){ el.scrollIntoView(); }
     }
   }
 
-  // 手机：气泡贴着目标的反方向放，孔按目标走，且不许被气泡压住
+  // 手机：气泡与目标一上一下。目标先滚到顶上，孔就从元素顶端量起——
+  // 孔一旦偏离元素，看起来就是「框和内容对不上」。
   if(innerWidth <= 640){
     tip.style.left = tip.style.top = "";
     tip.dataset.arrow = "none";
     if(el){
-      const r = el.getBoundingClientRect();
       const pad = 4;
-      const cy = r.top + r.height / 2;
-      // 气泡放哪边，先定下来，才好算孔的可用空间
-      const atBottom = cy < vh * 0.52;
+      let th2 = tip.offsetHeight;
+      const sc = scrollHost(el);
+      let r = el.getBoundingClientRect();
+      // 气泡放在下边，把目标顶滚到 8px，上方那一整块就都归孔了
+      const d0 = Math.round(r.top - pad - 8);
+      if(sc && Math.abs(d0) > 2){
+        sc.scrollBy(0, d0);
+        r = el.getBoundingClientRect();
+      }
+      let atBottom = true, topLimit = 2, bottomLimit = vh - th2 - 18;
+      // 滚到头还被气泡压着（目标贴着页面底部）：翻到上边去
+      if(r.bottom + pad > bottomLimit && r.top - pad >= th2 + 20){
+        atBottom = false; topLimit = th2 + 20; bottomLimit = vh - 6;
+      }
       tip.classList.toggle("mob-bottom", atBottom);
       tip.classList.toggle("mob-top", !atBottom);
-      const th2 = tip.offsetHeight;
-      const room = atBottom ? (vh - th2 - 28) : (vh - 12);
-      const topLimit = atBottom ? 2 : (th2 + 22);
-      let hTop = Math.max(topLimit, Math.min(r.top - pad, room - 40));
-      let hH = Math.min(r.height + pad * 2, (atBottom ? room : vh - 12) - hTop);
-      hH = Math.max(28, hH);
+      let hTop = Math.max(topLimit, Math.round(r.top - pad));
+      let hH = Math.max(28, Math.min(r.height + pad * 2, bottomLimit - hTop));
+      // 还是太窄：收掉气泡里的动画块（内容本来就在孔里），再量一次
+      if(step.demo && hH < Math.min(120, r.height * 0.5)){
+        tip.classList.add("nodemo");
+        th2 = tip.offsetHeight;
+        if(atBottom) bottomLimit = vh - th2 - 18;
+        hTop = Math.max(atBottom ? 2 : (th2 + 20), Math.round(r.top - pad));
+        hH = Math.max(28, Math.min(r.height + pad * 2, bottomLimit - hTop));
+      }
       hole.style.left = Math.max(2, r.left - pad) + "px";
       hole.style.top = hTop + "px";
       hole.style.width = Math.min(vw - 4, r.width + pad * 2) + "px";
@@ -6444,19 +6429,6 @@ function tourPaint(scroll){
   tip.style.setProperty("--ax", Math.max(18, Math.min(tw - 18, cx)) + "px");
   const cy = Math.round(r.top + r.height / 2 - Math.round(top));
   tip.style.setProperty("--ay", Math.max(18, Math.min(th - 18, cy)) + "px");
-}
-
-/* 演示块里需要量一下再说的地方。
-   拖动演示的虚线占位块要落在第 2 行原位——它上面还有一行标题，标题高度
-   随字体与缩放变，用固定 top 会偏三十几像素（实测偏 35px）。 */
-function tourDemoInit(tip){
-  const drag = tip.querySelector(".tdrag");
-  if(!drag) return;
-  const rows = drag.querySelectorAll(".td-row");
-  const ph = drag.querySelector(".td-ph");
-  if(rows.length > 1 && ph){
-    ph.style.top = rows[1].offsetTop + "px";
-  }
 }
 
 /* 首次进入自动弹一次。写在 bootData 里而不是页面加载：
