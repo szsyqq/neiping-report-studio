@@ -713,6 +713,8 @@ _METAPHOR = (
     "双轮驱动", "双引擎", "三驾马车", "一体两翼", "两条腿", "双主线", "双轮",
     "结构性错位", "互为支撑", "形成合力", "共振",
 )
+# 回指式用法：「上述三条线索落到公司」——三条是什么，前文刚写完，这种不算比喻
+_MICRO_BACKREF = re.compile(r"(?:上述|以上|前述|前文)[^。；]{0,8}线索")
 
 # 先擦掉「材料显示」「据材料」这类前缀，多数句子擦完就能用，不必整块删
 _ERASE_RULES = (
@@ -2172,6 +2174,12 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
         # 只抬命中那一句，不把整段甩出来
         _sent = next((x for x in re.split(r"(?<=[。；])", _txt)
                       if any(w in x for w in _hit)), _txt)
+        # 「上述三条线索」是收口回指：前文已经逐条写完，用它把人带回来不算比喻，
+        # 反倒比重复列一遍更省字。要拦的是用「两条互不重叠的线索」把结构概括掉那种。
+        if _MICRO_BACKREF.search(_sent or ""):
+            _hit = [w for w in _hit if w != "线索"]
+            if not _hit:
+                continue
         _meta_rows.append({
             "num": "、".join(dict.fromkeys(_hit)), "where": _where, "kind": "措辞",
             "full": _sent.strip()[:160], "si": 0, "seg": 0,
