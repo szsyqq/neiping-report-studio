@@ -24,7 +24,7 @@ DATA = BASE / "data"
 
 LLM_JSON = DATA / "llm.json"
 CAIHUI_JSON = DATA / "caihui.json"
-SEARCH_JSON = DATA / "search.json"
+
 BUDGET_JSON = DATA / "budget.json"
 
 # 单次生成的花费上限（元）。0 表示不限制。
@@ -118,26 +118,7 @@ def save_caihui(patch: dict) -> dict:
     return caihui_config()
 
 
-# ── 外网搜索 ────────────────────────────────────────────────────────────
-# 补材料里没有的东西（行业数据、近期事件）时用。不是必需：没配就当这个功能不存在，
-# 生成照常跑，只是不会去外网找。
-SEARCH_PROVIDERS = {
-    "deepseek": {"name": "DeepSeek 搜索", "url": "https://api.deepseek.com/v1/tools/search",
-                 "note": "与模型共用 Key，不必另申请；每千次成功请求 5 元，无结果不计费",
-                 "own_key": False},
-    "bocha": {"name": "博查", "url": "https://api.bochaai.com/v1/web-search",
-              "note": "国内直连，可选公众号（summary=true 带摘要）", "own_key": True},
-    "serper": {"name": "Serper（Google）", "url": "https://google.serper.dev/search",
-               "note": "结果更全，需要能连 Google 的网络", "own_key": True},
-    "tavily": {"name": "Tavily", "url": "https://api.tavily.com/search",
-               "note": "为问答场景优化，返回内容较长", "own_key": True},
-}
-
-
-def search_file() -> dict:
-    return _read(SEARCH_JSON)
-
-
+# ── 花费上限 ────────────────────────────────────────────────────────────
 def budget() -> dict:
     """单次生成的成本上限。默认 2 元——参照「一次出稿不该比一杯咖啡贵」。"""
     f = _read(BUDGET_JSON)
@@ -164,87 +145,6 @@ def save_budget(patch: dict) -> dict:
     return budget()
 
 
-def _llm_key_for_search() -> tuple[str, str]:
-    """DeepSeek 搜索与模型共用 Key：直接读模型配置里那把 DeepSeek 的。
-
-    list_models() 故意不回显 apiKey（页面要用），所以这里走 _get_model 取完整配置。
-    优先取用户当前默认的那个模型，它才是真正在花钱的那个。
-    """
-    import llm
-    try:
-        models = llm.list_models()
-    except Exception:                                          # noqa: BLE001
-        return "", ""
-    ids = [m.get("id") for m in models if "deepseek" in str(m.get("id") or "").lower()]
-    if not ids:
-        return "", ""
-    try:
-        pref = llm.pick_default(models)
-    except Exception:                                          # noqa: BLE001
-        pref = ""
-    order = ([pref] if pref in ids else []) + [i for i in ids if i != pref]
-    for mid in order:
-        try:
-            m = llm._get_model(mid)                            # noqa: SLF001
-        except Exception:                                      # noqa: BLE001
-            continue
-        key = (m or {}).get("apiKey") or ""
-        if key:
-            # 搜索接口固定在 /v1/tools/search，但 base 要跟着这把 key 走
-            base = str(m.get("url") or "")
-            for suf in ("/chat/completions", "/v1/chat/completions"):
-                if base.endswith(suf):
-                    base = base[: -len(suf)]
-                    break
-            return key, base.rstrip("/") + "/v1/tools/search"
-    return "", ""
-
-
-def search_config() -> dict:
-    """外网搜索配置。环境变量 > data/search.json > 复用模型 Key。
-
-    默认 provider 是 deepseek——它跟模型用同一个 Key，不必为「能不能联网查一句」
-    再去申请一个账号。选了它但模型配的是别家（没有 DeepSeek Key）时不算就绪，
-    页面会明说差什么。
-    """
-    f = search_file()
-    prov = (_env("SEARCH_PROVIDER") or str(f.get("provider") or "") or "deepseek").strip()
-    meta = SEARCH_PROVIDERS.get(prov) or {}
-    own = bool(meta.get("own_key", True))
-
-    if own:
-        key = _env("SEARCH_API_KEY") or str(f.get("apiKey") or "")
-        src = "env" if _env("SEARCH_API_KEY") else ("file" if f.get("apiKey") else "")
-        hint = "" if key else "这家要单独的 Key，填在下面或用环境变量 SEARCH_API_KEY"
-    else:
-        key, _ = _llm_key_for_search()
-        src = "llm" if key else ""
-        hint = "" if key else "模型里没有配置 DeepSeek Key，先在「模型」里加一个"
-
-    url = (_env("SEARCH_API_URL") or str(f.get("url") or "") or meta.get("url", ""))
-    return {"provider": prov, "url": url, "apiKey": key, "source": src,
-            "own_key": own, "hint": hint,
-            "ready": bool(key and url), "max_results": int(f.get("maxResults") or 5)}
-
-
-def save_search(patch: dict) -> dict:
-    cur = search_file()
-    for k in ("provider", "url"):
-        if patch.get(k) is not None:
-            cur[k] = str(patch[k]).strip()
-    if patch.get("maxResults") is not None:
-        try:
-            cur["maxResults"] = max(1, min(10, int(patch["maxResults"])))
-        except (TypeError, ValueError):
-            pass
-    if (patch.get("apiKey") or "").strip():
-        cur["apiKey"] = str(patch["apiKey"]).strip()
-    if patch.get("clear"):
-        cur = {}
-    _write(SEARCH_JSON, cur)
-    return search_config()
-
-
 # ── 汇总（给页面用；密钥只报有没有，不回显） ──────────────────────────
 def overview() -> dict:
     from auth import is_default
@@ -254,7 +154,6 @@ def overview() -> dict:
     lc = llm_config()
     mc = mailer.describe()
     cc = caihui_config()
-    sc = search_config()
     import pricing
     try:
         models, skipped = llm.usable_models()
@@ -289,13 +188,4 @@ def overview() -> dict:
         # 单价给页面直接显示：不想算「2 元够不够」，看到「一次约 ¥0.52」就够了
         "pricing": {"rates": [pricing.rate(i) for i in ("deepseek-flash", "deepseek-v4-pro")],
                     "peak": pricing.is_peak(), "based_on": "DeepSeek 官方价目表 2026-10-30"},
-        "search": {"provider": sc["provider"], "url": sc["url"], "ready": sc["ready"],
-                   "has_key": bool(sc["apiKey"]), "source": sc["source"],
-                   "own_key": sc.get("own_key", True),
-                   "max_results": sc["max_results"],
-                   "providers": [{"id": k, "name": v["name"], "url": v["url"],
-                                  "note": v["note"], "own_key": v.get("own_key", True)}
-                                 for k, v in SEARCH_PROVIDERS.items()],
-                   "hint": "" if sc["ready"] else (sc.get("hint") or (
-                       "没配外网搜索。生成时不会去外网找补充材料。"))},
     }

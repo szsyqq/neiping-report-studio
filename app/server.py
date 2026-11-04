@@ -10,6 +10,7 @@
 
 from __future__ import annotations
 
+import difflib
 import hashlib
 import json
 import mimetypes
@@ -40,6 +41,7 @@ import docx_writer  # noqa: E402
 import facts as facts_mod  # noqa: E402
 import generator  # noqa: E402
 import history  # noqa: E402
+import market as market_mod  # noqa: E402
 import jobs  # noqa: E402
 import llm  # noqa: E402
 import mailer  # noqa: E402
@@ -228,6 +230,10 @@ def do_fetch(company: str, picks: list[dict], budget: int = 0, progress=None,
                      chars=sum(m["chars"] for m in loaded),
                      note=f"{len(loaded)}/{len(picks)} 份 · "
                           f"{sum(m['pages'] for m in loaded)} 页")
+    # 材料读完就顺手把二级市场定价取回来：人接下来要挑材料、写判断，几分钟后
+    # 才按生成，那段时间足够它跑完。放进生成流程里等，是这几分钟最不该花的。
+    if company and loaded:
+        threading.Thread(target=market_mod.warm, args=(company,), daemon=True).start()
     return {"materials": [{k: v for k, v in m.items() if k != "text"} for m in loaded],
             "loaded": [m.get("title") for m in loaded if m.get("text")],
             # 这一轮之后该主体名下的材料全集：前端据此覆盖本地清单，
@@ -306,8 +312,25 @@ def do_generate(company: str, model: str | None, progress=None,
 
     if not materials:
         raise ValueError("请先拉取材料，或上传评级报告/募集说明书 PDF")
+    # 二级市场定价：能取到就让模型写这一段，取不到就让 market 段留空。
+    # 取数失败不拦生成——少一段总比整份不出好。
+    facts = dict(facts or {})
+    if not facts.get("market"):
+        try:
+            if progress:
+                # 进度只往上走，这一步给个低档：给 93 会让后面整段模型写作
+                # 都停在 93%，看起来像卡住了
+                progress(2, "取二级市场数据", "中债估值主体利差")
+            # 最多等 8 秒：定价只是一段，不该为它把整次生成卡住；等不到就先不写
+            facts["market"] = market_mod.fetch_spread(_client(), company, wait=8)
+        except Exception:                                  # noqa: BLE001
+            facts["market"] = {}
+    # revise=False：正文一解析出来就返回，表述复核那第二趟模型调用留到
+    # /api/jobs/revise 里跑。人先读到稿子，检查在后台进行——这是「一边输出
+    # 一边核」的落地方式，而不是把两次调用串在一起让人干等。
     draft = generator.generate(facts or facts_mod.empty_facts(company), materials,
-                               model_id=model, progress=progress, user_notes=user_notes)
+                               model_id=model, progress=progress, user_notes=user_notes,
+                               revise=False)
     # 落一条历史：draft 全文 + 用了哪几份材料，之后可回看、接着改、重新导出
     rid = history.save(draft, materials, model=(draft.get("usage") or {}).get("model", ""),
                        seconds=(draft.get("usage") or {}).get("seconds", 0))
@@ -318,6 +341,33 @@ def do_generate(company: str, model: str | None, progress=None,
     return {"draft": draft}
 
 
+def do_revise(company: str, model: str | None = None, progress=None,
+              history_id: str = "") -> dict:
+    """正文已经交出去之后，补跑那一轮表述复核。
+
+    单独成一个任务，是因为它是第二次模型调用（几十秒），而人要看的东西在那之前
+    就已经齐了。跑完把新草稿换回 STATE 与历史记录：不从历史里同步的话，明天从
+    列表恢复出来的是复核前那一版。
+    """
+    with LOCK:
+        st = STATE.get(_key(company)) or {}
+        draft = st.get("draft")
+        facts = st.get("facts") or {}
+        materials = st.get("materials") or []
+    if not draft:
+        raise ValueError("没有草稿可以复核")
+    rid = history_id or draft.get("history_id") or ""
+    new = generator.revise_draft(draft, facts, materials, model_id=model, progress=progress)
+    new["history_id"] = rid or new.get("history_id", "")
+    with LOCK:
+        STATE.setdefault(_key(company), {})["draft"] = new
+    _persist(company)
+    if rid:
+        # 历史记录是按 id 存的整份 rec，换草稿要一起换，否则恢复出来是旧正文
+        history.replace_draft(rid, new)
+    return {"draft": new}
+
+
 # ---------------------------------------------------------------- HTTP 动作
 
 def api_search(payload: dict) -> dict:
@@ -325,6 +375,77 @@ def api_search(payload: dict) -> dict:
     if not company:
         raise ValueError("请填写企业名称")
     return do_search(company)
+
+
+# 联想缓存：同一次输入不重复问财汇（每次检索都要点数，打字过程中不该刷）
+_SUG_CACHE: dict[str, dict] = {}
+
+
+def _company_names_in(title: str) -> list[str]:
+    """从公告标题里抠出主体名。
+
+    公告标题几乎都以公司全称开头，这是现成的名称来源——比再建一张企业名库省事，
+    也不会有「库里没有这家」的问题。
+    """
+    out = []
+    # 后缀只认法定全称：把「集团」「公司」也当后缀，会在「…集团有限公司」上
+    # 提前截断，联想出来的名字比真名少四个字，反而更难认。
+    pat = (r"[\u4e00-\u9fa5A-Za-z0-9（）()·]{2,40}?"
+           r"(?:股份有限公司|有限责任公司|有限公司|集团公司)")
+    for m in re.finditer(pat, title or ""):
+        name = m.group(0).lstrip("关于就对于及暨、， ")
+        # 标题常以年度开头（「2026年度××公司…」），年份不是名字的一部分
+        name = re.sub(r"^(19|20)\d{2}年(度)?|^\d{4}年?", "", name).strip()
+        # 标题里还夹着律所、承销商、评级机构，它们不是受评主体
+        if len(name) >= 6 and not re.search(r"律师|会计师事务所|证券|评级|银行|信托|评估", name):
+            out.append(name)
+    return out
+
+
+def api_company_suggest(payload: dict) -> dict:
+    """按输入的名字联想几个可能的全称。
+
+    用途只有一个：名字里错了一两个字，检索就落空，人不知道是该改哪。做法是拿
+    这串字去公告库查一次，再把返回标题里的公司名抠出来，按字面相似度排序——
+    错一个字时正确的那家仍然排在最前，因为标题里的名字与输入只差一个字。
+    """
+    q = re.sub(r"\s+", "", str(payload.get("q") or ""))
+    if len(q) < 4:
+        return {"q": q, "items": [], "note": "名字太短，先多写几个字再联想"}
+    hit = _SUG_CACHE.get(q)
+    if hit:
+        return hit
+    try:
+        out = _client().execute("search_company_announcements",
+                               {"target_company": [q], "limit": 30})
+        rows = CaihuiClient.rows(out)
+    except Exception as e:                                 # noqa: BLE001
+        return {"q": q, "items": [], "note": f"联想失败：{str(e)[:80]}"}
+    want = q.replace(" ", "")
+    score: dict[str, list] = {}
+    for r in rows:
+        title = str(r.get("公告标题") or "")
+        for name in _company_names_in(title):
+            sim = difflib.SequenceMatcher(None, name, want).ratio()
+            # 名字里带「中国」「股份」这类通用后缀的，字面相似度会虚高；用包含关系兜一层
+            if want in name:
+                sim = max(sim, 0.9)
+            rec = score.setdefault(name, [0, sim])
+            rec[0] += 1
+            rec[1] = max(rec[1], sim)
+    # 两道门：字面相似度要够高，长度也不能差太远——「中山城建」与「中信证券」
+    # 只差两个字，但那是两家不同的公司，长度差能把这类误配挡掉大半。
+    items = [{"name": k, "n": v[0], "score": round(v[1], 3)}
+             for k, v in score.items()
+             if v[1] >= 0.6 and abs(len(k) - len(want)) <= max(4, len(want) * 0.4)]
+    items.sort(key=lambda x: (-x["score"], -x["n"]))
+    items = items[:5]
+    res = {"q": q, "items": items,
+           "note": "" if items else "公告库里没有相近的名字，确认一下是不是简称或更名过"}
+    _SUG_CACHE[q] = res
+    if len(_SUG_CACHE) > 200:
+        _SUG_CACHE.clear()
+    return res
 
 
 def api_fetch(payload: dict) -> dict:
@@ -430,8 +551,6 @@ def api_settings(payload: dict) -> dict:
         llm.check_all()          # 改完立刻探活，下拉马上反映
     elif sec == "caihui":
         settings_store.save_caihui(payload)
-    elif sec == "search":
-        settings_store.save_search(payload)
     elif sec == "cost":
         settings_store.save_budget(payload)
     elif sec == "mail":
@@ -468,68 +587,6 @@ def api_cost_preview(payload: dict) -> dict:
 def api_cost_save(payload: dict) -> dict:
     """改单次上限。0 表示不限制。"""
     return settings_store.save_budget({"maxCost": payload.get("maxCost")})
-
-
-def api_web_plan(payload: dict) -> dict:
-    """第 5 步的评估：哪些地方值得去外网找补充。只算不搜。"""
-    company = (payload.get("company") or "").strip()
-    with LOCK:
-        st = STATE.get(_key(company)) or {}
-        draft = st.get("draft")
-    if not draft:
-        raise ValueError("没有草稿，先生成一次")
-    plan = generator.web_plan(draft, st.get("facts") or {})
-    # 存回草稿：前端刷新后还能看到这一步的评估结果，不用重算
-    with LOCK:
-        STATE.setdefault(_key(company), {})["draft"] = {**draft, "web_plan": plan}
-    _persist(company)
-    return plan
-
-
-def api_web_search(payload: dict) -> dict:
-    """按评估结果搜一处。前端一次一个目标地点，按钮才对得上「正在搜什么」。"""
-    if not settings_store.search_config()["ready"]:
-        raise ValueError("没有配置联网搜索。请到「设置 → 联网搜索」填一个 API Key")
-    item = payload.get("target") or {}
-    company = (payload.get("company") or "").strip()
-    with LOCK:
-        mats = (STATE.get(_key(company)) or {}).get("materials") or []
-    out = generator.web_search_one(item, known_titles=[m.get("title") or "" for m in mats])
-    # 搜索按次计费（每次 0.005 元，无结果不计费），落一行台账才看得出钱花在哪
-    n = len(out.get("results") or [])
-    if n:
-        usage_mod.record("websearch", company=company, search_calls=1,
-                         note=f"{out.get('where') or ''}：{n} 条")
-    return out
-
-
-def api_web_fill(payload: dict) -> dict:
-    """把勾中的外网材料写进正文。
-
-    只接受前端传来的 snippets 列表（原文摘要），不接受任意 url——那等于让人
-    通过这个接口让服务端去访问任意地址。
-    """
-    company = (payload.get("company") or "").strip()
-    updates = payload.get("updates") or []
-    with LOCK:
-        st = STATE.get(_key(company)) or {}
-        draft = st.get("draft")
-    if not draft:
-        raise ValueError("没有草稿，先生成一次")
-    if not updates:
-        raise ValueError("没有勾选任何外部材料")
-    before = sum(len((s.get("body") or "")) for s in
-                 (draft.get("commentary") or {}).get("segments") or [])
-    new = generator.apply_web_fill(draft, updates, model_id=payload.get("model"),
-                                   progress=None)
-    new["validation"] = generator.validate(new, st.get("facts") or {},
-                                           st.get("materials") or [])
-    after = sum(len((s.get("body") or "")) for s in
-                (new.get("commentary") or {}).get("segments") or [])
-    with LOCK:
-        STATE.setdefault(_key(company), {})["draft"] = new
-    _persist(company)
-    return {"draft": new, "added_chars": after - before}
 
 
 def api_model_pick(payload: dict) -> dict:
@@ -1082,6 +1139,11 @@ def api_job(kind: str, payload: dict) -> dict:
         notes = str(payload.get("notes") or "")[:4000]
         job = jobs.submit("generate",
                           lambda p: do_generate(company, model, p, titles, mode, notes))
+    elif kind == "revise":
+        company = (payload.get("company") or "").strip()
+        model = payload.get("model")
+        rid = str(payload.get("history_id") or "")
+        job = jobs.submit("revise", lambda p: do_revise(company, model, p, rid))
     else:
         raise ValueError("未知任务类型")
     return {"job": job["id"]}
@@ -1360,11 +1422,9 @@ class Handler(BaseHTTPRequestHandler):
             "/api/mail/config": api_mail_config,
             "/api/settings": api_settings,
             "/api/model/pick": api_model_pick,
-            "/api/web-fill": api_web_fill,
-            "/api/web-plan": api_web_plan,
+            "/api/company/suggest": api_company_suggest,
             "/api/cost/preview": api_cost_preview,
             "/api/cost/save": api_cost_save,
-            "/api/web-search": api_web_search,
         }
         try:
             if p.startswith("/api/jobs/"):

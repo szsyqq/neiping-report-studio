@@ -240,8 +240,41 @@ select{width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 8px
 .docgrid{display:grid;grid-template-columns:minmax(0,1fr);gap:0}
 .doccol{min-width:0;width:100%;max-width:756px;margin:0 auto}
 .docbar{display:block;margin-bottom:16px}
+/* 主体名联想：名字错一两个字时，检索会落空，人不知道该改哪儿。
+   这里把公告库里最接近的几个全称列出来，点一个就填进去。 */
+/* 文字按钮：给「名字不对？联想」这种辅助动作，不用占一个正式按钮的位置 */
+.cosug:empty{display:none}
+.lnk{border:0;background:none;color:var(--muted);font-size:11.5px;cursor:pointer;
+  padding:0;font-family:inherit;text-decoration:underline;text-underline-offset:2px;
+  text-decoration-color:#d7dce4}
+.lnk:hover{color:var(--ink);text-decoration-color:var(--ink)}
+.lnk:disabled{opacity:.5;cursor:default}
+.cosug{margin-top:7px;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:#fff}
+.cosug .h{font-size:11px;color:var(--muted);padding:6px 10px;background:var(--bg2);
+  border-bottom:1px solid var(--line2)}
+.cosug .none{font-size:11.5px;color:var(--muted);padding:8px 10px}
+/* 左边栏只有两百多像素，公司全称一行放不下：名称一行、出现次数一行，
+   横排会把名字挤成两截，看着像两个条目。 */
+.cosug button{display:flex;flex-direction:column;align-items:flex-start;gap:1px;
+  width:100%;text-align:left;border:0;border-top:1px solid var(--line2);background:#fff;
+  padding:7px 10px;cursor:pointer;font-family:inherit}
+.cosug button:first-of-type{border-top:0}
+.cosug button:hover{background:#f7f9fc}
+.cosug .nm{font-size:12.6px;color:var(--ink);line-height:1.45}
+.cosug .ct{font-size:10.5px;color:var(--muted)}
 .docbar .acts{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 .docbar .acts .end{margin-left:auto;display:flex;align-items:center;gap:8px}
+/* 复核标记：稿子先出来，表述复核在后台跑。没有这个标记，正文会在人眼皮底下
+   自己变一次，看起来像出了故障。 */
+.revchip{display:none;align-items:center;gap:5px;font-size:11.5px;color:var(--muted)}
+.revchip.on{display:inline-flex}
+.revchip .d{width:5px;height:5px;border-radius:50%;background:#2f5fd0;flex:none;
+  animation:revpulse 1.1s ease-in-out infinite}
+@keyframes revpulse{0%,100%{opacity:.25;transform:scale(.8)}50%{opacity:1;transform:scale(1.15)}}
+.revchip button{border:1px solid var(--line);background:#fff;color:var(--ink2);
+  border-radius:5px;padding:1px 7px;font-size:11px;cursor:pointer;font-family:inherit}
+.revchip button:hover{border-color:#b9c6de;color:var(--ink)}
+.revchip button.q{border-color:transparent;color:var(--muted)}
 .btn-sm{border:1px solid var(--line);background:#fff;border-radius:6px;padding:6px 12px;font-size:12.5px}
 .btn-sm:hover{border-color:#c4c9d1;background:var(--hover)}
 .btn-sm.solid{background:var(--ink);border-color:var(--ink);color:#fff}
@@ -358,6 +391,9 @@ select{width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 8px
   gap:6px;flex-wrap:wrap}
 .ml-err .btn-sm{font-size:10.5px;padding:2px 8px}
 
+.blk-tag{font-size:11px;color:var(--muted);letter-spacing:.04em;margin:2px 0 0;
+  user-select:none;-webkit-user-select:none}
+.blk-tag + textarea{margin-top:0}
 .doc{font-family:"Kaiti SC","KaiTi","STKaiti","Songti SC","SimSun",serif;
   font-size:15.5px;line-height:1.82;color:#1b1f24;
   /* 两端对齐：中文正文的右边缘要齐，否则满行参差、读起来乱。
@@ -638,95 +674,6 @@ body.dragging .item-ghost{display:flex}
   font-family:inherit;color:var(--ink);background:var(--bg)}
 .ni-body textarea:focus{border-color:#b9c6de;box-shadow:0 0 0 3px #eef3fb}
 .ni-tip{font-size:11px;color:var(--muted);line-height:1.6;margin-top:6px}
-
-/* 第 4 步：补充完善 */
-.fill-empty{border:1px dashed var(--line);border-radius:9px;padding:14px;background:var(--bg2)}
-.fill-empty b{font-size:13px;color:var(--ink);display:block;margin-bottom:3px}
-.fill-empty div{font-size:12px;color:var(--ink2);line-height:1.7}
-.fill-empty .fe-sub{color:var(--muted);margin-top:5px;font-size:11.5px}
-.fill{border:1px solid var(--line);border-radius:9px;padding:12px 13px;background:#fff}
-.fill-lead{font-size:12.5px;color:var(--ink2);line-height:1.7;margin-bottom:9px}
-.fill-warn{display:block;color:#9a6700;background:var(--amber2);border:1px solid #eadfc0;
-  border-radius:6px;padding:2px 7px;margin-top:5px;font-size:11.5px}
-.ft{border-top:1px dashed var(--line);padding:9px 0 5px}
-.ft:first-of-type{border-top:0;padding-top:0}
-.ft-h{display:flex;align-items:baseline;gap:7px;flex-wrap:wrap}
-.ft-w{font-size:12.8px;font-weight:600;color:var(--ink)}
-.ft-why{font-size:11px;color:var(--muted)}
-.ft-h .btn-sm{margin-left:auto;padding:3px 9px;font-size:11.5px}
-.ft-q{font-size:11px;color:var(--muted);margin:2px 0 0;word-break:break-all}
-.ft-note{font-size:11.5px;color:var(--red);margin-top:4px}
-.ft-rs{margin-top:6px}
-.ftr{display:grid;grid-template-columns:14px minmax(0,1fr);gap:7px;align-items:start;
-  padding:6px 0;border-top:1px solid var(--line2);cursor:pointer}
-.ftr:first-child{border-top:0}
-.ftr input{margin:3px 0 0;width:13px;height:13px;accent-color:var(--ink)}
-.ftr .m{min-width:0}
-.ftr .t{display:block;font-size:12.3px;color:var(--ink);line-height:1.5}
-.ftr .d{display:block;font-size:10.5px;color:var(--muted);margin-top:1px}
-.ftr .s{display:block;font-size:11.5px;color:var(--ink2);line-height:1.6;margin-top:3px}
-.fill-foot{display:flex;align-items:center;gap:9px;margin-top:11px;padding-top:9px;
-  border-top:1px solid var(--line)}
-.fill-hint{font-size:11px;color:var(--muted)}
-/* 第 4 步：手动搜一条（常驻） */
-.fill-man{margin-top:11px;padding-top:10px;border-top:1px dashed var(--line)}
-.fm-h{font-size:11px;color:var(--muted);letter-spacing:.06em;margin-bottom:5px}
-.fm-row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-.fm-row input{flex:1 1 180px;min-width:0;border:1px solid var(--line);border-radius:7px;
-  padding:6px 9px;font-size:12px;outline:none;font-family:inherit;color:var(--ink);background:#fff}
-.fm-row input:focus{border-color:#b9c6de;box-shadow:0 0 0 3px #eef3fb}
-.fm-row select{border:1px solid var(--line);border-radius:7px;padding:6px 7px;
-  font-size:11.5px;background:#fff;color:var(--ink2);max-width:190px;font-family:inherit}
-.fm-tip{font-size:11px;color:#9a6700;margin-top:5px}
-.ft-tag{font-size:10px;color:var(--muted);border:1px solid var(--line);border-radius:4px;
-  padding:0 4px;line-height:15px;flex:none}
-/* 第 4 步里的搜索进度：只在这一处出现，不抢正文注意力 */
-.ft-live{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:7px;
-  border:1px solid #dbe4f5;background:#f6f9ff;border-radius:7px;padding:6px 9px}
-.ft-live .dot{width:6px;height:6px;border-radius:50%;background:#2f5fd0;flex:none;
-  animation:wfpulse 1.1s ease-in-out infinite}
-.ft-live .q{font-size:11px;color:#2f5fd0;word-break:break-all}
-.ft-live .track{flex:1 1 60px;min-width:40px;height:2px;background:#e3e9f5;border-radius:2px;overflow:hidden}
-.ft-live .track i{display:block;height:100%;width:36%;border-radius:2px;
-  background:linear-gradient(90deg,transparent,#2f5fd0,transparent);animation:wfscan 1.3s linear infinite}
-@keyframes wfpulse{0%,100%{opacity:.25;transform:scale(.8)}50%{opacity:1;transform:scale(1.15)}}
-@keyframes wfscan{0%{transform:translateX(-100%)}100%{transform:translateX(320%)}}
-
-/* 联网补充：搜到的外部材料，勾了才写进正文 */
-.wf{border:1px solid var(--line);border-radius:8px;padding:9px 10px;margin:0 0 14px;background:#fff}
-.wf-h{display:flex;align-items:baseline;gap:6px}
-.wf-h b{font-size:11px;color:var(--muted);letter-spacing:.06em;font-weight:600}
-.wf-h .n{font-size:11px;color:var(--ink2);margin-left:auto;font-variant-numeric:tabular-nums}
-.wf-fold{border:0;background:none;color:#b9bfc8;font-size:9px;padding:0 1px;cursor:pointer;line-height:1}
-.wf-sub{font-size:10.5px;color:#a8aeb8;line-height:1.55;margin:3px 0 7px}
-.wf.collapsed .wf-sub,.wf.collapsed .wf-list,.wf.collapsed .wf-foot{display:none}
-.wfg{border-top:1px dashed var(--line);padding:7px 0 4px}
-.wfg:first-child{border-top:0}
-.wfg-h{font-size:11.5px;color:var(--ink);font-weight:600}
-.wfg-h .why{font-weight:400;color:var(--muted);margin-left:5px;font-size:10.5px}
-.wfg-q{font-size:10.5px;color:var(--muted);margin:1px 0 5px;word-break:break-all}
-.wfr{display:grid;grid-template-columns:13px minmax(0,1fr);gap:6px;align-items:start;
-  padding:5px 0;cursor:pointer}
-.wfr input{margin:2px 0 0;width:12px;height:12px;accent-color:var(--ink)}
-.wfr .m{min-width:0}
-.wfr .t{display:block;font-size:11.5px;color:var(--ink);line-height:1.45}
-.wfr .d{display:block;font-size:10px;color:var(--muted);margin-top:1px}
-.wfr .s{display:block;font-size:10.5px;color:var(--ink2);line-height:1.5;margin-top:2px;
-  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
-.wfr-none{font-size:10.5px;color:var(--muted);padding:4px 0}
-.wf-foot{display:flex;align-items:center;gap:8px;margin-top:8px;padding-top:7px;
-  border-top:1px solid var(--line2)}
-.wf-hint{font-size:10.5px;color:var(--muted)}
-/* 搜索进行中的动画：一条来回扫的进度条 + 当前查询词，让人知道在等什么 */
-.wf-live{border:1px solid #dbe4f5;background:#f6f9ff;border-radius:8px;padding:9px 10px;margin:0 0 14px}
-.wf-live .lb{font-size:11px;color:#2f5fd0;font-weight:600;display:flex;align-items:center;gap:6px}
-.wf-live .dot{width:6px;height:6px;border-radius:50%;background:#2f5fd0;animation:wfpulse 1.1s ease-in-out infinite}
-@keyframes wfpulse{0%,100%{opacity:.25;transform:scale(.8)}50%{opacity:1;transform:scale(1.15)}}
-.wf-live .q{font-size:10.5px;color:#5a6b85;margin:4px 0 0;word-break:break-all}
-.wf-live .track{height:2px;background:#e3e9f5;border-radius:2px;overflow:hidden;margin-top:7px}
-.wf-live .track i{display:block;height:100%;width:36%;border-radius:2px;
-  background:linear-gradient(90deg,transparent,#2f5fd0,transparent);animation:wfscan 1.3s linear infinite}
-@keyframes wfscan{0%{transform:translateX(-100%)}100%{transform:translateX(320%)}}
 
 .ck-sub{font-size:10.5px;color:#a8aeb8;line-height:1.55;margin:-2px 0 8px}
 .rail-r.collapsed .ck-sub,.rail-r.collapsed .ck-sec{display:none}
@@ -1147,7 +1094,7 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
 /* 演示区：全部用 CSS 动画，不加载任何资源 */
 .tdemo{margin:10px 0 2px;border:1px solid var(--line);border-radius:9px;
   background:#fbfcfd;padding:10px 11px;overflow:hidden;position:relative}
-/* 五步流动 */
+/* 四步流动 */
 .tflow{display:flex;align-items:center;gap:4px}
 .tflow span{flex:1;text-align:center;font-size:10.5px;color:var(--ink2);background:#fff;
   border:1px solid var(--line);border-radius:6px;padding:4px 2px;position:relative;
@@ -1265,22 +1212,6 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
 @keyframes tbar{0%{width:0}18%{width:8%}62%{width:78%}88%,100%{width:100%}}
 
 /* 补充说明：两行字写到一半，光标在末尾闪 */
-/* 缺口：按钮按下 → 两条结果落地 */
-.tdhk{background:#fff;border:1px solid var(--line);border-radius:6px;padding:7px 8px}
-.tdhk .h1{display:flex;align-items:center;gap:8px}
-.tdhk .h1 .ln{flex:1;width:auto}
-.tdhk .go{flex:none;font-size:9.8px;color:var(--muted);border:1px solid var(--line);
-  border-radius:5px;padding:1px 8px;background:#fff;animation:tpress2 4.8s ease-in-out infinite}
-@keyframes tpress2{0%,24%{transform:scale(1);background:#fff;color:var(--muted)}
-  29%{transform:scale(.93);background:var(--ink);color:#fff;border-color:var(--ink)}
-  36%,100%{transform:scale(1);background:#fff;color:var(--muted)}}
-.tdhk .h2{margin-top:7px;padding-top:6px;border-top:1px dashed var(--line2)}
-.tdhk .rs{margin-top:6px;padding-top:6px;border-top:1px solid var(--line2);opacity:0;
-  animation:trs 4.8s ease-in-out infinite}
-.tdhk .rs.b{animation-delay:.18s}
-@keyframes trs{0%,46%{opacity:0;transform:translateY(3px)}
-  56%,100%{opacity:1;transform:none}}
-
 /* 演示标记：界面里摆的是示例数据，必须一眼看得出来 */
 .demotag{display:inline-flex;align-items:center;font-family:-apple-system,"PingFang SC",sans-serif;
   font-size:10.5px;font-weight:600;color:#fff;background:#a97b12;border-radius:20px;
@@ -1313,7 +1244,7 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
   .tdemo *{animation:none !important}
   .td-blk.fresh{opacity:1;height:26px}
   /* 动画停了，被动画藏着的东西要露出来：结果条、勾、进度、勾选框 */
-  .tdchips span,.tdhk .rs{opacity:1;transform:none}
+  .tdchips span{opacity:1;transform:none}
   .tdsk .bx{background:var(--ink);border-color:var(--ink)}
   .tdsk .bx::after{opacity:1}
   .tdbar i{width:100%}
@@ -1358,7 +1289,7 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
   <button class="usage" id="lockBtn" onclick="logout()" title="退出，重新需要口令">锁定</button>
   <span class="sep"></span>
   <button class="tourbtn" id="tourBtn" onclick="startTour(0)"
-    title="重看使用引导：五个步骤、哪里能改、哪里能拖、哪里能加" aria-label="使用引导">?</button>
+    title="重看使用引导：四个步骤、哪里能改、哪里能拖、哪里能加" aria-label="使用引导">?</button>
   <span class="sep"></span>
   <a href="docs/wiki.html" id="docLink" target="_blank"
      title="说明与方法：五步流程、涉及哪些文件、模板与提示词的结构；详版另讲写作判据与实现细节">说明</a>
@@ -1386,8 +1317,11 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
           <input id="company" placeholder="企业全称" autocomplete="off" />
           <button id="btnSearch" onclick="doSearch()">检索</button>
         </div>
+        <div class="cosug" id="coSug"></div>
         <div class="wfoot">
           <span class="whint grow" id="modeHint">简称也能命中，只查公告库一次</span>
+          <button class="lnk" id="btnSug" onclick="suggestCompany()"
+            title="名字有字打错时，按公告库里的全称联想几个">名字不对？联想</button>
         </div>
       </div></div></div>
     </section>
@@ -1450,27 +1384,9 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
       </div></div></div>
     </section>
 
-    <section class="wstep locked" id="ws-fill">
-      <div class="whead" onclick="openStep('fill')">
-        <span class="wdot">4</span>
-        <span class="wlabel">补充完善</span>
-        <span class="wpct"></span>
-        <span class="wchev"></span>
-        <span class="wmeta"></span>
-        <div class="wbar"><i></i></div>
-      </div>
-      <div class="wbody"><div class="winner"><div class="wpad">
-        <div id="fillBox"></div>
-        <div class="wfoot">
-          <span class="whint grow" id="fillHint">生成后自动评估哪些地方写得偏薄</span>
-          <button class="btn" id="btnFillSkip" onclick="openStep('export')">跳过</button>
-        </div>
-      </div></div></div>
-    </section>
-
     <section class="wstep locked" id="ws-export">
       <div class="whead" onclick="openStep('export')">
-        <span class="wdot">5</span>
+        <span class="wdot">4</span>
         <span class="wlabel">导出报告</span>
         <span class="wpct"></span>
         <span class="wchev"></span>
@@ -1502,7 +1418,7 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
 <script>
 const $ = (s) => document.querySelector(s);
 const S = { company: "", facts: null, uploads: [], mstate: {}, loaded: [], draft: null,
-            stats: null, mode: "new", base: null };
+            stats: null, mode: "new", base: null, rev: null };
 
 /* 两种任务：新建（从材料写一份新报告）与更新（在旧报告上按新依据改）。
    步骤、材料区、待核对侧栏共用同一套，只在三处分叉：材料区要一份底稿、
@@ -1593,14 +1509,13 @@ function resetSession(){
   S.keepChecked = null;
   S.expand = {};
   S.draft = null;
+  S.rev = null;
   PKG.data = null; PKG.sel = {}; PKG.open = false;
   MAIL.subject = undefined; MAIL.subjectFor = ""; MAIL.body = undefined; MAIL.listErr = "";
   MAIL.to = undefined; MAIL.cc = ""; MAIL.docx = ""; MAIL.withPdf = false;
   MAIL.ana = {}; MAIL.anaOpen = false;
-  // 补充说明与手动查询都是「对这一家的判断」，换主体必须清掉——
-  // 上一家的结论跟着过去，比没有更危险。
+  // 补充说明是「对这一家的判断」，换主体必须清掉——上一家的结论跟着过去，比没有更危险。
   if($("#userNotes")){ $("#userNotes").value = ""; paintNotesSum(); }
-  S.manQ = ""; S.manSeg = ""; S.fillAsked = false;
   if($("#upList")) $("#upList").innerHTML = "";
   if($("#matList")) renderMaterials(null);
   if($("#draftArea")){ $("#draftArea").innerHTML = ""; $("#draftArea").style.display = "none"; }
@@ -1745,7 +1660,6 @@ const STEPS = [
   { key: "search", label: "检索主体" },
   { key: "materials", label: "读取材料" },
   { key: "generate", label: "生成草稿" },
-  { key: "fill", label: "补充完善" },
   { key: "export", label: "导出报告" },
 ];
 const ST = {};
@@ -1768,10 +1682,7 @@ function reached(key){
   // 更新既有报告时手上的材料是现成的（旧报告 docx + 外部评级报告 pdf），
   // 不一定要先去公告库检索，所以第 2 步直接放开；检索只作为可选帮手。
   if(S.mode === "update" && key === "materials") return true;
-  // 第 4 步「补充完善」是可选的：没配搜索、或本轮没有偏薄段落时它一步就过。
-  // 判定前驱状态时跳过它，否则用户会被一个没内容可做的步骤挡在导出之前。
-  return i === 0 || STEPS.slice(0, i).every(x =>
-    x.key === "fill" || (ST[x.key] || {}).state === "done");
+  return i === 0 || STEPS.slice(0, i).every(x => (ST[x.key] || {}).state === "done");
 }
 
 function openStep(key){
@@ -1793,10 +1704,7 @@ function openStep(key){
 
 function paintSteps(){
   if(!reached(OPEN_STEP)){
-    // 「补充完善」是可跳过的一步，不参与「下一步该显示谁」的挑选——否则跳过它
-    // 又导出完之后，界面会一直退回第 4 步。
-    const fallback = STEPS.find(x =>
-      x.key !== "fill" && (ST[x.key] || {}).state !== "done");
+    const fallback = STEPS.find(x => (ST[x.key] || {}).state !== "done");
     OPEN_STEP = fallback ? fallback.key : STEPS[STEPS.length - 1].key;
   }
   STEPS.forEach((s, i) => {
@@ -2205,7 +2113,7 @@ async function restoreHistory(id){
     if(S.company) $("#company").value = S.company;
     renderDraft();
     syncButtons();
-    // 恢复的是一份已经成稿的记录：前三步都算走过，直接把展开态放到第 4 步
+    // 恢复的是一份已经成稿的记录：前三步都算走过，直接把展开态放到导出那一步
     const nMat = (rec.materials || []).length;
     setStep("search", { state: "done", pct: 100, detail: S.company || "历史记录" });
     setStep("materials", { state: "done", pct: 100, detail: nMat ? `${nMat} 份` : "已恢复" });
@@ -2253,7 +2161,10 @@ async function doSearch(){
     setStep("materials", { state: "wait", pct: 0,
       detail: n ? `${n} 份待读取` : "未检索到，可上传 PDF" });
     toast(n ? `检索到 ${n} 份材料${calls ? " · 财汇 " + calls + " 点" : ""}`
-            : "未检索到公告，可在下方上传 PDF");
+            : "未检索到公告，可上传 PDF，或看看名字是不是打错了");
+    // 检索落空最常见的两种原因：这家确实没有公告，或者名字里有错别字。
+    // 分不出是哪一种，就把相近的全称摆出来让人自己认。
+    if(!n) setTimeout(suggestCompany, 260);
     openStep("materials");   // 读到清单就把这一步展开，不必再点一次
   }catch(e){
     setStep("search", { state: "error", detail: e.message });
@@ -2261,6 +2172,53 @@ async function doSearch(){
   }finally{
     $("#btnSearch").disabled = false;
   }
+}
+
+/* ---------------- 主体名联想 ---------------- */
+/* 只解决一件事：名字里错了一两个字，检索落空，人不知道该改哪个字。
+   做法是拿输入的串去公告库查一次，把返回标题里的公司名抠出来按相似度排；
+   同一次输入不重复问（后端也缓存），免得打字过程中刷点数。 */
+function paintSug(r){
+  const box = $("#coSug");
+  if(!box) return;
+  if(!r){ box.innerHTML = ""; return; }
+  const q = (($("#company") || {}).value || "").trim();
+  const items = (r.items || []).filter(x => x.name !== q);
+  if(!items.length){
+    box.innerHTML = `<div class="none">${esc(r.items && r.items.length
+      ? "输入的就是公告库里的全称，可以直接检索" : (r.note || "没有找到相近的名称"))}</div>`;
+    return;
+  }
+  box.innerHTML = `<div class="h">公告库里最接近的几个全称，点一个填进去</div>`
+    + items.map(x => `<button onclick="pickCompany(this)" data-n="${esc(x.name)}">
+        <span class="nm">${esc(x.name)}</span>
+        <span class="ct">近 30 条公告出现 ${x.n} 次</span>
+      </button>`).join("");
+}
+
+async function suggestCompany(){
+  const q = (($("#company") || {}).value || "").trim();
+  if(q.length < 4) return toast("先把主体名写完整些，再来联想", true);
+  const box = $("#coSug");
+  if(box) box.innerHTML = `<div class="h">正在公告库里找相近的名称…</div>`;
+  const btn = $("#btnSug");
+  if(btn) btn.disabled = true;
+  try{
+    paintSug(await api("/api/company/suggest", { q }));
+  }catch(e){
+    paintSug({ items: [], note: e.message || "联想失败" });
+  }finally{
+    if(btn) btn.disabled = false;
+  }
+}
+
+function pickCompany(btn){
+  const n = btn && btn.dataset ? btn.dataset.n : "";
+  if(!n) return;
+  $("#company").value = n;
+  paintSug(null);
+  toast("已填好，点「检索」按这个名称再查一次");
+  $("#btnSearch").focus();
 }
 
 /* ---------------- 材料 ---------------- */
@@ -2620,25 +2578,17 @@ async function doGenerate(){
         ? `已比对 ${(S.draft.actions || []).length} 条`
         : "草稿已生成" });
     setStep("export", { state: "wait", pct: 0, detail: "可编辑后导出" });
-    // 生成完先进「补充完善」：这一步会告诉用户哪几处偏薄、打算搜什么。
-    // 没有偏薄段落时它自己显示「本轮无需补充」，不会挡住导出。
-    S.fillAsked = false;
-    const _wf = (S.draft.web_plan || {});
-    const _nt = (_wf.targets || []).length;
-    setStep("fill", { state: "wait", pct: 0,
-      detail: S.mode === "update" ? "更新模式不评估"
-            : (_nt ? `${_nt} 处偏薄` : "无需补充") });
     paintSpent((S.draft && S.draft.usage) || null);
     refreshUsage();
     renderDraft();
-    renderFill();
+    autoRevise();          // 正文已经能读了，表述复核放到后台跑
     const u = S.draft.usage || {};
     const heads = S.mode === "update"
       ? `差异已列出 · ${(S.draft.actions || []).length} 条`
       : "草稿已生成";
     toast(u.total_tokens ? `${heads} · 本次 ${fmtTok(u.total_tokens)} token` : `${heads}，可直接修改`);
     syncFab();
-    openStep(S.mode === "update" ? "export" : "fill");
+    openStep("export");
     if(isPhone()) setTimeout(() => jumpTo("doc"), 420);   // 手机上流程区很长，不滚一下看不到结果
     refreshUsage();
     if(HIST.open) loadHistory();
@@ -2668,6 +2618,13 @@ function fitSegName(el){
 }
 /* 分部段是整段可编辑：粘贴一律转纯文本，编辑后顺手记住板块名 */
 document.addEventListener("input", e => {
+  // 复核跑完时如果人已经在改正文，就不能再把整份换掉——他改的那几处会被冲掉。
+  // 记下来，结果先存着，由他点「应用」。
+  const t = e.target;
+  if(S.rev && S.rev.state === "run" && t && t.closest && t.closest("#draftArea")){
+    S.rev.dirty = true;
+  }
+  if(e.target && e.target.id === "company") paintSug(null);
   const line = e.target && e.target.closest && e.target.closest(".seg-line");
   if(!line) return;
   const p = parseSeg(line.innerText || line.textContent || "", line.dataset.name);
@@ -2960,6 +2917,96 @@ function restoreNotes(d){
   if(saved){ t.value = saved; paintNotesSum(); }
 }
 
+/* ── 表述复核：正文先出，检查后补 ─────────────────────────────
+   一次生成其实是两趟模型调用：第一趟写正文（几十秒到两分钟），第二趟只改措辞
+   与结构（又是几十秒）。以前串着跑，人要等两趟都完才看得到稿子；现在第一趟
+   回来就渲染，第二趟丢到后台，跑完把改过的句子换回去。
+   换之前要看人有没有动过：正在改的时候整份替换，等于把他改的那几处冲掉。 */
+function paintRevChip(){
+  const el = $("#revChip");
+  if(!el) return;
+  const r = S.rev || {};
+  if(r.state === "run"){
+    el.className = "revchip on";
+    el.innerHTML = `<i class="d"></i>正在复核表述${r.pct ? ` · ${r.pct}%` : ""}`;
+    el.title = r.detail || "只改措辞与结构，不动数字";
+    return;
+  }
+  if(r.pending){
+    el.className = "revchip on";
+    el.innerHTML = `<span>复核改过 ${r.n || 0} 处措辞</span>`
+      + `<button onclick="applyRevise()">应用</button>`
+      + `<button class="q" onclick="dropRevise()">忽略</button>`;
+    el.title = "你已经在改正文了，所以没有自动替换";
+    return;
+  }
+  if(r.state === "done"){
+    el.className = "revchip on";
+    el.textContent = `已复核${r.n ? ` · 修正 ${r.n} 处` : ""}`;
+    el.title = "";
+    return;
+  }
+  el.className = "revchip";
+  el.textContent = "";
+}
+
+function swapDraft(d){
+  // 整份重画会丢掉滚动位置；正文有上万像素，回到顶部等于让人重新找刚才读的地方
+  const main = document.querySelector("main");
+  const top = main ? main.scrollTop : 0;
+  S.draft = d;
+  renderDraft();
+  if(main) main.scrollTop = top;
+  paintSpent(d.usage || null);
+  paintRevChip();
+}
+
+function applyRevise(){
+  const d = S.rev && S.rev.pending;
+  if(!d) return;
+  S.rev.pending = null; S.rev.state = "done"; S.rev.dirty = false;
+  swapDraft(d);
+  toast("已换成复核后的正文");
+}
+
+function dropRevise(){
+  if(!S.rev) return;
+  S.rev.pending = null; S.rev.state = "";
+  paintRevChip();
+}
+
+async function autoRevise(){
+  const v = (S.draft && S.draft.validation) || {};
+  if(!v.revise_pending) return;
+  S.rev = { state: "run", pct: 0, detail: "", dirty: false, pending: null, n: 0 };
+  paintRevChip();
+  const mid = MODEL_IDS.includes($("#model").value) ? $("#model").value : "";
+  try{
+    const j = await runJob("revise", { company: curCo(), model: mid,
+      history_id: (S.draft && S.draft.history_id) || "" }, j => {
+      S.rev.pct = j.pct || 0;
+      S.rev.detail = j.detail || j.stage || "";
+      paintRevChip();
+    });
+    const d = j.result.draft || {};
+    S.rev.n = ((d.validation || {}).auto_fixed || []).length;
+    if(S.rev.dirty){
+      S.rev.pending = d; S.rev.state = "";
+      paintRevChip();
+      toast(S.rev.n ? `复核完成，改过 ${S.rev.n} 处措辞，等你决定是否替换` : "复核完成，没有可自动改的地方");
+    }else{
+      S.rev.state = "done";
+      swapDraft(d);
+      toast(S.rev.n ? `复核完成 · 自动修正 ${S.rev.n} 处措辞` : "复核完成，没发现可自动改的地方");
+    }
+  }catch(e){
+    // 复核失败不能影响已经拿到手的正文：提示一句，稿子留在原地
+    S.rev = null;
+    paintRevChip();
+    toast("表述复核没跑完：" + e.message, true);
+  }
+}
+
 function renderDraft(){
   if((S.draft.mode || "new") === "update") return renderActions(S.draft);
   restoreNotes(S.draft);
@@ -2973,6 +3020,7 @@ function renderDraft(){
     <div class="docbar">
       <div class="acts">
         <button class="btn-sm" onclick="copyPrompt()" title="复制本次用的提示词">提示词</button>
+        <span class="revchip" id="revChip"></span>
         <button class="btn-sm" id="btnGap" onclick="toggleParaGap()"
           title="段与段之间是否空一行（加粗句与它的正文始终连着）">${gapOn ? "段落空行：有" : "段落空行：无"}</button>
         ${(d.add_on_sections || []).length ? `<button class="btn-sm" onclick="jumpAdvice()"
@@ -3048,13 +3096,24 @@ function renderDraft(){
   }
   h += `</div>
     <div class="blk" id="blk-profit">
+      <div class="blk-tag">盈利</div>
       ${ta("pf-lead lead", c.profit && c.profit.lead)}
       ${ta("pf-body", c.profit && c.profit.body)}
+      ${(c.cash && (c.cash.body || c.cash.lead)) ? `<div class="blk-tag" id="blk-cash-tag">现金流</div>
+      <div id="blk-cash">
+        ${ta("ch-lead lead", c.cash.lead)}
+        ${ta("ch-body", c.cash.body)}
+      </div>` : ""}
     </div>
     <div class="blk" id="blk-debt">
       ${ta("db-lead lead", c.debt && c.debt.lead)}
       ${ta("db-body", c.debt && c.debt.body)}
     </div>
+    ${(c.market && (c.market.body || c.market.lead)) ? `<div class="blk" id="blk-market">
+      <div class="blk-tag">二级市场定价</div>
+      ${ta("mk-lead lead", c.market.lead)}
+      ${ta("mk-body", c.market.body)}
+    </div>` : ""}
     <div class="blk" id="blk-topics">
       <div id="d-advice"></div>
       <div id="d-topics"></div>
@@ -3088,6 +3147,7 @@ function renderDraft(){
   ckPaint();
   loadAna();
   autoGrowAll();
+  paintRevChip();
   syncFab();
 }
 
@@ -3246,7 +3306,8 @@ const CK_RULES = [
 const WHERE_RULES = [
   [/关注/, "blk-con"], [/正面/, "blk-pos"], [/点评|总述/, "blk-overview"],
   [/分部|板块|业务/, "blk-segments"], [/资产/, "blk-asset"],
-  [/盈利|利润|亏损|毛利/, "blk-profit"],
+  [/盈利|利润|亏损|毛利/, "blk-profit"], [/现金流|收现比|经营活动净现金流/, "blk-cash"],
+  [/二级市场|利差|定价/, "blk-market"],
   [/行业情况|行业景气|供需/, "blk-industry"],
   [/债务|负债|有息/, "blk-debt"], [/基本/, "blk-basic"],
   [/专题/, "blk-topics"], [/财务|表/, "blk-fintable"],
@@ -3334,7 +3395,8 @@ function fieldForWhere(w){
 }
 function fieldForAnchor(a){
   return { "blk-basic": "basic", "blk-industry": "in", "blk-overview": "ov",
-    "blk-asset": "as", "blk-profit": "pf", "blk-debt": "db",
+    "blk-asset": "as", "blk-profit": "pf", "blk-cash": "ch",
+  "blk-debt": "db", "blk-market": "mk",
     "blk-segments": "seg", "blk-topics": "topic" }[a] || "";
 }
 function ckItems(v){
@@ -3392,26 +3454,6 @@ function ckItems(v){
   }
   return out;
 }
-/* 第 4 步「补充完善」：生成完之后先评估哪些地方偏薄，再让人决定搜不搜。
-   搜索要花额度，所以不自动跑——先列出「打算搜什么、为什么」，点一下才搜。 */
-/* 搜索中的行内动画：在第 4 步里原地把那一行变成「正在搜…」，
-   比全局提示更准——人看的是这一处，就知道这一处在等什么。 */
-function markSearching(i, on, q){
-  const box = document.querySelector(`.ft[data-i="${i}"]`);
-  if(!box) return;
-  let bar = box.querySelector(".ft-live");
-  if(!on){ if(bar) bar.remove(); return; }
-  if(!bar){
-    bar = document.createElement("div");
-    bar.className = "ft-live";
-    bar.innerHTML = `<span class="dot"></span><span class="q"></span>
-      <span class="track"><i></i></span>`;
-    box.appendChild(bar);
-  }
-  const t = bar.querySelector(".q");
-  if(t) t.textContent = "正在搜：" + (q || "");
-}
-
 function toggleNotes(){
   const body = document.getElementById("niBody");
   if(!body) return;
@@ -3429,190 +3471,6 @@ function paintNotesSum(){
   if(!sum) return;
   const n = notesText().length;
   sum.textContent = n ? `已填 ${n} 字` : "";
-}
-
-/* 渲染第 4 步。两块：程序评估出的缺口（可能为空）+ 手动搜一条。
-   手动那块常驻——程序判不出的缺口，分析员自己知道该补什么。 */
-function fillTargetOpts(d){
-  const segs = ((d && d.commentary) || {}).segments || [];
-  return [{ v: "行业情况段", s: 0 }].concat(
-    segs.map((x, i) => ({ v: `分部业务段 ${i + 1}）${x.name || ""}`, s: i + 1 })));
-}
-
-function fillHtml(d){
-  const plan = (d && d.web_plan) || { targets: [], ready: false };
-  const targets = plan.targets || [];
-  const ready = !!plan.ready;
-  const opts = fillTargetOpts(d);
-
-  const man = `<div class="fill-man">
-      <div class="fm-h">自己搜一条</div>
-      <div class="fm-row">
-        <input id="manQ" placeholder="想查什么，例如：中山市 2026 年 土地出让 成交金额"
-          value="${esc(S.manQ || "")}" spellcheck="false" oninput="S.manQ=this.value"/>
-        <select id="manSeg" onchange="S.manSeg=this.value">${opts.map(o =>
-          `<option value="${esc(o.v)}" data-s="${o.s}"${o.v === S.manSeg ? " selected" : ""}>写入 ${esc(o.v)}</option>`).join("")}</select>
-        <button class="btn-sm" onclick="doSearchCustom(this)" ${ready ? "" : "disabled"}>搜索</button>
-      </div>
-      ${ready ? "" : `<div class="fm-tip">尚未配置联网搜索，先到「设置 → 联网搜索」填 Key。</div>`}
-    </div>`;
-
-  let body = "";
-  if(!targets.length){
-    body = `<div class="fill-empty">
-      <b>程序未发现内容缺口</b>
-      <div>各段都已写足、行业段有可核实的数、风险事项也都给了金额或进展。</div>
-      <div class="fe-sub">若你认为仍有该补的地方，用下面的「自己搜一条」。</div>
-    </div>`;
-  }else{
-    body = `<div class="fill-lead">评估出 <b>${targets.length}</b> 处需要外部信息。
-      ${ready ? "" : `<span class="fill-warn">尚未配置联网搜索，先到「设置 → 联网搜索」填 Key。</span>`}</div>`
-    + targets.map((t, i) => {
-      const rs = t.results || [];
-      return `<div class="ft" data-i="${i}">
-        <div class="ft-h"><span class="ft-w">${esc(t.where || "")}</span>
-          ${t.manual ? `<span class="ft-tag">手动</span>` : ""}
-          <span class="ft-why">${esc(t.why || "")}</span>
-          <button class="btn-sm" onclick="doSearchOne(${i})" ${ready ? "" : "disabled"}
-            id="ftBtn${i}">${rs.length ? "重新搜索" : "搜索"}</button></div>
-        <div class="ft-q">查询：${esc(t.query || "")}</div>
-        ${t.note ? `<div class="ft-note">${esc(t.note)}</div>` : ""}
-        ${rs.length ? `<div class="ft-rs">` + rs.map((r, j) => `
-          <label class="ftr">
-            <input type="checkbox" class="ftk" data-i="${i}" data-j="${j}"/>
-            <span class="m">
-              <span class="t">${esc(r.title || "")}</span>
-              <span class="d">${esc([r.site, r.date || "无日期"].filter(Boolean).join(" · "))}</span>
-              <span class="s">${esc(r.snippet || "")}</span>
-            </span>
-          </label>`).join("") + `</div>` : ""}
-      </div>`;
-    }).join("");
-  }
-  return `<div class="fill">${body}${man}
-    <div class="fill-foot">
-      <button class="btn primary" onclick="doFill(this)">写入正文</button>
-      <span class="fill-hint" id="fillMsg"></span>
-    </div>
-  </div>`;
-}
-
-/* 手动搜一条：查询词由人给，写入位置也由人选。
-   结果与自动评估的那几处走同一套勾选与写入逻辑，只是多一个「手动」标记。 */
-async function doSearchCustom(btn){
-  const q = ($("#manQ") && $("#manQ").value || "").trim();
-  const sel = $("#manSeg");
-  if(!q){ toast("先写要查什么"); return; }
-  const where = sel ? sel.value : "行业情况段";
-  const seg = sel ? +(sel.selectedOptions[0] || {}).dataset.s || 0 : 0;
-  S.manQ = q; S.manSeg = where;
-  const d = S.draft || {};
-  d.web_plan = d.web_plan || { targets: [], ready: true };
-  d.web_plan.targets = d.web_plan.targets || [];
-  // 同一位置手动搜第二次时替换掉上一次，避免同段落堆多组结果
-  const old = d.web_plan.targets.findIndex(t => t.manual && t.where === where);
-  const item = { where, seg, query: q, why: "手动搜索", manual: true,
-                 results: [], note: "" };
-  if(old >= 0) d.web_plan.targets[old] = item;
-  else d.web_plan.targets.push(item);
-  const idx = old >= 0 ? old : d.web_plan.targets.length - 1;
-  renderFill();
-  btn.disabled = true;
-  markSearching(idx, true, q);
-  try{
-    const r = await api("/api/web-search", { target: item });
-    d.web_plan.targets[idx].results = r.results || [];
-    d.web_plan.targets[idx].note = r.note || "";
-    renderFill();
-    toast((r.results || []).length ? `搜到 ${r.results.length} 条` : (r.note || "没有结果"));
-  }catch(e){
-    d.web_plan.targets[idx].note = e.message || "搜索失败";
-    renderFill();
-    toast(e.message || "搜索失败", true);
-  }
-}
-
-/* 搜一处。逐处触发是为了让「正在搜什么」看得见，也避免一次点下去并发若干个请求。 */
-async function doSearchOne(i){
-  const d = S.draft || {};
-  const plan = d.web_plan || {};
-  const t = (plan.targets || [])[i];
-  if(!t) return;
-  const btn = document.getElementById("ftBtn" + i);
-  if(btn){ btn.disabled = true; btn.textContent = "搜索中…"; }
-  markSearching(i, true, t.query || "");
-  try{
-    const r = await api("/api/web-search", { target: t });
-    markSearching(i, false);
-    t.results = r.results || [];
-    t.note = r.note || "";
-    renderFill();
-    toast(t.results.length ? `搜到 ${t.results.length} 条` : (t.note || "没有结果"));
-  }catch(e){
-    markSearching(i, false);
-    t.note = e.message || "搜索失败";
-    renderFill();
-    toast(e.message || "搜索失败", true);
-  }finally{
-    const b2 = document.getElementById("ftBtn" + i);
-    if(b2) b2.disabled = false;
-  }
-}
-
-function renderFill(){
-  const box = document.getElementById("fillBox");
-  if(!box) return;
-  box.innerHTML = fillHtml(S.draft || {});
-  // 从历史恢复的草稿、以及更新模式的草稿都没有评估结果，按需补算一次。
-  // 生成路径已经算过，不重复调接口。
-  if(S.draft && !S.draft.web_plan && !S.fillAsked){
-    S.fillAsked = true;
-    // 主体名仍以输入框为准；只有输入框空着（例如从历史恢复）才退回上次检索过的那家
-    api("/api/web-plan", { company: curCo() || S.company || "" })
-      .then(p => {
-        if(!S.draft) return;
-        S.draft.web_plan = p || { targets: [], ready: false };
-        box.innerHTML = fillHtml(S.draft);
-      })
-      // 失败不再自动重试：反复调接口没有意义，留手动刷新（重新进这一步）即可
-      .catch(() => {});
-  }
-}
-
-async function doFill(btn){
-  const picks = [...document.querySelectorAll(".ftk:checked")];
-  const msg = document.getElementById("fillMsg");
-  if(!picks.length){ if(msg) msg.textContent = "先勾一条结果"; return; }
-  const plan = (S.draft && S.draft.web_plan) || {};
-  const targets = plan.targets || [];
-  const byWhere = {};
-  picks.forEach(c => {
-    const t = targets[+c.dataset.i]; if(!t) return;
-    const r = (t.results || [])[ +c.dataset.j ]; if(!r) return;
-    const k = t.where || String(c.dataset.i);
-    byWhere[k] = byWhere[k] || { where: t.where, seg: t.seg || 0, snippets: [] };
-    byWhere[k].snippets.push(
-      [r.title, r.site, r.date || "无日期"].filter(Boolean).join("｜") + "：" + (r.snippet || ""));
-  });
-  const updates = Object.values(byWhere);
-  btn.disabled = true;
-  if(msg) msg.textContent = "正在改写正文…";
-  try{
-    const d = await api("/api/web-fill", { company: curCo(), updates,
-      model: ($("#model") && $("#model").value) || "" });
-    if(d && d.draft){
-      S.draft = d.draft;
-      if(S.draft.web_plan) S.draft.web_plan.targets = [];
-      saveDraft(true);
-      renderDraft();
-      renderFill();
-      setStep("fill", { state: "done", pct: 100, detail: `已写入 ${updates.length} 段` });
-      toast(`已写入 ${updates.length} 段`);
-    }
-  }catch(e){
-    if(msg) msg.textContent = e.message || "写入失败";
-    toast(e.message || "写入失败", true);
-  }finally{ btn.disabled = false; }
 }
 
 function ckGroupHtml(it, done){
@@ -3647,9 +3505,11 @@ function ckGroupHtml(it, done){
 
 function ckHtml(v){
   const all = ckItems(v);
-  // 这一栏只放「程序判断不了、必须人来核」的事。表述与结构问题在生成时
-  // 已走过一轮自动修订，改掉了的不该再让人看第二遍。
-  const items = all.filter(it => it.fix !== "auto");
+  // 这一栏只放「数据对不上、必须人来核」的事：算式复算不通过、数字没有原值、
+  // 财务表不平、期次没有依据。表述与结构问题（缺主语、摘要偏长、比喻、板块偏薄）
+  // 一律不进这里——它们在生成时已经走过一轮自动修订，改不掉的也不该占着
+  // 待核对的卡片：那会让人以为数字有问题，逐条看完才发现全是措辞。
+  const items = all.filter(it => it.fix !== "auto" && it.fix !== "hint");
   const leftAuto = all.filter(it => it.fix === "auto");
   const fixedList = v.auto_fixed || [];
   const auto = (v.auto_checks || []);
@@ -3658,21 +3518,25 @@ function ckHtml(v){
   const allRows = items.reduce((a, x) => a.concat(x.rows), []);
   const n = allRows.filter(r => done.has(r.k)).length;
   const pct = allRows.length ? (n / allRows.length * 100).toFixed(1) : 0;
-  let h = `<div class="ck-h"><button class="ck-fold" onclick="ckFold(this)" title="收起核对项">▾</button><b>需人工核验</b>
+  let h = `<div class="ck-h"><button class="ck-fold" onclick="ckFold(this)" title="收起核对项">▾</button><b>检查异常</b>
       <span class="n"><i id="ckDoneN">${n}</i>/${allRows.length}</span>
       <button class="ck-all" onclick="ckAllDone()" title="把所有待核对都标为已核对">全勾</button>
       <button class="ck-reset" onclick="ckReset()" title="清空勾选">清空</button></div>
-    <div class="ck-sub">这里只有程序判断不了的：数字有没有出处、算式对不对得上。表述与结构已自动改过。</div>
+    <div class="ck-sub">只列数据对不上的：算式复算不通过、数字在材料里没有原值、财务表不平。措辞与结构会自己改，不占这里。</div>
     <div class="ck-bar"><i id="ckBar" style="width:${pct}%"></i></div>
     <div class="ck-list">`;
   if(!items.length){
-    h += `<div class="ck-empty">没有需要人工核验的数字问题。</div>`;
+    h += `<div class="ck-empty">没有数据异常。这一栏只列需要人工判断的数字问题。</div>`;
   }
   h += items.map(it => ckGroupHtml(it, done)).join("") + `</div>`;
-  // 自动修订后仍有残留的表述问题：说明程序改不动（多与材料有关），降级给人看
+  // 残留的表述问题只留一行提示，不铺卡片：这一栏是「数据异常」，
+  // 措辞类问题混进来会让人以为数字有问题。
   if(leftAuto.length){
-    h += `<div class="ck-sec">自动修订后仍未解决</div>`
-       + leftAuto.map(it => ckGroupHtml(it, done)).join("");
+    // ckItems 出来的对象字段是 title，不是后端 issue_items 的 t——取错字段
+    // 不会报错，只会让那一行提示变成「（ ）」，看着像功能没做完
+    const names = [...new Set(leftAuto.map(x => x.title || x.t))].slice(0, 4).join("、");
+    h += `<details class="ck-auto"><summary>另有 ${leftAuto.length} 处表述问题未自动改净（${esc(names)}）</summary>
+      <div class="lst">` + leftAuto.map(x => `<div>${esc(x.title || x.t)}</div>`).join("") + `</div></details>`;
   }
   // 已经自动改掉的：折起来只留一句话，证明「不是没查，是查了并改了」
   if(fixedList.length){
@@ -4618,7 +4482,13 @@ function collectDraft(){
   d.commentary.asset = { lead: $(".ta.as-lead").value.trim(), body: $(".ta.as-body").value.trim() };
   d.commentary.profit = { lead: $(".ta.pf-lead") ? $(".ta.pf-lead").value.trim() : "",
                           body: $(".ta.pf-body") ? $(".ta.pf-body").value.trim() : "" };
+  // 现金流与盈利同属一章，但各存各的 lead/body：导出时是连续两段，页面上分开编辑
+  d.commentary.cash = { lead: $(".ta.ch-lead") ? $(".ta.ch-lead").value.trim() : "",
+                        body: $(".ta.ch-body") ? $(".ta.ch-body").value.trim() : "" };
   d.commentary.debt = { lead: $(".ta.db-lead").value.trim(), body: $(".ta.db-body").value.trim() };
+  // 二级市场定价：没有数据时这几行是空的，collect 出来也就是空串，导出时整段跳过
+  d.commentary.market = { lead: $(".ta.mk-lead") ? $(".ta.mk-lead").value.trim() : "",
+                          body: $(".ta.mk-body") ? $(".ta.mk-body").value.trim() : "" };
   d.commentary.special_topics = [...document.querySelectorAll("#d-topics .topic")].map(t => ({
     lead: t.querySelector(".topic-lead").value.trim(),
     body: t.querySelector(".topic-body").value.trim()
@@ -4711,7 +4581,6 @@ function badge(ok, okText, badText){
 function renderSettings(){
   const d = SET.data || {};
   const pw = d.password || {}, llm = d.llm || {}, mail = d.mail || {}, ch = d.caihui || {};
-  const se = d.search || {};
   const bu = d.budget || {}, pr = d.pricing || {};
 
   let h = `<div class="sh"><b>设置</b><button class="x" onclick="closeSettings()">×</button></div><div class="sets">`;
@@ -4799,34 +4668,6 @@ function renderSettings(){
   </div>`;
 
   h += `<div class="setsec">
-    <div class="st">联网搜索 ${badge(se.ready, "已配置", "未配置")}
-      ${se.source ? `<span class="badge">${se.source === "env" ? "来自环境变量"
-        : (se.source === "llm" ? "复用模型 Key" : "页面填写")}</span>` : ""}</div>
-    <div class="sd">生成完会多出<b>第 4 步「补充完善」</b>：先评估哪几处内容有缺口，
-      并说明打算搜什么；你在那一步点「搜索」才真正去外网找，勾中的结果才写进正文，来源与时间一并标注。
-      <br/>默认用 <b>DeepSeek 搜索</b>——与模型同一个 Key，不必另申请账号，每千次成功请求 5 元、无结果不计费。
-      换成别家才需要单独填 Key。存本机 <code>data/search.json</code>。</div>
-    <div class="setgrid">
-      <label>服务商</label>
-      <select id="stSchProv" onchange="schProvChange()">
-        ${(se.providers || []).map(x => `<option value="${esc(x.id)}" ${se.provider === x.id ? "selected" : ""}>${esc(x.name)}</option>`).join("")}
-      </select>
-      <label>接口地址</label>
-      <input id="stSchUrl" value="${esc(se.url || "")}" placeholder="https://api.bochaai.com/v1/web-search" spellcheck="false"/>
-      ${se.own_key === false ? `<label>密钥来源</label>
-        <div class="kv">${se.has_key
-          ? `<span class="badge ok">复用模型里的 DeepSeek Key</span>`
-          : `<span class="badge warn">模型里没有 DeepSeek Key</span>`}</div>`
-      : `<label>API Key</label>
-        <input id="stSchKey" type="password" placeholder="${se.has_key ? "已保存，留空表示不改" : "填服务商控制台的 key"}" spellcheck="false"/>`}
-      <label>每处几条</label>
-      <input id="stSchMax" value="${esc(se.max_results || 5)}" placeholder="5" spellcheck="false"/>
-    </div>
-    <div class="setact"><span class="msg" id="msgSch">${se.hint ? esc(se.hint) : ""}</span>
-      <button class="btn-sm solid" onclick="saveSettings('search')">保存</button></div>
-  </div>`;
-
-  h += `<div class="setsec">
     <div class="st">访问口令 ${badge(!pw.is_default, "已自定义", "仍是默认口令")}</div>
     <div class="sd">别人打开这个网址要先输口令。改完所有旧登录立即失效。</div>
     <div class="setgrid">
@@ -4845,26 +4686,14 @@ function renderSettings(){
 
 function _val(id){ const el = $("#"+id); return el ? el.value.trim() : ""; }
 
-/* 换服务商时把接口地址换成该家的默认值——留空的话后端也会按 provider 兜底，
-   但让人看见地址才能判断是不是填错了。 */
-function schProvChange(){
-  const sel = $("#stSchProv"), url = $("#stSchUrl");
-  if(!sel || !url) return;
-  const se = (SET.data || {}).search || {};
-  const hit = (se.providers || []).find(x => x.id === sel.value);
-  if(hit && hit.url) url.value = hit.url;
-}
-
 async function saveSettings(section){
   const msgId = { llm: "msgLlm", mail: "msgMail", caihui: "msgCh",
-    search: "msgSch", cost: "msgCost", password: "msgPw" }[section];
+    cost: "msgCost", password: "msgPw" }[section];
   const msg = msgId ? $("#"+msgId) : null;
   const say = (t, kind) => { if(msg){ msg.className = "msg" + (kind ? " " + kind : ""); msg.textContent = t; } };
   const body = { section };
   if(section === "llm"){ body.url = _val("stLlmUrl"); body.model = _val("stLlmModel"); body.apiKey = _val("stLlmKey"); }
   if(section === "caihui"){ body.url = _val("stChUrl"); body.key = _val("stChKey"); }
-  if(section === "search"){ body.provider = _val("stSchProv"); body.url = _val("stSchUrl");
-    body.apiKey = _val("stSchKey"); body.maxResults = _val("stSchMax"); }
   if(section === "cost"){ body.maxCost = _val("stMaxCost"); }
   if(section === "mail"){ body.host = _val("stMailHost"); body.port = _val("stMailPort");
     body.tls = _val("stMailTls"); body.user = _val("stMailUser"); body.password = _val("stMailPass"); }
@@ -5434,7 +5263,7 @@ document.addEventListener("click", e => {
 let booted = false;
 
 /* ══ 首次引导 ═══════════════════════════════════════════════════
-   十个点：五步流程各一句，加上正文区能改/能拖/能加、右栏只剩什么、
+   十个点：四步流程各一句，加上正文区能改/能拖/能加、右栏只剩什么、
    说明页在哪。只讲「这里能做什么」，不复述操作手册——手册在说明页。
    拖动与新增用 CSS 动画演示：首屏没有草稿，指不到真实元素，讲一百遍
    「按住序号能拖」不如看它动一下。 */
@@ -5444,8 +5273,8 @@ const TOUR_KEY = "nr_tour_v1";
 const TOUR_STEPS = [
   { title: "一页走完一份简评",
     body: () => DEMO.on
-      ? `填主体 → 读材料 → 生成 → 补薄处 → 导出。下面拿中山城建那一轮真稿走一遍。`
-      : `填主体 → 读材料 → 生成 → 补薄处 → 导出。流程区五步，正文在右边。`,
+      ? `填主体 → 读材料 → 生成 → 导出。下面拿中山城建那一轮真稿走一遍。`
+      : `填主体 → 读材料 → 生成 → 导出。流程区四步，正文在右边。`,
     demo: "flow", wiz: "search" },
 
   { sel: ["#ws-search .wbody"], title: "第 1 步 · 检索主体", wiz: "search",
@@ -5461,11 +5290,7 @@ const TOUR_STEPS = [
     when: () => !!document.querySelector(".note-in"),
     body: `把读完材料的判断写在这里，决定正文往哪写；留空也行。` },
 
-  { sel: ["#ws-fill"], title: "第 4 步 · 补充完善", wiz: "fill",
-    body: `先评估哪几处有缺口，点「搜索」才去外网，勾中的结果才写进正文。`,
-    demo: "hotfill" },
-
-  { sel: [".docbar .end"], title: "第 5 步 · 导出报告", wiz: "export",
+  { sel: [".docbar .end"], title: "第 4 步 · 导出报告", wiz: "export",
     when: () => !!document.querySelector(".docbar .end"),
     body: `导出 Word 按模板排版；<b>发送</b>当附件发到邮箱；<b>下载</b>把报告、底稿、材料打成包。` },
 
@@ -6040,10 +5865,6 @@ const TOUR_DATA = {
     "auto": true
    }
   ],
-  "web_plan": {
-   "targets": [],
-   "ready": true
-  },
   "usage": {
    "cost": 0.0667,
    "cap": 2.0,
@@ -6068,7 +5889,7 @@ const TOUR_DEMO = {
   /* 欢迎：整条链路，一行交代「界面里摆的就是真的」 */
   flow: () => `<div class="tdemo">
       <div class="tflow">
-        <span>检索</span><i>→</i><span>材料</span><i>→</i><span>生成</span><i>→</i><span>补薄</span><i>→</i><span>导出</span>
+        <span>检索</span><i>→</i><span>材料</span><i>→</i><span>生成</span><i>→</i><span>导出</span>
       </div>
       <div class="tdreal">${DEMO.on
         ? `界面里是${esc(TOUR_DATA.company)} 2026 年跟踪期的真稿，退出引导即清空。`
@@ -6093,17 +5914,6 @@ const TOUR_DEMO = {
         <div class="tdbar"><i></i></div>
       </div>
       <div class="tdcap">勾选 → 读进 → 摘录</div>
-    </div>`,
-
-  /* 缺口：评估出一条 → 你点搜索 → 结果落地 */
-  hotfill: () => `<div class="tdemo">
-      <div class="tdhk">
-        <div class="h1"><span class="ln w2"></span><span class="go">搜索</span></div>
-        <div class="h2"><span class="ln w3"></span></div>
-        <div class="rs a"><span class="ln w3"></span><span class="ln w1 sm"></span></div>
-        <div class="rs b"><span class="ln w3"></span><span class="ln w1 sm"></span></div>
-      </div>
-      <div class="tdcap">勾中的才写进正文，并注明来源与时间</div>
     </div>`,
 
   /* 候选观点：点一条 → 它从候选里消失 → 列表里多一条 */
@@ -6163,13 +5973,12 @@ function demoEnter(){
   const nb = $("#niBody");
   DEMO.notesWasOpen = !!(nb && nb.classList.contains("open"));
   if(nb && !DEMO.notesWasOpen) toggleNotes();
-  renderFill();
 
-  // 五步都走完：步骤条讲的是同一轮的事，不能停在「待检索」
+  // 四步都走完：步骤条讲的是同一轮的事，不能停在「待检索」
   setStep("search", { state: "done", pct: 100, detail: "4 类公告" });
   setStep("materials", { state: "done", pct: 100, detail: "4 份 · 摘录 7.7 万字" });
   setStep("generate", { state: "done", pct: 100, detail: "正文 5,534 字" });
-  setStep("fill", { state: "done", pct: 100, detail: "无需补充" });
+  setStep("export", { state: "wait", pct: 0, detail: "可编辑后导出" });
   paintSpent(d.usage || null);
   return true;
 }
@@ -6181,8 +5990,6 @@ function demoExit(){
   S.company = "";
   const co = $("#company");
   if(co) co.value = "";
-  const fb = $("#fillBox");
-  if(fb) fb.innerHTML = "";
   ANA.files = [];
   resetSession();      // 材料、草稿、补充说明、步骤一起回到空白
   // 演示时帮用户展开的那块折回去，别在空白工作台上留一个开着的输入框

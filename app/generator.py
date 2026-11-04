@@ -455,7 +455,7 @@ SYSTEM_PROMPT = """你是信用评级机构的分析员，负责撰写内部「�
 22.3 每条五个字段：where 只能写「资产段之后」或「债务段之后」；title 是这段叫什么（如「对外担保」「未决诉讼」）；why 是为什么值得补，必须带材料里的金额与比重，这条只给用户判断用、不进正文；lead 是可直接用的加粗判断句，不带数字；body 是可直接用的正文，带实数，写清对手方、期限与触发条件。
 22.4 六类一项都没有就给空数组。不要用「公司治理结构完善」「未发现重大异常」这类没有数据支撑的话凑数。
 19. 两类专项按条件触发，不按行业标签触发。（1）收入主要来自政府结算（土地整理、代建、特许经营、购买服务）的，总述段交代「钱从谁来」时就要带上区域财力的实数——地区 GDP 与增速、一般公共预算收入、政府性债务余额或债务率，各一句、写明年份，并点明公司在这套结算体系里的层级与回款路径；不要只写「区域财力持续增长」这种不带数的判断，也不要把区域情况另起一段展开。（2）在建工程占非流动资产比重较高的，写清计划总投资、已累计投资、剩余投资，并与货币资金对照说明缺口。材料没有这些数据就整段不写，不许用「预计」「大致」补位。
-23. 盈利段（profit）单独成段，位置在财务指标表之后、债务段之前。收入与利润分开写，不许只写收入不写利润。
+23. 「盈利与现金流」（profit + cash）合成一章，位置在财务指标表之后、债务段之前；章内先写盈利段、再写现金流段，两段连续排，不要拆成两章。收入与利润分开写，不许只写收入不写利润；写完利润必须接现金流，不许只看利润不看获现。
 23.1 收入侧：本期营业收入与同比变动幅度；把变动拆成量、价、结构三块，每块落到具体板块或产品——哪个板块销量降了多少、哪个产品均价降了多少、哪个板块新并表或已退出。只写「营业收入下降」不写降在哪一块、是量还是价，等于没写。
 23.2 利润侧：利润总额与净利润各写本期数与同比变动。由盈转亏、亏损扩大、亏损收窄都要明写「亏损」，不得用「利润承压」「盈利弱化」「有所下滑」「利润空间收窄」代替——「承压」是评论，不是利润表上的数。
 23.3 亏损或利润大幅下滑必须逐项归因，一项一句，每句带金额或幅度，按对利润的影响从大到小排：毛利变动（量、价、成本各影响多少）→ 期间费用（销售、管理、研发、财务费用各是多少、为什么变）→ 减值损失（资产减值与信用减值分别是多少、计在哪个科目或哪项资产上、依据什么提的）→ 投资收益与公允价值变动 → 政府补助与其他收益 → 资产处置损益 → 所得税。写完回算一遍：各归因项的方向与规模要能对上利润的变动，加不起来就说明漏项或数字抄错了，回到材料里核，不许就这么交。
@@ -467,12 +467,24 @@ SYSTEM_PROMPT = """你是信用评级机构的分析员，负责撰写内部「�
 正例：「2025年利润总额12.45亿元、同比下降87.05%，净利润为负、由盈转亏；当期资产减值损失68.17亿元、信用减值损失17.38亿元，较上年分别增加63.06亿元和13.43亿元，两项合计构成亏损的主要来源」——一个数都没编，亏损的规模也交代清楚了。
 财务指标表里材料没给的项一律留「—」。确实需要自己算的（差额、合计、占比、增速），按 16.1 把算式写进 data_notes，一行一条，程序会复算；表格里找不到出处的数会被程序置空并提示，那不是程序太严，是这一格没人能证明它。
 23.7 亏损归因的每一笔都要能对上账：减值提了多少、毛利变动多少、费用增减多少，加起来要能解释利润总额从多少掉到多少。差一个量级就说明还有一项没找到或抄错了——回到材料里把那一项找出来，找不到就不写，不要用「其他因素」兜底。
+23.8 现金流段（cash）另起一段：本期经营活动净现金流与同比，钱从哪来、花到哪去——销售回款、政府补助、往来款净流入各是多少，采购、人工、税费各付了多少。经营净流出的，要写清缺口由什么补上（新增借款、股东注资、处置资产），不许只写「经营活动现金流为负」。
+23.9 收现比＝销售商品、提供劳务收到的现金 ÷ 营业收入。算出来写进 data_notes 交底；明显偏离 1（低于 0.9 或高于 1.1）要说明原因——应收账款增加、结算周期拉长、票据结算占比上升，各点一句，不要只给一个比值。
+23.10 投资与筹资各一句：购建固定资产、无形资产和其他长期资产支付的现金，投资支付的现金；取得借款收到的现金与偿还债务支付的现金轧差后是净增还是净还，净增多少。这两句决定「钱是靠经营挣来的还是借来的」。
+23.11 覆盖能力只写能算得出来的：非受限货币资金 ÷ 短期债务、经营活动净现金流 ÷ 利息支出。材料只给货币资金总额、没给受限部分的，就写货币资金并注明「含受限部分」，不许把货币资金总额直接当非受限资金用（受限部分往往不能拿来还债，这一处最容易把风险写小）。
+23.12 现金流段收口：经营获现能不能覆盖利息与一年内到期债务；不能覆盖的，缺口靠什么补、这个来源下一期还在不在。
+【盈利与现金流的检验法】把盈利段与现金流段并排读一遍：利润是正的、经营现金流连续为负，就要在正文里解释这个差额落在哪（应收增加、存货增加、往来款占用）；两段各说各的、不互相印证，等于两段都没写完。
+
 24. 材料的用途按类别分，不要一视同仁地摘抄。本次材料可能包含跟踪评级报告、募集说明书、审计报告（含经审计的财务报表）与其他公告，分工如下：
 　24.1 跟踪评级报告是判断的依据：业务模式、行业量价、资产构成、债务结构以它为准。
 　24.2 审计报告不是用来复述的。它只有两个用途：① 财务指标表的数字与它对齐——审计报告的三表是最终口径，评级报告的表格与它不一致时以审计报告为准；② 审计意见类型是偿债判断的一部分——标准无保留意见不必写（见 19.2 没有变化的不写），出现保留意见、带强调事项段、无法表示意见、否定意见，或首次出现持续经营重大不确定性段落，必须在基本情况或债务段写出来，说明段落的原文事由（如「与持续经营相关的重大不确定性」涉及哪笔债务、哪项资产）。审计报告的附注、会计政策变更说明、报表项目明细一律不进正文。
 　24.3 其他公告是用来找「报告期内发生了什么」的：诉讼与仲裁、担保代偿、监管处罚、评级下调、控制权与股权变动、重大资产处置、资金占用、债务展期或技术性违约。这一类只有出现对偿债有含义的事项才写，按 19.2 的判断法筛一遍——写成一条公告，读者会不会改变「这家公司能不能按期还钱」的判断？会，就写进对应的段（资产、债务或专题段），并带金额、对手方、时点；不会，就整句不写。程序性公告（付息、兑付、上市流通、发行结果、票面利率）即使被读进材料也不写。
 　24.4 同一件事在多类材料里都出现时，只写一次，取最具体的那个数（审计报告与募集说明书里的同一科目余额不一致，以审计报告为准）。
-
+25. 二级市场定价（market）单独成段，位置在债务段之后、专题段之前。只在给了【二级市场数据】时写；没有这份数据就把 lead 与 body 都输出空字符串，不要在正文里交代「未获取到市场价格」——那是在说作业过程。
+25.1 先交代口径与区间：中债估值口径、按主体存续债逐券计算后取中位数、公募无担保非永续、数据自哪天至哪天、共几个交易日。口径不交代，读者没法把利差和别家比。
+25.2 报数三件：信用利差（较国开债）期初值→期末值、走阔或收窄多少 BP；区间高低点；超额利差的方向——为负且绝对值收窄，说明相对同评级同类型的定价在往基准靠，为正则相反。超额利差在数据块里被标成「基本为零」时，只写一句「与同评级同类型基准相当」，不报走势、不报区间，也不重复成两句。
+25.3 不许写「市场认可度提升」「市场情绪转暖」「投资者信心增强」这类判断：利差只是个价，是涨是跌已经写在数里，再加一句评价等于重复。也不许把利差变动归因到某项经营事件，除非材料里明确写了那件事与定价的关联。
+25.4 收口只写这个价处在什么位置——相对自身区间的高位还是低位、相对同评级基准是更紧还是更松；不预测后续走势，不写「预计利差将……」。「位置」是事实，「将走阔」是预测，评级报告里不要后者。说位置必须带上范围（「在本次 N 个交易日的区间内处于偏高位」），不要写「中枢」「历史高位」「处在该评级应有水平」这类要有更长样本才能成立的判断——手上只有一个月的数据。
+25.5 正文里不要出现中债估值收益率这个数——本文只有利差与走势可用。
 【写作风格】以跟踪评级报告正文为语体基准：段首归因（受……影响／受益于）、段中展开（具体来看／结构上／此外）、段末收口（整体来看，……）。判断词要分级（很强/较强/一般/较弱、可控/充足/尚可/承压）。不用「本期」「去年」「大幅」这类不可核实表述，也不用「可能」「大概」「或许」——判断要么有据，要么不写。行文里不出现「材料」「披露」「外部条件」这类词：它们是分析员的作业对象，不是报告的语言。
 
 【输出】只输出一个 JSON 对象，不要任何解释文字。"""
@@ -520,6 +532,13 @@ def build_user_prompt(facts: dict, materials: list[dict], user_notes: str = "") 
             "期次写法照材料原文的表述，同一张表内的期次必须与材料表的表头一致。",
             "财务指标表需要你按【材料原文】的「主要财务数据」表整理输出，数字与材料逐一对应。",
         ]
+    # 二级市场定价：财汇取不到就整块不给，模型据此把 market 段留空（规则 25）
+    import market as market_mod
+    market_block = market_mod.as_text((facts or {}).get("market") or {})
+    market_block = (f"\n【二级市场数据】\n{market_block}\n"
+                    if market_block else
+                    "\n【二级市场数据】本次未取到，market 的 lead 与 body 一律输出空字符串。\n")
+
     # 每份材料头标出日期与类别：类别决定模型怎么用它（规则 24），
     # 日期决定它以哪一版为准（同一年的审计报告可能有两个版本）
     mat_blocks = []
@@ -546,7 +565,9 @@ def build_user_prompt(facts: dict, materials: list[dict], user_notes: str = "") 
     "financial_table": {"unit_line": "单位：亿元", "periods": ["2023年", "2024年", "2025年"], "rows": [["资产总额", "0.00", "0.00", "0.00"], ["负债总额", "0.00", "0.00", "0.00"], ["净利润", "0.00", "0.00", "0.00"]]},
     "asset": {"lead": "加粗汇总句（不带数字）", "body": "资产段正文"},
     "profit": {"lead": "加粗汇总句（不带数字，说清这一年利润是被什么吃掉的）", "body": "盈利段正文：收入（量价结构）→ 利润总额与净利润及同比 → 亏损或下滑逐项归因（毛利、费用、减值、投资收益、补助、处置、所得税，每项带金额）→ 哪些偶发、哪些持续、下一期还吃不吃"},
+    "cash": {"lead": "现金流段加粗汇总句（不带数字，说清经营获现够不够覆盖利息与到期债务）", "body": "现金流段正文（与盈利段同属「盈利与现金流」一章，另起一段）：经营活动净现金流及同比 → 主要来源与去向（销售回款、补助流入、往来款）→ 收现比（销售商品提供劳务收到的现金 ÷ 营业收入）→ 投资与筹资净现金流（在建工程投入、借款与发债净额）→ 非受限货币资金对短期债务的覆盖 → 收口：经营获现能不能覆盖利息与一年内到期债务"},
     "debt": {"lead": "加粗汇总句（不带数字）", "body": "债务段正文"},
+    "market": {"lead": "二级市场定价段加粗判断句（不带数字，说清市场对该主体的定价处在什么位置、往哪个方向走）", "body": "二级市场定价段正文：数据区间与口径（中债估值、主体存续债中位数）→ 信用利差期初期末与变动幅度 → 区间高低点 → 超额利差方向（相对同评级同类型是更紧还是更松）→ 收口：定价反映出的市场判断，不预测"},
     "special_topics": [],
     "add_on_sections": [
       {"where": "债务段之后（或资产段之后）", "title": "这一段叫什么，如「对外担保」",
@@ -583,7 +604,7 @@ def build_user_prompt(facts: dict, materials: list[dict], user_notes: str = "") 
 
 【材料原文】
 {mat_block}
-{notes_block}
+{market_block}{notes_block}
 【输出 JSON 结构】
 {schema}
 
@@ -1100,7 +1121,8 @@ def _clean_advice(raw) -> list[dict]:
 
 # 这些键不属于报告内容，但会贯穿整个流程。_ensure_structure 按白名单重建 dict，
 # 不过一遍就会把它们弄丢——修订轮里它被调用两次，user_notes 就这么丢过一次。
-_META_KEYS = ("truncated", "user_notes", "web_plan", "auto_fixed", "revise_calls")
+_META_KEYS = ("truncated", "user_notes", "usage", "history_id",
+              "auto_fixed", "revise_calls")
 
 
 def _ensure_structure(draft: dict, facts: dict) -> dict:
@@ -1162,7 +1184,9 @@ def _ensure_structure(draft: dict, facts: dict) -> dict:
         segments.append({"name": nm, "body": dedupe_sentences(b)})
     asset = para(at)
     pf = para(c.get("profit"))
+    cash = para(c.get("cash"))
     debt = para(db)
+    mkt = para(c.get("market"))
     topics = [para(t) for t in (c.get("special_topics") or []) if str(t.get("body") or "").strip()]
 
     out["commentary"] = {
@@ -1173,7 +1197,9 @@ def _ensure_structure(draft: dict, facts: dict) -> dict:
         "asset": asset,
         "financial_table": fin_table,
         "profit": pf,
+        "cash": cash,
         "debt": debt,
+        "market": mkt,
         "special_topics": [t for t in topics if t["body"]],
     }
     out["data_notes"] = draft.get("data_notes") or []
@@ -1218,7 +1244,7 @@ def polish_draft(draft: dict) -> dict:
         lead = _lead(p.get("lead"))
         return {"lead": lead, "body": dedupe_sentences(dedupe_lead(lead, _pol(p.get("body") or "")))}
 
-    for k in ("industry", "overview", "asset", "profit", "debt"):
+    for k in ("industry", "overview", "asset", "profit", "cash", "debt", "market"):
         if isinstance(c.get(k), dict):
             c[k] = para(c[k])
     if isinstance(c.get("segments"), list):
@@ -1471,7 +1497,45 @@ def _eval_formula(expr: str, nums: list[float]) -> float | None:
     return float(out) if isinstance(out, (int, float)) else None
 
 
-def _verify_notes(draft: dict, corpus_nums: set[str]) -> tuple[list[dict], list[dict]]:
+def _missing_hint(v: float, vals: list[float] | None) -> dict:
+    """操作数在材料里找不到时，说清「最接近的是哪个数、差在哪」。
+
+    报「找不到出处」而不给依据，等于让人去几千页 PDF 里捞。实际情形多数是三种：
+    ① 四舍五入（材料 265.16、正文 265.17）；② 口径或单位不同（万元表、亿元文）；
+    ③ 这个数由另外两个数相减得来（非受限货币资金 = 货币资金 − 受限部分），
+    材料里根本没有这个原值——这时候该补的是算式，不是换数。
+    """
+    if not vals:
+        return {"v": v, "kind": "none"}
+    best, bd = None, None
+    for x in vals:
+        d = abs(x - v)
+        if bd is None or d < bd:
+            best, bd = x, d
+    rel = (bd / abs(v)) if v else 9.0
+    kind = "round" if rel <= 0.005 else ("near" if rel <= 0.05 else "none")
+    return {"v": v, "kind": kind, "near": best, "rel": round(rel, 4)}
+
+
+def _note_missing(row: dict) -> str:
+    """把一个复算不通过的原因说成人话。"""
+    if not row.get("missing"):
+        return "算式的结果没有出现在正文里——写了算式却没用这个数，补上或删掉这条"
+    parts: list[str] = []
+    for d in (row.get("missing_detail") or []):
+        v, kind, near = d.get("v"), d.get("kind"), d.get("near")
+        if kind == "round":
+            parts.append(f"{v:g} 与材料原文只差四舍五入（材料为 {near:g}）")
+        elif kind == "near":
+            parts.append(f"材料里最接近的是 {near:g}，与 {v:g} 差 {abs(near - v):g}，"
+                         "口径或单位可能不同")
+        else:
+            parts.append(f"{v:g} 在材料原文里没有原值，像是换算、扣减或加总得来的")
+    return "；".join(parts) + "——按 16.1 在 data_notes 写清这个数怎么来，或直接改用材料原值"
+
+
+def _verify_notes(draft: dict, corpus_nums: set[str],
+                  corpus_vals: list[float] | None = None) -> tuple[list[dict], list[dict]]:
     """把 data_notes 里交底的算式逐条复算。
 
     返回 (通过, 不通过)。通过的要求是三条同时成立：
@@ -1487,7 +1551,9 @@ def _verify_notes(draft: dict, corpus_nums: set[str]) -> tuple[list[dict], list[
         ((c.get("overview") or {}).get("body") or ""),
         ((c.get("asset") or {}).get("body") or ""),
         ((c.get("profit") or {}).get("body") or ""),
+        ((c.get("cash") or {}).get("body") or ""),
         ((c.get("debt") or {}).get("body") or ""),
+        ((c.get("market") or {}).get("body") or ""),
         " ".join(s.get("body") or "" for s in (c.get("segments") or [])),
         " ".join(t.get("body") or "" for t in (c.get("special_topics") or [])),
     ])
@@ -1504,17 +1570,20 @@ def _verify_notes(draft: dict, corpus_nums: set[str]) -> tuple[list[dict], list[
             continue
         # ② 操作数是否都在材料里
         missing: list[float] = []
+        missing_detail: list[dict] = []
         for v in f["nums"]:
             cands = {f"{v:.2f}", f"{v:.1f}", f"{v:.0f}",
                      (str(int(v)) if v == int(v) else "")}
             if not any(x and x in corpus_nums for x in cands):
                 if not any(_close(v, m) for m in missing):
                     missing.append(v)
+                    missing_detail.append(_missing_hint(v, corpus_vals))
         val = _eval_formula(f["expr"], f["nums"])
         # ③ 算出来的值是否真的出现在正文里（数值比较，两位小数容差）
         hit_text = val is not None and any(_close(abs(val), b) for b in body_vals)
         row = {"name": f["name"], "expr": f["raw"], "val": val,
-               "missing": missing, "hit": hit_text}
+               "missing": missing, "missing_detail": missing_detail,
+               "hit": hit_text}
         (ok if (val is not None and hit_text and not missing) else bad).append(row)
     return ok, bad
 
@@ -1838,7 +1907,9 @@ def _nochange_rows(draft: dict) -> list[dict]:
         ("总述段", "ov-body", "blk-overview", (c.get("overview") or {}).get("body") or ""),
         ("资产段", "as-body", "blk-asset", (c.get("asset") or {}).get("body") or ""),
         ("盈利段", "pf-body", "blk-profit", (c.get("profit") or {}).get("body") or ""),
+        ("现金流段", "ch-body", "blk-cash", (c.get("cash") or {}).get("body") or ""),
         ("债务段", "db-body", "blk-debt", (c.get("debt") or {}).get("body") or ""),
+        ("二级市场", "mk-body", "blk-market", (c.get("market") or {}).get("body") or ""),
     ]
     rows: list[dict] = []
     seen: set[str] = set()
@@ -1864,7 +1935,7 @@ def _nochange_rows(draft: dict) -> list[dict]:
 # 校验规则的版本号。规则一改就加一，存量记录据此判断要不要重算——
 # 只看「有没有 issue_items」是不够的：新加的校验项不会进到老记录里，
 # 用户打开旧报告就看不到新提示，等于没上。
-VALIDATOR_REV = 10
+VALIDATOR_REV = 11
 
 # 校验项分三类，决定它出现在哪儿：
 #   auto   —— 表述与结构问题，程序能改。生成后自动走一轮修订，改掉了就不给人看。
@@ -1875,7 +1946,7 @@ FIX_AUTO = (
     "摘要层措辞没有刻度", "摘要一条塞了两件事", "加粗句缺主语",
     "缺行业情况段", "行业情况偏薄", "行业段没有数据",
     "写了没有变化的事", "正面与关注说了同一件事",
-    "资产段缺金额占比", "缺盈利段", "只写收入没写利润", "亏损没写成亏损",
+    "资产段缺金额占比", "缺盈利段", "缺现金流段", "只写收入没写利润", "亏损没写成亏损",
     "亏损原因没说清", "归因还被空话占着", "财务表缺净利润行",
     "还有交代来源的句子", "同一句话出现了两遍", "程度词要换成数据",
     "还在给风险贴标签", "用比喻代替了机制", "正面不足 3 条", "关注不足 3 条", "总述段缺加粗句",
@@ -2030,7 +2101,7 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
     # 但那些块在几百行之后才拼，早点的检查先用这份）
     _c0 = draft.get("commentary") or {}
     _chunks = [draft.get("basic_info") or ""]
-    for _k in ("industry", "overview", "asset", "profit", "debt"):
+    for _k in ("industry", "overview", "asset", "profit", "cash", "debt", "market"):
         _b = _c0.get(_k) or {}
         _chunks += [_b.get("lead") or "", _b.get("body") or ""]
     for _b in (_c0.get("segments") or []):
@@ -2053,6 +2124,7 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
               + json.dumps(describe_traits(facts), ensure_ascii=False)
               + "\n" + "\n".join(m.get("text", "") for m in materials))
     corpus_nums = set()
+    corpus_vals: list[float] = []
     _walk_numbers(facts, corpus_nums)
     _walk_numbers(describe_traits(facts), corpus_nums)
 
@@ -2063,6 +2135,7 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
                 corpus_nums.add(digits)
                 try:
                     v = float(digits)
+                    corpus_vals.append(v)
                     corpus_nums.add(f"{v:.2f}")
                     # 材料里的表多按万元计，正文按亿元写；换算后的口径也要认，
                     # 否则「561.57 亿元」会被判成找不到出处。
@@ -2087,8 +2160,10 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
                 continue
             corpus_nums.add(clean)
             corpus_nums.add(f"{v:.2f}")
+            corpus_vals.append(v)
             if v >= 10000:
                 corpus_nums.add(f"{v / 10000:.2f}")
+                corpus_vals.append(v / 10000)
     # 材料里的表格数字常常不带单位（如「19.40」），按裸数值一并入集，
     # 否则正文引用的表格数据会被大面积误判为不可溯源。
     for mat in materials:
@@ -2153,7 +2228,9 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
                               ("overview", "总述段", "blk-overview", "ov-body"),
                               ("asset", "资产段", "blk-asset", "as-body"),
                               ("profit", "盈利段", "blk-profit", "pf-body"),
-                              ("debt", "债务段", "blk-debt", "db-body")):
+                              ("cash", "现金流段", "blk-cash", "ch-body"),
+                              ("debt", "债务段", "blk-debt", "db-body"),
+                              ("market", "二级市场", "blk-market", "mk-body")):
         _b = _c0.get(_k) or {}
         _scan.append((f"{_b.get('lead') or ''}。{_b.get('body') or ''}", _nm, _an, _fd))
     for _i, _b in enumerate(_c0.get("segments") or [], 1):
@@ -2204,7 +2281,9 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
               ("总述段", "ov-lead", "blk-overview", (_c0.get("overview") or {}).get("lead")),
               ("资产段", "as-lead", "blk-asset", (_c0.get("asset") or {}).get("lead")),
               ("盈利段", "pf-lead", "blk-profit", (_c0.get("profit") or {}).get("lead")),
-              ("债务段", "db-lead", "blk-debt", (_c0.get("debt") or {}).get("lead"))]
+              ("现金流段", "ch-lead", "blk-cash", (_c0.get("cash") or {}).get("lead")),
+              ("债务段", "db-lead", "blk-debt", (_c0.get("debt") or {}).get("lead")),
+              ("二级市场", "mk-lead", "blk-market", (_c0.get("market") or {}).get("lead"))]
     _no_subj = [(name, field, anchor, (lead or "").strip())
                 for name, field, anchor, lead in _leads if not _subj_lead(lead)]
     if _no_subj:
@@ -2400,7 +2479,7 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
     # 或有事项不进债务段（规则 9），但也不能因此消失——它能单列就提示用户补一段。
     _whole = " ".join(
         [str(draft.get("basic_info") or "")]
-        + [str((_c.get(k) or {}).get("body") or "") for k in ("industry", "overview", "asset", "profit", "debt")]
+        + [str((_c.get(k) or {}).get("body") or "") for k in ("industry", "overview", "asset", "profit", "cash", "debt", "market")]
         + [str(s.get("body") or "") for s in (_c.get("segments") or [])]
         + [str(t.get("body") or "") for t in (_c.get("special_topics") or [])])
     _mat = "\n".join((m.get("text") or "") for m in materials)
@@ -2460,7 +2539,7 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
                 _drop = (nm, round(d, 2), nums[0], nums[1])
                 break
     _all_body = " ".join(
-        [str((_c.get(k) or {}).get("body") or "") for k in ("overview", "asset", "profit", "debt")]
+        [str((_c.get(k) or {}).get("body") or "") for k in ("overview", "asset", "profit", "cash", "debt", "market")]
         + [str(s.get("body") or "") for s in (_c.get("segments") or [])])
     _has_profit_word = bool(re.search(r"净利润|利润总额|净亏损", _all_body))
     # 「有没有说亏损」只看盈利段：亏损若只在债务段里顺带提一句（「受利润亏损影响，
@@ -2475,6 +2554,16 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
             "收入与利润的分析要单独成段：收入拆量、价、结构，利润写总额与净额及同比，"
             "亏损或大幅下滑再逐项归因。")
         issue_items.append({"t": "缺盈利段", "a": "blk-profit", "d": []})
+
+    # ①b 现金流段空着：利润是账面数，能不能还债看的是经营获现。
+    # 这一条在「盈利与现金流」合并成章之后才有意义——只剩盈利段等于章没写完。
+    _cs_body = str((_c.get("cash") or {}).get("body") or "").strip()
+    if _pf_body and not _cs_body:
+        issues.append(
+            "「盈利与现金流」这一章只有盈利段，没有现金流段。利润是账面数，"
+            "能不能按期还债看的是经营获现：请在盈利段之后另起一段，写经营活动净现金流"
+            "及同比、收现比、投资与筹资净额，以及非受限货币资金对短期债务的覆盖。")
+        issue_items.append({"t": "缺现金流段", "a": "blk-cash", "d": []})
 
     # ② 通篇不提利润：只写了收入不写利润
     if not _has_profit_word and (_pf_body or _all_body.strip()):
@@ -2750,7 +2839,7 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
     derived: list[dict] = []
     seen_num: set[str] = set()
     # 先按模型交底的算式复算一遍：算得上的数直接销账，不必再进待核对。
-    notes_ok, notes_bad = _verify_notes(draft, corpus_nums)
+    notes_ok, notes_bad = _verify_notes(draft, corpus_nums, corpus_vals)
     proven: list[tuple[float, dict]] = [
         (float(r["val"]), r) for r in notes_ok if r["val"] is not None]
 
@@ -2891,9 +2980,8 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
                 "where": loc.get("where") or r["name"],
                 "full": loc.get("full") or "", "si": loc.get("si") or 0,
                 "formula": r["expr"], "kind": "算式",
-                "note": (("算式本身算不出来（除零或写法有误）" if r["val"] is None else
-                          ("操作数 " + "、".join(f"{m:g}" for m in r["missing"]) + " 在材料里找不到")
-                          if r["missing"] else "算出来的值在正文里找不到")),
+                "note": ("算式本身算不出来（除零或写法有误）" if r["val"] is None
+                         else _note_missing(r)),
                 "anchor": loc.get("anchor") or "d-doc",
                 "field": loc.get("field") or "", "seg": loc.get("seg") or 0})
         issue_items.append({"t": "交底的算式复算不通过", "a": "d-doc", "d": ndets})
@@ -3117,119 +3205,6 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
             "rev": VALIDATOR_REV}                # 校验规则版本：变了就要重算存量记录
 
 
-def web_plan(draft: dict, facts: dict) -> dict:
-    """生成之后的「第 5 步」评审：哪些地方值得去外网找补充。
-
-    只做评估、不搜——搜索要花额度，而且搜什么该让人看见再决定。返回：
-      targets  该补的位置（含建议查询词与理由）
-      ready    有没有配搜索通道
-    没有偏薄段落时 targets 为空，前端这一步显示「无需补充」。
-    """
-    try:
-        import search as search_mod
-    except Exception:                                          # noqa: BLE001
-        return {"targets": [], "ready": False}
-    targets = search_mod.plan_queries(draft, facts)
-    for t in targets:
-        t["results"] = []
-        t["note"] = ""
-    return {"targets": targets, "ready": search_mod.available()}
-
-
-def web_search_one(plan_item: dict, known_titles: list[str] | None = None) -> dict:
-    """按评估结果搜一处，返回带 results 的同一结构。
-
-    known_titles：已读材料的标题，用来排掉「搜回来的就是手里那份报告」。
-    """
-    import search as search_mod
-    q = (plan_item or {}).get("query") or ""
-    out = {**(plan_item or {}), "results": [], "note": ""}
-    if not q:
-        out["note"] = "没有查询词"
-        return out
-    try:
-        rows = search_mod.search(q, known_titles=known_titles)
-    except Exception as e:                                     # noqa: BLE001
-        out["note"] = f"搜索失败：{str(e)[:100]}"
-        return out
-    # 只留带网址的；日期缺失的保留但由前端标「无日期」，写入时提示词会要求
-    # 「来源或时间不明的就不引」，所以不必在这里删掉——删了人也看不到有这条。
-    rows = [r for r in rows if r.get("url") or r.get("snippet")]
-    out["results"] = rows[:5]
-    out["note"] = "" if rows else "没有搜到可用结果"
-    return out
-
-
-def apply_web_fill(draft: dict, updates: list[dict], model_id: str | None = None,
-                   progress=None) -> dict:
-    """把用户勾中的外部材料写进正文对应段落，返回新草稿。
-
-    updates 每项：{where, seg, snippets:[...]}。只改指定段落，其余不动；
-    模型只被允许使用 snippets 里出现的事实，用不到就原样返回。
-    """
-    if not updates:
-        return draft
-    c = dict(draft.get("commentary") or {})
-    todo = []
-    for u in updates:
-        tgt = (u.get("where") or "")
-        seg = u.get("seg") or 0
-        cur = ""
-        if "分部" in tgt and seg:
-            arr = c.get("segments") or []
-            if 0 < seg <= len(arr):
-                cur = arr[seg - 1].get("body") or ""
-        elif "行业" in tgt:
-            cur = (c.get("industry") or {}).get("body") or ""
-        if not cur.strip():
-            continue
-        todo.append({"段落": tgt, "现有正文": cur,
-                     "可用的外部材料": (u.get("snippets") or [])[:4]})
-    if not todo:
-        return draft
-    prompt = """下面是报告里的几段正文，以及为它们查到的外部资料。请把外部资料里真正有用的信息
-并入对应段落，输出 JSON：{"段落": [{"target": "段落名", "body": "改写后的正文"}]}。
-
-要求：
-1. 只允许使用「可用的外部材料」里出现的数字与事实，不得补充任何别的数据。
-2. 引外部数据时要交代来源与时间，写成「据××协会 2026 年 3 月数据」这种形式；
-   来源或时间不明的就不引。
-3. 没有可用信息时原样返回该段正文，不要为了用上资料而硬写。
-4. 段落原有的事实、数字、判断一律保留，只在合适位置补一到两句。
-5. 篇幅不得超出原文的两倍，能一句话说清就不用两句。"""
-    try:
-        raw = llm.chat([
-            {"role": "system", "content": prompt},
-            {"role": "user", "content": json.dumps(todo, ensure_ascii=False)},
-        ], model_id=model_id, temperature=0.2, max_tokens=16000, timeout=600,
-            thinking=False)
-        got = llm.parse_json(raw)
-    except Exception:                                          # noqa: BLE001
-        return draft
-    rows = (got or {}).get("段落") if isinstance(got, dict) else None
-    if not isinstance(rows, list):
-        return draft
-    for r in rows:
-        tgt = (r.get("target") or "")
-        body = (r.get("body") or "").strip()
-        if not body:
-            continue
-        for u in updates:
-            t = u.get("where") or ""
-            if t and (t == tgt or t in tgt or tgt in t):
-                seg = u.get("seg") or 0
-                if "分部" in t and seg:
-                    arr = list(c.get("segments") or [])
-                    if 0 < seg <= len(arr):
-                        arr[seg - 1] = {**arr[seg - 1], "body": body}
-                        c["segments"] = arr
-                elif "行业" in t:
-                    c["industry"] = {**(c.get("industry") or {}), "body": body}
-                break
-    draft = {**draft, "commentary": c}
-    return draft
-
-
 def _est_tokens(chars: int) -> int:
     """按字符粗估 token。中文实测约 1.6 字 1 token（91,457 字 → 51,923 token），
     估小了会在 API 侧吃 400，估大了只会白裁材料，所以取保守的 1.6。"""
@@ -3303,7 +3278,7 @@ def _looks_empty(draft) -> bool:
         return True
     c = draft.get("commentary") or {}
     body = (draft.get("basic_info") or "")
-    for k in ("industry", "overview", "asset", "profit", "debt"):
+    for k in ("industry", "overview", "asset", "profit", "cash", "debt", "market"):
         body += (c.get(k) or {}).get("body") or ""
     for s in (c.get("segments") or []):
         body += s.get("body") or ""
@@ -3348,8 +3323,107 @@ def cost_guard(facts: dict, materials: list[dict], model_id: str | None = None,
             "rate": pricing.rate(mid)}
 
 
+def _revise_pass(draft: dict, facts: dict, materials: list[dict],
+                 auto_before: list[dict], model_id: str | None, progress,
+                 used: dict, was_truncated: bool, t0: float) -> tuple[dict, float]:
+    """跑一轮定向修订，返回（新草稿, 这一轮用时）。
+
+    单独拆出来是因为它也走一次模型调用：生成路径上可以当场跑，也可以先出正文、
+    再在后台补跑。两条路走的是同一段逻辑，规则只有一份。
+    """
+    import time
+    _p(progress, 97, "自动修订", f"改写 {len(auto_before)} 处表述与结构问题")
+    _rv: dict = {}
+    fixed = _revise_draft(draft, facts, materials, auto_before, model_id,
+                          progress=progress, usage_out=_rv)
+    for _k in ("prompt_tokens", "completion_tokens", "total_tokens", "cached_tokens"):
+        used[_k] = used.get(_k, 0) + _rv.get(_k, 0)
+    used["calls"] = used.get("calls", 0) + _rv.get("calls", 0)
+    if not fixed:
+        return draft, 0.0
+    for _k in ("company_full_name", "internal_rating_code", "positive", "concern",
+               "positive_pool", "concern_pool", "basic_info", "commentary",
+               "data_notes", "sources", "special_topics"):
+        if _k in fixed and fixed[_k] not in (None, "", [], {}):
+            draft[_k] = fixed[_k]
+    draft = _ensure_structure(draft, facts)
+    draft["truncated"] = was_truncated
+    # 修订稿再走一遍本地清洗：重复句、来源交代语、粘连句这类机械问题
+    # 用规则删比让模型改更可靠，也省一次调用。改的是文字，不动结构与数字。
+    draft = polish_draft(draft)
+    draft["commentary"] = dict(draft.get("commentary") or {})
+    for _k in ("financial_table", "segment_table"):
+        if isinstance(draft["commentary"].get(_k), dict):
+            draft["commentary"][_k] = reorder_table(draft["commentary"][_k])
+    draft["add_on_sections"] = _clean_advice(
+        merge_advice(draft.get("add_on_sections"), materials))
+    after = validate(draft, facts, materials)
+    # 记下这一轮修掉了什么：前端把「已自动修正」折起来，只留需人工核验的
+    left = {(it.get("t")) for it in _auto_issues(after)}
+    done = [it.get("t") for it in auto_before if it.get("t") not in left]
+    after["auto_fixed"] = sorted(set(done))
+    after["revise_calls"] = 1
+    after["revise_pending"] = False
+    draft["validation"] = after
+    _p(progress, 98, "自动修订", f"已修正 {len(set(done))} 处，剩 "
+                                f"{len(after['issue_items'])} 条需人工核验")
+    return draft, time.time() - t0
+
+
+def revise_draft(draft: dict, facts: dict, materials: list[dict],
+                 model_id: str | None = None, progress=None) -> dict:
+    """正文已经交到页面上之后，在后台补跑的那一轮表述复核。
+
+    返回新草稿：正文可能被改过，validation 换成复核后的结果。没有可自动修正的
+    项时原样返回，只把 revise_pending 落成 False——前端据此摘掉「复核中」的标记。
+    """
+    import time
+    out = dict(draft or {})
+    val = dict(out.get("validation") or {})
+    if not _revisable(val):
+        val["revise_pending"] = False
+        out["validation"] = val
+        return out
+    # 底账要在这里留：_revise_pass 内部会走 _ensure_structure，即便白名单已放宽，
+    # 也不该指望修订那一步把上一次的用量原样带回来。
+    base_usage = dict(out.get("usage") or {})
+    t0 = time.time()
+    used: dict = {}
+    new, secs = _revise_pass(out, facts, materials, _auto_issues(val), model_id,
+                             progress, used, bool(out.get("truncated")), t0)
+    # 用量接在原有那笔账上：一次生成两轮调用，费用得合起来看
+    u = dict(base_usage or new.get("usage") or {})
+    for _k in ("prompt_tokens", "completion_tokens", "total_tokens", "cached_tokens", "calls"):
+        u[_k] = int(u.get(_k) or 0) + int(used.get(_k) or 0)
+    u["seconds"] = round(float(u.get("seconds") or 0) + secs, 1)
+    try:
+        import pricing as _pr
+        u["cost"] = _pr.cost(u.get("model") or (model_id or "") or "deepseek-v4-flash",
+                             int(u.get("prompt_tokens") or 0),
+                             int(u.get("completion_tokens") or 0),
+                             int(u.get("cached_tokens") or 0))
+    except Exception:                                          # noqa: BLE001
+        pass
+    new["usage"] = u
+    if used.get("total_tokens"):
+        try:
+            usage_mod.record("generate",
+                             company=(new.get("company_full_name") or ""),
+                             model=u.get("model") or (model_id or ""),
+                             prompt_tokens=used.get("prompt_tokens", 0),
+                             completion_tokens=used.get("completion_tokens", 0),
+                             total_tokens=used.get("total_tokens", 0),
+                             cached_tokens=used.get("cached_tokens", 0),
+                             seconds=round(secs, 1), chars=0, ok=True,
+                             estimated=bool(used.get("estimated")),
+                             note="表述复核")
+        except Exception:                                      # noqa: BLE001
+            pass
+    return new
+
+
 def generate(facts: dict, materials: list[dict], model_id: str | None = None,
-             progress=None, user_notes: str = "") -> dict:
+             progress=None, user_notes: str = "", revise: bool = True) -> dict:
     import threading
     import time
 
@@ -3531,47 +3605,19 @@ def generate(facts: dict, materials: list[dict], model_id: str | None = None,
 
     # 表述与结构问题不交给用户改：再走一轮定向修订。
     # 改掉的不进待核对，只记「已自动修正 N 处」；没改掉的才降级给人看。
+    # 这一轮是另一次模型调用，只为润色、不改事实——所以正文一落地就可以先返回
+    # （revise=False），由调用方在后台补跑，人不必对着「模型写作中」干等。
     _auto_before = _auto_issues(draft["validation"])
-    if _revisable(draft["validation"]):
-        _p(progress, 97, "自动修订", f"改写 {len(_auto_before)} 处表述与结构问题")
-        _rv: dict = {}
-        fixed = _revise_draft(draft, facts, materials, _auto_before, model_id,
-                              progress=progress, usage_out=_rv)
-        if fixed:
-            for _k in ("company_full_name", "internal_rating_code", "positive", "concern",
-                       "positive_pool", "concern_pool", "basic_info", "commentary",
-                       "data_notes", "sources", "special_topics"):
-                if _k in fixed and fixed[_k] not in (None, "", [], {}):
-                    draft[_k] = fixed[_k]
-            draft = _ensure_structure(draft, facts)
-            draft["truncated"] = was_truncated
-            # 修订稿再走一遍本地清洗：重复句、来源交代语、粘连句这类机械问题
-            # 用规则删比让模型改更可靠，也省一次调用。改的是文字，不动结构与数字。
-            draft = polish_draft(draft)
-            draft["commentary"] = dict(draft.get("commentary") or {})
-            for _k in ("financial_table", "segment_table"):
-                if isinstance(draft["commentary"].get(_k), dict):
-                    draft["commentary"][_k] = reorder_table(draft["commentary"][_k])
-            draft["add_on_sections"] = _clean_advice(
-                merge_advice(draft.get("add_on_sections"), materials))
-            after = validate(draft, facts, materials)
-            # 记下这一轮修掉了什么：前端把「已自动修正」折起来，只留需人工核验的
-            left = {(it.get("t")) for it in _auto_issues(after)}
-            done = [it.get("t") for it in _auto_before if it.get("t") not in left]
-            after["auto_fixed"] = sorted(set(done))
-            after["revise_calls"] = 1
-            draft["validation"] = after
-            for _k in ("prompt_tokens", "completion_tokens", "total_tokens", "cached_tokens"):
-                used[_k] = used.get(_k, 0) + _rv.get(_k, 0)
-            used["calls"] = used.get("calls", 0) + _rv.get("calls", 0)
-            secs = time.time() - t0
-            _p(progress, 98, "自动修订", f"已修正 {len(set(done))} 处，剩 "
-                                        f"{len(after['issue_items'])} 条需人工核验")
-
-    # 外网补充：生成后只做评估、不直接搜。搜什么、搜几处，让人在「补充完善」
-    # 这一步看见并点一下再花额度——自动搜会让人不知道钱花在哪、也不知道
-    # 结果从哪来。
-    draft["web_plan"] = web_plan(draft, facts)
+    if not revise:
+        draft["validation"]["revise_pending"] = bool(_revisable(draft["validation"]))
+    elif _revisable(draft["validation"]):
+        draft, _rs = _revise_pass(draft, facts, materials, _auto_before, model_id,
+                                  progress, used, was_truncated, t0)
+        secs = time.time() - t0
+        # 复核是另一次调用，钱要算进去；不重算就会把一次两轮的生成记成一轮的价
+        _cost = pricing.cost(used.get("model") or (model_id or ""),
+                             used.get("prompt_tokens", 0), used.get("completion_tokens", 0),
+                             used.get("cached_tokens", 0))
 
     # 记一行用量：主体名取草稿里的全称，便于回看「哪家花了多少」
     usage_mod.record("generate",

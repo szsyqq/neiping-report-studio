@@ -182,6 +182,35 @@ def update_validation(rid: str, validation: dict):
             _write_index(items)
 
 
+def replace_draft(rid: str, draft: dict) -> None:
+    """复核跑完后用新草稿换掉记录里的旧草稿。
+
+    复核改的是正文本身（表述与结构），只换 validation 不够——用户从历史里
+    恢复出来的还是改前那一版。索引里的字数、条数、token 一起按新草稿重算。
+    """
+    rec = get(rid)
+    if not rec:
+        return
+    rec["draft"] = draft
+    usage = draft.get("usage") or {}
+    rec["tokens"] = usage.get("total_tokens", rec.get("tokens", 0))
+    rec["seconds"] = round(usage.get("seconds") or rec.get("seconds") or 0, 1)
+    path = DIR / f"{rid}.json"
+    try:
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(rec, ensure_ascii=False), encoding="utf-8")
+        tmp.replace(path)
+    except OSError:
+        return
+    with LOCK:
+        items = _read_index()
+        for i, it in enumerate(items):
+            if it.get("id") == rid:
+                items[i] = _summary(rec)
+                _write_index(items)
+                break
+
+
 def remove(rid: str) -> bool:
     safe = "".join(c for c in (rid or "") if c.isalnum() or c == "-")
     if not safe:
