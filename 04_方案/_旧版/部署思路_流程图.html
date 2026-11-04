@@ -54,6 +54,14 @@ svg{display:block;width:100%;height:auto;margin:4px 0 0}
 
 .stop{margin:8px 0 4px;font-size:12.5px;color:var(--red);border-left:2px solid #e3bdb4;padding:0 0 0 10px}
 
+/* 每条走法收尾：好处与潜在问题各一行，避免只讲好处或只讲卡点 */
+.verdict{margin:10px 0 6px;font-size:12.5px;line-height:1.75}
+.verdict b{font-weight:600;margin-right:6px;font-size:11.5px;letter-spacing:.02em}
+.verdict .pros{color:#2c6b4f;border-left:2px solid #c6e3d3;padding:1px 0 1px 10px;margin-bottom:5px}
+.verdict .pros b{color:#2c6b4f}
+.verdict .cons{color:#7d4436;border-left:2px solid #e3bdb4;padding:1px 0 1px 10px}
+.verdict .cons b{color:#a33a2a}
+
 h3.sub{font-size:15px;font-weight:600;margin:32px 0 10px}
 .tbl{background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden}
 table{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed}
@@ -62,6 +70,8 @@ th{background:#f6f8fb;font-weight:600;color:#2b3846;font-size:12px;white-space:n
 td{color:var(--ink2);line-height:1.6}
 tbody tr:last-child td{border-bottom:none}
 td.k{color:var(--ink);font-weight:600}
+td.p{color:#2c6b4f}
+td.c{color:#7d4436}
 
 .oneline{margin:14px 0 0;font-size:13.5px;color:var(--ink2);background:var(--card);border:1px solid var(--line);
   border-radius:10px;padding:13px 16px}
@@ -79,7 +89,7 @@ td.k{color:var(--ink);font-weight:600}
 <div class="top"><div class="top-in">
   <div class="logo"><span class="dot"></span>四种入口 <em>流程图</em></div>
   <nav>
-    <a href="#p1">一 本机</a><a href="#p2">二 部门共享</a><a href="#p3">三 多入口</a><a href="#p4">四 嵌入 CRUISE</a>
+    <a href="#p1">一 本机</a><a href="#p2">二 部门共享</a><a href="#p3">三 多入口</a><a href="#p4">四 嵌入 CRUISE</a><a href="系统界面演示.html" style="color:var(--brand);font-weight:600">系统界面 →</a>
   </nav>
 </div></div>
 
@@ -116,7 +126,10 @@ td.k{color:var(--ink);font-weight:600}
       <text class="t2" x="332" y="166">财汇 MCP · 评级官网 · 模型接口</text>
       <line class="dashm" x1="332" y1="110" x2="332" y2="142" marker-end="url(#a1)"></line>
     </svg>
-    <div class="stop">token 与 MCP 由分析师个人承担费用；提示词各自留档，修订后无法统一下发。</div>
+    <div class="verdict">
+      <div class="pros"><b>好处</b>当天可用，无需审批与服务器；token 与材料都在本人设备上，外发面最小。</div>
+      <div class="cons"><b>潜在问题</b>token 与 MCP 由分析师个人付费；提示词各自留档，改一处要逐台同步；换机或休假即中断，材料留在个人电脑，无统一留痕。</div>
+    </div>
   </section>
 
   <!-- 二 -->
@@ -139,7 +152,10 @@ td.k{color:var(--ink);font-weight:600}
       <text class="t2" x="332" y="166">财汇 MCP · 评级官网 · 模型接口</text>
       <line class="dashm" x1="332" y1="110" x2="332" y2="142" marker-end="url(#a2)"></line>
     </svg>
-    <div class="stop">配置与走法一相同，但 token、算力与设备均由部门承担，费用需明确列支渠道。</div>
+    <div class="verdict">
+      <div class="pros"><b>好处</b>配置一套全组共用；提示词与模型版本可统一升级；用量与费用集中可见。</div>
+      <div class="cons"><b>潜在问题</b>设备、常开与出口网络需部门安排，token 按量计费要明确列支渠道；单机故障全组停；对外是外网地址，口令与访问控制要跟上；材料暂存部门设备，仍属内部数据出外网，需报备。</div>
+    </div>
   </section>
 
   <!-- 三 -->
@@ -174,7 +190,10 @@ td.k{color:var(--ink);font-weight:600}
       <line class="ln" x1="241" y1="165" x2="209" y2="165" marker-end="url(#a3)"></line>
       <text class="t3" x="30" y="224" style="text-anchor:start">发件人即提出人，无需另行填写收件地址</text>
     </svg>
-    <div class="stop">企业微信需单独配置机器人；网页入口无需额外配置。</div>
+    <div class="verdict">
+      <div class="pros"><b>好处</b>在常用工具里提交，回执回到同一会话；适合外出改稿、临时补一份；交付仍按人发邮箱，归档方式不变。</div>
+      <div class="cons"><b>潜在问题</b>企业微信需申请机器人并配回调，移动端要单独验版式；入口多则权限要在多处生效，账号与口令管理成本上升；排队与失败重试增加开发量；企业名与材料摘要出现在聊天工具中，需明确只回执不外发。</div>
+    </div>
   </section>
 
 
@@ -195,24 +214,47 @@ td.k{color:var(--ink);font-weight:600}
       <line class="ln" x1="422" y1="75" x2="456" y2="75" marker-end="url(#a5)"></line>
       <line class="ln" x1="637" y1="75" x2="671" y2="75" marker-end="url(#a5)"></line>
     </svg>
-    <div class="stop">报告在 CRUISE 内完成生成、审阅与归档，全流程闭环。</div>
+    <div class="verdict">
+      <div class="pros"><b>好处</b>生成、审阅、归档在系统内闭环，不再邮件搬运；权限、日志与留痕沿用既有体系，合规最顺。</div>
+      <div class="cons"><b>潜在问题</b>排期不由部门决定，短期上不了线；接口改造与联调成本落在系统一侧；上线前仍需前三种走法过渡，双轨期并存。</div>
+    </div>
   </section>
 
   <h3 class="sub">四种走法对照</h3>
   <div class="tbl">
     <table>
-      <thead><tr><th style="width:15%">走法</th><th style="width:30%">发起方式</th><th style="width:25%">成稿去向</th><th style="width:30%">适用对象</th></tr></thead>
+      <thead><tr><th style="width:14%">走法</th><th style="width:28%">怎么走</th><th style="width:28%">好处</th><th style="width:30%">潜在问题</th></tr></thead>
       <tbody>
-        <tr><td class="k">一 本机</td><td>本机浏览器</td><td>内评与外评一并打包，发送至邮箱／快乐平安</td><td>单人使用，可即时启用</td></tr>
-        <tr><td class="k">二 部门共享</td><td>外网地址，电脑或移动端</td><td>内评与外评一并打包，按人送达</td><td>一个小组共用一台设备</td></tr>
-        <tr><td class="k">三 多入口</td><td>企业微信 Bot、电脑网页、移动端网页</td><td>同一交付包按人发送，原会话回执</td><td>一个小组，电脑与移动端均可使用</td></tr>
-        <tr><td class="k">四 嵌入 CRUISE</td><td>CRUISE 内发起生成</td><td>CRUISE 草稿库，外部版同步</td><td>全部门；随系统排期推进</td></tr>
+        <tr>
+          <td class="k">一 本机</td>
+          <td>本机浏览器输入企业名；成稿与底稿打包，发回本人邮箱或快乐平安</td>
+          <td class="p">开发进度最快，当天可用；无需审批、服务器与运维；材料不出本人设备</td>
+          <td class="c">token 与 MCP 由个人付费；提示词各自留档，无法统一升级；换机即中断，无统一留痕</td>
+        </tr>
+        <tr>
+          <td class="k">二 部门共享</td>
+          <td>外网地址，电脑或移动端访问；同一套服务，按人送达</td>
+          <td class="p">一套配置全组共用；提示词与模型版本可统一下发；用量与费用集中可见</td>
+          <td class="c">设备、常开与网络要部门安排，token 需明确列支；单机故障全组停；外网地址须口令控制；材料出外网需报备</td>
+        </tr>
+        <tr>
+          <td class="k">三 多入口</td>
+          <td>企业微信 Bot、电脑网页、移动端网页提交；原会话回执，成稿按人发邮箱</td>
+          <td class="p">在常用工具里就能提交；适合外出改稿、临时补一份；交付与归档方式不变</td>
+          <td class="c">企业微信要申请机器人并配回调，移动端要单独验版式；权限在多处生效；排队与重试增加开发量；聊天工具中出现企业名与材料摘要</td>
+        </tr>
+        <tr>
+          <td class="k">四 嵌入 CRUISE</td>
+          <td>CRUISE 内发起生成，回写外部版，走既有审批流</td>
+          <td class="p">生成、审阅、归档闭环；权限与日志沿用既有体系，合规最顺</td>
+          <td class="c">排期不由部门决定，短期上不了线；接口改造与联调成本在系统一侧；过渡期双轨并存</td>
+        </tr>
       </tbody>
     </table>
   </div>
 
   <div class="oneline">
-    <b>总结：</b>入口共四种，交付去向仅两处——内网邮箱与快乐平安；交付物为同一个包：内评报告与财汇外部评级报告。前三种走法共用同一套页面，差异在于配置部署位置、费用承担方与入口数量；与 CRUISE 系统对接为后续工作，随系统排期推进。
+    <b>总结：</b>四种走法的技术内核相同，差别落在三件事上——<b>谁出钱</b>（个人、部门、部门系统预算）、<b>谁能改</b>（各自留档、统一下发、随系统版本走）、<b>多快能用</b>（当天、一周、一个排期）。交付去向只有两处：内网邮箱与快乐平安；交付物是同一个包：内评报告与财汇外部评级报告。
   </div>
 
   

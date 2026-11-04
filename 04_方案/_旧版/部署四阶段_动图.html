@@ -74,8 +74,15 @@ h1{font-size:clamp(21px,2.4vw,26px);line-height:1.4;margin:0 0 8px;font-weight:6
   border-radius:12px;padding:14px 18px;margin:12px 0 0}
 .cap .k{font-size:12px;font-weight:600;color:var(--brand);background:var(--brandbg);border:1px solid #c3d5e8;
   border-radius:5px;padding:1px 8px;white-space:nowrap}
-.cap .t{font-size:14px;color:var(--ink2);line-height:1.65}
+.cap .t{font-size:14px;color:var(--ink2);line-height:1.65;flex:1}
 .cap .t b{color:var(--ink)}
+.cap .t p{margin:0 0 8px}
+.cap .t p:last-child{margin-bottom:0}
+/* 每阶段收尾：先说解决什么，再说要跟上什么 */
+.cap .bf{font-size:12.5px;line-height:1.7;padding-left:10px;border-left:2px solid #c6e3d3;color:#2c6b4f;margin:0 0 6px}
+.cap .bf b{font-weight:600;margin-right:6px;font-size:11.5px;color:#2c6b4f}
+.cap .bf.need{border-left-color:#e3bdb4;color:#7d4436}
+.cap .bf.need b{color:#a33a2a}
 .more{margin:12px 0 0;font-size:12.5px;color:var(--ink3)}
 .more a{color:#2f5c8f;text-decoration:none;border-bottom:1px solid #c3d5e8}
 
@@ -192,7 +199,7 @@ h1{font-size:clamp(21px,2.4vw,26px);line-height:1.4;margin:0 0 8px;font-weight:6
 
   <div class="cap">
     <span class="k" id="capK">阶段一</span>
-    <div class="t" id="capT"><b>本地运行。</b>整套流程运行于使用人本人电脑，单人独立配置，成稿亦留存于本机。</div>
+    <div class="t" id="capT"></div>
   </div>
 
   <p class="more">各走法的完整流程图见 <a href="部署思路_流程图.html">部署思路_流程图.html</a>。</p>
@@ -207,10 +214,22 @@ h1{font-size:clamp(21px,2.4vw,26px);line-height:1.4;margin:0 0 8px;font-weight:6
       i=1;
 
   var caps={
-    1:['阶段一','<b>本地运行。</b>整套流程运行于使用人本人电脑；token 与 MCP 由个人承担费用，提示词各自留档。'],
-    2:['阶段二','<b>部门服务器。</b>同一套配置部署至部门常开电脑，小组成员通过外网地址访问；token 与算力由部门承担。'],
-    3:['阶段三','<b>多个入口。</b>电脑网页、移动端网页与企业微信 Bot 均可受理；底层仍为同一台服务器、同一套逻辑。'],
-    4:['阶段四','<b>与系统融合。</b>外层接入 CRUISE，生成、草稿、审稿与归档均在系统内完成，报告不再经由邮件流转。']
+    1:['阶段一',
+       '<b>本地运行。</b>整套流程运行于使用人本人电脑，单人独立配置，成稿亦留存于本机。',
+       '当天可用，不需要审批与服务器；数据与 token 都在本人设备上。',
+       'token 与 MCP 由个人付费；提示词各自留档，升级要逐台改；换机或休假即中断。'],
+    2:['阶段二',
+       '<b>部门服务器。</b>同一套配置部署至部门常开电脑，小组成员通过外网地址访问。',
+       '一套配置全组共用；提示词与模型版本可统一下发；用量与费用集中可见。',
+       '设备常开与出口网络需部门安排，token 要明确列支；单点故障全组停；外网地址须口令控制。'],
+    3:['阶段三',
+       '<b>多个入口。</b>电脑网页、移动端网页与企业微信 Bot 均可受理，底层仍是同一台服务器、同一套逻辑。',
+       '在常用工具里就能提交，外出也能改稿；交付仍按人发邮箱。',
+       '企业微信要申请机器人并配回调；移动端单独验版式；权限多处生效，开发量最大。'],
+    4:['阶段四',
+       '<b>与系统融合。</b>外层接入 CRUISE，生成、草稿、审稿与归档均在系统内完成。',
+       '生成、审稿、归档闭环，不再邮件搬运；权限与日志沿用既有体系。',
+       '排期不由部门定；接口联调成本在系统侧；过渡期双轨并存。']
   };
 
   function set(n, animate){
@@ -236,7 +255,9 @@ h1{font-size:clamp(21px,2.4vw,26px);line-height:1.4;margin:0 0 8px;font-weight:6
     });
     btns.forEach(function(b,k){ b.classList.toggle('on', k===n-1); });
     capK.textContent=caps[n][0];
-    capT.innerHTML=caps[n][1];
+    capT.innerHTML='<p>'+caps[n][1]+'</p>'
+      +'<div class="bf"><b>好处</b>'+caps[n][2]+'</div>'
+      +'<div class="bf need"><b>配套条件</b>'+caps[n][3]+'</div>';
   }
 
   function go(n){

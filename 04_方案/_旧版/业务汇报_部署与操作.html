@@ -110,6 +110,10 @@ td{color:var(--ink2);line-height:1.7}
 tbody tr:last-child td{border-bottom:none}
 td.k{color:var(--ink);font-weight:600;white-space:nowrap}
 td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+/* 方案对比：好处与潜在问题用两色分开，便于一眼分辨 */
+td.p{color:#2c6b4f}
+td.c{color:#7d4436}
+td.k .sm{display:block;font-weight:400;color:var(--ink3);font-size:11.5px;white-space:normal}
 .tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:4px;font-weight:600;letter-spacing:.2px;white-space:nowrap}
 .tag.a{background:#eef7f1;color:#1d6b4c;border:1px solid #c6e3d3}
 .tag.b{background:var(--brandbg);color:var(--brand);border:1px solid #c3d5e8}
@@ -289,44 +293,37 @@ footer b{color:var(--ink2);font-weight:600}
     <div class="sec-h"><span class="sec-n">2</span><h2>部署方式</h2></div>
     <p class="sec-d">结论：当前可交付的是“单人本机版”，一台电脑、一条启动命令；转为部门共用所需改造有限，无需新增服务器。</p>
 
-    <h3 class="sub">2.1 四种走法及其适用条件</h3>
+    <h3 class="sub">2.1 三种走法：好处与潜在问题</h3>
     <div class="tbl">
       <table>
-        <thead><tr><th style="width:15%">走法</th><th style="width:19%">适用对象</th><th style="width:27%">部署位置</th><th style="width:19%">工作量</th><th style="width:20%">前提条件</th></tr></thead>
+        <thead><tr><th style="width:13%">走法</th><th style="width:26%">部署位置</th><th style="width:12%">工作量</th><th style="width:24%">好处</th><th style="width:25%">潜在问题</th></tr></thead>
         <tbody>
           <tr>
-            <td class="k">A 单人本机<br><span class="tag a">现状</span></td>
-            <td>单人，使用本人电脑</td>
-            <td>在办公电脑安装 Python 环境，本地启动服务，浏览器访问 <code>127.0.0.1:8770</code></td>
-            <td>首次 20–30 分钟，之后每次开机启动一次</td>
-            <td>电脑可访问外网；token 与 MCP 由个人承担费用</td>
+            <td class="k">A 单人本机<br><span class="tag a">现状</span><br><span class="sm">单人使用</span></td>
+            <td>办公电脑安装 Python 环境，本地启动，浏览器访问 <code>127.0.0.1:8770</code></td>
+            <td>首次 20–30 分钟</td>
+            <td class="p">开发进度最快，当天可用；无需审批与服务器；材料与 token 都在本人设备，外发面最小</td>
+            <td class="c">token 与 MCP 由个人付费；提示词各自留档，无法统一升级；换机或休假即中断，无统一留痕与审计</td>
           </tr>
           <tr>
-            <td class="k">B 部门共享<br><span class="tag b">建议下一步</span></td>
-            <td>一个小组，3–10 人</td>
-            <td>部门一台常开电脑启动服务，小组成员经外网地址访问（<code>地址:8770</code>）</td>
-            <td>约半天到一天（含验证）</td>
-            <td>设备常开；token 与算力由部门统一承担</td>
+            <td class="k">B 部门共享<br><span class="tag b">建议下一步</span><br><span class="sm">3–10 人小组</span></td>
+            <td>部门一台常开电脑启动服务，组内经外网地址访问（<code>地址:8770</code>）</td>
+            <td>半天至一天（含验证）</td>
+            <td class="p">装一次全组共用；提示词与模型版本可统一下发；用量与费用集中可见</td>
+            <td class="c">设备常开与出口网络需部门安排，token 需明确列支；单机故障全组停；外网地址要口令与访问控制；材料出外网需报备</td>
           </tr>
           <tr>
-            <td class="k">C 三类入口<br>成稿送达邮箱</td>
-            <td>一个小组，含移动端使用</td>
-            <td>企业微信 Bot、电脑网页、移动端网页均接入 B 的同一台服务器；成稿按提出人发送至内网邮箱</td>
-            <td>3–5 人日（不含机器人审批等待）</td>
-            <td>企业微信需单独配置机器人；网页入口无需额外配置</td>
-          </tr>
-          <tr>
-            <td class="k">D 全在线<br><span class="tag c">暂缓</span></td>
-            <td>跨部门使用，出差场景需访问</td>
-            <td>云服务器 + 一层转发（财汇接口不允许浏览器直连）</td>
-            <td>2–3 周</td>
-            <td>密钥托管第三方、模型上云，需合规审批</td>
+            <td class="k">C 三类入口<br><span class="sm">含移动端</span></td>
+            <td>企业微信 Bot、电脑网页、移动端网页接入 B 的同一台服务器；成稿按提出人发内网邮箱</td>
+            <td>3–5 人日（不含机器人审批）</td>
+            <td class="p">在常用工具里提交，回执回到同一会话；外出可改稿；交付与归档方式不变</td>
+            <td class="c">企业微信要申请机器人并配回调，移动端单独验版式；权限在多处生效；开发量最大；聊天工具中出现企业名与材料摘要</td>
           </tr>
         </tbody>
       </table>
     </div>
-    <p class="note">建议路径：先在 A 上由 1–2 名分析师试用若干单，确认成稿可用；再以约一天工作量改造为 B，解决每人重复安装的问题；C 在 B 的基础上增加企业微信 Bot 与移动端网页两个入口，使提出人无需回到电脑前。D 的障碍不在技术，而在财汇密钥对外托管是否符合合规要求，待前三步有结论后再议。</p>
-    <p class="note">各走法的流程图见同目录 <b>部署思路_流程图.html</b>（后续可与 CRUISE 系统对接，随系统排期推进）。</p>
+    <p class="note">建议路径：先在 A 上由 1–2 名分析师试用若干单，确认成稿可用；再以约一天工作量改造为 B，解决每人重复安装的问题；C 在 B 的基础上增加企业微信 Bot 与移动端网页两个入口，使提出人无需回到电脑前。此外，嵌入 CRUISE 系统实现闭环一条，排期由系统侧决定，不属部门可选项，见 6.1 阶段三。</p>
+    <p class="note">各走法的流程图见同目录 <b>部署思路_流程图.html</b>；当前系统的实际界面与操作过程见 <b>系统界面演示.html</b>（实机截图，含逐步操作演示）。</p>
 
     <h3 class="sub">2.2 形态 A 的部署步骤</h3>
     <div class="steps">
@@ -645,7 +642,6 @@ http://127.0.0.1:8770</pre>
           <div class="opt rec"><div><b>A 单人本机</b>　无需改造，先行 1–2 人试用</div><div class="side"><strong>建议先行</strong>零成本</div></div>
           <div class="opt"><div><b>B 部门共享</b>　改造一台常开设备，小组成员经外网地址访问</div><div class="side"><strong>下一步</strong>半天–1 天</div></div>
           <div class="opt"><div><b>C 三类入口、成稿送达邮箱</b>　企业微信 Bot 或网页入口，按人发送至邮箱</div><div class="side">3–5 人日</div></div>
-          <div class="opt"><div><b>D 全在线</b>　云端部署，出差场景可用</div><div class="side">2–3 周 + 合规审批</div></div>
         </div>
       </div>
       <div class="dcard">
