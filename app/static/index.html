@@ -352,6 +352,11 @@ select{width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 8px
 .ml-cfg{border-top:1px dashed var(--line);margin-top:9px;padding-top:9px}
 .ml-cfg .t{font-size:11px;color:var(--muted);margin-bottom:6px}
 .ml-cfg .hint{font-size:10.5px;color:var(--muted);line-height:1.6;margin-top:6px}
+/* 清单读失败要说出来：静默降级看起来就像附件被删了 */
+.ml-err{border-top:1px dashed var(--line);margin-top:9px;padding-top:9px;
+  font-size:10.5px;line-height:1.6;color:#b0402c;display:flex;align-items:baseline;
+  gap:6px;flex-wrap:wrap}
+.ml-err .btn-sm{font-size:10.5px;padding:2px 8px}
 
 .doc{font-family:"Kaiti SC","KaiTi","STKaiti","Songti SC","SimSun",serif;
   font-size:15.5px;line-height:1.82;color:#1b1f24;
@@ -1555,7 +1560,7 @@ function clearRound(){
   S.actSel = new Set(); S.actInit = false; S.actFilter = "all";
   S.keepChecked = null; S.expand = {};
   PKG.data = null; PKG.sel = {}; PKG.open = false;
-  MAIL.subject = undefined; MAIL.subjectFor = ""; MAIL.body = undefined; MAIL.docx = "";
+  MAIL.subject = undefined; MAIL.subjectFor = ""; MAIL.body = undefined; MAIL.listErr = ""; MAIL.docx = "";
   MAIL.ana = {}; MAIL.anaOpen = false;
   if($("#draftArea")){ $("#draftArea").innerHTML = ""; $("#draftArea").style.display = "none"; }
   if($("#empty")){
@@ -1589,7 +1594,7 @@ function resetSession(){
   S.expand = {};
   S.draft = null;
   PKG.data = null; PKG.sel = {}; PKG.open = false;
-  MAIL.subject = undefined; MAIL.subjectFor = ""; MAIL.body = undefined;
+  MAIL.subject = undefined; MAIL.subjectFor = ""; MAIL.body = undefined; MAIL.listErr = "";
   MAIL.to = undefined; MAIL.cc = ""; MAIL.docx = ""; MAIL.withPdf = false;
   MAIL.ana = {}; MAIL.anaOpen = false;
   // 补充说明与手动查询都是「对这一家的判断」，换主体必须清掉——
@@ -2187,7 +2192,7 @@ async function restoreHistory(id){
     S.company = rec.company || "";
     S.loaded = (rec.materials || []).map(m => m.title).filter(Boolean);
     // 打开的是另一家的记录：邮件标题、正文草稿与文件清单缓存都不能沿用上一份
-    MAIL.subject = undefined; MAIL.subjectFor = ""; MAIL.body = undefined; MAIL.docx = "";
+    MAIL.subject = undefined; MAIL.subjectFor = ""; MAIL.body = undefined; MAIL.listErr = ""; MAIL.docx = "";
   MAIL.ana = {}; MAIL.anaOpen = false;
     PKG.data = null; PKG.sel = {};
     S.actSel = new Set(); S.actInit = false; S.actFilter = "all";
@@ -2608,7 +2613,7 @@ async function doGenerate(){
     S.company = curCo() || S.company;
     PKG.data = null; PKG.sel = {};
     // 换了主体，邮件的标题与正文草稿也要跟着重来（见 renderMailPanel 的 subjectFor）
-    MAIL.subject = undefined; MAIL.subjectFor = ""; MAIL.body = undefined;
+    MAIL.subject = undefined; MAIL.subjectFor = ""; MAIL.body = undefined; MAIL.listErr = "";
     setStep("generate", {
       state: "done", pct: 100,
       detail: S.mode === "update"
@@ -4989,7 +4994,7 @@ document.addEventListener("keydown", e => {
 
 /* ---------------- 发送邮件 ---------------- */
 const MAIL = { open: false, cfg: null, busy: false, withPdf: false, docx: "", subjectFor: "",
-              ana: {}, anaOpen: false };
+              ana: {}, anaOpen: false, listErr: "" };
 
 function mailCompany(){
   const el = $("#d-company");
@@ -5018,12 +5023,28 @@ async function loadMailPanel(){
   }catch(err){
     MAIL.cfg = { ready: false, default_to: "" };
   }
+  await loadMailList();
+  renderMailPanel();
+}
+
+/* 附件清单取一次。
+   失败不能静默：原来这里 catch 什么都不做，接口一 500（例如某份分析附件算不出来），
+   面板就只剩「现场排版」一项，看起来像底稿与分析附件被删掉了。 */
+async function loadMailList(){
   try{
     // 文件清单必须重新取：缓存里可能还是上一家主体的报告与底稿，
     // 直接拿来当附件就会把上一家的 PDF/Word 一起发出去。
     PKG.data = null; PKG.sel = {};
     await fetchFileList(true);
-  }catch(err){ /* 没有报告时也能发，附件现场排版 */ }
+    MAIL.listErr = "";
+  }catch(err){
+    MAIL.listErr = (err && err.message) || "读取文件清单失败";
+  }
+}
+
+async function retryMailList(){
+  mailSnapshot();
+  await loadMailList();
   renderMailPanel();
 }
 
@@ -5097,6 +5118,11 @@ function renderMailPanel(){
       + '</div>';
   }
   h += `</div>`;   // 必须闭合 .mlatt：不闭合的话下面的 SMTP 表单会被 .mlatt input{width:13px} 命中，框缩成 16px 点不到
+
+  if(MAIL.listErr){
+    h += `<div class="ml-err">底稿与分析附件的清单没能读出来：${esc(MAIL.listErr)}
+      <button class="btn-sm" onclick="retryMailList()">重试</button></div>`;
+  }
 
   if(!cfg.ready){
     h += `<div class="ml-cfg">
@@ -5237,6 +5263,10 @@ async function fetchFileList(force){
   if(PKG.data && !force) return PKG.data;
   const q = new URLSearchParams();
   q.set("company", pkgCompany());
+  // 带上记录 id：服务重启后 STATE 是空的，后端靠记录把这一轮的草稿与材料找回来，
+  // 否则打开旧报告时发送/打包里的底稿与分析附件整块消失。
+  const hid = (S.draft && S.draft.history_id) || "";
+  if(hid) q.set("history_id", hid);
   (S.loaded || []).forEach(t => q.append("title", t));
   const r = await (await fetch(apiUrl("/api/bundle?" + q.toString()))).json();
   if(r.error) throw new Error(r.error);

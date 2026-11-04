@@ -110,8 +110,19 @@ def _sentences(text: str) -> list[str]:
 
 
 def _grab(text: str, pattern: str, group: int = 1) -> str:
+    """取第一个命中片段的某一组；模式里没写括号时退到整段匹配。
+
+    默认要第 1 组，可模式是「整句」写法（`应收账款…未计提坏账准备`）时根本
+    没有分组，命中那一刻 `m.group(1)` 就抛 IndexError。调用链在
+    `/api/bundle` 的分析附件清单上（meta_list → build → metrics_txt），
+    一次抛错整个清单 500，界面表现成「发送里的附件与底稿全没了」。
+    """
     m = re.search(pattern, text)
-    return m.group(group).strip() if m else ""
+    if not m:
+        return ""
+    if group <= (m.lastindex or 0):
+        return (m.group(group) or "").strip()
+    return (m.group(0) or "").strip()
 
 
 def _first_num(text: str, *patterns: str) -> tuple[str, str]:
@@ -518,7 +529,7 @@ def _ar_age(text: str) -> dict:
     top = _grab(text, r"前(?:五|5)名[^。；\d]{0,16}(?:占|合计)[^。；\d]{0,10}([\d.]+)%")
     if top:
         out["top5"] = top
-    prov = _grab(text, r"应收账款[^。；]{0,26}(?:未计提|不计提|已计提)[^。；]{0,18}坏账准备")
+    prov = _grab(text, r"(应收账款[^。；]{0,26}(?:未计提|不计提|已计提)[^。；]{0,18}坏账准备)")
     if prov:
         out["provision"] = prov
     return out
@@ -692,7 +703,14 @@ def build(draft: dict, when: str | None = None, materials: list | None = None,
     rep, _row = _rep_code(_bond_rows(bonds or []))
     out: list[dict] = []
     for key, title, desc, fn in SPECS:
-        text = fn(draft or {}, when, materials, bonds or [], err)
+        # 一份算不出来不该拖垮整个清单：清单接口同时供打包、发信、侧栏预览三处用，
+        # 抛错等于把这些入口一起打成 500，用户看到的是「附件与底稿突然都不见了」。
+        # 单份失败就少列这一份，别的照给。
+        try:
+            text = fn(draft or {}, when, materials, bonds or [], err)
+        except Exception as e:                             # noqa: BLE001
+            err = (err + "；" if err else "") + f"{title}生成失败：{type(e).__name__}"
+            continue
         if key == "bonds":
             # 文件名带代表代码：同一主体的不同批次，看文件名就知道是哪一只
             name = f"{safe}-债券代码-{rep}.txt" if rep else f"{safe}-债券代码.txt"

@@ -750,21 +750,44 @@ def _company_bonds(company: str) -> tuple[list[dict], str]:
     return rows, err
 
 
-def api_bundle_items(company: str, titles: list[str] | None = None) -> dict:
+def api_bundle_items(company: str, titles: list[str] | None = None,
+                     history_id: str = "") -> dict:
     company = (company or "").strip()
+    rec: dict = {}
     with LOCK:
         st = STATE.get(_key(company)) or {}
         has_draft = bool(st.get("draft"))
+        draft = st.get("draft") or {}
         mats = st.get("materials") or []
+    # 服务重启、换容器之后 STATE 是空的，而记录里存着这一轮的草稿与材料（含路径）。
+    # 不按记录兜底，打开旧报告时「原底稿」与「分析附件」会整体消失，界面看上去
+    # 就是发送与打包里的附件全没了——它们没丢，只是清单没去问记录。
+    if history_id and not has_draft:
+        rec = history.get(history_id) or {}
+        if rec:
+            draft = rec.get("draft") or draft
+            has_draft = bool(draft)
+            if not mats:
+                mats = [m for m in (rec.get("materials") or []) if m.get("path")]
+            titles = titles or [m.get("title") for m in mats if m.get("title")]
+    docs = _docx_index(company)
+    if not docs and rec.get("docx"):
+        # 导出过的报告在 output/ 里，但企业名对不上时（简称/录入差异）按记录里的文件名找
+        p = OUTPUT / rec["docx"]
+        if p.is_file():
+            docs = [{"name": p.name, "size": p.stat().st_size,
+                     "mtime": datetime.fromtimestamp(p.stat().st_mtime).strftime("%m-%d %H:%M")}]
     # 分析附件是「这一轮分析留下的过程稿」，只有本次有草稿时才给清单：
     # 换了主体或刚重启时给空清单，比把上一家的核对结果端上来安全。
     if not has_draft:
-        return {"company": company, "docx": _docx_index(company),
+        return {"company": company, "docx": docs,
                 "materials": _pdf_index(company, titles), "has_draft": False,
                 "analysis": []}
+    # 从记录恢复的材料只有标题与路径，文本要重新读（有缓存，同一份只解析一次）
+    src = mats if all((m.get("text") or "") for m in mats) else (_reload_materials(mats) or [])
     bonds, err = _company_bonds(company)
-    ana = analysis.meta_list(st["draft"], mats, bonds, err)
-    return {"company": company, "docx": _docx_index(company),
+    ana = analysis.meta_list(draft, src, bonds, err)
+    return {"company": company, "docx": docs,
             "materials": _pdf_index(company, titles), "has_draft": has_draft,
             "analysis": ana}
 
@@ -1251,7 +1274,8 @@ class Handler(BaseHTTPRequestHandler):
             elif p == "/api/bundle":
                 q = parse_qs(urlparse(self.path).query)
                 self._json(api_bundle_items((q.get("company") or [""])[0],
-                                            q.get("title") or []))
+                                            q.get("title") or [],
+                                            (q.get("history_id") or [""])[0]))
             elif p == "/api/analysis/list":
                 q = parse_qs(urlparse(self.path).query)
                 self._json(api_analysis_list({"company": (q.get("company") or [""])[0]}))
