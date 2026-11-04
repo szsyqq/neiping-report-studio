@@ -435,7 +435,7 @@ mark.s{background:#fff3b8;color:inherit;padding:0 1px;border-radius:2px}
 <tr><td><code>generator.py</code> 的 <code>validate()</code></td><td>生成后查什么。新增一条校验要同时往 <code>issue_items</code> 塞定位，否则前端只能跳到段落</td></tr>
 <tr><td><code>facts.py</code> 的 <code>classify_material()</code></td><td>哪些公告进清单、归到哪一类</td></tr>
 <tr><td><code>server.py</code> 的 <code>BUDGET_BY_KIND</code></td><td>每类材料送进提示词多少字</td></tr>
-<tr><td><code>static/index.html</code></td><td>页面的一切：布局、编辑器、待核对面板、导出面板</td></tr>
+<tr><td><code>static/index.html</code></td><td>页面的一切：布局、编辑器、检查异常面板、导出面板</td></tr>
 </tbody>
 </table>
 </div>
@@ -555,7 +555,7 @@ mark.s{background:#fff3b8;color:inherit;padding:0 1px;border-radius:2px}
 <div class="gate">
   <div class="g1">
     <b>要看判据与实现细节</b>
-    详版共十节：写作判据（一至六节，含认料、取数、各段写法、提摘要、定稿检查、防过拟合）、实现链路与校验闭环（七、八节，一次请求经过哪些函数、待核对怎么落到句）、六个技术点（第九节，各讲问题、做法与验证）。
+    详版共十节：写作判据（一至六节，含认料、取数、各段写法、提摘要、定稿检查、防过拟合）、实现链路与校验闭环（七、八节，一次请求经过哪些函数、检查异常怎么落到句）、六个技术点（第九节，各讲问题、做法与验证）。
   </div>
   <div class="g2"><button class="gbtn" data-v="full">打开详版 →</button></div>
 </div>
@@ -968,9 +968,9 @@ mark.s{background:#fff3b8;color:inherit;padding:0 1px;border-radius:2px}
 <li><code>validate()</code>：四类检查，产出 <code>issues</code>（人读）、<code>issue_items</code>（带定位）、<code>auto_checks</code>（机器已复算，附算式）。</li>
 </ol>
 
-<h2><span class="n">八</span>校验与待核对</h2>
+<h2><span class="n">八</span>校验与检查异常</h2>
 
-<p>程序替人做「写」与「查」，不做「判断」。查不出来的列成待核对，判断仍由人下。</p>
+<p>程序替人做「写」与「查」，不做「判断」。查出来的分两路：能自己改的当场改掉，改不掉又必须人看一眼的才进「检查异常」。进这张单子的只有一类——数据合起来不对。</p>
 
 <div class="fig">
   <div class="figbody">
@@ -988,8 +988,8 @@ mark.s{background:#fff3b8;color:inherit;padding:0 1px;border-radius:2px}
     </g>
     <g class="nd" data-k="l2">
       <rect x="282" y="194" width="116" height="46" rx="8"/>
-      <text x="340" y="214" class="ln" text-anchor="middle">待核对</text>
-      <text x="340" y="230" class="ls" text-anchor="middle">一条一处，可跳句</text>
+      <text x="340" y="214" class="ln" text-anchor="middle">检查异常</text>
+      <text x="340" y="230" class="ls" text-anchor="middle">数据对不上才进</text>
     </g>
     <g class="nd" data-k="l3">
       <rect x="196" y="109" width="116" height="46" rx="8"/>
@@ -1004,18 +1004,23 @@ mark.s{background:#fff3b8;color:inherit;padding:0 1px;border-radius:2px}
   <div class="cap"><b>鼠标放到节点上</b>看那一步在做什么 · 环上虚线在走，表示这是循环不是单程</div>
 </div>
 
-<h3><span class="n">8.1</span>四类通道</h3>
+<h3><span class="n">8.1</span>四类检查，两类进卡</h3>
 
 <div class="tw">
 <table>
-<thead><tr><th>通道</th><th>查什么</th><th>查不出时</th></tr></thead>
+<thead><tr><th>通道</th><th>查什么</th><th>查出来怎么办</th></tr></thead>
 <tbody>
-<tr><td><strong>数字溯源</strong></td><td>正文每个数能否在材料里找到；自己算的能否复算。交底算式按「两个以上操作数 + 操作数在材料里 + 结果在正文里」三条同时成立才销账</td><td>进待核对，标出段与句，点一下跳到那一句并选中</td></tr>
-<tr><td><strong>表格逐格</strong></td><td>每一格能在材料里找到，或由同列其他数算出（资产负债率、总资本化比率）</td><td>该格置「—」，列出哪一行、哪一期、原值多少</td></tr>
-<tr><td><strong>结构与写法</strong></td><td>缺行业段／行业段没有一个数、缺注册资本或实收资本、资产段只给金额不给占比、缺盈利段、缺现金流段、亏损没写成亏损、写了没有变化的事、审计意见非标准而正文没写</td><td>进待核对，给改法而不只是结论</td></tr>
-<tr><td><strong>措辞与主语</strong></td><td>摘要用了没刻度的词、一条塞了两件事、正反说同一事实、加粗句看不出主体、同一句出现两遍</td><td>进待核对，附原句</td></tr>
+<tr><td><strong>数字溯源</strong></td><td>正文每个数能否在材料里找到；自己算的能否复算。交底算式按「两个以上操作数 + 操作数在材料里 + 结果在正文里」三条同时成立才销账</td><td>进检查异常，标出段与句，点一下跳到那一句并选中</td></tr>
+<tr><td><strong>表格逐格</strong></td><td>每一格能在材料里找到，或由同列其他数算出（资产负债率、总资本化比率）</td><td>该格置「—」，并列出哪一行、哪一期、原值多少</td></tr>
+<tr><td><strong>结构与写法</strong></td><td>缺行业段／行业段没有一个数、缺注册资本或实收资本、资产段只给金额不给占比、缺盈利段、缺现金流段、亏损没写成亏损、写了没有变化的事、审计意见非标准而正文没写</td><td>能由程序改的当场改掉（删来源交代、并粘连句、补千分位）；改不净的折成一行提示，不占卡片</td></tr>
+<tr><td><strong>措辞与主语</strong></td><td>摘要用了没刻度的词、一条塞了两件事、正反说同一事实、加粗句看不出主体、同一句出现两遍</td><td>同上：无损改写的直接改，剩下的折成一行，并说明改了几处</td></tr>
 </tbody>
 </table>
+</div>
+
+<div class="note">
+<span class="h">为什么措辞不进卡片</span>
+以前四类问题一起列，右栏十几条，逐条看完才发现一半跟数字无关，真正该核的那条夹在中间。措辞与结构是「写法偏好」，机器改得了大半，改不净的也只需扫一眼；数字对不上是「事实错误」，必须人去看原始材料。两件事的紧迫程度不同，混在一张单子里，人就不再看了。
 </div>
 
 <div class="note warn">
@@ -1024,11 +1029,13 @@ mark.s{background:#fff3b8;color:inherit;padding:0 1px;border-radius:2px}
 <b>二、操作数不能是结果自身。</b>「净利润 −8.39 亿元」曾被「13.49 − 5.11 = 8.39」验成机器通过，而这两项与净利润毫无关系。小于 1 的「倍数」只认差额，不给除法那一档。
 </div>
 
-<h3><span class="n">8.2</span>待核对怎么用</h3>
+<h3><span class="n">8.2</span>检查异常怎么用</h3>
 
-<p>按问题类型分组，一组一卡，组头三态复选框，顶部「全勾」可反向撤销。每条点开跳到正文对应那一句并选中——长句收到「含目标数字的那个分句」，而不是选中两百多字一整段。机器已复算过的收进折叠块，附算式，不需要人工看但要留痕。</p>
+<p>按异常类型分组，一组一卡，组头三态复选框，顶部「全勾」可反向撤销。每条点开跳到正文对应那一句并选中——长句收到「含目标数字的那个分句」，而不是选中两百多字一整段。</p>
 
-<p>勾掉表示「看过了、没问题」，它不会从报告里消失——导出的是完整稿子，不是待办清单。</p>
+<p>勾掉表示「看过了、没问题」，它不会从报告里消失——导出的是完整稿子，不是待办清单。措辞类里机器已改掉的那部分收进卡片下方一行折叠块，标「已自动改掉 N 处」，要看细节点开，不看也不碍事。</p>
+
+<p>数字与材料对不上时，提示要分清是哪一种：只差四舍五入、材料里有一个最接近的数、由换算或扣减得来。前两种把最接近的那个值写进提示，第三种说明算式，人一眼能判断是不是错。</p>
 
 <h3><span class="n">8.3</span>更新模式</h3>
 
@@ -1048,13 +1055,13 @@ mark.s{background:#fff3b8;color:inherit;padding:0 1px;border-radius:2px}
 
 <p><b>问题。</b>占比、增速、差额这类自算值，程序无法判断真假；不查就等于全放行，全查又会产生大量误报。</p>
 
-<p><b>做法。</b>让模型把每条自算值的算式写进 <code>data_notes</code>，格式固定为「指标名 = 操作数A 运算符 操作数B」。程序解析算式，要求操作数在材料里能找到、算出结果与正文一致、操作数不是结果自身，三条同时成立才销账，否则进待核对。<code>_parse_formula</code> 容忍末尾「= 结果」的写法。</p>
+<p><b>做法。</b>让模型把每条自算值的算式写进 <code>data_notes</code>，格式固定为「指标名 = 操作数A 运算符 操作数B」。程序解析算式，要求操作数在材料里能找到、算出结果与正文一致、操作数不是结果自身，三条同时成立才销账，否则进检查异常。<code>_parse_formula</code> 容忍末尾「= 结果」的写法。</p>
 
 <p><b>验证。</b>口径统一后，21 条算式全部可复算；错误凑数的算式会因操作数在材料里查不到而落网。</p>
 
 <h3><span class="n">9.3</span>句子级定位</h3>
 
-<p><b>问题。</b>待核对只说「第 3 段有个数不对」，人还要自己找；一段两百多字，找起来比核对本身费时。</p>
+<p><b>问题。</b>只报「第 3 段有个数不对」，人还要自己找；一段两百多字，找起来比核对本身费时。</p>
 
 <p><b>做法。</b>两条腿同时留着：①后端 <code>issue_items</code> 给 <code>field</code>（段落字段）、<code>full</code>（整句）、<code>si</code>（句序号），准；②前端按「数字 + 引文」在正文里自己搜句，耐久——任何旧记录都能用。长句再收到「含目标数字的分句」（<code>narrowHighlight</code>），但重复句与点题句不切，它们的目标就是整句。</p>
 
@@ -1090,7 +1097,7 @@ mark.s{background:#fff3b8;color:inherit;padding:0 1px;border-radius:2px}
 <table>
 <thead><tr><th>版本</th><th>改了什么</th></tr></thead>
 <tbody>
-<tr><td>8.3</td><td>材料从两类扩到四类：补审计报告与其他公告；审计意见非标准而正文没写，列一条待核对</td></tr>
+<tr><td>8.3</td><td>材料从两类扩到四类：补审计报告与其他公告；审计意见非标准而正文没写，列一条检查异常</td></tr>
 <tr><td>8.1</td><td>正文分三节，行业情况单列；基本情况补实收资本；没有变化的事不写</td></tr>
 <tr><td>8.2</td><td>方法论与模板合并为本页，四张流程图</td></tr>
 <tr><td>7.9</td><td>主语写进生成规则：正文与摘要生成时即带主体</td></tr>
@@ -1100,7 +1107,7 @@ mark.s{background:#fff3b8;color:inherit;padding:0 1px;border-radius:2px}
 
 <div class="note">
 <span class="h">页面与程序同源</span>
-本页写的要求，<code>app/generator.py</code> 的提示词在生成时就用；说「必需」的，<code>validate()</code> 会查；查不出的（比如「这个归因是不是废话」），列进待核对由人判断。改方法要同时改提示词与校验，否则页面写一套、生成是另一套。
+本页写的要求，<code>app/generator.py</code> 的提示词在生成时就用；说「必需」的，<code>validate()</code> 会查；能自己改的当场改，改不净的折成一行提示；数据对不上、必须看原始材料的，进「检查异常」由人判断。改方法要同时改提示词与校验，否则页面写一套、生成是另一套。
 </div>
 
       </div><!-- /v-full -->
@@ -1110,7 +1117,7 @@ mark.s{background:#fff3b8;color:inherit;padding:0 1px;border-radius:2px}
       <div>配套文件：<a href="template-v1.1.docx" download>Word 骨架（.docx）</a> ·
         <a href="template-v1.1.json" download>机器可读槽位（.json）</a> ·
         <a href="../versions/">版本历史</a></div>
-      <div>本页与 <code>app/generator.py</code> 的提示词、校验规则同源：页面写的要求，程序生成时就用；程序查不出的，列进待核对由人判断。</div>
+      <div>本页与 <code>app/generator.py</code> 的提示词、校验规则同源：页面写的要求，程序生成时就用；程序查不出的，折成一行提示或进「检查异常」，判断仍由人下。</div>
     </div>
   </main>
 </div>
@@ -1395,7 +1402,7 @@ mark.s{background:#fff3b8;color:inherit;padding:0 1px;border-radius:2px}
   const loops = {
     l0:'生成一次草稿：材料进提示词，模型按骨架输出正文与摘要。',
     l1:'程序随即做四类检查：数字能否溯源、表格逐格是否有出处、结构与写法是否到位、措辞与主语是否合格。',
-    l2:'查不出的进「待核对」：一条一处，可点击跳到正文那一句；机器已复算过的单独收起。',
+    l2:'查不出的进「检查异常」：只有数据对不上才进，一条一处，可点击跳到正文那一句；措辞类的当场改掉，折成一行提示。',
     l3:'人工逐条看，改或勾掉。改完再导出，导出的就是屏幕上看到的那份。'
   };
   const lcard = document.getElementById('loopcard');

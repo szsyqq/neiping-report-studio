@@ -1394,7 +1394,7 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
         <div class="wbar"><i></i></div>
       </div>
       <div class="wbody"><div class="winner"><div class="wpad">
-        <div class="whint" id="expHint">改完再导出。发送、下载、导出在正文上方一排；右侧待核对点一条就跳到对应段落。</div>
+        <div class="whint" id="expHint">改完再导出。发送、下载、导出在正文上方一排；右侧检查异常点一条就跳到对应段落。</div>
         <div class="wfoot">
           <span class="whint grow" id="expName">文件名带日期，落在 output/</span>
           <button class="btn" data-export onclick="exportDocx()" id="btnExport2">导出 Word</button>
@@ -1460,8 +1460,8 @@ function paintMode(){
   set("#expName", up ? "带 Word 修订标记，落在 output/" : "文件名带日期，落在 output/");
   const eh = $("#expHint");
   if(eh) eh.textContent = up
-    ? "右侧待核对汇总了定位不到、已校正与需人工判断的条目；生成的 docx 在 Word 里可逐条接受或拒绝。"
-    : "改完再导出。发送、下载、导出在正文上方一排；右侧待核对点一条就跳到对应段落。";
+    ? "右侧检查异常只列数据对不上的条目；生成的 docx 带修订标记，在 Word 里可逐条接受或拒绝。"
+    : "改完再导出。发送、下载、导出在正文上方一排；右侧检查异常点一条就跳到对应段落。";
   const mt = $("#matList");
   if(mt && !S.facts && !S.loaded.length){
     mt.innerHTML = `<div style="font-size:12px;color:var(--muted);padding-top:8px">`
@@ -2076,7 +2076,7 @@ function renderHistory(){
   $("#histPanel").innerHTML = head + HIST.items.map(x => {
     const meta = [fmtTs(x.ts), x.tokens ? fmtTok(x.tokens) + " token" : "",
                   (x.materials || []).length + " 份材料",
-                  x.issues ? `待核对 ${x.issues} 项` : "",
+                  x.issues ? `检查异常 ${x.issues} 项` : "",
                   x.docx ? "已导出" : ""].filter(Boolean).join(" · ");
     return `<div class="hrow">
       <div class="hmain">
@@ -3520,7 +3520,7 @@ function ckHtml(v){
   const pct = allRows.length ? (n / allRows.length * 100).toFixed(1) : 0;
   let h = `<div class="ck-h"><button class="ck-fold" onclick="ckFold(this)" title="收起核对项">▾</button><b>检查异常</b>
       <span class="n"><i id="ckDoneN">${n}</i>/${allRows.length}</span>
-      <button class="ck-all" onclick="ckAllDone()" title="把所有待核对都标为已核对">全勾</button>
+      <button class="ck-all" onclick="ckAllDone()" title="把所有异常都标为已看过">全勾</button>
       <button class="ck-reset" onclick="ckReset()" title="清空勾选">清空</button></div>
     <div class="ck-sub">只列数据对不上的：算式复算不通过、数字在材料里没有原值、财务表不平。措辞与结构会自己改，不占这里。</div>
     <div class="ck-bar"><i id="ckBar" style="width:${pct}%"></i></div>
