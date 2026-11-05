@@ -113,6 +113,21 @@ def _p(progress, pct: int, stage: str, detail: str = ""):
         progress(pct, stage, detail)
 
 
+# 财汇公告行里的链接字段改过名：老口径叫「公告链接」，现在是「公告附件地址」。
+# 只认一个名字的风险是整批静默丢弃——字段一改，每条都成了「没有地址」，
+# 界面报「未检索到公告」，看着像公司不存在，实际是取数断了。
+ANN_URL_KEYS = ("公告链接", "公告附件地址", "附件地址", "公告URL", "链接", "url")
+
+
+def ann_url(row: dict) -> str:
+    """取公告的附件地址，兼容财汇各次改名的列名。"""
+    for k in ANN_URL_KEYS:
+        v = row.get(k)
+        if isinstance(v, str) and v.strip():
+            return v.strip()
+    return ""
+
+
 def collect_materials(client: CaihuiClient, company: str, progress=None,
                       stats: dict | None = None) -> dict:
     """一次宽查询 + 必要的补查，返回带 materials 的台账骨架。
@@ -123,17 +138,25 @@ def collect_materials(client: CaihuiClient, company: str, progress=None,
     materials: dict[str, list[dict]] = {}
     seen: set[str] = set()
     queries: list[str] = []
+    scan = {"rows": 0, "no_url": 0, "dropped": 0}
 
     def absorb(rows: list[dict]) -> int:
         added = 0
         for r in rows:
-            url = r.get("公告链接") or ""
-            if not url or url in seen:
+            scan["rows"] += 1
+            url = ann_url(r)
+            if not url:
+                # 附件地址缺失就没法下载，收了也是空壳。但要记下来——
+                # 全丢光时界面得说清是「一条都没回来」还是「回来了但没有地址」。
+                scan["no_url"] += 1
+                continue
+            if url in seen:
                 continue
             title = (r.get("公告标题") or "").strip()
             cat = r.get("公告分类") or ""
             got = classify_material(title, cat)
             if not got:
+                scan["dropped"] += 1
                 continue
             seen.add(url)
             materials.setdefault(got, []).append({
@@ -188,6 +211,7 @@ def collect_materials(client: CaihuiClient, company: str, progress=None,
     if not materials.get("其他公告"):
         materials.pop("其他公告", None)
     facts["materials"] = materials
+    facts["scan"] = dict(scan)
     if stats is not None:
         stats["calls"] = client.calls
         stats["queries"] = queries

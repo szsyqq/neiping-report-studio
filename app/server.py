@@ -42,6 +42,7 @@ import facts as facts_mod  # noqa: E402
 import generator  # noqa: E402
 import history  # noqa: E402
 import market as market_mod  # noqa: E402
+import names as names_mod  # noqa: E402
 import jobs  # noqa: E402
 import llm  # noqa: E402
 import mailer  # noqa: E402
@@ -119,11 +120,22 @@ def do_search(company: str, progress=None) -> dict:
         st["materials"] = []
     n = sum(len(v) for v in (facts.get("materials") or {}).values())
     calls = int(stats.get("calls") or 0)
+    # rows 是公告库里一共产出多少条原始公告。界面要靠它区分「这家没有公告」
+    # 与「有公告但一条都用不上」——这两种的处置完全不同。
+    rows = int((facts.get("scan") or {}).get("rows") or 0)
+    # 检索到的公告标题里全是公司全称，顺手记进词库：下次有人把名字打错，
+    # 本地就能给出候选，不必再去公告库试一遍。
+    seen_names: set[str] = set()
+    for arr in (facts.get("materials") or {}).values():
+        for m in arr:
+            seen_names.update(_company_names_in(str(m.get("title") or "")))
+    if seen_names:
+        names_mod.learn(seen_names)
     _persist(company)
     usage_mod.record("search", company=company, chars=n, mcp_calls=calls,
                      note=f"公告 {n} 条 · 财汇 {calls} 次")
     return {"company": company, "facts": facts, "mcp_calls": calls,
-            "queries": stats.get("queries") or []}
+            "queries": stats.get("queries") or [], "rows": rows}
 
 
 def _budget_for(title: str, remaining: int, kind: str = "") -> int:
@@ -402,12 +414,39 @@ def _company_names_in(title: str) -> list[str]:
     return out
 
 
+def _rank_names(q: str, pool: dict[str, int]) -> list[dict]:
+    """按字面相似度给候选名排序。
+
+    两道门：相似度要够高，长度也不能差太远——「中山城建」与「中信证券」只差
+    两个字，但那是两家不同的公司，长度差能把这类误配挡掉大半。
+    """
+    want = q.replace(" ", "")
+    scored: dict[str, list] = {}
+    for name, n in pool.items():
+        if not name or name == want:
+            continue
+        sim = difflib.SequenceMatcher(None, name, want).ratio()
+        # 输入的串本身就出现在名字里，说明只多了前后缀，别因为长度被相似度拉低
+        if want in name:
+            sim = max(sim, 0.9)
+        # 0.65 而不是 0.6：「中山城建设集团」与「中国交通建设股份」这类只有
+        # 几个字重合的名字相似度在 0.61 上下，放进来只会占掉候选位。
+        if sim < 0.65:
+            continue
+        if abs(len(name) - len(want)) > max(4, len(want) * 0.4):
+            continue
+        scored[name] = [n, sim]
+    items = [{"name": k, "n": v[0], "score": round(v[1], 3)} for k, v in scored.items()]
+    items.sort(key=lambda x: (-x["score"], -x["n"], len(x["name"])))
+    return items
+
+
 def api_company_suggest(payload: dict) -> dict:
     """按输入的名字联想几个可能的全称。
 
-    用途只有一个：名字里错了一两个字，检索就落空，人不知道是该改哪。做法是拿
-    这串字去公告库查一次，再把返回标题里的公司名抠出来，按字面相似度排序——
-    错一个字时正确的那家仍然排在最前，因为标题里的名字与输入只差一个字。
+    用途只有一个：名字里错了一两个字，检索落空，人不知道是该改哪。取数分两路：
+    先查本地词库（历次检索里见过的全称），不够像再去公告库；公告库那条会换串
+    重试——原串查不回来时，去掉「有限责任公司」尾巴的短串往往查得回来。
     """
     q = re.sub(r"\s+", "", str(payload.get("q") or ""))
     if len(q) < 4:
@@ -415,33 +454,39 @@ def api_company_suggest(payload: dict) -> dict:
     hit = _SUG_CACHE.get(q)
     if hit:
         return hit
-    try:
-        out = _client().execute("search_company_announcements",
-                               {"target_company": [q], "limit": 30})
-        rows = CaihuiClient.rows(out)
-    except Exception as e:                                 # noqa: BLE001
-        return {"q": q, "items": [], "note": f"联想失败：{str(e)[:80]}"}
-    want = q.replace(" ", "")
-    score: dict[str, list] = {}
-    for r in rows:
-        title = str(r.get("公告标题") or "")
-        for name in _company_names_in(title):
-            sim = difflib.SequenceMatcher(None, name, want).ratio()
-            # 名字里带「中国」「股份」这类通用后缀的，字面相似度会虚高；用包含关系兜一层
-            if want in name:
-                sim = max(sim, 0.9)
-            rec = score.setdefault(name, [0, sim])
-            rec[0] += 1
-            rec[1] = max(rec[1], sim)
-    # 两道门：字面相似度要够高，长度也不能差太远——「中山城建」与「中信证券」
-    # 只差两个字，但那是两家不同的公司，长度差能把这类误配挡掉大半。
-    items = [{"name": k, "n": v[0], "score": round(v[1], 3)}
-             for k, v in score.items()
-             if v[1] >= 0.6 and abs(len(k) - len(want)) <= max(4, len(want) * 0.4)]
-    items.sort(key=lambda x: (-x["score"], -x["n"]))
+
+    pool: dict[str, int] = dict(names_mod.all_names())
+    items = _rank_names(q, pool)
+    used = 0
+    note = ""
+    # 本库里已经有三条像的，就不必再花公告库的点数
+    if len(items) < 3:
+        got: dict[str, int] = {}
+        for variant in names_mod.queries_for(q):
+            if used >= 2:
+                break
+            try:
+                out = _client().execute("search_company_announcements",
+                                        {"target_company": [variant], "limit": 30})
+                rows = CaihuiClient.rows(out)
+            except Exception as e:                         # noqa: BLE001
+                note = f"联想失败：{str(e)[:80]}"
+                break
+            used += 1
+            for r in rows:
+                for name in _company_names_in(str(r.get("公告标题") or "")):
+                    got[name] = got.get(name, 0) + 1
+            if got:
+                break
+        if got:
+            names_mod.learn(got.keys())
+            for k, v in got.items():
+                pool[k] = max(pool.get(k, 0), v)
+            items = _rank_names(q, pool)
+
     items = items[:5]
-    res = {"q": q, "items": items,
-           "note": "" if items else "公告库里没有相近的名字，确认一下是不是简称或更名过"}
+    res = {"q": q, "items": items, "mcp_calls": used,
+           "note": note or ("" if items else "词库与公告库里都没有相近的名字，确认一下是不是简称或更名过")}
     _SUG_CACHE[q] = res
     if len(_SUG_CACHE) > 200:
         _SUG_CACHE.clear()

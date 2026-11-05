@@ -262,6 +262,13 @@ select{width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 8px
 .cosug button:hover{background:#f7f9fc}
 .cosug .nm{font-size:12.6px;color:var(--ink);line-height:1.45}
 .cosug .ct{font-size:10.5px;color:var(--muted)}
+/* 联想是在猜「你想打的是哪一家」，得让人一眼看出差在哪几个字：
+   候选名里补上来的字加粗并带底色，你多打的字在自己的那一行划掉。 */
+.cosug .nm .eq{color:var(--muted)}
+.cosug .nm b{font-weight:700;color:#1d4ed8;background:#e8effd;border-radius:3px;padding:0 1px}
+.cosug .you{font-size:11.5px;color:var(--muted);line-height:1.45}
+.cosug .you .eq{color:var(--muted)}
+.cosug .you s{color:#b23b3b;text-decoration:line-through;text-decoration-thickness:1px}
 .docbar .acts{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 .docbar .acts .end{margin-left:auto;display:flex;align-items:center;gap:8px}
 /* 复核标记：稿子先出来，表述复核在后台跑。没有这个标记，正文会在人眼皮底下
@@ -2136,6 +2143,7 @@ function histDocx(encoded){
 async function doSearch(){
   const company = $("#company").value.trim();
   if(!company) return toast("请输入企业全称", true);
+  paintSug(null);           // 上一轮的候选留在框里会被当成这一轮的结果
   $("#btnSearch").disabled = true;
   // 新检索＝新的一轮：换主体就把上一家的材料、草稿、邮件与打包缓存全清掉；
   // 同一主体重检索只清材料清单（草稿留着，免得误点一次丢了正在改的稿）。
@@ -2153,19 +2161,28 @@ async function doSearch(){
     S.keepChecked = null;
     S.expand = {};
     const calls = j.result.mcp_calls || 0;
-    setStep("search", { state: "done", pct: 100,
-      detail: calls ? `清单已取 · 财汇 ${calls} 点` : "清单已取" });
+    const rows = j.result.rows || 0;
     renderMaterials(S.facts);
     const kinds = MAT_ORDER;
     const n = kinds.reduce((a, k) => a + ((S.facts.materials || {})[k] || []).length, 0);
-    setStep("materials", { state: "wait", pct: 0,
-      detail: n ? `${n} 份待读取` : "未检索到，可上传 PDF" });
-    toast(n ? `检索到 ${n} 份材料${calls ? " · 财汇 " + calls + " 点" : ""}`
-            : "未检索到公告，可上传 PDF，或看看名字是不是打错了");
-    // 检索落空最常见的两种原因：这家确实没有公告，或者名字里有错别字。
-    // 分不出是哪一种，就把相近的全称摆出来让人自己认。
-    if(!n) setTimeout(suggestCompany, 260);
-    openStep("materials");   // 读到清单就把这一步展开，不必再点一次
+    if(n){
+      setStep("search", { state: "done", pct: 100,
+        detail: calls ? `清单已取 · 财汇 ${calls} 点` : "清单已取" });
+      setStep("materials", { state: "wait", pct: 0, detail: `${n} 份待读取` });
+      toast(`检索到 ${n} 份材料${calls ? " · 财汇 " + calls + " 点" : ""}`);
+      paintSug(null);          // 检索通了，候选就没用了，留着反而干扰
+      openStep("materials");   // 读到清单就把这一步展开，不必再点一次
+    }else{
+      // 一份材料都没拿到就不往下走。这一步出问题几乎都在名字上，跳到材料区
+      // 只会让人对着一屏空白猜原因；留在检索这一步，把相近的全称摆出来。
+      setStep("search", { state: "error",
+        detail: rows ? `取了 ${rows} 条公告，没有可用的材料` : "公告库里没有这家公司的公告" });
+      setStep("materials", { state: "wait", pct: 0, detail: "未检索到" });
+      toast(rows
+        ? `取了 ${rows} 条公告，但没有评级报告、募集说明书、审计报告或其他公告`
+        : "公告库里没有这家公司的公告，名字可能打错了", true);
+      setTimeout(suggestCompany, 260);
+    }
   }catch(e){
     setStep("search", { state: "error", detail: e.message });
     toast(e.message, true);
@@ -2178,6 +2195,30 @@ async function doSearch(){
 /* 只解决一件事：名字里错了一两个字，检索落空，人不知道该改哪个字。
    做法是拿输入的串去公告库查一次，把返回标题里的公司名抠出来按相似度排；
    同一次输入不重复问（后端也缓存），免得打字过程中刷点数。 */
+/* 字符级差异：把「你写的」与公告库里的全称对齐，补上来的字加粗标出，
+   多打的字在自己的那一行划掉。公司名不到三十个字，直接跑最长公共子序列。 */
+function diffParts(a, b){
+  const n = a.length, m = b.length;
+  const dp = Array.from({length: n + 1}, () => new Uint16Array(m + 1));
+  for(let i = n - 1; i >= 0; i--)
+    for(let j = m - 1; j >= 0; j--)
+      dp[i][j] = a[i] === b[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+  const out = [];
+  const push = (t, ch) => {
+    const last = out[out.length - 1];
+    if(last && last.t === t) last.s += ch; else out.push({ t, s: ch });
+  };
+  let i = 0, j = 0;
+  while(i < n && j < m){
+    if(a[i] === b[j]){ push("eq", b[j]); i++; j++; }
+    else if(dp[i + 1][j] >= dp[i][j + 1]){ push("del", a[i]); i++; }
+    else { push("add", b[j]); j++; }
+  }
+  while(i < n){ push("del", a[i]); i++; }
+  while(j < m){ push("add", b[j]); j++; }
+  return out;
+}
+
 function paintSug(r){
   const box = $("#coSug");
   if(!box) return;
@@ -2190,10 +2231,20 @@ function paintSug(r){
     return;
   }
   box.innerHTML = `<div class="h">公告库里最接近的几个全称，点一个填进去</div>`
-    + items.map(x => `<button onclick="pickCompany(this)" data-n="${esc(x.name)}">
-        <span class="nm">${esc(x.name)}</span>
-        <span class="ct">近 30 条公告出现 ${x.n} 次</span>
-      </button>`).join("");
+    + items.map(x => {
+        const d = diffParts(q, x.name);
+        const nm = d.filter(p => p.t !== "del").map(p => p.t === "add"
+          ? `<b>${esc(p.s)}</b>` : `<span class="eq">${esc(p.s)}</span>`).join("");
+        // 只在真有字被划掉时才出第二行；否则等于把你的输入重抄一遍
+        const you = d.some(p => p.t === "del")
+          ? `<span class="you">你写的：${d.filter(p => p.t !== "add").map(p => p.t === "del"
+              ? `<s>${esc(p.s)}</s>` : `<span class="eq">${esc(p.s)}</span>`).join("")}</span>`
+          : "";
+        return `<button onclick="pickCompany(this)" data-n="${esc(x.name)}">
+          <span class="nm">${nm}</span>${you}
+          <span class="ct">${x.n ? `近 30 条公告出现 ${x.n} 次` : "词库里见过这个全称"}</span>
+        </button>`;
+      }).join("");
 }
 
 async function suggestCompany(){
