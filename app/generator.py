@@ -600,6 +600,10 @@ def build_user_prompt(facts: dict, materials: list[dict], user_notes: str = "") 
         mat_blocks.append(f"===== {m['title']}" + (f"（{meta}）" if meta else "")
                           + f" =====\n{m['text']}")
     mat_block = "\n\n".join(mat_blocks)
+    # 字段顺序是有讲究的：正文块全部写在前面，两张表排在最后。
+    # 报告是按这个顺序逐字生成的，一旦撞上输出上限被截断，先丢的是表——
+    # 表可以由台账重算或单独再要一次，章节缺了就补不回来。
+    # （改之前表在中途，实测每次都截在资产段之后，盈利、债务、二级市场整段消失。）
     schema = """{
   "company_full_name": "工商全称",
   "positive": ["定稿的正面观点，3-5 条", "..."],
@@ -611,14 +615,14 @@ def build_user_prompt(facts: dict, materials: list[dict], user_notes: str = "") 
     "industry": {"lead": "行业段加粗判断句（不带数字，主语是行业或政策，如「水泥需求随基建与地产投资回落，价格中枢下移压制行业毛利」）", "body": "行业情况正文（独立一节，250-420字）：供需格局（产量或需求增速、产能利用率、需求端构成）→ 价格与成本（价格走势与幅度、原材料与能源成本）→ 政策（真正影响这家公司的那一条）→ 传导（怎样落到公司的量、价、毛利上）。每个判断后跟一个可核实的数"},
     "overview": {"lead": "加粗汇总句（不带数字）", "body": "总述段正文：先交代钱的来源与公司自身的经营主线，再写收入结构概览。收口不用另写一句「如下表」——业务构成表前的引导语由程序按表内期次生成。行业的量价与政策已在行业段写过，这里不重抄"},
     "segments": [{"name": "该主体自己用的板块名，照原文写，不改写不带编号", "body": "承接『1）××业务方面，』之后的正文"}],
-    "segment_table": {"periods": ["2026年1-6月", "2025年", "2024年", "2023年"], "unit_line": "单位：亿元", "sub_cols": ["营业收入", "收入占比"], "rows": [["板块名", "本期收入", "本期占比", "上年收入", "上年占比", "前年收入", "前年占比", "第三年收入", "第三年占比", "最近完整年度毛利率"], ["营业总收入", "0.00", "100.00%", "0.00", "100.00%", "0.00", "100.00%", "0.00", "100.00%", "8.00%"]]},
-    "financial_table": {"unit_line": "单位：亿元", "periods": ["2023年", "2024年", "2025年"], "rows": [["资产总额", "0.00", "0.00", "0.00"], ["负债总额", "0.00", "0.00", "0.00"], ["净利润", "0.00", "0.00", "0.00"]]},
     "asset": {"lead": "加粗汇总句（不带数字）", "body": "资产段正文"},
     "profit": {"lead": "加粗汇总句（不带数字，说清这一年利润被什么吃掉、经营获现够不够覆盖）", "body": "盈利与现金流一段（不拆段）：营业收入与同比 → 量、价、结构 → 利润总额与净利润及同比 → 亏损或下滑逐项归因（毛利、费用、减值、投资收益、补助、处置、所得税，每项带金额）→ 利润被什么吃掉、哪些偶发哪些持续 → 经营活动净现金流及同比、来源与去向 → 收现比 → 投资与筹资净额 → 利润与获现的差额落在哪 → 非受限货币资金对短期债务与利息支出的覆盖 → 缺口靠什么补"},
     "cash": {"lead": "", "body": ""},
     "debt": {"lead": "加粗汇总句（不带数字）", "body": "债务段正文"},
     "market": {"lead": "二级市场定价段加粗判断句（不带数字，说清定价处在什么水平、往哪个方向走）", "body": "二级市场定价段正文：数据区间与口径（中债估值、主体存续债中位数）→ 期末信用利差绝对水平与区间高低点、极差 → 期初期末变动幅度与相对幅度 → 期末在区间内的位置 → 超额利差绝对值（相对同评级同类型是更紧还是更松）→ 日均绝对变动与单日最大变动 → 收口：位置，不预测"},
     "special_topics": [],
+    "segment_table": {"periods": ["2026年1-6月", "2025年", "2024年", "2023年"], "unit_line": "单位：亿元", "with_gm": true, "rows": [["板块名", "本期收入", "上年收入", "前年收入", "第三年收入", "最近完整年度毛利率"], ["营业总收入", "0.00", "0.00", "0.00", "0.00", "8.00%"]]},
+    "financial_table": {"unit_line": "单位：亿元", "periods": ["2023年", "2024年", "2025年"], "rows": [["资产总额", "0.00", "0.00", "0.00"], ["负债总额", "0.00", "0.00", "0.00"], ["净利润", "0.00", "0.00", "0.00"]]},
     "add_on_sections": [
       {"where": "债务段之后（或资产段之后）", "title": "这一段叫什么，如「对外担保」",
        "why": "为什么值得补一段：带材料里的金额与比重，这行只给用户看，不进正文",
@@ -706,40 +710,80 @@ def seg_caption(periods: list[str], with_gm: bool = True) -> str:
     return f"{'、'.join(f'{y}年' for y in years)}，公司{tail}情况如下："
 
 
+def _cell_num(v: Any) -> float | None:
+    """表单元格转数值：去千分位、去百分号与单位，认不出就返回 None。
+
+    表格里空着写「—」「--」是常态，不能当成 0——「没有这个数」与「是零」
+    在占比计算里是两件事。
+    """
+    s = str(v if v is not None else "").strip()
+    if not s or s in ("—", "--", "-", "－", "N/A", "n/a"):
+        return None
+    neg = s.startswith(("(", "（")) and s.endswith((")", "）"))
+    m = re.search(r"-?\d+(?:\.\d+)?", s.replace(",", "").replace("，", ""))
+    if not m:
+        return None
+    try:
+        x = float(m.group())
+    except ValueError:
+        return None
+    return -x if (neg and x > 0) else x
+
+
 def _clean_llm_table(t: Any) -> dict | None:
     """校验并清洗模型给出的业务构成表。
 
-    两种结构都收：
-    ① 多期（v59 起）：periods + 每行「板块名 + 每期两格（收入、占比）+ 毛利率」；
-    ② 单期旧结构：header + 每行四格。
-    无论哪种，出口都补齐成同一种形状，前端与 Word 只认一种。
+    三种结构都收：
+    ① 紧凑多期（v60 起，模型按这个写）：periods + 每行「板块名 + 每期一格收入 + 毛利率」，
+       占比由本函数按同期的营业总收入算——让模型一次输出十个格子，它既占输出预算，
+       又常把占比算错；
+    ② 宽多期（v59）：每行「板块名 + 每期两格（收入、占比）+ 毛利率」；
+    ③ 单期旧结构：header + 每行四格。
+    出口统一成宽多期（或单期）一种形状，前端与 Word 只认一种。
     """
     if not isinstance(t, dict):
         return None
     rows = t.get("rows") or []
     if not isinstance(rows, list) or len(rows) < 2:
         return None
-    periods = [str(p).strip() for p in (t.get("periods") or []) if str(p).strip()]
-    periods = sort_periods_desc(periods)[:4]
-    # 有没有毛利率列，按行宽推断最稳：每期两格（收入、占比），多出一格就是毛利率。
-    # 只看 header 里的字会被旧结构（单期四列）带偏。
+    # 模型给的期次顺序要留着：行里的格子是按它排的。直接排序会让「2026年那一列」
+    # 配到「2023年的数」——表看起来齐整，数是错位的。
+    raw_periods = [str(p).strip() for p in (t.get("periods") or []) if str(p).strip()][:4]
+    periods = sort_periods_desc(raw_periods)
+    order = [raw_periods.index(p) for p in periods]     # 排序后第 i 列 = 原始的 order[i] 列
     _w = max((len(r) for r in rows if isinstance(r, (list, tuple))), default=0)
+
+    # 结构判定只看行宽，不看字段名：n 期时四种可能互不相等（1+2n+1 / 1+2n / 1+n+1 / 1+n），
+    # 一一对上就能定性，比追问模型「你写的是哪种」可靠。
+    compact = False
     if periods:
-        has_gm = _w >= 1 + len(periods) * 2 + 1
+        n = len(periods)
+        if _w == 2 * n + 2:
+            has_gm, compact = True, False
+        elif _w == 2 * n + 1:
+            has_gm, compact = False, False
+        elif _w == n + 2:
+            has_gm, compact = True, True
+        elif _w == n + 1:
+            has_gm, compact = False, True
+        else:                       # 格子数对不上：按有无毛利率字段兜底，仍按紧凑张开
+            has_gm = bool(t.get("with_gm")) or "毛利率" in json.dumps(
+                t.get("header") or [], ensure_ascii=False)
+            compact = True
     else:
         has_gm = "毛利率" in json.dumps(t.get("header") or [], ensure_ascii=False) or _w >= 4
-    width = (1 + len(periods) * 2 + (1 if has_gm else 0)) if periods else None
+
+    n_all = len(raw_periods)
+    src_w = ((1 + n_all + (1 if has_gm else 0)) if compact
+             else (1 + n_all * 2 + (1 if has_gm else 0))) if periods else 4
 
     clean_rows: list[list[str]] = []
     for r in rows:
         if not isinstance(r, (list, tuple)) or not r:
             continue
         cells = [str(c).strip() if c is not None else "" for c in list(r)]
-        if width:
-            # 列数对不上时按末端补齐／截断：模型少写一格比整张表丢掉好
-            cells = cells[:width] + [""] * max(0, width - len(cells))
-        else:
-            cells = cells[:4] + [""] * max(0, 4 - len(cells))
+        # 列数对不上时按末端补齐／截断：模型少写一格比整张表丢掉好
+        cells = cells[:src_w] + [""] * max(0, src_w - len(cells))
         if not cells[0]:
             continue
         clean_rows.append(cells)
@@ -749,6 +793,49 @@ def _clean_llm_table(t: Any) -> dict | None:
     tot = [r for r in clean_rows if _is_total_row(r[0])]
     body = [r for r in clean_rows if not _is_total_row(r[0])]
     clean_rows = body + tot[:1]
+
+    if periods and compact:
+        # 展开成宽格式：每期补一格占比。分母优先取「营业总收入」该期的收入，
+        # 没有这一行时用各板块之和——两种都拿不到就留空，不猜。
+        # 展开按模型给的原始列序，最后再按 order 换位，避免期次与数错配。
+        tot_rev = []
+        for i in range(n_all):
+            v = _cell_num(clean_rows[-1][1 + i]) if _is_total_row(clean_rows[-1][0]) else None
+            if v is None:
+                v = sum(_cell_num(r[1 + i]) or 0 for r in clean_rows) or None
+            tot_rev.append(v)
+        wide: list[list[str]] = []
+        for r in clean_rows:
+            pairs: list[list[str]] = []
+            for i in range(n_all):
+                rev = _cell_num(r[1 + i])
+                if rev is None:
+                    pct = ""
+                elif _is_total_row(r[0]):
+                    pct = "100.00%"
+                elif tot_rev[i]:
+                    pct = f"{rev / tot_rev[i] * 100:.2f}%"
+                else:
+                    pct = ""
+                pairs.append([r[1 + i], pct])
+            out = [r[0]]
+            for i in order:
+                out.extend(pairs[i])
+            if has_gm:
+                out.append(r[1 + n_all])
+            wide.append(out)
+        clean_rows = wide
+    elif periods and order != list(range(len(raw_periods))):
+        # 宽格式也要按期次换位：每期两格，跟着一起走
+        shifted = []
+        for r in clean_rows:
+            out = [r[0]]
+            for i in order:
+                out.extend(r[1 + 2 * i: 3 + 2 * i])
+            if has_gm:
+                out.append(r[1 + 2 * n_all])
+            shifted.append(out)
+        clean_rows = shifted
 
     if not periods:
         return {
@@ -2101,7 +2188,7 @@ def _nochange_rows(draft: dict) -> list[dict]:
 # 校验规则的版本号。规则一改就加一，存量记录据此判断要不要重算——
 # 只看「有没有 issue_items」是不够的：新加的校验项不会进到老记录里，
 # 用户打开旧报告就看不到新提示，等于没上。
-VALIDATOR_REV = 13
+VALIDATOR_REV = 14
 
 # 校验项分三类，决定它出现在哪儿：
 #   auto   —— 表述与结构问题，程序能改。生成后自动走一轮修订，改掉了就不给人看。
@@ -3383,6 +3470,38 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
                                    "note": "补期末信用利差绝对值、区间高低点与期末所处分位"}]})
 
     # 8) 结构检查
+    # 7.w) 主干段缺失。这以前是最安静的一类问题：缺了段落，`_ensure_structure`
+    # 会把空壳补上，页面上就是一块空文本框，看着像「还没写」，实际是这次没写出来。
+    # 补写救不回来的，必须在这里说出来，让人知道要么手写要么重生成。
+    _missing = _missing_blocks(draft)
+    if _missing:
+        issues.append(
+            "本次生成缺 " + "、".join(_missing) + "。这几段是报告主干，缺了读者会当成没写完。"
+            "多半是输出顶到上限被截断（材料多、或模型把预算花在了推理上）："
+            "可以在空段落里点「+ 补一段分析」按段补写，或去掉一两份材料重新生成。")
+        issue_items.append({
+            "t": "报告缺主干段", "a": "d-doc", "fix": "manual",
+            "note": "、".join(_missing),
+            "d": [{"num": n, "where": n, "kind": "结构", "full": "", "si": 0,
+                   "anchor": "d-doc", "field": "", "seg": 0,
+                   "note": "这一段这次没写出来。点「+ 补一段分析」手补，或重新生成"}
+                  for n in _missing]})
+    # 7.m) 有行情数据却没写行情段。数据取到了、正文没写，读者会以为这家主体
+    # 没有二级市场可比价——而实际上有，只是这次漏了。
+    _mk_facts = (facts or {}).get("market") or {}
+    _mk_body = str((c.get("market") or {}).get("body") or "").strip()
+    if _mk_facts.get("n") and not _mk_body:
+        issues.append(
+            f"这次取到了 {_mk_facts.get('n')} 个交易日的利差数据（期末 "
+            f"{(_mk_facts.get('cdb') or {}).get('last')} BP），但正文没有二级市场定价段。"
+            "这一段是判断市场怎么给这家主体定价的唯一依据，缺了等于少一类证据。")
+        issue_items.append({
+            "t": "有行情数据却没写", "a": "blk-market", "fix": "manual",
+            "d": [{"num": f"{_mk_facts.get('n')} 个交易日", "where": "二级市场定价",
+                   "kind": "结构", "full": "", "si": 0, "anchor": "blk-market",
+                   "field": "mk-body", "seg": 0,
+                   "note": "点「+ 补一段分析」选「成交与估值水平」补上，或重新生成"}]})
+
     # 7.x) 业务构成表：期次够不够、合计对不对得上。三年加最新一期是要求，
     # 但材料只给两期时不能硬凑——所以措辞是「材料里有更早年份就补上」，
     # 不写成错，写成一件可以做得更好的事。
@@ -3499,16 +3618,132 @@ positive_pool 与 concern_pool 各不超过 6 条，data_notes 只列正文真�
 只输出一个 JSON 对象，不要任何解释文字。"""
 
 
-def _too_incomplete(draft) -> list[str]:
-    """修出来的草稿缺了哪些主干块。缺两个以上就不算修好，该重试。
+# 报告的主干块：这几段缺一段，读者看到的就是「报告没写完」。
+# market 不在此列——材料里没有利差数据时，那一段本来就不该出现。
+_CORE_BLOCKS = (
+    ("overview", "总述段"),
+    ("asset", "资产段"),
+    ("profit", "盈利与现金流段"),
+    ("debt", "债务段"),
+)
 
-    被截断的 JSON 能补上括号，但补不回没写出来的段落。若缺的是盈利段与
-    债务段，用户拿到手会看着像「报告没写完」，不如重试一次。
-    """
+
+def _missing_blocks(draft) -> list[str]:
+    """缺哪几个主干块，返回中文名。空字符串也算缺——空壳段比没有更误导。"""
     c = (draft.get("commentary") or {}) if isinstance(draft, dict) else {}
-    need = {"overview": "总述段", "asset": "资产段", "profit": "盈利段", "debt": "债务段"}
-    return [v for k, v in need.items()
-            if not ((c.get(k) or {}).get("body") or "").strip()]
+    out = []
+    for key, name in _CORE_BLOCKS:
+        b = c.get(key) or {}
+        if not (str(b.get("body") or "").strip()):
+            out.append(name)
+    return out
+
+
+_FILL_HINT = """上一轮写这份报告时，输出在写到一半就撞上了长度上限，下面这几段没能写出来。
+现在只补这几段，别的一概不写。
+
+【要补的块】{blocks}
+
+【纪律】
+1. 只输出这些块的 JSON。**键名必须用英文**（overview / asset / profit / debt），
+   不要写成中文段名。结构照这个：
+   {{"commentary": {{"profit": {{"lead": "加粗判断句（不带数字）", "body": "正文"}}, "debt": {{...}}}}}}
+2. 加粗判断句不带数字、必须有主语（「公司为……」「公司……」），正文按段写实数据。
+3. 数字只能取自【材料摘录】与你已知的段落，找不到就写定性表述，不许补数、不许推算出新数。
+4. 不要重复下面【已写好的段落】里已经说过的事——那几段的判断句列在下面，绕开它们。
+5. 不要输出别的字段，不要解释，只给这一段 JSON。"""
+
+
+def _fill_missing(draft: dict, facts: dict, materials: list[dict],
+                  model_id: str | None = None, progress=None) -> dict:
+    """把截断时丢掉的主干段补回来。
+
+    为什么要有这一步：模型是按 JSON 字段顺序逐字写的，撞上输出上限时，
+    后面那些字段直接被砍。修括号能救回 JSON，但救不回没写出来的段落——
+    用户拿到手的报告缺盈利、缺债务、缺二级市场，却看不出哪里不对。
+    补一次比让他自己发现再重生成省事，也省一次全量 token。
+    """
+    miss = _missing_blocks(draft)
+    if not miss:
+        return draft
+    c = dict(draft.get("commentary") or {})
+    keys = [k for k, name in _CORE_BLOCKS if name in miss]
+    if not keys:
+        return draft
+
+    # 已写好的段落只给判断句：给正文会让它把别段的数搬过来，也会把 prompt 撑大
+    known = []
+    for k, name in (("industry", "行业"), ("overview", "总述"), ("asset", "资产"),
+                    ("profit", "盈利与现金流"), ("debt", "债务"), ("market", "二级市场")):
+        lead = str((c.get(k) or {}).get("lead") or "").strip()
+        if lead:
+            known.append(f"{name}：{lead}")
+    digest = "\n\n".join(
+        f"— {m.get('title') or ''} —\n{(m.get('text') or '')[:4500]}"
+        for m in (materials or [])[:4])[:14000]
+
+    payload = {
+        "company": (facts.get("company") or {}).get("name") or draft.get("company_full_name") or "",
+        "blocks": {k: None for k in keys},
+    }
+    # 要块名同时给英文键与中文名：只给中文名，模型就照着写中文键（实测如此），
+    # 合并时按英文键取会一个都取不到，补写白跑一趟。
+    _label = {k: name for k, name in _CORE_BLOCKS}
+    blocks_desc = "、".join(f"{k}（{_label[k]}）" for k in keys)
+    prompt = (_FILL_HINT.format(blocks=blocks_desc)
+              + "\n\n【主体】" + (payload["company"] or "受评主体")
+              + ("\n\n【已写好的段落】\n" + "\n".join(known) if known else "")
+              + (("\n\n【材料摘录】\n" + digest) if digest else ""))
+    if progress:
+        try:
+            progress(93, "补写缺失段", "补上 " + "、".join(miss))
+        except Exception:                                     # noqa: BLE001
+            pass
+    used: dict = {}
+    try:
+        raw = llm.chat([{"role": "system", "content": SYSTEM_PROMPT},
+                        {"role": "user", "content": prompt}],
+                       model_id=model_id, temperature=0.3, max_tokens=8000,
+                       timeout=420, thinking=False, usage_out=used)
+    except Exception as e:                                    # noqa: BLE001
+        print(f"补写缺失段失败：{e}")
+        return draft
+    try:
+        got = llm.parse_json(raw)
+    except Exception:                                         # noqa: BLE001
+        return draft
+    if isinstance(got, list):
+        got = got[0] if got else {}
+    part = (got.get("commentary") if isinstance(got.get("commentary"), dict) else got) or {}
+    # 键名两种都收：提示词要求英文，但它仍会忍不住写中文段名。缺了这条兜底，
+    # 补写就是「调了一次模型、什么都不落」——最费钱也最难发现的一种失败。
+    alias = {"overview": ("总述", "总述段"), "asset": ("资产", "资产段"),
+             "profit": ("盈利与现金流", "盈利与现金流段", "盈利段", "现金流"),
+             "debt": ("债务", "债务段")}
+    filled = 0
+    for k in keys:
+        b = part.get(k)
+        if not isinstance(b, dict):
+            b = next((part.get(a) for a in alias.get(k, ()) if isinstance(part.get(a), dict)), {})
+        body = str((b or {}).get("body") or "").strip()
+        if not body:
+            continue
+        c[k] = {"lead": str(b.get("lead") or "").strip(), "body": body}
+        filled += 1
+    draft["commentary"] = c
+    draft["filled_blocks"] = [name for k, name in _CORE_BLOCKS
+                              if str((c.get(k) or {}).get("body") or "").strip() and k in keys][:filled]
+    try:
+        usage_mod.record("generate", company=payload["company"],
+                         model=used.get("model") or (model_id or ""),
+                         prompt_tokens=used.get("prompt_tokens", 0),
+                         completion_tokens=used.get("completion_tokens", 0),
+                         total_tokens=used.get("total_tokens", 0),
+                         cached_tokens=used.get("cached_tokens", 0),
+                         seconds=0, note=f"补写缺失段：{'、'.join(miss)}"[:120])
+    except Exception:                                         # noqa: BLE001
+        pass
+    return draft
 
 
 def _looks_empty(draft) -> bool:
@@ -3757,8 +3992,9 @@ def generate(facts: dict, materials: list[dict], model_id: str | None = None,
             d = d[0] if d else {}
         if _looks_empty(d):
             raise ValueError("解析出的草稿正文不足 800 字，等于没写出报告")
-        if used.get("finish_reason") == "length" and len(_too_incomplete(d)) >= 2:
-            raise ValueError("截断修出来的草稿缺 " + "、".join(_too_incomplete(d)))
+        # 截断缺块不在这里抛：以前缺两块以上就整轮重跑（重发一份材料、再写一遍全文），
+        # 实测一次生成 40 秒、两万 token。缺的那两段单独补一次只要十几秒，
+        # 材料也只发摘要——同样的钱能出稿，没必要从头再来。
         return d
 
     try:
@@ -3824,6 +4060,17 @@ def generate(facts: dict, materials: list[dict], model_id: str | None = None,
     for _k in ("financial_table", "segment_table"):
         if isinstance(draft["commentary"].get(_k), dict):
             draft["commentary"][_k] = reorder_table(draft["commentary"][_k])
+    # 主干段缺了要补回来：模型是按字段顺序逐字写的，撞上输出上限时后面几段
+    # 直接被砍，修括号救得回 JSON、救不回段落。这里单独补一次，比让用户
+    # 自己发现「怎么没有盈利段」再整份重生成省事得多。
+    _missed = _missing_blocks(draft)
+    if _missed:
+        draft = _fill_missing(draft, facts, materials, model_id, progress)
+        if _missing_blocks(draft):
+            # 第一次没补全：材料砍一半再试一次。补写要的是「有没有这个数」，
+            # 四千字与一万字差别不大，但对超长材料是能不能塞进上下文的问题。
+            draft = _fill_missing(draft, facts, _trim_materials(materials, 0.5),
+                                  model_id, progress)
     _p(progress, 95, "语言清理", "去重复句、清来源交代语")
     # 这一步以前只在导出前做，于是页面上看到的草稿是没清过的：同一句话出现两遍、
     # 「材料显示」这类词都还挂着，校验把它们逐条报出来让人改。规则能删的就不该

@@ -17,6 +17,11 @@ import threading
 from datetime import date, datetime
 
 CACHE: dict[str, dict] = {}
+# 正在取的主体：同一主体第二次调用不再发一次请求，而是等第一次的结果。
+# 不加这一层，读材料时后台 warm 一次、生成时又起一次，两次都要过财汇隧道，
+# 各自 8 秒超时——两边都等不到，最后一段行情都没有。
+_INFLIGHT: dict[str, threading.Event] = {}
+_INFLIGHT_LOCK = threading.Lock()
 
 
 def _f(v) -> float | None:
@@ -54,13 +59,40 @@ def fetch_spread(client, company: str, days: int = 40, wait: float | None = None
     if hit and hit.get("day") == date.today().isoformat():
         return hit.get("data") or {}
 
+    # 已经有人在取同一主体：等他的结果，不重复请求
+    with _INFLIGHT_LOCK:
+        ev = _INFLIGHT.get(key)
+        owner = ev is None
+        if owner:
+            ev = threading.Event()
+            _INFLIGHT[key] = ev
+    if not owner:
+        ev.wait(0.5 if wait is None else max(0.5, float(wait)))
+        got = CACHE.get(key)
+        if got and got.get("day") == date.today().isoformat():
+            return got.get("data") or {}
+        if wait is not None:
+            return {}                      # 别人还在跑，这次先不写这一段
+        # wait=None 表示愿意一直等，那就自己再取一次（对方可能已经失败）
     if wait is None:
-        return _fetch_now(client, company, days, key)
+        try:
+            return _fetch_now(client, company, days, key)
+        finally:
+            if owner:
+                with _INFLIGHT_LOCK:
+                    _INFLIGHT.pop(key, None)
+                ev.set()
 
     box: dict = {}
 
     def job():
-        box["data"] = _fetch_now(client, company, days, key)
+        try:
+            box["data"] = _fetch_now(client, company, days, key)
+        finally:
+            if owner:
+                with _INFLIGHT_LOCK:
+                    _INFLIGHT.pop(key, None)
+                ev.set()
 
     th = threading.Thread(target=job, daemon=True)
     th.start()

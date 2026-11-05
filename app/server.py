@@ -344,8 +344,11 @@ def do_generate(company: str, model: str | None, progress=None,
                 # 进度只往上走，这一步给个低档：给 93 会让后面整段模型写作
                 # 都停在 93%，看起来像卡住了
                 progress(2, "取二级市场数据", "中债估值主体利差")
-            # 最多等 8 秒：定价只是一段，不该为它把整次生成卡住；等不到就先不写
-            facts["market"] = market_mod.fetch_spread(_client(), company, wait=8)
+            # 等 18 秒。原来给 8 秒，实测财汇过隧道常要十几秒，于是每次生成
+            # 都「恰好」取不到——用户看到的就是「没有行情章节」，而他并不知道
+            # 是数据没回来。读材料时的后台预热会先把这次请求发出去，这里等的是
+            # 同一份在途结果（market 里做了去重），所以多数情况是秒回。
+            facts["market"] = market_mod.fetch_spread(_client(), company, wait=18)
         except Exception:                                  # noqa: BLE001
             facts["market"] = {}
     # revise=False：正文一解析出来就返回，表述复核那第二趟模型调用留到
@@ -808,16 +811,8 @@ def api_mail(payload: dict) -> dict:
     draft = payload.get("draft") or {}
     name = (draft.get("company_full_name") or company or "").strip()
 
-    docx_name = _base_name(payload.get("docx") or "")
-    docx_path = OUTPUT / docx_name if docx_name else None
-    if not (docx_path and docx_path.is_file()):
-        docx_path = None
-        if draft:
-            docx_path = write_docx(generator.polish_draft(draft), name or company)
-            usage_mod.record("export", company=company or docx_path.stem, note=docx_path.name)
-            rid = payload.get("history_id") or draft.get("history_id") or ""
-            if rid:
-                history.attach_docx(rid, docx_path.name)
+    # 发出去的必须是屏幕上这一稿：带了草稿就现场重排，磁盘文件只在没带草稿时用。
+    docx_path = newest_docx(draft, name or company, payload.get("docx") or "")
 
     files: list[Path] = []
     if docx_path:
@@ -865,18 +860,61 @@ def api_mail(payload: dict) -> dict:
     return res
 
 
-def write_docx(draft: dict, company: str = "") -> Path:
-    """渲染 Word，按「企业名内评简评报告 日期」命名并避免覆盖。"""
+def write_docx(draft: dict, company: str = "", reuse: bool = False) -> Path:
+    """渲染 Word，按「企业名内评简评报告 日期」命名。
+
+    reuse=True：同名文件已存在就覆盖它。发送与打包走这条——它们要的是
+    「此刻屏幕上这一稿」的一个临时产物，每点一次发送就多堆一份 -2、-3，
+    目录很快就没法看了。导出（用户主动要一份文件）仍然不覆盖。
+    """
     name = (draft.get("company_full_name") or company or "未命名主体").strip()
     name = re.sub(r"[\\/:*?\"<>|]", "", name)
     stamp = datetime.now().strftime("%y.%-m.%-d")
     out = OUTPUT / f"{name}内评简评报告 {stamp}.docx"
-    n = 2
-    while out.exists():
-        out = OUTPUT / f"{name}内评简评报告 {stamp}-{n}.docx"
-        n += 1
+    if not reuse:
+        n = 2
+        while out.exists():
+            out = OUTPUT / f"{name}内评简评报告 {stamp}-{n}.docx"
+            n += 1
     docx_writer.render_report(draft, out)
     return out
+
+
+def newest_docx(draft: dict, company: str = "", docx_name: str = "",
+                reuse: bool = True) -> Path | None:
+    """这次要发出去／打包进去的那份 docx。
+
+    **优先用手上这份草稿现场重排**，磁盘上的同名文件只在没有草稿时才用。
+    以前是反过来的：只要传了 docx 文件名就直接发磁盘上那份，于是人改完正文
+    点发送，发出去的是上一次导出的旧稿——屏幕上一版、收件人手上另一版，
+    而两边都看不出来。这条是 P0。
+
+    更新模式（draft.mode = update）另有讲究：那份草稿里只有改动清单、没有正文，
+    按正文排会排出空壳，所以走 _export_revision 重放修订标记。
+    """
+    mode = (draft.get("mode") or "") if isinstance(draft, dict) else ""
+    if draft and mode == "update":
+        try:
+            res = _export_revision(draft, {"company": company})
+            p = Path(res.get("path") or "")
+            if p.is_file():
+                return p
+        except Exception as e:                              # noqa: BLE001
+            print(f"更新模式重排失败，退回磁盘文件：{e}")
+    if draft and (draft.get("commentary") or draft.get("basic_info")
+                  or draft.get("positive")):
+        out = write_docx(generator.polish_draft(draft), company, reuse=reuse)
+        usage_mod.record("export", company=company or out.stem, note=out.name)
+        rid = draft.get("history_id") or ""
+        if rid:
+            try:
+                history.attach_docx(rid, out.name)
+            except Exception:                               # noqa: BLE001
+                pass
+        return out
+    base = _base_name(docx_name)
+    p = OUTPUT / base if base else None
+    return p if (p and p.is_file()) else None
 
 
 # ---------------------------------------------------------------- 打包下载
@@ -1123,16 +1161,11 @@ def api_bundle(payload: dict) -> dict:
     company = (payload.get("company") or "").strip()
     draft = payload.get("draft") or {}
     want_json = bool(payload.get("with_json"))
-    docx_name = _base_name(payload.get("docx") or "")
     picked = [m for m in (_base_name(x) for x in (payload.get("materials") or [])) if m]
     ana_keys = [k for k in (payload.get("analysis") or []) if isinstance(k, str)]
 
-    docx_path = OUTPUT / docx_name if docx_name else None
-    if not (docx_path and docx_path.is_file()):
-        docx_path = None
-        if draft:
-            docx_path = write_docx(generator.polish_draft(draft), company)
-            usage_mod.record("export", company=company or docx_path.stem, note=docx_path.name)
+    # 打包同理：里面那份报告必须是页面上的这一稿
+    docx_path = newest_docx(draft, company, payload.get("docx") or "")
 
     pdfs = []
     for name in picked:
