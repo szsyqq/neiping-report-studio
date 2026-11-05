@@ -457,7 +457,7 @@ mark.s{background:#fff3b8;color:inherit;padding:0 1px;border-radius:2px}
 <thead><tr><th>文件</th><th>改了它，什么会变</th></tr></thead>
 <tbody>
 <tr><td><code>01_模板/*.json</code></td><td>章节槽位、字数区间、表格行项规则、排版参数（楷体小四、行距 1.15、首行缩进 2 字符）</td></tr>
-<tr><td><code>generator.py</code> 的 <code>SYSTEM_PROMPT</code></td><td>模型怎么写：每段的句式、哪些话不许写、自算值怎么交底</td></tr>
+<tr><td><code>generator.py</code> 的 <code>SYSTEM_PROMPT</code></td><td>模型怎么写：每段的句式、哪些话不许写、自算值怎么把算式写清楚</td></tr>
 <tr><td><code>generator.py</code> 的 <code>validate()</code></td><td>生成后查什么。新增一条校验要同时往 <code>issue_items</code> 塞定位，否则前端只能跳到段落</td></tr>
 <tr><td><code>facts.py</code> 的 <code>classify_material()</code></td><td>哪些公告进清单、归到哪一类</td></tr>
 <tr><td><code>server.py</code> 的 <code>BUDGET_BY_KIND</code></td><td>每类材料送进提示词多少字</td></tr>
@@ -1081,11 +1081,11 @@ mark.s{background:#fff3b8;color:inherit;padding:0 1px;border-radius:2px}
 
 <p><b>验证。</b>提示词里写「不许编」挡不住模型，最终靠「表里没有就置空 + 正文报了金额就报矛盾」。这条改动后自动核对从 0 项升到 21 项，且没有再出现无源净利润。</p>
 
-<h3><span class="n">9.2</span>算式交底与复算</h3>
+<h3><span class="n">9.2</span>算式复算</h3>
 
 <p><b>问题。</b>占比、增速、差额这类自算值，程序无法判断真假；不查就等于全放行，全查又会产生大量误报。</p>
 
-<p><b>做法。</b>让模型把每条自算值的算式写进 <code>data_notes</code>，格式固定为「指标名 = 操作数A 运算符 操作数B」。程序解析算式，要求操作数在材料里能找到、算出结果与正文一致、操作数不是结果自身，三条同时成立才销账，否则进检查异常。<code>_parse_formula</code> 容忍末尾「= 结果」的写法。</p>
+<p><b>做法。</b>让模型把每条自算值的算式写进 <code>data_notes</code>，格式固定为「指标名 = 操作数A 运算符 操作数B」。程序解析算式，要求操作数在材料里能找到、算出结果与正文一致、操作数不是结果自身，三条同时成立才销账，否则进检查异常，标题写「算式对不上正文的数」。<code>_parse_formula</code> 容忍末尾「= 结果」的写法；「× 100%」里的 100 是换算常数，不当作操作数去材料里找——否则每条算百分比的行都会多报一句「100 没有原值」，噪声一多整张卡就没人看了。</p>
 
 <p><b>验证。</b>口径统一后，21 条算式全部可复算；错误凑数的算式会因操作数在材料里查不到而落网。</p>
 
