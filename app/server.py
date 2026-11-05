@@ -414,6 +414,18 @@ def _company_names_in(title: str) -> list[str]:
     return out
 
 
+_NAME_TAIL = re.compile(r"(?:股份)?有限责任公司$|有限公司$|集团公司$|集团$|公司$")
+
+
+def _common_prefix(a: str, b: str) -> int:
+    n = 0
+    for x, y in zip(a, b):
+        if x != y:
+            break
+        n += 1
+    return n
+
+
 def _rank_names(q: str, pool: dict[str, int]) -> list[dict]:
     """按字面相似度给候选名排序。
 
@@ -435,6 +447,14 @@ def _rank_names(q: str, pool: dict[str, int]) -> list[dict]:
             continue
         if abs(len(name) - len(want)) > max(4, len(want) * 0.4):
             continue
+        # 前缀门：主体在名字开头，后缀（建设集团、有限责任公司）高度同质，
+        # 只看整体相似度会把「中国交通建设集团」当成「中山城建设集团」的候选。
+        # 差异很小时（相似度 0.8 以上）不设此门，否则开头错一个字就找不到。
+        if sim < 0.8:
+            bare_q = _NAME_TAIL.sub("", want)
+            bare_n = _NAME_TAIL.sub("", name)
+            if _common_prefix(bare_q, bare_n) < 2:
+                continue
         scored[name] = [n, sim]
     items = [{"name": k, "n": v[0], "score": round(v[1], 3)} for k, v in scored.items()]
     items.sort(key=lambda x: (-x["score"], -x["n"], len(x["name"])))
