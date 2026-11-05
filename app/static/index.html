@@ -1401,7 +1401,7 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
         <div class="wbar"><i></i></div>
       </div>
       <div class="wbody"><div class="winner"><div class="wpad">
-        <div class="whint" id="expHint">改完再导出。发送、下载、导出在正文上方一排；右侧检查异常点一条就跳到对应段落。</div>
+        <div class="whint" id="expHint">改完、右侧异常核过再出稿。发送、下载、导出在正文上方一排；异常点一条就跳到对应段落。</div>
         <div class="wfoot">
           <span class="whint grow" id="expName">文件名带日期，落在 output/</span>
           <button class="btn" data-export onclick="exportDocx()" id="btnExport2">导出 Word</button>
@@ -1468,7 +1468,7 @@ function paintMode(){
   const eh = $("#expHint");
   if(eh) eh.textContent = up
     ? "右侧检查异常只列数据对不上的条目；生成的 docx 带修订标记，在 Word 里可逐条接受或拒绝。"
-    : "改完再导出。发送、下载、导出在正文上方一排；右侧检查异常点一条就跳到对应段落。";
+    : "改完、右侧异常核过再出稿。发送、下载、导出在正文上方一排；异常点一条就跳到对应段落。";
   const mt = $("#matList");
   if(mt && !S.facts && !S.loaded.length){
     mt.innerHTML = `<div style="font-size:12px;color:var(--muted);padding-top:8px">`
@@ -5314,8 +5314,9 @@ document.addEventListener("click", e => {
 let booted = false;
 
 /* ══ 首次引导 ═══════════════════════════════════════════════════
-   十个点：四步流程各一句，加上正文区能改/能拖/能加、右栏只剩什么、
-   说明页在哪。只讲「这里能做什么」，不复述操作手册——手册在说明页。
+   十二个点：四步流程各一句，加上正文区能改/能拖/能加、右栏只剩什么、
+   出稿怎么走、说明页在哪。只讲「这里能做什么」，不复述操作手册——
+   手册在说明页。出稿两步排在核验之后：先把正文与数字确认完，再发、再导。
    拖动与新增用 CSS 动画演示：首屏没有草稿，指不到真实元素，讲一百遍
    「按住序号能拖」不如看它动一下。 */
 
@@ -5341,17 +5342,13 @@ const TOUR_STEPS = [
     when: () => !!document.querySelector(".note-in"),
     body: `把读完材料的判断写在这里，决定正文往哪写；留空也行。` },
 
-  { sel: [".docbar .end"], title: "第 4 步 · 导出报告", wiz: "export",
-    when: () => !!document.querySelector(".docbar .end"),
-    body: `导出 Word 按模板排版；<b>发送</b>当附件发到邮箱；<b>下载</b>把报告、底稿、材料打成包。` },
-
   { sel: ["#railL", "#p-pos"], title: "候选观点：手动补一条", wiz: "export",
     when: () => !!(document.querySelector("#p-pos .chip") || document.querySelector("#p-con .chip")),
     body: `正文没用上的判断句留在这里，点一条就追加进正面或关注，加过的自动消失。`,
     demo: "pool" },
 
   { sel: ["#blk-basic", "#blk-overview"], title: "正文每一段都能改", wiz: "export",
-    body: `每段都是输入框，直接改；导出、发送、下载读的都是这一份。` },
+    body: `每段都是输入框，直接改；发送、导出、下载读的都是这一份。` },
 
   { sel: ["#blk-segments .add", "#blk-segments"], title: "自己加一节", wiz: "export",
     when: () => !!document.querySelector("#blk-segments"),
@@ -5363,6 +5360,17 @@ const TOUR_STEPS = [
 
   { sel: ["#railR .ck-list", ".rail-r .ck-h"], title: "核验栏：只核数字", wiz: "export",
     body: `这里只留程序判不了的数字问题，点一条跳到正文那句，核完打勾。` },
+
+  // 出稿放在全部确认之后：核验栏看完了再发、再导，顺序跟上文一致。
+  // 发送与导出各占一步——「怎么发」和「怎么排版」是两件事，合成一句时
+  // 三个按钮挤在一行，看完只记得「这里能出稿」，记不住附件是可选勾的。
+  { sel: ["#btnMail"], title: "第 4 步 · 发送（可带附件）", wiz: "export",
+    when: () => !!document.querySelector("#btnMail"),
+    body: `正文一定会带上；底稿 PDF 与分析附件按需勾，收件人只看正文就不勾。` },
+
+  { sel: ["#btnExport"], title: "第 4 步 · 导出 Word", wiz: "export",
+    when: () => !!document.querySelector("#btnExport"),
+    body: `按模板排版，段落、加粗、表格都在；旁边的下载把报告与材料打成包。` },
 
   { sel: ["#tourBtn", "#docLink"], title: "随时可以重看",
     body: `点右上角的 ? 重看；「说明」讲流程与写法。← → 翻页，Esc 退出。` },
