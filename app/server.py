@@ -399,6 +399,22 @@ def api_search(payload: dict) -> dict:
     return do_search(company)
 
 
+def api_market(payload: dict) -> dict:
+    """正文旁边那张利差走势图的数据。
+
+    与生成时的取数走同一个缓存：生成前已经 warm 过一次，这里通常是秒回；
+    打开旧记录才会真正去问财汇，所以给 6 秒上限。取不到就返回 ready=False，
+    由前端整块不显示——图是辅助，不该让页面报错或转圈。
+    """
+    company = (payload.get("company") or "").strip()
+    if not company:
+        return {"ready": False}
+    try:
+        return market_mod.describe(market_mod.fetch_spread(_client(), company, wait=6))
+    except Exception:                                    # noqa: BLE001
+        return {"ready": False}
+
+
 # 联想缓存：同一次输入不重复问财汇（每次检索都要点数，打字过程中不该刷）
 _SUG_CACHE: dict[str, dict] = {}
 
@@ -1227,6 +1243,16 @@ def _upgrade_record(rec: dict) -> dict:
     # 不是一套规则，不能拿 generator.validate 去重算，否则会得出无意义的结论。
     if (draft.get("mode") or "new") == "update":
         return rec
+    # 老稿的「盈利段 + 现金流段」现在是同一段（规则 23）：打开旧记录时就地合并，
+    # 页面、校验、导出读到的是同一份文本，不必等用户重新生成才看到新版式。
+    _cash = (draft.get("commentary") or {}).get("cash") or {}
+    if _cash.get("body") or _cash.get("lead"):
+        generator.merge_profit_cash(draft)
+        rec["draft"] = draft
+        try:
+            history.replace_draft(rec.get("id") or "", draft)
+        except Exception:                                   # noqa: BLE001 — 落盘失败不影响阅读
+            pass
     if val.get("rev") == generator.VALIDATOR_REV:   # 已按当前规则算过
         return rec
     if rec.get("_reval") == "skip":                 # 试过、材料已不在，别每次都试
@@ -1598,6 +1624,7 @@ class Handler(BaseHTTPRequestHandler):
             "/api/settings": api_settings,
             "/api/model/pick": api_model_pick,
             "/api/company/suggest": api_company_suggest,
+            "/api/market": api_market,
             "/api/cost/preview": api_cost_preview,
             "/api/cost/save": api_cost_save,
         }

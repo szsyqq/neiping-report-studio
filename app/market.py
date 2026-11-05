@@ -97,12 +97,37 @@ def _fetch_now(client, company: str, days: int, key: str) -> dict:
     recs.sort(key=lambda x: x["date"])
 
     def span(field: str) -> dict:
+        """一条曲线的完整描述：水平（期初期末、区间）、变化、位置与波动。
+
+        评级报告看利差是两件事：绝对水平说明「这个价是高是低」，变化说明
+        「往哪个方向走」。只报变动、不报水平，读者不知道 3BP 是从 80 走到 83，
+        还是从 400 走到 403。波动（单日最大变动、日均绝对变动）则回答这个价是
+        连续形成还是某一天跳出来的——同一个月同一幅度，跳一次的定价含义不同。
+        """
         vals = [(x["date"], x[field]) for x in recs if x.get(field) is not None]
         if not vals:
             return {}
         first, last = vals[0][1], vals[-1][1]
-        return {"first": first, "last": last, "change": round(last - first, 2),
-                "min": min(v for _, v in vals), "max": max(v for _, v in vals)}
+        lo = min(v for _, v in vals)
+        hi = max(v for _, v in vals)
+        rng = round(hi - lo, 2)
+        steps = [abs(vals[i][1] - vals[i - 1][1]) for i in range(1, len(vals))]
+        # 有方向的单日最大变动：跳升与跳降对定价的含义不同，不给方向会被写错
+        step_i = max(range(1, len(vals)), key=lambda i: abs(vals[i][1] - vals[i - 1][1]),
+                     default=0)
+        out = {
+            "first": first, "last": last, "change": round(last - first, 2),
+            "min": lo, "max": hi, "range": rng,
+            "mean": round(sum(v for _, v in vals) / len(vals), 2),
+            # 变动的相对幅度：3BP 在 80BP 的曲线上是 3.75%，在 400BP 上不到 1%
+            "change_pct": round((last - first) / abs(first) * 100, 2) if first else None,
+            # 期末落在区间内的百分位，0 = 区间最低点，100 = 最高点
+            "pos": round((last - lo) / rng * 100, 1) if rng > 0 else None,
+            "avg_abs_step": round(sum(steps) / len(steps), 2) if steps else None,
+            "max_step": round(vals[step_i][1] - vals[step_i - 1][1], 2) if step_i else None,
+            "max_step_date": vals[step_i][0] if step_i else "",
+        }
+        return out
 
     data = {
         "day": date.today().isoformat(),
@@ -113,7 +138,8 @@ def _fetch_now(client, company: str, days: int, key: str) -> dict:
         "cdb": span("cdb"),
         "cgb": span("cgb"),
         "excess": span("excess"),
-        "series": [{"date": x["date"], "cdb": x["cdb"], "cgb": x["cgb"]} for x in recs],
+        "series": [{"date": x["date"], "cdb": x["cdb"], "cgb": x["cgb"],
+                    "excess": x["excess"]} for x in recs],
     }
     CACHE[key] = {"day": data["day"], "data": data}
     return data
@@ -133,7 +159,12 @@ def warm(company: str) -> None:
 
 
 def as_text(data: dict) -> str:
-    """给模型的材料块。人读也通顺，正文里的期次与幅度直接取这里的数。"""
+    """给模型的材料块。人读也通顺，正文里的期次与幅度直接取这里的数。
+
+    每档都按「绝对水平 → 变动 → 位置 → 波动」四件给全：只给变动，模型写出来
+    就是「走阔 3BP」，读者不知道这 3BP 站在什么水平上；只给高低点，又会被写成
+    「波动较大」这种没有刻度的判断。
+    """
     if not data or data.get("n") in (None, 0):
         return ""
     lines = [
@@ -146,9 +177,20 @@ def as_text(data: dict) -> str:
         if not s:
             continue
         trend = "走阔" if s["change"] > 0 else ("收窄" if s["change"] < 0 else "持平")
-        lines.append(
-            f"{label}：{s['first']:.2f} BP（{data['from']}）→ {s['last']:.2f} BP（{data['to']}），"
-            f"{trend} {abs(s['change']):.2f} BP；区间 {s['min']:.2f} ~ {s['max']:.2f} BP")
+        seg = (f"{label}：期末 {s['last']:.2f} BP；区间 {s['min']:.2f} ~ {s['max']:.2f} BP，"
+               f"极差 {s['range']:.2f} BP；期初 {s['first']:.2f} BP → 期末 {s['last']:.2f} BP，"
+               f"{trend} {abs(s['change']):.2f} BP")
+        if s.get("change_pct") not in (None, 0):
+            seg += f"（相当于期初水平的 {abs(s['change_pct']):.2f}%）"
+        if s.get("pos") is not None:
+            seg += f"；期末位于区间 {s['pos']:.0f}% 分位"
+        lines.append(seg)
+        if s.get("avg_abs_step") is not None:
+            vol = f"波动：日均绝对变动 {s['avg_abs_step']:.2f} BP"
+            if s.get("max_step") is not None and s.get("max_step_date"):
+                vol += (f"，单日最大变动 {s['max_step']:+.2f} BP"
+                        f"（{s['max_step_date'][5:]}）")
+            lines.append(vol)
     # 超额利差长期在 0 附近：这个数本身就是「与同评级同类型基准相当」，
     # 按走势写法会变成「0.00 → 0.00 持平」，读起来像数据没取到。
     ex = data.get("excess") or {}
@@ -159,9 +201,12 @@ def as_text(data: dict) -> str:
                          "即定价与同评级、同类型、同期限的基准相当（不必报走势，也不必报区间）")
         else:
             trend = "走阔" if ex["change"] > 0 else ("收窄" if ex["change"] < 0 else "持平")
+            side = "偏紧" if ex["last"] < 0 else "偏松"
             lines.append(
-                f"超额利差：{ex['first']:.2f} BP → {ex['last']:.2f} BP，{trend} "
-                f"{abs(ex['change']):.2f} BP；区间 {ex['min']:.2f} ~ {ex['max']:.2f} BP")
+                f"超额利差：期末 {ex['last']:.2f} BP、区间均值 {ex['mean']:.2f} BP，"
+                f"相对同评级同类型基准{side}；期初 {ex['first']:.2f} BP → 期末 "
+                f"{ex['last']:.2f} BP，{trend} {abs(ex['change']):.2f} BP；"
+                f"区间 {ex['min']:.2f} ~ {ex['max']:.2f} BP")
     tail = data.get("series") or []
     if tail:
         recent = tail[-8:]
@@ -174,7 +219,7 @@ def as_text(data: dict) -> str:
 
 
 def describe(data: dict) -> dict:
-    """给前端与接口的精简结构（不含逐日序列以外的冗余）。"""
+    """给前端与接口的精简结构（含逐日序列，前端据此画走势图）。"""
     if not data:
         return {"ready": False}
     return {
@@ -186,5 +231,8 @@ def describe(data: dict) -> dict:
         "cdb": data.get("cdb") or {},
         "cgb": data.get("cgb") or {},
         "excess": data.get("excess") or {},
+        # 图例要能切换看哪条曲线，就得把逐日点一起给前端；一天最多几十个点，
+        # 不构成负担，但省掉第二轮请求
+        "series": data.get("series") or [],
         "fetched_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
     }

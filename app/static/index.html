@@ -419,6 +419,37 @@ select{width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 8px
 .blk-tag{font-size:11px;color:var(--muted);letter-spacing:.04em;margin:2px 0 0;
   user-select:none;-webkit-user-select:none}
 .blk-tag + textarea{margin-top:0}
+/* ── 二级市场定价：利差走势小窗 ────────────────────────────────
+   图只回答两件事：这个价站在什么水平、往哪个方向走。图例可点选切换曲线，
+   默认只开「较国开债」——超额利差长期贴着 0，与 100BP 以上的主曲线画在
+   同一根轴上，会把主曲线的波动压成一条平线。 */
+.mkc{margin:5px 0 9px;border:1px solid var(--line);border-radius:7px;background:#fcfcfd;
+  padding:9px 11px 7px;position:relative;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;
+  text-align:left}
+.mkc-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.mkc-t{font-size:11.5px;font-weight:600;color:var(--ink2);letter-spacing:.02em}
+.mkc-r{font-size:10.5px;color:var(--muted)}
+.mkc-lg{display:flex;flex-wrap:wrap;gap:5px;margin:7px 0 3px}
+.mkc-b{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;color:var(--ink2);
+  border:1px solid var(--line);background:#fff;border-radius:999px;padding:2px 9px;
+  cursor:pointer;line-height:1.5;transition:opacity .12s ease,border-color .12s ease}
+.mkc-b:hover{border-color:#cfd4dc}
+.mkc-b i{width:7px;height:7px;border-radius:2px;flex:none}
+.mkc-b b{font-weight:600;font-variant-numeric:tabular-nums}
+.mkc-b em{font-style:normal;color:var(--muted);font-variant-numeric:tabular-nums}
+.mkc-b.off{opacity:.4}
+.mkc-b.off b,.mkc-b.off em{text-decoration:line-through}
+.mkc-s{display:block;width:100%;height:auto;overflow:visible}
+.mkc-f{display:flex;flex-wrap:wrap;gap:2px 13px;font-size:10.5px;color:var(--muted);
+  margin-top:3px;font-variant-numeric:tabular-nums}
+.mkc-f b{color:var(--ink2);font-weight:600}
+.mkc-tip{position:absolute;pointer-events:none;background:#1b1f24;color:#fff;border-radius:5px;
+  font-size:10.5px;line-height:1.55;padding:4px 7px;white-space:nowrap;transform:translate(9px,-50%);
+  opacity:0;transition:opacity .1s ease;z-index:3;font-variant-numeric:tabular-nums}
+.mkc-tip.flip{transform:translate(calc(-100% - 9px),-50%)}
+.mkc-tip.show{opacity:1}
+.mkc-tip i{display:inline-block;width:6px;height:6px;border-radius:1px;margin-right:4px}
+.mkc-empty{font-size:10.5px;color:var(--muted);padding:2px 0 3px}
 .doc{font-family:"Kaiti SC","KaiTi","STKaiti","Songti SC","SimSun",serif;
   font-size:15.5px;line-height:1.82;color:#1b1f24;
   /* 两端对齐：中文正文的右边缘要齐，否则满行参差、读起来乱。
@@ -980,6 +1011,10 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
   .doc{font-size:16px;line-height:1.9}
   .field input,#company,select,.setgrid input,.mlpanel input,.mlpanel textarea{font-size:16px}
   .ta{font-size:16px}
+  /* 手机上图窗略收边：正文左右各留 11px，图不再多占，横向不出现滚动条 */
+  .mkc{padding:8px 8px 6px;margin:4px 0 8px}
+  .mkc-f{gap:2px 10px}
+  .mkc-b{font-size:10px;padding:2px 8px}
 
   /* 工具条：按钮换行，不再挤成一条 */
   /* 步骤卡：标题行 44px 起，拇指好点；辅助说明在窄屏省掉，宽度让给按钮 */
@@ -3155,10 +3190,28 @@ async function autoRevise(){
   }
 }
 
+// 中文两句相接：前句已经以句读收尾就直接接，否则补一个空格。
+// 「。 」在导出的 Word 里看着像排版失误，所以只在确实需要时加。
+function joinCn(a, b){
+  a = (a || "").trim(); b = (b || "").trim();
+  if(!a) return b;
+  if(!b) return a;
+  return a + (/[。！？；：]$/.test(a) ? "" : " ") + b;
+}
+
 function renderDraft(){
   if((S.draft.mode || "new") === "update") return renderActions(S.draft);
   restoreNotes(S.draft);
   const d = S.draft, c = d.commentary || {}, v = d.validation || {};
+  // 老稿把「盈利」与「现金流」分成两段。现在这一段只写一段（提示词规则 23），
+  // 打开旧记录时先接起来：正文直接相接（中文以句号断句，接上即成一段）。
+  // 加粗句只留一句——盈利那句已经说了获现时，现金流那句不再并进来。
+  if(c.cash && (c.cash.body || c.cash.lead)){
+    const pf = c.profit || {};
+    const csLead = /获现|现金流/.test(pf.lead || "") ? "" : c.cash.lead;
+    c.profit = { lead: joinCn(pf.lead, csLead), body: joinCn(pf.body, c.cash.body) };
+    c.cash = { lead: "", body: "" };
+  }
   const gapOn = !(d.layout && d.layout.para_gap === false);
   const wide = isWide();
   const finRows = ((c.financial_table || {}).rows || []).length;
@@ -3244,14 +3297,10 @@ function renderDraft(){
   }
   h += `</div>
     <div class="blk" id="blk-profit">
-      <div class="blk-tag">盈利</div>
+      <div class="blk-tag">盈利与现金流</div>
       ${ta("pf-lead lead", c.profit && c.profit.lead)}
       ${ta("pf-body", c.profit && c.profit.body)}
-      ${(c.cash && (c.cash.body || c.cash.lead)) ? `<div class="blk-tag" id="blk-cash-tag">现金流</div>
-      <div id="blk-cash">
-        ${ta("ch-lead lead", c.cash.lead)}
-        ${ta("ch-body", c.cash.body)}
-      </div>` : ""}
+      <span id="blk-cash"></span>
     </div>
     <div class="blk" id="blk-debt">
       ${ta("db-lead lead", c.debt && c.debt.lead)}
@@ -3259,6 +3308,7 @@ function renderDraft(){
     </div>
     ${(c.market && (c.market.body || c.market.lead)) ? `<div class="blk" id="blk-market">
       <div class="blk-tag">二级市场定价</div>
+      <div class="mkc" id="mkChart" data-state="load"></div>
       ${ta("mk-lead lead", c.market.lead)}
       ${ta("mk-body", c.market.body)}
     </div>` : ""}
@@ -3297,6 +3347,211 @@ function renderDraft(){
   autoGrowAll();
   paintRevChip();
   syncFab();
+  loadMarketChart();
+}
+
+/* ── 利差走势小窗 ───────────────────────────────────────────────
+   数据来自 /api/market，与生成时用的是同一份中债估值缓存。
+   只画利差、不画估值收益率：后者常常没有权限，正文也本来就不用。
+   三条曲线可以分别开关。默认只开「较国开债」——超额利差长期贴着 0，
+   和 100BP 以上的主曲线同轴，会把主曲线的波动压成一条直线。
+   图例上带期末值与区间变动，所以不展开图也能读到数。 */
+const MKC_GEO = { W: 560, H: 132, PL: 40, PR: 10, PT: 8, PB: 16 };
+const MKC_SERIES = [
+  { k: "cdb", label: "较国开债", color: "#b4402c" },
+  { k: "cgb", label: "较国债", color: "#2f6fb3" },
+  { k: "excess", label: "超额利差", color: "#6b5bd2" }
+];
+const MKC = { data: null, co: "", on: { cdb: true, cgb: false, excess: false },
+  hover: -1, lo: 0, hi: 1 };
+
+function mkcNum(v){ return (v === null || v === undefined || v === "" || isNaN(v)) ? null : Number(v); }
+// 图上文字用两位，与正文口径一致；纵轴刻度另给位数，否则 114.20/119.77/121.34 会挤成一团
+function mkcFmt(v, dp){
+  if(v === null || v === undefined) return "—";
+  return Number(v).toFixed(dp === undefined ? 2 : dp);
+}
+function mkcHas(key){ return ((MKC.data || {}).series || []).some(p => mkcNum(p[key]) !== null); }
+
+async function loadMarketChart(){
+  const box = $("#mkChart");
+  if(!box) return;
+  // 演示稿不是这一轮的，服务端没有它的定价数据，硬查会拖住演示
+  if(DEMO.on){ box.remove(); return; }
+  // 主体取稿子标题里的名字，没有才回落到检索框：从历史里打开旧记录时，
+  // 检索框是空的，但这一稿的主体是确定的——按检索框找会得到空，图就没了
+  const co = ((($("#d-company") || {}).value || "") + "").trim() || (curCo() || "").trim();
+  if(!co){ box.remove(); return; }
+  if(MKC.data && MKC.co === co) return renderMkChart();
+  box.innerHTML = `<div class="mkc-empty">读取利差走势…</div>`;
+  try{
+    const j = await api("/api/market", { company: co });
+    if(!j || !j.ready || !((j.series || []).length)){ box.remove(); return; }
+    MKC.data = j; MKC.co = co; MKC.hover = -1;
+    // 默认开哪条：优先较国开债；它没值时退到较国债
+    const hasCdb = !!(j.cdb && j.cdb.last !== undefined && j.cdb.last !== null);
+    MKC.on = { cdb: hasCdb, cgb: !hasCdb && !!(j.cgb && j.cgb.last !== undefined && j.cgb.last !== null), excess: false };
+    renderMkChart();
+  }catch(e){ box.remove(); }
+}
+
+function mkToggle(k){
+  MKC.on[k] = !MKC.on[k];
+  // 一条都不开时看图没意义，也不许让纵轴退回空值
+  if(!MKC_SERIES.some(s => MKC.on[s.k] && mkcHas(s.k))) MKC.on.cdb = true;
+  renderMkChart();
+}
+
+function renderMkChart(){
+  const box = $("#mkChart"), d = MKC.data;
+  if(!box || !d) return;
+  const pts = d.series || [];
+  const vis = MKC_SERIES.filter(s => MKC.on[s.k] && mkcHas(s.k));
+  const { W, H, PL, PR, PT, PB } = MKC_GEO;
+  const iw = W - PL - PR, ih = H - PT - PB;
+
+  // 纵轴只按可见曲线算：切到超额利差时，轴要跟着变成它自己的量级
+  let lo = Infinity, hi = -Infinity;
+  pts.forEach(p => vis.forEach(s => {
+    const v = mkcNum(p[s.k]);
+    if(v !== null){ lo = Math.min(lo, v); hi = Math.max(hi, v); }
+  }));
+  if(!isFinite(lo)){ lo = 0; hi = 1; }
+  if(hi - lo < 0.6){ const mid = (hi + lo) / 2; lo = mid - 0.3; hi = mid + 0.3; }
+  const pad = (hi - lo) * 0.14;
+  lo -= pad; hi += pad;
+  MKC.lo = lo; MKC.hi = hi;
+
+  const X = i => pts.length > 1 ? PL + iw * i / (pts.length - 1) : PL + iw / 2;
+  const Y = v => PT + ih * (1 - (v - lo) / (hi - lo));
+  // SVG 文字会随 viewBox 一起缩放：手机上 560 单位压到 347px，9.5 号只剩 6px。
+  // 按实际显示宽度把字号换算回「看起来 9.5px」，窄屏才读得清。
+  const fs = (9.5 * Math.max(1, W / Math.max(240, box.clientWidth || W))).toFixed(1);
+
+  let g = "";
+  for(let i = 0; i <= 3; i++){
+    const v = lo + (hi - lo) * i / 3, y = Y(v);
+    g += `<line x1="${PL}" y1="${y.toFixed(1)}" x2="${W - PR}" y2="${y.toFixed(1)}" stroke="#eef0f3"/>`
+      +  `<text x="${PL - 6}" y="${(y + 3.2).toFixed(1)}" text-anchor="end" font-size="${fs}" fill="#9aa1ac">${mkcFmt(v, hi - lo >= 20 ? 0 : (hi - lo >= 4 ? 1 : 2))}</text>`;
+  }
+  const marks = pts.length > 2 ? [0, Math.floor((pts.length - 1) / 2), pts.length - 1] : pts.map((_, i) => i);
+  marks.forEach(i => {
+    const a = i === 0 ? "start" : (i === pts.length - 1 ? "end" : "middle");
+    g += `<text x="${X(i).toFixed(1)}" y="${H - 3}" text-anchor="${a}" font-size="${fs}" fill="#9aa1ac">${(pts[i].date || "").slice(5)}</text>`;
+  });
+
+  let paths = "";
+  vis.forEach(s => {
+    let dd = "", started = false;
+    pts.forEach((p, i) => {
+      const v = mkcNum(p[s.k]);
+      if(v === null){ started = false; return; }
+      dd += (started ? "L" : "M") + X(i).toFixed(1) + " " + Y(v).toFixed(1) + " ";
+      started = true;
+    });
+    paths += `<path d="${dd.trim()}" fill="none" stroke="${s.color}" stroke-width="1.6"
+      stroke-linejoin="round" stroke-linecap="round"/>`;
+  });
+
+  const lg = MKC_SERIES.map(s => {
+    if(!mkcHas(s.k)) return "";
+    const st = d[s.k] || {};
+    const chg = mkcNum(st.change);
+    const arrow = chg === null ? "" : (chg > 0 ? "↑" : (chg < 0 ? "↓" : "·"));
+    return `<button class="mkc-b${MKC.on[s.k] ? "" : " off"}" onclick="mkToggle('${s.k}')"
+      title="点一下显示或隐藏这条曲线"><i style="background:${s.color}"></i>${s.label}
+      <b>${mkcFmt(st.last)}</b><em>${arrow}${chg === null ? "" : mkcFmt(Math.abs(chg))}</em></button>`;
+  }).join("");
+
+  // 底部读数跟第一条可见曲线走，标签写明是哪一条，免得和超额利差混读
+  const main = vis[0] || null, st = main ? (d[main.k] || {}) : {};
+  let foot = "";
+  if(main){
+    foot = `<span>${main.label}：期末 <b>${mkcFmt(st.last)}</b> BP</span>`
+      + `<span>区间 <b>${mkcFmt(st.min)}–${mkcFmt(st.max)}</b></span>`
+      + `<span>极差 <b>${mkcFmt(st.range)}</b> BP</span>`;
+    if(mkcNum(st.pos) !== null) foot += `<span>期末位于区间 <b>${Math.round(st.pos)}%</b></span>`;
+    if(mkcNum(st.max_step) !== null && st.max_step_date)
+      foot += `<span>单日最大 <b>${st.max_step > 0 ? "+" : ""}${mkcFmt(st.max_step)}</b> BP（${st.max_step_date.slice(5)}）</span>`;
+  }
+
+  box.innerHTML = `
+    <div class="mkc-h">
+      <span class="mkc-t">利差走势（BP，中债估值·存续债中位数）</span>
+      <span class="mkc-r">${d.from || ""} 至 ${d.to || ""} · ${d.n || 0} 个交易日</span>
+    </div>
+    ${lg ? `<div class="mkc-lg">${lg}</div>` : ""}
+    <svg class="mkc-s" viewBox="0 0 ${W} ${H}" role="img" aria-label="信用利差走势">
+      ${g}${paths}
+      <g id="mkcHover" style="display:none">
+        <line id="mkcV" x1="0" y1="${PT}" x2="0" y2="${H - PB}" stroke="#c9ced6" stroke-width="1" stroke-dasharray="2 2"/>
+        <g id="mkcDots"></g>
+      </g>
+      <rect id="mkcHit" x="${PL}" y="${PT}" width="${iw}" height="${ih}" fill="transparent"/>
+    </svg>
+    <div class="mkc-f">${foot || `<span>勾选上面任意一条曲线查看走势</span>`}</div>
+    <div class="mkc-tip" id="mkcTip"></div>`;
+
+  const hit = box.querySelector("#mkcHit");
+  if(hit){
+    hit.addEventListener("mousemove", mkHover);
+    hit.addEventListener("mouseleave", mkHoverOut);
+  }
+}
+
+function mkHover(e){
+  const box = $("#mkChart");
+  const svg = box && box.querySelector(".mkc-s");
+  const grp = box && box.querySelector("#mkcHover");
+  const tip = box && box.querySelector("#mkcTip");
+  if(!svg || !grp || !tip || !MKC.data) return;
+  const pts = MKC.data.series || [];
+  if(!pts.length) return;
+  const { W, H, PL, PR } = MKC_GEO;
+  const r = svg.getBoundingClientRect();
+  if(!r.width) return;
+  const x = (e.clientX - r.left) / r.width * W;
+  const step = (W - PL - PR) / Math.max(1, pts.length - 1);
+  let i = Math.round((x - PL) / step);
+  i = Math.max(0, Math.min(pts.length - 1, i));
+  const p = pts[i] || {};
+  const X = PL + step * i;
+
+  grp.style.display = "";
+  const line = box.querySelector("#mkcV");
+  line.setAttribute("x1", X); line.setAttribute("x2", X);
+  let dots = "";
+  MKC_SERIES.forEach(s => {
+    if(!MKC.on[s.k]) return;
+    const v = mkcNum(p[s.k]);
+    if(v === null) return;
+    const y = MKC_GEO.PT + (MKC_GEO.H - MKC_GEO.PT - MKC_GEO.PB) * (1 - (v - MKC.lo) / (MKC.hi - MKC.lo));
+    dots += `<circle cx="${X.toFixed(1)}" cy="${y.toFixed(1)}" r="2.6" fill="#fff" stroke="${s.color}" stroke-width="1.6"/>`;
+  });
+  box.querySelector("#mkcDots").innerHTML = dots;
+
+  const rows = MKC_SERIES.filter(s => MKC.on[s.k] && mkcNum(p[s.k]) !== null)
+    .map(s => `<i style="background:${s.color}"></i>${s.label} ${mkcFmt(p[s.k])}`).join("　");
+  tip.innerHTML = `<b>${p.date || ""}</b><br>${rows || "—"}`;
+  tip.classList.add("show");
+  // 气泡贴在光标那一侧的旁边，不压住被读的那个点：默认放右侧，
+  // 靠近右边缘时翻到左侧。竖直方向对着第一条可见曲线的当日值。
+  const br = box.getBoundingClientRect();
+  const firstV = MKC_SERIES.map(s => (MKC.on[s.k] ? mkcNum(p[s.k]) : null)).find(v => v !== null);
+  const anchorV = (firstV === undefined || firstV === null) ? (MKC.lo + MKC.hi) / 2 : firstV;
+  const py = MKC_GEO.PT + (MKC_GEO.H - MKC_GEO.PT - MKC_GEO.PB)
+    * (1 - (anchorV - MKC.lo) / (MKC.hi - MKC.lo));
+  tip.classList.toggle("flip", X > W * 0.62);
+  tip.style.left = (r.left - br.left + r.width * (X / W)) + "px";
+  tip.style.top = (r.top - br.top + r.height * (Math.min(Math.max(py, 18), H - 10) / H)) + "px";
+}
+
+function mkHoverOut(){
+  const box = $("#mkChart");
+  if(!box) return;
+  const g = box.querySelector("#mkcHover"), t = box.querySelector("#mkcTip");
+  if(g) g.style.display = "none";
+  if(t) t.classList.remove("show");
 }
 
 /* ── 分析附件（侧栏） ─────────────────────────────────────────
@@ -3454,7 +3709,7 @@ const CK_RULES = [
 const WHERE_RULES = [
   [/关注/, "blk-con"], [/正面/, "blk-pos"], [/点评|总述/, "blk-overview"],
   [/分部|板块|业务/, "blk-segments"], [/资产/, "blk-asset"],
-  [/盈利|利润|亏损|毛利/, "blk-profit"], [/现金流|收现比|经营活动净现金流/, "blk-cash"],
+  [/盈利|利润|亏损|毛利|现金流|收现比|经营活动净现金流/, "blk-profit"],
   [/二级市场|利差|定价/, "blk-market"],
   [/行业情况|行业景气|供需/, "blk-industry"],
   [/债务|负债|有息/, "blk-debt"], [/基本/, "blk-basic"],
@@ -3543,7 +3798,7 @@ function fieldForWhere(w){
 }
 function fieldForAnchor(a){
   return { "blk-basic": "basic", "blk-industry": "in", "blk-overview": "ov",
-    "blk-asset": "as", "blk-profit": "pf", "blk-cash": "ch",
+    "blk-asset": "as", "blk-profit": "pf", "blk-cash": "pf",
   "blk-debt": "db", "blk-market": "mk",
     "blk-segments": "seg", "blk-topics": "topic" }[a] || "";
 }
@@ -3851,8 +4106,8 @@ function ckTextFields(){
   push(document.querySelector(".ta.ov-body"), "ov", "总述段");
   push(document.querySelector(".ta.as-lead"), "as-lead", "资产段加粗句");
   push(document.querySelector(".ta.as-body"), "as", "资产段");
-  push(document.querySelector(".ta.pf-lead"), "pf-lead", "盈利段加粗句");
-  push(document.querySelector(".ta.pf-body"), "pf", "盈利段");
+  push(document.querySelector(".ta.pf-lead"), "pf-lead", "盈利与现金流段加粗句");
+  push(document.querySelector(".ta.pf-body"), "pf", "盈利与现金流段");
   push(document.querySelector(".ta.db-lead"), "db-lead", "债务段加粗句");
   push(document.querySelector(".ta.db-body"), "db", "债务段");
   document.querySelectorAll("#d-segs .seg-line").forEach((el, i) => {
@@ -4630,9 +4885,8 @@ function collectDraft(){
   d.commentary.asset = { lead: $(".ta.as-lead").value.trim(), body: $(".ta.as-body").value.trim() };
   d.commentary.profit = { lead: $(".ta.pf-lead") ? $(".ta.pf-lead").value.trim() : "",
                           body: $(".ta.pf-body") ? $(".ta.pf-body").value.trim() : "" };
-  // 现金流与盈利同属一章，但各存各的 lead/body：导出时是连续两段，页面上分开编辑
-  d.commentary.cash = { lead: $(".ta.ch-lead") ? $(".ta.ch-lead").value.trim() : "",
-                        body: $(".ta.ch-body") ? $(".ta.ch-body").value.trim() : "" };
+  // 盈利与现金流是一段，页面上只有一个输入框；cash 字段留空只为兼容旧记录的导出结构
+  d.commentary.cash = { lead: "", body: "" };
   d.commentary.debt = { lead: $(".ta.db-lead").value.trim(), body: $(".ta.db-body").value.trim() };
   // 二级市场定价：没有数据时这几行是空的，collect 出来也就是空串，导出时整段跳过
   d.commentary.market = { lead: $(".ta.mk-lead") ? $(".ta.mk-lead").value.trim() : "",
