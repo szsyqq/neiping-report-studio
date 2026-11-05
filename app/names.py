@@ -62,8 +62,13 @@ def _names_in(title: str) -> list[str]:
 
 
 def bootstrap() -> None:
-    """第一次用到时，从历史记录里把见过的公司名搬进来。"""
-    global _BOOTED
+    """第一次用到时，从历史记录里把见过的公司名搬进来。
+
+    这里的 `global _CACHE` 不能省：没有它，`_CACHE = data` 只是函数内的局部
+    变量，模块级的词库永远是空的——`all_names()` 于是恒返回 `{}`，回填从来没
+    生效过，联想只能靠同一进程里 `learn()` 现攒的几个名字。
+    """
+    global _BOOTED, _CACHE
     if _BOOTED:
         return
     with LOCK:

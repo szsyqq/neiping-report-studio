@@ -131,11 +131,21 @@ def do_search(company: str, progress=None) -> dict:
             seen_names.update(_company_names_in(str(m.get("title") or "")))
     if seen_names:
         names_mod.learn(seen_names)
+    # 本批公告讲的是哪几家：界面靠它判断「你写的那串是不是这个名字」。
+    # 输入简称或错名时公告库仍可能查到东西（甚至是别的公司），不比对就会
+    # 让人拿着错主体的材料往下写。
+    from collections import Counter
+    cnt: Counter = Counter()
+    for arr in (facts.get("materials") or {}).values():
+        for m in arr:
+            for nm in _company_names_in(str(m.get("title") or "")):
+                cnt[nm] += 1
     _persist(company)
     usage_mod.record("search", company=company, chars=n, mcp_calls=calls,
                      note=f"公告 {n} 条 · 财汇 {calls} 次")
     return {"company": company, "facts": facts, "mcp_calls": calls,
-            "queries": stats.get("queries") or [], "rows": rows}
+            "queries": stats.get("queries") or [], "rows": rows,
+            "names": [{"name": k, "n": v} for k, v in cnt.most_common(3)]}
 
 
 def _budget_for(title: str, remaining: int, kind: str = "") -> int:
@@ -426,16 +436,51 @@ def _common_prefix(a: str, b: str) -> int:
     return n
 
 
-def _rank_names(q: str, pool: dict[str, int]) -> list[dict]:
-    """按字面相似度给候选名排序。
+def _abbr_score(want: str, name: str) -> float:
+    """把输入当简称看：每个字是否在名字里依次出现，而且挨得够紧。
 
-    两道门：相似度要够高，长度也不能差太远——「中山城建」与「中信证券」只差
-    两个字，但那是两家不同的公司，长度差能把这类误配挡掉大半。
+    「中航资本」不是任何一家公司的全称，公告库查不回，字面相似度也只有 0.4；
+    可它确实是「中国航空资本控股」抽出来的四个字。判据是子序列加跨度：
+    中(0) 航(2) 资(4) 本(5)，跨度 6 个字装下 4 个字，算紧；如果四个字铺开
+    二十个字去找，那等于在长名单里碰运气，不能收。
+
+    首字必须相同：中文简称几乎都保留全称的第一个字，这一条能挡掉大半误配。
+    """
+    bare = _NAME_TAIL.sub("", name)
+    if len(want) < 3 or len(bare) < len(want):
+        return 0.0
+    if bare[:1] != want[:1]:
+        return 0.0
+    i, pos = 0, []
+    for ch in want:
+        j = bare.find(ch, i)
+        if j < 0:
+            return 0.0
+        pos.append(j)
+        i = j + 1
+    span = pos[-1] - pos[0] + 1
+    if span > len(want) * 2.6:
+        return 0.0
+    if len(bare) > max(len(want) * 4, len(want) + 14):
+        return 0.0
+    gap = (span - len(want)) / max(1, len(want) - 1)
+    return round(0.95 - min(0.16, gap * 0.08), 3)
+
+
+def _rank_names(q: str, pool: dict[str, int]) -> list[dict]:
+    """按字面相似度给候选名排序。三条路：简称、近似、包含。
+
+    简称那条（如「中航资本」→「中国航空资本控股」）走子序列，不走相似度——
+    简称与全称的字面相似度天然很低，用 ratio 永远够不着门槛。
     """
     want = q.replace(" ", "")
     scored: dict[str, list] = {}
     for name, n in pool.items():
         if not name or name == want:
+            continue
+        ab = _abbr_score(want, name)
+        if ab >= 0.75:
+            scored[name] = [n, ab, "简称"]
             continue
         sim = difflib.SequenceMatcher(None, name, want).ratio()
         # 输入的串本身就出现在名字里，说明只多了前后缀，别因为长度被相似度拉低
@@ -456,22 +501,55 @@ def _rank_names(q: str, pool: dict[str, int]) -> list[dict]:
             bare_n = _NAME_TAIL.sub("", name)
             if _common_prefix(bare_q, bare_n) < 2:
                 continue
-        scored[name] = [n, sim]
-    items = [{"name": k, "n": v[0], "score": round(v[1], 3)} for k, v in scored.items()]
+        scored[name] = [n, sim, "近似"]
+    items = [{"name": k, "n": v[0], "score": round(v[1], 3), "how": v[2]}
+             for k, v in scored.items()]
     items.sort(key=lambda x: (-x["score"], -x["n"], len(x["name"])))
     return items
+
+
+def _registry_names(q: str) -> list[str]:
+    """企业名录按名称模糊查，返回它认的全称。
+
+    简称最可靠的一条路：「中山城建」公告库查不回、相似度也够不着，但企业名录
+    直接给出「中山城市建设集团有限公司」。一次一点；查不到就静默跳过，不影响
+    另外两路。
+    """
+    out = _client().execute("get_company_basic_info",
+                            {"target_company": [q], "indicator_name": ["企业名称"]})
+    got: list[str] = []
+    for r in CaihuiClient.rows(out):
+        nm = str(r.get("企业名称") or r.get("指标值") or "").strip()
+        if nm and nm != q and nm not in got and len(nm) >= 6:
+            got.append(nm)
+    return got[:8]
+
+
+def _loose_ok(want: str, name: str) -> bool:
+    """名录给的名字与输入往往不是同一串（简称、曾用名），放宽一档收下。
+
+    但也不能全收：财汇的模糊匹配偶尔给回完全不相干的公司，那不叫联想，叫误导。
+    """
+    bare_w = _NAME_TAIL.sub("", want)
+    bare_n = _NAME_TAIL.sub("", name)
+    if _common_prefix(bare_w, bare_n) >= 2:
+        return True
+    if _abbr_score(want, name) >= 0.75:
+        return True
+    return difflib.SequenceMatcher(None, bare_w, bare_n).ratio() >= 0.5
 
 
 def api_company_suggest(payload: dict) -> dict:
     """按输入的名字联想几个可能的全称。
 
-    用途只有一个：名字里错了一两个字，检索落空，人不知道是该改哪。取数分两路：
-    先查本地词库（历次检索里见过的全称），不够像再去公告库；公告库那条会换串
-    重试——原串查不回来时，去掉「有限责任公司」尾巴的短串往往查得回来。
+    用途只有一个：名字是简称或错了一两个字，检索落空，人不知道该改成什么。
+    取数按可靠度排三路：本地词库（免费）→ 企业名录（简称最准）→ 公告库（换串
+    重试）。任何一路拿到东西都继续算，不全靠某一路。
     """
     q = re.sub(r"\s+", "", str(payload.get("q") or ""))
-    if len(q) < 4:
-        return {"q": q, "items": [], "note": "名字太短，先多写几个字再联想"}
+    if len(q) < 3:
+        return {"q": q, "items": [], "how": "", "mcp_calls": 0,
+                "note": "名字太短，先多写几个字再联想"}
     hit = _SUG_CACHE.get(q)
     if hit:
         return hit
@@ -480,7 +558,28 @@ def api_company_suggest(payload: dict) -> dict:
     items = _rank_names(q, pool)
     used = 0
     note = ""
-    # 本库里已经有三条像的，就不必再花公告库的点数
+
+    # ① 企业名录：简称最可靠的一条路。它给的未必与输入字面相近，但确实是
+    #    财汇认的主体，所以单独放行，标「企业名录」，排在最前。
+    if len(items) < 3:
+        try:
+            reg = [n for n in _registry_names(q) if _loose_ok(q, n)]
+            used += 1
+            if reg:
+                names_mod.learn(reg)
+                merged = {n: {"name": n, "n": 0, "score": 0.97, "how": "企业名录"}
+                          for n in reg}
+                for x in items:
+                    merged.setdefault(x["name"], x)
+                items = list(merged.values())
+                items.sort(key=lambda x: (-x["score"], -x["n"], len(x["name"])))
+        except Exception as e:                                 # noqa: BLE001
+            # 名录偶尔对过长的名字报 PARAM_ERROR，不耽误另外两路，界面上说人话
+            print(f"[suggest] 企业名录失败 {q}：{e}")
+            note = "企业名录这次没查成，候选只来自词库与公告库"
+
+    # ② 公告库：换串重试。原串查不回来时，去掉「有限责任公司」这类尾巴的短串
+    #    往往还查得回来，返回的标题里就带着全称。
     if len(items) < 3:
         got: dict[str, int] = {}
         for variant in names_mod.queries_for(q):
@@ -490,8 +589,9 @@ def api_company_suggest(payload: dict) -> dict:
                 out = _client().execute("search_company_announcements",
                                         {"target_company": [variant], "limit": 30})
                 rows = CaihuiClient.rows(out)
-            except Exception as e:                         # noqa: BLE001
-                note = f"联想失败：{str(e)[:80]}"
+            except Exception as e:                             # noqa: BLE001
+                print(f"[suggest] 公告库失败 {q}：{e}")
+                note = note or "公告库这次没查成，候选只来自词库与企业名录"
                 break
             used += 1
             for r in rows:
@@ -503,7 +603,12 @@ def api_company_suggest(payload: dict) -> dict:
             names_mod.learn(got.keys())
             for k, v in got.items():
                 pool[k] = max(pool.get(k, 0), v)
-            items = _rank_names(q, pool)
+            ranked = _rank_names(q, pool)
+            merged = {x["name"]: x for x in items}
+            for x in ranked:
+                merged.setdefault(x["name"], x)
+            items = list(merged.values())
+            items.sort(key=lambda x: (-x["score"], -x["n"], len(x["name"])))
 
     # 残片挡一道：名字以另一个候选结尾的，是标题里带前缀抠出来的假名
     items = [x for x in items
@@ -511,7 +616,7 @@ def api_company_suggest(payload: dict) -> dict:
                         for y in items)]
     items = items[:5]
     res = {"q": q, "items": items, "mcp_calls": used,
-           "note": note or ("" if items else "词库与公告库里都没有相近的名字，确认一下是不是简称或更名过")}
+           "note": note or ("" if items else "词库、企业名录与公告库里都没有相近的名字")}
     _SUG_CACHE[q] = res
     if len(_SUG_CACHE) > 200:
         _SUG_CACHE.clear()

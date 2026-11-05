@@ -243,32 +243,50 @@ select{width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 8px
 /* 主体名联想：名字错一两个字时，检索会落空，人不知道该改哪儿。
    这里把公告库里最接近的几个全称列出来，点一个就填进去。 */
 /* 文字按钮：给「名字不对？联想」这种辅助动作，不用占一个正式按钮的位置 */
-.cosug:empty{display:none}
-.lnk{border:0;background:none;color:var(--muted);font-size:11.5px;cursor:pointer;
-  padding:0;font-family:inherit;text-decoration:underline;text-underline-offset:2px;
-  text-decoration-color:#d7dce4}
-.lnk:hover{color:var(--ink);text-decoration-color:var(--ink)}
-.lnk:disabled{opacity:.5;cursor:default}
-.cosug{margin-top:7px;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:#fff}
-.cosug .h{font-size:11px;color:var(--muted);padding:6px 10px;background:var(--bg2);
-  border-bottom:1px solid var(--line2)}
-.cosug .none{font-size:11.5px;color:var(--muted);padding:8px 10px}
-/* 左边栏只有两百多像素，公司全称一行放不下：名称一行、出现次数一行，
-   横排会把名字挤成两截，看着像两个条目。 */
-.cosug button{display:flex;flex-direction:column;align-items:flex-start;gap:1px;
-  width:100%;text-align:left;border:0;border-top:1px solid var(--line2);background:#fff;
-  padding:7px 10px;cursor:pointer;font-family:inherit}
-.cosug button:first-of-type{border-top:0}
-.cosug button:hover{background:#f7f9fc}
-.cosug .nm{font-size:12.6px;color:var(--ink);line-height:1.45}
-.cosug .ct{font-size:10.5px;color:var(--muted)}
-/* 联想是在猜「你想打的是哪一家」，得让人一眼看出差在哪几个字：
-   候选名里补上来的字加粗并带底色，你多打的字在自己的那一行划掉。 */
-.cosug .nm .eq{color:var(--muted)}
-.cosug .nm b{font-weight:700;color:#1d4ed8;background:#e8effd;border-radius:3px;padding:0 1px}
-.cosug .you{font-size:11.5px;color:var(--muted);line-height:1.45}
-.cosug .you .eq{color:var(--muted)}
-.cosug .you s{color:#b23b3b;text-decoration:line-through;text-decoration-thickness:1px}
+/* ── 名字联想弹窗 ─────────────────────────────────────────────── */
+/* 只在「查不到」或「查到的是另一家」时出现。候选条目一行名字、一行出处，
+   名字里比输入多出来的字加粗带底、多打的字在自己的那一行划掉——公司全称
+   二十来个字，两串并排看很难一眼找出差的那一个。 */
+.sugm{position:fixed;inset:0;z-index:120;display:none}
+.sugm.show{display:block}
+.sugm-bg{position:absolute;inset:0;background:rgba(17,20,24,.32)}
+.sugm-p{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:min(560px,calc(100vw - 32px));max-height:min(72vh,540px);
+  display:flex;flex-direction:column;background:#fff;border-radius:14px;
+  box-shadow:0 24px 70px rgba(15,23,42,.24);overflow:hidden}
+.sugm-h{display:flex;align-items:flex-start;gap:12px;padding:15px 16px 6px}
+.sugm-h b{flex:1;font-size:14px;font-weight:600;line-height:1.5}
+.sugm-h .x{border:0;background:none;color:var(--muted);font-size:20px;line-height:1;
+  padding:0 2px;margin-top:-2px}
+.sugm-h .x:hover{color:var(--ink)}
+.sugm-sub{font-size:12px;color:var(--ink2);padding:0 16px 11px;line-height:1.7}
+.sugm-sub code{font-family:"SF Mono",Menlo,monospace;font-size:11.5px;
+  background:#f5f6f8;border-radius:3px;padding:1px 4px}
+.sugm-list{overflow:auto;border-top:1px solid var(--line2);flex:0 1 auto}
+.sugm-i{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;
+  text-align:left;border:0;border-bottom:1px solid var(--line2);background:#fff;
+  padding:10px 16px;cursor:pointer;font-family:inherit}
+.sugm-i:last-child{border-bottom:0}
+.sugm-i:hover{background:var(--hover)}
+.sugm-i .nm{font-size:13.5px;color:var(--ink);line-height:1.5}
+.sugm-i .nm .eq{color:var(--muted)}
+.sugm-i .nm b{font-weight:700;color:#1d4ed8;background:#e8effd;border-radius:3px;padding:0 1px}
+.sugm-i .nm i{font-style:normal;color:var(--muted)}
+.sugm-i .you{font-size:12px;color:var(--muted);line-height:1.5}
+.sugm-i .you .eq{color:var(--muted)}
+.sugm-i .you s{color:#b23b3b;text-decoration:line-through;text-decoration-thickness:1px}
+.sugm-i .ct{font-size:11px;color:var(--muted)}
+.sugm-i .ct em{font-style:normal;color:#2f5fd0;margin-right:5px}
+.sugm-empty{font-size:12.5px;color:var(--muted);padding:14px 16px}
+.sugm-foot{display:flex;align-items:center;gap:10px;padding:10px 16px;
+  border-top:1px solid var(--line2);background:#fcfcfd}
+.sugm-foot span{flex:1;font-size:11px;color:var(--muted)}
+@media(max-width:640px){
+  .sugm-p{width:calc(100vw - 20px);max-height:78vh;border-radius:12px}
+  .sugm-h{padding:13px 14px 6px}
+  .sugm-sub{padding:0 14px 10px}
+  .sugm-i{padding:10px 14px}
+}
 .docbar .acts{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 .docbar .acts .end{margin-left:auto;display:flex;align-items:center;gap:8px}
 /* 复核标记：稿子先出来，表述复核在后台跑。没有这个标记，正文会在人眼皮底下
@@ -1324,11 +1342,8 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
           <input id="company" placeholder="企业全称" autocomplete="off" />
           <button id="btnSearch" onclick="doSearch()">检索</button>
         </div>
-        <div class="cosug" id="coSug"></div>
         <div class="wfoot">
-          <span class="whint grow" id="modeHint">简称也能命中，只查公告库一次</span>
-          <button class="lnk" id="btnSug" onclick="suggestCompany()"
-            title="名字有字打错时，按公告库里的全称联想几个">名字不对？联想</button>
+          <span class="whint grow" id="modeHint">全称、简称都行；查不到会自动给出几个候选</span>
         </div>
       </div></div></div>
     </section>
@@ -1419,6 +1434,23 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
 </div>
 
 <div id="toast"></div>
+<!-- 名字联想：检索落空、或查到的不是你写的那家时自动弹。不做成侧栏一行小字，
+     候选要看的是「差在哪几个字」，得给足宽度才看得清。 -->
+<div class="sugm" id="sugModal" aria-hidden="true">
+  <div class="sugm-bg" onclick="closeSug()"></div>
+  <div class="sugm-p" role="dialog" aria-modal="true" aria-labelledby="sugTitle">
+    <div class="sugm-h">
+      <b id="sugTitle">没查到这家公司</b>
+      <button class="x" onclick="closeSug()" title="关闭（Esc）">×</button>
+    </div>
+    <div class="sugm-sub" id="sugSub"></div>
+    <div class="sugm-list" id="sugList"></div>
+    <div class="sugm-foot">
+      <span id="sugNote"></span>
+      <button class="btn-sm" onclick="closeSug()">自己改名字</button>
+    </div>
+  </div>
+</div>
 <div class="upanel" id="usagePanel"></div>
 <div class="hpanel" id="histPanel"></div>
 
@@ -1438,7 +1470,7 @@ function setMode(m){
   const hint = $("#modeHint");
   if(hint) hint.textContent = m === "update"
     ? "以旧报告为底稿，按外部材料逐条改"
-    : "简称也能命中，只查公告库一次";
+    : "全称、简称都行；查不到会自动给出几个候选";
   paintMode();
   // 换任务类型等于换一轮活：上一轮的材料、草稿、产物全部作废
   clearRound();
@@ -2143,7 +2175,7 @@ function histDocx(encoded){
 async function doSearch(){
   const company = $("#company").value.trim();
   if(!company) return toast("请输入企业全称", true);
-  paintSug(null);           // 上一轮的候选留在框里会被当成这一轮的结果
+  hideSug();                // 上一轮的候选不该留在屏幕上，会被当成这一轮的结果
   $("#btnSearch").disabled = true;
   // 新检索＝新的一轮：换主体就把上一家的材料、草稿、邮件与打包缓存全清掉；
   // 同一主体重检索只清材料清单（草稿留着，免得误点一次丢了正在改的稿）。
@@ -2162,16 +2194,24 @@ async function doSearch(){
     S.expand = {};
     const calls = j.result.mcp_calls || 0;
     const rows = j.result.rows || 0;
+    // 公告里的主体名。输入是简称或名字有错时，公告库往往仍能查到东西——甚至
+    // 是另一家公司——不比对就会让人拿着错主体的材料往下写。
+    const main = ((j.result.names || [])[0] || {}).name || "";
     renderMaterials(S.facts);
     const kinds = MAT_ORDER;
     const n = kinds.reduce((a, k) => a + ((S.facts.materials || {})[k] || []).length, 0);
+    // 公告里的主体与输入对不上：材料是有的，但可能不是你要的那家。
+    // 这时候不自动展开材料区——名字没定下来就去勾材料，等于拿错主体往下写。
+    const mismatch = !!main && !looseSame(company, main);
     if(n){
       setStep("search", { state: "done", pct: 100,
-        detail: calls ? `清单已取 · 财汇 ${calls} 点` : "清单已取" });
+        detail: mismatch ? "清单已取 · 主体待确认"
+          : (calls ? `清单已取 · 财汇 ${calls} 点` : "清单已取") });
       setStep("materials", { state: "wait", pct: 0, detail: `${n} 份待读取` });
-      toast(`检索到 ${n} 份材料${calls ? " · 财汇 " + calls + " 点" : ""}`);
-      paintSug(null);          // 检索通了，候选就没用了，留着反而干扰
-      openStep("materials");   // 读到清单就把这一步展开，不必再点一次
+      toast(mismatch ? `查到的是「${main}」的材料，先确认一下主体`
+        : `检索到 ${n} 份材料${calls ? " · 财汇 " + calls + " 点" : ""}`);
+      if(!mismatch) openStep("materials");   // 名称对得上才往下走
+      else if(SUG.muted !== company) setTimeout(() => suggestCompany(main), 320);
     }else{
       // 一份材料都没拿到就不往下走。这一步出问题几乎都在名字上，跳到材料区
       // 只会让人对着一屏空白猜原因；留在检索这一步，把相近的全称摆出来。
@@ -2181,7 +2221,7 @@ async function doSearch(){
       toast(rows
         ? `取了 ${rows} 条公告，但没有评级报告、募集说明书、审计报告或其他公告`
         : "公告库里没有这家公司的公告，名字可能打错了", true);
-      setTimeout(suggestCompany, 260);
+      if(SUG.muted !== company) setTimeout(() => suggestCompany(), 260);
     }
   }catch(e){
     setStep("search", { state: "error", detail: e.message });
@@ -2192,10 +2232,15 @@ async function doSearch(){
 }
 
 /* ---------------- 主体名联想 ---------------- */
-/* 只解决一件事：名字里错了一两个字，检索落空，人不知道该改哪个字。
-   做法是拿输入的串去公告库查一次，把返回标题里的公司名抠出来按相似度排；
-   同一次输入不重复问（后端也缓存），免得打字过程中刷点数。 */
-/* 字符级差异：把「你写的」与公告库里的全称对齐，补上来的字加粗标出，
+/* 只解决一件事：名字是简称、或错了一两个字，检索落空／查到的不是这家，
+   人不知道该改成什么。做法是自动弹一个对话框：候选全称摆在面前，补上来的
+   字加粗、多打的字划掉，点一个就按它重查。
+
+   不做「名字不对？联想」这种按钮：名字错了的人，第一反应是再点一次检索，
+   不是去找旁边的链接。该弹的时候自己弹。 */
+const SUG = { open: false, q: "", muted: "" };
+
+/* 字符级差异：把「你写的」与候选全称的主体部分对齐，补上来的字加粗标出，
    多打的字在自己的那一行划掉。公司名不到三十个字，直接跑最长公共子序列。 */
 function diffParts(a, b){
   const n = a.length, m = b.length;
@@ -2219,58 +2264,110 @@ function diffParts(a, b){
   return out;
 }
 
-function paintSug(r){
-  const box = $("#coSug");
-  if(!box) return;
-  if(!r){ box.innerHTML = ""; return; }
-  const q = (($("#company") || {}).value || "").trim();
-  const items = (r.items || []).filter(x => x.name !== q);
-  if(!items.length){
-    box.innerHTML = `<div class="none">${esc(r.items && r.items.length
-      ? "输入的就是公告库里的全称，可以直接检索" : (r.note || "没有找到相近的名称"))}</div>`;
-    return;
-  }
-  box.innerHTML = `<div class="h">公告库里最接近的几个全称，点一个填进去</div>`
-    + items.map(x => {
-        const d = diffParts(q, x.name);
-        const nm = d.filter(p => p.t !== "del").map(p => p.t === "add"
-          ? `<b>${esc(p.s)}</b>` : `<span class="eq">${esc(p.s)}</span>`).join("");
-        // 只在真有字被划掉时才出第二行；否则等于把你的输入重抄一遍
-        const you = d.some(p => p.t === "del")
-          ? `<span class="you">你写的：${d.filter(p => p.t !== "add").map(p => p.t === "del"
-              ? `<s>${esc(p.s)}</s>` : `<span class="eq">${esc(p.s)}</span>`).join("")}</span>`
-          : "";
-        return `<button onclick="pickCompany(this)" data-n="${esc(x.name)}">
-          <span class="nm">${nm}</span>${you}
-          <span class="ct">${x.n ? `近 30 条公告出现 ${x.n} 次` : "词库里见过这个全称"}</span>
-        </button>`;
-      }).join("");
+/* 法定后缀拆出来单独淡显：全称里真正要看的是主体那截，「有限责任公司」六个字
+   跟着加粗会把差异淹没。 */
+function splitTail(name){
+  const m = String(name || "").match(/^(.*?)((?:股份)?有限责任公司|有限公司|集团公司)$/);
+  return m ? [m[1], m[2]] : [String(name || ""), ""];
 }
 
-async function suggestCompany(){
-  const q = (($("#company") || {}).value || "").trim();
-  if(q.length < 4) return toast("先把主体名写完整些，再来联想", true);
-  const box = $("#coSug");
-  if(box) box.innerHTML = `<div class="h">正在公告库里找相近的名称…</div>`;
-  const btn = $("#btnSug");
-  if(btn) btn.disabled = true;
-  try{
-    paintSug(await api("/api/company/suggest", { q }));
-  }catch(e){
-    paintSug({ items: [], note: e.message || "联想失败" });
-  }finally{
-    if(btn) btn.disabled = false;
-  }
+/* 输入与检索到的全称是不是同一家：差个「市」「股份」不算差，
+   但「中航资本」与「中航工业产融」这种要算。 */
+function looseSame(a, b){
+  const bare = s => String(s || "").replace(/\s/g, "")
+    .replace(/(?:股份)?有限责任公司$|有限公司$|集团公司$|集团$|公司$/, "");
+  const x = bare(a), y = bare(b);
+  if(!x || !y) return true;
+  return x === y || x.includes(y) || y.includes(x);
 }
 
-function pickCompany(btn){
+function sugRow(x, q){
+  const [bare, tail] = splitTail(x.name);
+  const d = diffParts(q, bare);
+  const nm = d.filter(p => p.t !== "del").map(p => p.t === "add"
+    ? `<b>${esc(p.s)}</b>` : `<span class="eq">${esc(p.s)}</span>`).join("")
+    + (tail ? `<i>${esc(tail)}</i>` : "");
+  const you = d.some(p => p.t === "del")
+    ? `<span class="you">你写的：${d.filter(p => p.t !== "add").map(p => p.t === "del"
+        ? `<s>${esc(p.s)}</s>` : `<span class="eq">${esc(p.s)}</span>`).join("")}</span>`
+    : "";
+  const how = x.how === "公告里查到的" ? "公告里的主体"
+    : x.how === "企业名录" ? "企业名录"
+    : x.how === "简称" ? "简称匹配"
+    : "差一两个字";
+  const cnt = x.n ? ` · 近 30 条公告出现 ${x.n} 次` : "";
+  return `<button class="sugm-i" data-n="${esc(x.name)}" onclick="pickSug(this)">
+    <span class="nm">${nm}</span>${you}
+    <span class="ct"><em>${esc(how)}</em>${esc(cnt)}</span>
+  </button>`;
+}
+
+function showSug(title, sub, inner){
+  SUG.open = true;
+  $("#sugTitle").innerHTML = title;      // 标题里的公司名调用处已 esc
+  $("#sugSub").innerHTML = sub || "";
+  $("#sugList").innerHTML = inner;
+  $("#sugModal").classList.add("show");
+  $("#sugModal").setAttribute("aria-hidden", "false");
+}
+
+function hideSug(){
+  SUG.open = false;
+  const el = $("#sugModal");
+  if(el){ el.classList.remove("show"); el.setAttribute("aria-hidden", "true"); }
+}
+
+function closeSug(){
+  if(!SUG.open) return;
+  SUG.muted = SUG.q;          // 同一串不再自动弹第二次：关了就是不想看
+  hideSug();
+}
+
+function pickSug(btn){
   const n = btn && btn.dataset ? btn.dataset.n : "";
   if(!n) return;
   $("#company").value = n;
-  paintSug(null);
-  toast("已填好，点「检索」按这个名称再查一次");
-  $("#btnSearch").focus();
+  closeSug();
+  doSearch();                 // 选完直接按它重查，不必再点一次「检索」
 }
+
+/* main 来自检索结果：公告里的主体是它，说明输入那串不是这家。 */
+async function suggestCompany(main){
+  const q = (($("#company") || {}).value || "").trim();
+  if(q.length < 3) return;
+  SUG.q = q;
+  showSug(`正在找「${esc(q)}」的全称…`, "", `<div class="sugm-empty">词库、企业名录、公告库依次查一遍</div>`);
+  let r;
+  try{
+    r = await api("/api/company/suggest", { q });
+  }catch(e){
+    r = { items: [], note: e.message || "联想失败" };
+  }
+  if(!SUG.open || SUG.q !== q) return;          // 查的过程中人改了名字
+  const items = (r.items || []).slice();
+  if(main && !items.some(x => x.name === main)){
+    items.unshift({ name: main, n: 0, how: "公告里查到的" });
+  }
+  items.splice(8);
+  $("#sugNote").textContent = r.note || "";
+  if(!items.length){
+    showSug(`没找到「${esc(q)}」相近的全称`,
+      "词库、企业名录与公告库里都没有对得上的名字。确认一下是不是简称、曾用名，或者干脆换一个名字。",
+      `<div class="sugm-empty">换个写法试试：去掉「有限责任公司」这类尾巴，或者只写前四五个字。</div>`);
+    return;
+  }
+  const title = main
+    ? `查到的不是「${esc(q)}」这一家`
+    : `没查到「${esc(q)}」，是不是这几家之一？`;
+  const sub = main
+    ? `公告里的主体是 <code>${esc(main)}</code>。要查的是它，点一下换成全称重查；不是它，下面挑一个。`
+    : "按你说的名字，公告库与名录里最接近的是下面几个。点一个就按它重查。";
+  showSug(title, sub, items.map(x => sugRow(x, q)).join(""));
+}
+
+document.addEventListener("keydown", e => {
+  if(e.key === "Escape" && SUG.open){ e.stopPropagation(); closeSug(); }
+}, true);
 
 /* ---------------- 材料 ---------------- */
 /* 四类材料，顺序就是读的顺序：判断主线 → 募投条款 → 财务口径与审计意见 → 报告期内变化。
@@ -2675,7 +2772,7 @@ document.addEventListener("input", e => {
   if(S.rev && S.rev.state === "run" && t && t.closest && t.closest("#draftArea")){
     S.rev.dirty = true;
   }
-  if(e.target && e.target.id === "company") paintSug(null);
+  if(e.target && e.target.id === "company") hideSug();
   const line = e.target && e.target.closest && e.target.closest(".seg-line");
   if(!line) return;
   const p = parseSeg(line.innerText || line.textContent || "", line.dataset.name);
