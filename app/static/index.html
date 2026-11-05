@@ -623,6 +623,13 @@ body.dragging .item-ghost{display:flex}
 .doc-table th{font-weight:700;text-align:center}
 /* 两行表头：第二行的「营业收入／收入占比」比期次低一档，读者先看到期次分组 */
 .doc-table th.sub{font-weight:600;font-size:12.5px;color:var(--ink2)}
+/* 列多的表按列数降字号：10 列时每列只有六十来像素，13.5px 会把「75.77%」挤折行 */
+.doc-table.wide2{font-size:12.5px}
+.doc-table.wide2 th.sub{font-size:11.5px}
+.doc-table.wide3{font-size:11.5px}
+.doc-table.wide3 th.sub{font-size:10.5px}
+.doc-table.wide2 th,.doc-table.wide2 td,
+.doc-table.wide3 th,.doc-table.wide3 td{padding:3px 5px}
 .doc-table tr.sum td{font-weight:700}
 /* 表前的引导语是一句正文（「2023—2025年及2026年1—6月，公司收入、占比及毛利率情况如下：」），
    按正文排版：楷体、首行缩进两字、两端对齐，不做成居中的表题。 */
@@ -3024,8 +3031,12 @@ function tableHtml(t){
   const cap = t.caption
     ? `<div class="tcap">${esc(t.caption)}</div>`
     : "";
+  // 列多时整表降一档字号：业务构成表四期就是 10 列，13.5px 下每列只剩
+  // 六十来像素，「75.77%」会被挤成两行——与 Word 里同一个毛病。
+  const ncol = Math.max(...t.rows.map(r => r.length), 1) + 0;
+  const cls = "doc-table" + (ncol >= 9 ? " wide3" : (ncol >= 7 ? " wide2" : ""));
   return `${cap}<div class="unit">${esc(t.unit_line || "单位：亿元")}</div>`
-    + `<div class="tscroll"><table class="doc-table"><thead>${head}</thead><tbody>${body}</tbody></table></div>`;
+    + `<div class="tscroll"><table class="${cls}"><thead>${head}</thead><tbody>${body}</tbody></table></div>`;
 }
 
 /* 按钮图标：只描边，颜色跟 currentColor，深浅两档按钮共用一套 */

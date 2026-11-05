@@ -396,7 +396,7 @@ def build_segment_table(facts: dict) -> dict | None:
             except ValueError:
                 r[2] = ""
     table_rows = [[r[0], r[1], r[2], ""] for r in rows]
-    table_rows.append(["营业总收入", f"{total:,.2f}", "100.00%", ""])
+    table_rows.append(["营业总收入", f"{total:,.2f}", "100%", ""])
     return {
         "unit_line": "单位：亿元",
         "header": ["业务板块", "营业收入", "收入占比", "毛利率"],
@@ -666,7 +666,10 @@ def build_user_prompt(facts: dict, materials: list[dict], user_notes: str = "") 
 
 
 _SEG_TOTAL_NAMES = ("营业总收入", "营业收入合计", "收入合计", "合计", "总计")
-_SEG_SUB_COLS = ["营业收入", "收入占比"]
+# 每期下面两列的列名。用「收入／占比」而不是「营业收入／收入占比」：
+# 四期时这张表有 10 列，每列只有 1.3cm 上下，四个汉字会被折成「营业收／入」；
+# 期次分组表头已经把含义说清了，列名不必再重复一遍「营业」二字。
+_SEG_SUB_COLS = ["收入", "占比"]
 
 
 def _is_total_row(name: str) -> bool:
@@ -812,7 +815,7 @@ def _clean_llm_table(t: Any) -> dict | None:
                 if rev is None:
                     pct = ""
                 elif _is_total_row(r[0]):
-                    pct = "100.00%"
+                    pct = "100%"
                 elif tot_rev[i]:
                     pct = f"{rev / tot_rev[i] * 100:.2f}%"
                 else:

@@ -52,15 +52,41 @@ def _set_run_font(run, bold: bool = False, size_pt: float = FONT_SIZE_PT):
     rfonts.set(qn("w:hAnsi"), FONT_CN)
 
 
+# w:pPr 的子元素必须按这个顺序出现，OOXML schema 是严格顺序的。
+# 顺序错了 Word 不报错，只是**默默忽略**排在错误位置的那些属性——
+# 缩进、行距、对齐全按默认值走，看起来就是「版式没生效」。
+_PPR_ORDER = (
+    "w:pStyle", "w:keepNext", "w:keepLines", "w:pageBreakBefore", "w:framePr",
+    "w:widowControl", "w:numPr", "w:suppressLineNumbers", "w:pBdr", "w:shd",
+    "w:tabs", "w:suppressAutoHyphens", "w:kinsoku", "w:wordWrap",
+    "w:overflowPunct", "w:topLinePunct", "w:autoSpaceDE", "w:autoSpaceDN",
+    "w:bidi", "w:adjustRightInd", "w:snapToGrid", "w:spacing", "w:ind",
+    "w:contextualSpacing", "w:mirrorIndents", "w:suppressOverlap", "w:jc",
+    "w:textDirection", "w:textAlignment", "w:textboxTightWrap", "w:outlineLvl",
+    "w:divId", "w:cnfStyle", "w:rPr", "w:sectPr", "w:pPrChange",
+)
+
+
+def _ppr_put(ppr, el, tag: str):
+    """按 schema 顺序把 el 放进 pPr，已有的同标签先删掉。"""
+    for old in ppr.findall(qn(tag)):
+        ppr.remove(old)
+    try:
+        succ = _PPR_ORDER[_PPR_ORDER.index(tag) + 1:]
+    except ValueError:
+        ppr.append(el)
+        return el
+    ppr.insert_element_before(el, *succ)
+    return el
+
+
 def _indent_two_chars(paragraph):
     """真正的『首行缩进 2 字符』（firstLineChars=200），与 Word 行为一致。"""
     ppr = paragraph._p.get_or_add_pPr()
-    ind = ppr.find(qn("w:ind"))
-    if ind is None:
-        ind = OxmlElement("w:ind")
-        ppr.append(ind)
+    ind = OxmlElement("w:ind")
     ind.set(qn("w:firstLineChars"), "200")
     ind.set(qn("w:firstLine"), str(int(FONT_SIZE_PT * 2 * 20)))
+    _ppr_put(ppr, ind, "w:ind")
 
 
 def _fmt_paragraph(paragraph, align=None):
@@ -73,24 +99,138 @@ def _fmt_paragraph(paragraph, align=None):
     # 标题、表格数字等由调用方显式传 align 覆盖，不受影响。
     paragraph.alignment = align if align is not None else WD_ALIGN_PARAGRAPH.JUSTIFY
     _indent_two_chars(paragraph)
+    _no_snap(paragraph)
+
+
+def _no_snap(paragraph):
+    """关掉「与网格对齐」。
+
+    文档里带行网格（docGrid linePitch）时，段落的行高会被向上取整到网格的
+    整数倍：10.5pt 字、1.15 倍行距本是 12.1pt，落在 18pt 网格上就变成 18pt，
+    读者看到的是「行距忽大忽小、比设定松很多」。正文一律不吸附网格。
+    """
+    ppr = paragraph._p.get_or_add_pPr()
+    snap = OxmlElement("w:snapToGrid")
+    snap.set(qn("w:val"), "0")
+    _ppr_put(ppr, snap, "w:snapToGrid")
+
+
+def _strip_indent(paragraph):
+    """把缩进显式清零。标题、单位行、空段、表格单元格都不该缩进。
+
+    **必须是「设成 0」而不是「删掉 w:ind」**。Normal 样式本身带
+    firstLineChars=200，段落没有自己的 w:ind 时就从样式继承——删掉等于
+    什么都没做。删的那一版让表格每格都缩进 2 字符，36pt 的列只剩 12pt 可用，
+    「75.77%」这种六位数字全被折成两行。
+    """
+    ppr = paragraph._p.get_or_add_pPr()
+    ind = OxmlElement("w:ind")
+    for attr in ("w:firstLine", "w:firstLineChars", "w:left", "w:leftChars",
+                 "w:right", "w:rightChars", "w:hanging", "w:hangingChars"):
+        ind.set(qn(attr), "0")
+    _ppr_put(ppr, ind, "w:ind")
+
+
+def _setup_styles(doc):
+    """把版式写进 Normal 样式，而不只是逐个段落设直接格式。
+
+    这一步是「导出后自己编辑才变样」的根治办法。以前只在每个段落上设
+    spacing/ind/jc（直接格式），Normal 样式里只有字体与字号，于是：
+    用户在 Word 里回车新建一段、或把别处的文字粘进来，新段落继承的是
+    **Normal + docDefaults**——段后 10pt（docDefaults 的 w:spacing after=200）、
+    无首行缩进、无两端对齐。屏幕上原本整齐的报告，一编辑就散。
+    样式设好之后，新建段落与「只保留文本」粘贴都自动落到同一套版式上。
+    """
+    # ① docDefaults：兜底的那一层。python-docx 默认模板给了段后 200 twips(10pt)，
+    #    正是「粘贴进来段前段后有奇怪间距」的来源。
+    styles_el = doc.styles.element
+    dd = styles_el.find(qn("w:docDefaults"))
+    if dd is not None:
+        ppr_default = dd.find(qn("w:pPrDefault"))
+        if ppr_default is not None:
+            ppr = ppr_default.find(qn("w:pPr"))
+            if ppr is None:
+                ppr = OxmlElement("w:pPr")
+                ppr_default.append(ppr)
+            sp = OxmlElement("w:spacing")
+            sp.set(qn("w:before"), "0")
+            sp.set(qn("w:after"), "0")
+            sp.set(qn("w:line"), "276")          # 1.15 × 240
+            sp.set(qn("w:lineRule"), "auto")
+            _ppr_put(ppr, sp, "w:spacing")
+
+    # ② Normal 样式：Word 里回车得到的段落就是它
+    normal = doc.styles["Normal"]
+    normal.font.name = FONT_CN
+    normal.font.size = Pt(FONT_SIZE_PT)
+    npr = normal.element.get_or_add_rPr()
+    rfonts = npr.find(qn("w:rFonts"))
+    if rfonts is None:
+        rfonts = OxmlElement("w:rFonts")
+        npr.insert(0, rfonts)
+    for attr in ("w:ascii", "w:hAnsi", "w:eastAsia", "w:cs"):
+        rfonts.set(qn(attr), FONT_CN)
+    # 去掉主题字体引用：留着 asciiTheme 会覆盖上面的 rFonts
+    for attr in ("w:asciiTheme", "w:hAnsiTheme", "w:eastAsiaTheme", "w:cstheme"):
+        if rfonts.get(qn(attr)) is not None:
+            del rfonts.attrib[qn(attr)]
+    szcs = npr.find(qn("w:szCs"))
+    if szcs is None:
+        szcs = OxmlElement("w:szCs")
+        npr.append(szcs)
+    szcs.set(qn("w:val"), str(int(FONT_SIZE_PT * 2)))
+
+    # 样式里的 pPr 同样受 schema 顺序约束，一律走 _ppr_put
+    ppr = normal.element.get_or_add_pPr()
+    snap = OxmlElement("w:snapToGrid")
+    snap.set(qn("w:val"), "0")
+    _ppr_put(ppr, snap, "w:snapToGrid")
+    spacing = OxmlElement("w:spacing")
+    spacing.set(qn("w:before"), "0")
+    spacing.set(qn("w:after"), "0")
+    spacing.set(qn("w:line"), "276")
+    spacing.set(qn("w:lineRule"), "auto")
+    _ppr_put(ppr, spacing, "w:spacing")
+    ind = OxmlElement("w:ind")
+    ind.set(qn("w:firstLineChars"), "200")
+    ind.set(qn("w:firstLine"), str(int(FONT_SIZE_PT * 2 * 20)))
+    _ppr_put(ppr, ind, "w:ind")
+    jc = OxmlElement("w:jc")
+    jc.set(qn("w:val"), "both")
+    _ppr_put(ppr, jc, "w:jc")
+
+    # ③ 页面：去掉行网格。中文排版里「文档网格」会把行距按网格取整，
+    #    与 1.15 倍行距打架；设定行距要生效，就得让它退出这条规则。
+    for sec in doc.sections:
+        sectPr = sec._sectPr
+        for grid in sectPr.findall(qn("w:docGrid")):
+            grid.set(qn("w:type"), "none")
+            if grid.get(qn("w:linePitch")) is None:
+                grid.set(qn("w:linePitch"), "312")
+            for attr in ("w:charSpace",):
+                if grid.get(qn(attr)) is not None:
+                    del grid.attrib[qn(attr)]
 
 
 def _add_para(doc, text: str, bold: bool = False, align=None, indent: bool = True):
     p = doc.add_paragraph()
     _fmt_paragraph(p, align)
     if not indent:
-        ppr = p._p.get_or_add_pPr()
-        for ind in ppr.findall(qn("w:ind")):
-            ppr.remove(ind)
+        _strip_indent(p)
     r = p.add_run(text)
     _set_run_font(r, bold=bold)
     return p
 
 
 def _add_blank(doc):
-    """块之间的空行。参考件用空段落分隔，不靠段前段后间距。"""
+    """块之间的空行。参考件用空段落分隔，不靠段前段后间距。
+
+    空段落要去掉首行缩进：缩进对空段本身看不出来，但用户在里面打一个字，
+    那一行就会莫名缩进两格——看起来像版式坏了。
+    """
     p = doc.add_paragraph()
     _fmt_paragraph(p)
+    _strip_indent(p)
     return p
 
 
@@ -107,7 +247,8 @@ def _add_lead_para(doc, lead: str, body: str, bold_lead: bool = True, align=None
     return p
 
 
-def _cell_text(cell, text: str, bold=False, align=WD_ALIGN_PARAGRAPH.RIGHT):
+def _cell_text(cell, text: str, bold=False, align=WD_ALIGN_PARAGRAPH.RIGHT,
+               size_pt: float = FONT_SIZE_PT):
     cell.text = ""
     p = cell.paragraphs[0]
     pf = p.paragraph_format
@@ -116,8 +257,12 @@ def _cell_text(cell, text: str, bold=False, align=WD_ALIGN_PARAGRAPH.RIGHT):
     pf.space_before = Pt(0)
     pf.space_after = Pt(0)
     p.alignment = align
+    # 单元格段落会继承 Normal 的首行缩进 2 字符——不清掉的话表里每个格子
+    # 都从第二格位置起排，看着像缩进错乱。网格同理。
+    _strip_indent(p)
+    _no_snap(p)
     r = p.add_run(str(text))
-    _set_run_font(r, bold=bold)
+    _set_run_font(r, bold=bold, size_pt=size_pt)
     # 单元格垂直居中，与参考件一致
     tcPr = cell._tc.get_or_add_tcPr()
     valign = tcPr.find(qn("w:vAlign"))
@@ -144,11 +289,11 @@ def _tbl_borders(tblPr):
     tblPr.insert_element_before(borders, *_TBLPR_TAIL)
 
 
-def _tbl_cell_margins(tblPr):
+def _tbl_cell_margins(tblPr, dxa: int = 108):
     for old in tblPr.findall(qn("w:tblCellMar")):
         tblPr.remove(old)
     mar = OxmlElement("w:tblCellMar")
-    for side, w in (("top", 0), ("left", 108), ("bottom", 0), ("right", 108)):
+    for side, w in (("top", 0), ("left", dxa), ("bottom", 0), ("right", dxa)):
         el = OxmlElement(f"w:{side}")
         el.set(qn("w:w"), str(w))
         el.set(qn("w:type"), "dxa")
@@ -190,6 +335,29 @@ def _add_table(doc, header, rows, unit_line=None, col_widths_cm=None, bold_rows=
     two_row = bool(groups and header)
     ncols = ((1 + sum(len(g.get("cols") or []) for g in groups) + len(extra_cols or []))
              if two_row else (len(header) if header else max(len(r) for r in rows)))
+
+    # ── 先定字号与列宽，再建表填内容 ──
+    # 顺序不能反：cell 里的字号一旦写死在 run 上，事后再改就得遍历所有 run。
+    # 而字号又必须由「这些内容放不放得下」决定，所以决策只能前置。
+    cell_pt = _table_font(ncols)
+    cell_dxa = _table_margin(ncols)
+    widths = list(col_widths_cm or [])
+    if len(widths) != ncols:
+        hdr_texts = None
+        if two_row:
+            hdr_texts = [first_col or "业务板块"]
+            for g in groups:
+                hdr_texts.extend(g.get("cols") or [])
+            hdr_texts.extend(extra_cols or [])
+        widths, auto_pt = _auto_col_widths(
+            ncols, first_col or (header[0] if header else ""),
+            rows, extra_cols or [], hdr_texts, bold_rows)
+        if auto_pt < cell_pt:                     # 装不下才降字号
+            cell_pt = auto_pt
+    total = sum(widths)
+    if total > TEXT_WIDTH_CM:                     # 按版心等比压缩，避免超出页边距
+        widths = [round(w * TEXT_WIDTH_CM / total, 2) for w in widths]
+
     table = doc.add_table(rows=0, cols=ncols)
     table.style = "Table Grid"
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
@@ -198,23 +366,23 @@ def _add_table(doc, header, rows, unit_line=None, col_widths_cm=None, bold_rows=
         r1 = table.add_row().cells
         r2 = table.add_row().cells
         c0 = r1[0].merge(r2[0])
-        _cell_text(c0, first_col or "业务板块", bold=True, align=WD_ALIGN_PARAGRAPH.CENTER)
+        _cell_text(c0, first_col or "业务板块", bold=True, align=WD_ALIGN_PARAGRAPH.CENTER, size_pt=cell_pt)
         pos = 1
         for g in groups:
             cols = g.get("cols") or []
             span = max(1, len(cols))
             cell = r1[pos] if span == 1 else r1[pos].merge(r1[pos + span - 1])
-            _cell_text(cell, g.get("label") or "", bold=True, align=WD_ALIGN_PARAGRAPH.CENTER)
+            _cell_text(cell, g.get("label") or "", bold=True, align=WD_ALIGN_PARAGRAPH.CENTER, size_pt=cell_pt)
             for j, cname in enumerate(cols):
-                _cell_text(r2[pos + j], cname, bold=False, align=WD_ALIGN_PARAGRAPH.CENTER)
+                _cell_text(r2[pos + j], cname, bold=False, align=WD_ALIGN_PARAGRAPH.CENTER, size_pt=cell_pt)
             pos += span
         for k, cname in enumerate(extra_cols or []):
             cell = r1[pos + k].merge(r2[pos + k])
-            _cell_text(cell, cname, bold=True, align=WD_ALIGN_PARAGRAPH.CENTER)
+            _cell_text(cell, cname, bold=True, align=WD_ALIGN_PARAGRAPH.CENTER, size_pt=cell_pt)
     elif header:
         cells = table.add_row().cells
         for i, h in enumerate(header):
-            _cell_text(cells[i], h, bold=True, align=WD_ALIGN_PARAGRAPH.CENTER)
+            _cell_text(cells[i], h, bold=True, align=WD_ALIGN_PARAGRAPH.CENTER, size_pt=cell_pt)
 
     for idx, row in enumerate(rows):
         cells = table.add_row().cells
@@ -223,20 +391,11 @@ def _add_table(doc, header, rows, unit_line=None, col_widths_cm=None, bold_rows=
             # 长文本（如项目名、板块名）左对齐，纯数值右对齐 → 数值列才能看齐
             is_num = bool(val) and all(ch.isdigit() or ch in ".,%-—()（） " for ch in str(val))
             align = WD_ALIGN_PARAGRAPH.RIGHT if (i > 0 and is_num) else WD_ALIGN_PARAGRAPH.LEFT
-            _cell_text(cells[i], val, bold=(idx in bold_rows), align=align)
-
-    widths = list(col_widths_cm or [])
-    if len(widths) != ncols:
-        first = 6.6 if ncols <= 4 else 4.6
-        rest = max(TEXT_WIDTH_CM - first, 4.0) / max(ncols - 1, 1)
-        widths = [first] + [round(rest, 2)] * max(ncols - 1, 0)
-    total = sum(widths)
-    if total > TEXT_WIDTH_CM:  # 按版心等比压缩，避免表格超出页边距
-        widths = [round(w * TEXT_WIDTH_CM / total, 2) for w in widths]
+            _cell_text(cells[i], val, bold=(idx in bold_rows), align=align, size_pt=cell_pt)
 
     tblPr = table._tbl.tblPr
     _tbl_borders(tblPr)
-    _tbl_cell_margins(tblPr)
+    _tbl_cell_margins(tblPr, cell_dxa)
     _tbl_width(tblPr, sum(widths))
     table.autofit = False
 
@@ -249,6 +408,123 @@ def _add_table(doc, header, rows, unit_line=None, col_widths_cm=None, bold_rows=
             if i < len(row.cells):
                 row.cells[i].width = Cm(w)
     return table
+
+
+def _char_w(ch: str) -> float:
+    """一个字符大约占多少厘米（10.5pt 楷体）。中文按全角、西文数字按半角。"""
+    return 0.372 if ord(ch) > 0x2E80 else 0.20
+
+
+def _text_cm(text: str) -> float:
+    return sum(_char_w(c) for c in str(text or ""))
+
+
+def _table_font(ncols: int) -> float:
+    """表格字号随列数降档。
+
+    业务构成表四期就是 10 列，A4 纵向版心只有 14.66cm，每列 1.3cm 上下。
+    主表用的 10.5pt 在那儿放不下「75.77%」这样的六位数字，会折成两行。
+    表内字号降到 8.5pt 是行业惯例（评级报告的附表普遍 8—9pt）。
+    """
+    if ncols <= 6:
+        return FONT_SIZE_PT
+    if ncols <= 8:
+        return 9.5
+    return 8.5
+
+
+def _table_margin(ncols: int) -> int:
+    """单元格左右边距（twips）。列多时收到 1mm，把宽度让给内容。"""
+    if ncols <= 6:
+        return 108
+    if ncols <= 8:
+        return 72
+    return 57
+
+
+def _auto_col_widths(ncols: int, first_head: str, rows: list, extra_cols: list,
+                     header_texts: list | None = None,
+                     bold_rows: list | None = None) -> tuple[list[float], float]:
+    """按每列的实际内容分配宽度，并把字号一并定下来（返回值只用宽度）。
+
+    这里的关键是**先保证每列放得下自己的内容，再把富余分出去**。
+    早先的写法是「平均分，超了就压中间列」，压到比内容还窄，数字于是折成
+    两行——一张表里每个格子都折行，看着像排版坏了，其实只是宽度给少了。
+    """
+    body = [r for r in (rows or []) if r]
+    cell_mar = _table_margin(ncols) / 567.0        # 左右边距之和，cm
+    extra_n = len(extra_cols or [])
+    mid_idx = list(range(1, ncols - extra_n))
+    bold_set = set(int(x) for x in (bold_rows or []))
+    # 「营业总收入」行按惯例加粗，无论调用方有没有传 bold_rows——宽度估算
+    # 要与实际渲染一致，否则留的余量正好差这一行。
+    for i, r in enumerate(body):
+        if str(r[0] if r else "").strip() in ("营业总收入", "合计", "总计", "收入合计"):
+            bold_set.add(i)
+
+    def measure(pt: float):
+        """按某个字号算各列需要多宽。"""
+        scale = pt / FONT_SIZE_PT
+        # 加粗行（营业总收入）的字形比常规粗一档，同一串数字占的宽度约多 6%。
+        # 不留这一点余量，恰恰是「合计行」那几个数被挤成两行——普通行好好的，
+        # 唯独最关键的一行散架，看着最刺眼。
+        bold_extra = 1.06
+
+        def w(text, bold=False) -> float:
+            # 0.372cm/汉字 是按 10.5pt 估的，中文字距与「%」这类符号在部分字体
+            # 里按全角排，实测总比估算宽一点点；留 8% 免得总是差最后一两个字。
+            v = _text_cm(str(text or "")) * scale * (bold_extra if bold else 1.0) * 1.08
+            return v + cell_mar
+
+        # 首列：名字太长就折行，宽度封顶
+        first = max([w(first_head or "业务板块", True)] +
+                    [w(r[0], i in bold_set) for i, r in enumerate(body)] or [0])
+        first_w = min(max(first, 2.2), 3.2 if ncols > 8 else 5.6)
+
+        # 数值列统一取同一个宽度：长短不一的三列并排，表格右半截会显得参差。
+        # 取所有数值列（含各自的表头）里最宽的那一个。
+        per = 0.9
+        for i in mid_idx:
+            for ri, r in enumerate(body):
+                if i < len(r):
+                    per = max(per, w(r[i], ri in bold_set))
+            if header_texts and i < len(header_texts):
+                per = max(per, w(header_texts[i], True))
+        mid = [per] * len(mid_idx)
+
+        extra = [max(w(lb, True) + 0.22, 1.5) for lb in (extra_cols or [])]
+        return first_w, mid, extra
+
+    # 从大到小试字号，选第一个装得下的。
+    # **选定的字号必须回传给排版**：早先这里按 8pt 算宽、排版却写 8.5pt，
+    # 文字比预留的宽半档，占比列于是折成「75.77／%」这种两行。
+    chosen = _table_font(ncols)
+    first_w = mid = extra = None
+    for pt in (FONT_SIZE_PT, 9.5, 9, 8.5, 8):
+        if ncols > 6 and pt > _table_font(ncols):
+            continue                              # 列多时不试大字号，省得白算
+        f, m, e = measure(pt)
+        if f + sum(m) + sum(e) <= TEXT_WIDTH_CM:
+            first_w, mid, extra, chosen = f, m, e, pt
+            break
+    if first_w is None:                           # 全都装不下：取最小字号，按比例压
+        first_w, mid, extra = measure(8)
+        total = first_w + sum(mid) + sum(extra)
+        k = TEXT_WIDTH_CM / total
+        first_w, mid, extra = first_w * k, [x * k for x in mid], [x * k for x in extra]
+        chosen = 8
+
+    # 富余按各列需求的占比分给数值列（不碰首列与毛利率列，免得失衡）
+    diff = TEXT_WIDTH_CM - (first_w + sum(mid) + sum(extra))
+    if diff > 0.02 and mid:
+        share = diff / len(mid)
+        mid = [x + share for x in mid]
+
+    cols = [round(first_w, 2)] + [round(x, 2) for x in mid] + [round(x, 2) for x in extra]
+    left = TEXT_WIDTH_CM - sum(cols)
+    if left > 0.02 and len(cols) > 1:
+        cols[1] = round(cols[1] + left, 2)
+    return cols, chosen
 
 
 def _fin_col_widths(n_periods: int) -> list[float]:
@@ -274,10 +550,9 @@ def render_report(data: dict[str, Any], out_path: str | Path) -> Path:
     sec.left_margin = sec.right_margin = Cm(3.17)
     sec.top_margin = sec.bottom_margin = Cm(2.54)
 
-    normal = doc.styles["Normal"]
-    normal.font.name = FONT_CN
-    normal.font.size = Pt(FONT_SIZE_PT)
-    normal.element.rPr.rFonts.set(qn("w:eastAsia"), FONT_CN)
+    # 版式写进样式层（Normal + docDefaults + 去网格），
+    # 光给每个段落设直接格式是不够的：用户一编辑、一粘贴就回到 Word 默认。
+    _setup_styles(doc)
 
     # ── 版式：块与块之间一个空行，块内（加粗句 + 它的正文）不留空 ──
     #

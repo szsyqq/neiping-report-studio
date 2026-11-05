@@ -409,6 +409,10 @@ mark.s{background:#fff3b8;color:inherit;padding:0 1px;border-radius:2px}
 
 <p><b>导出 Word</b>按模板排版：字号、行距、段前空行、加粗句、财务表、页脚都在 <code>docx_writer</code> 里定。更新模式下导出的是带修订标记的稿子，在 Word 里可以逐条接受或拒绝，全部拒绝能还原原文。导出落在 <code>output/</code>，文件名是「企业全称＋内评简评报告＋YY.M.D」，同名不覆盖，后一份缀 <code>-2</code>。</p>
 
+<p><b>导出的稿子在 Word 里接着改，版式不会走样。</b>这一点靠的是把版式写进<b>样式</b>而不只是每个段落：文档的 Normal 样式带上了段前段后 0、1.15 倍行距、首行缩进 2 字符、两端对齐、不吸附网格，字体是楷体_GB2312 10.5pt。所以你在 Word 里回车新建一段、或者把别处的文字「只保留文本」粘进来，新段落自动就是这套版式，不会突然多出 10pt 段后距、也不会变成等线 11pt。文档网格也关掉了——中文模板默认带行网格，会把 1.15 倍行距按 18pt 网格取整，看着忽宽忽窄。</p>
+
+<p>粘贴时如果选「保留源格式」，Word 会把原文档的字体与间距一起带过来，那是 Word 的行为，模板管不了。遇到间距不对，选中那几段按 <code>Ctrl/⌘ + Shift + N</code> 恢复成正文样式即可。</p>
+
 <p><b>下载</b>把报告、底稿、材料与分析附件打成 zip，用于归档或上传 OA。它不另排一版，读的是导出后的那份 docx；还没导出就先现场排一次。</p>
 
 <h3><span class="n">2.2</span>名字是简称、或打错了字</h3>
@@ -528,7 +532,7 @@ mark.s{background:#fff3b8;color:inherit;padding:0 1px;border-radius:2px}
 <table>
 <thead><tr><th>字段</th><th>管什么</th><th>现在的值</th></tr></thead>
 <tbody>
-<tr><td><code>typography</code></td><td>字体、字号、行距、缩进、页边距</td><td>楷体_GB2312 · 10.5pt · 行距 1.15 · 首行缩进 2 字符</td></tr>
+<tr><td><code>typography</code></td><td>字体、字号、行距、缩进、页边距</td><td>楷体_GB2312 · 10.5pt · 行距 1.15 · 首行缩进 2 字符；同时写进 Normal 样式，在 Word 里续写与粘贴都沿用</td></tr>
 <tr><td><code>mark_layer</code></td><td>摘要层：允许什么、禁止什么</td><td>禁「亿元／万元／%／个百分点／倍」，一条一句</td></tr>
 <tr><td><code>indicator_layers</code></td><td>财务表的行项怎么选</td><td>三层叠加，上限 16 行，按「字段可得 + 占比够大」触发</td></tr>
 <tr><td><code>length_policy</code></td><td>篇幅上下限</td><td>正文 2000–4000 字 · 摘要各 3–5 条 · 表格 1–2 张</td></tr>
