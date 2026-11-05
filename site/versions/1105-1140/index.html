@@ -170,6 +170,14 @@ main{overflow-y:auto;padding:26px 40px 90px}
 .wfoot .btn{flex:0 0 auto;width:auto}
 .wfoot .ghost{flex:0 0 auto}
 .whint{font-size:11px;color:var(--muted);line-height:1.55}
+/* 第 3 步顶上的「本轮材料」一行：份数、页数、摘录字数。
+   页数是给人验的——一份 PDF 读成 2 页、或某份 0 页，说明解析没读到正文，
+   这时生成出来的稿子会缺内容，先看一眼比事后翻正文省事。 */
+.matline{font-size:11px;color:var(--muted);line-height:1.6;margin:0 0 9px;
+  display:flex;flex-wrap:wrap;gap:2px 10px;align-items:baseline}
+.matline:empty{display:none}
+.matline b{color:var(--ink2);font-weight:600;font-variant-numeric:tabular-nums}
+.matline .w{color:#b05730;flex-basis:100%}
 .ghost{border:0;background:transparent;color:var(--ink2);font-size:11.5px;padding:5px 2px;
   white-space:nowrap;transition:color .2s}
 .ghost:hover:not(:disabled){color:var(--ink)}
@@ -328,11 +336,11 @@ select{width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 8px
    （这条必须写在上面基础规则之后，否则被同权重的单栏规则盖掉。） */
 @media(min-width:1500px){
   main{padding-left:28px;padding-right:28px}
-  .docgrid{grid-template-columns:182px minmax(0,1fr) 288px;gap:20px;
-    max-width:1292px;margin:0 auto;align-items:start}
+  .docgrid{grid-template-columns:206px minmax(0,1fr) 282px;gap:18px;
+    max-width:1298px;margin:0 auto;align-items:start}
   .doccol{max-width:none}
-  .docgrid.nol{grid-template-columns:minmax(0,1fr) 288px;max-width:1044px}
-  .docgrid.nor{grid-template-columns:182px minmax(0,1fr);max-width:946px}
+  .docgrid.nol{grid-template-columns:minmax(0,1fr) 282px;max-width:1038px}
+  .docgrid.nor{grid-template-columns:206px minmax(0,1fr);max-width:962px}
   .docgrid.nol.nor{grid-template-columns:minmax(0,1fr);max-width:756px}
   .rail{position:sticky;top:6px;max-height:calc(100vh - 52px - 18px);overflow-y:auto;
     overscroll-behavior:contain;padding:3px 2px 26px;scrollbar-width:thin}
@@ -342,9 +350,9 @@ select{width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 8px
   .rail-r{padding-top:120px}
 }
 @media(min-width:1780px){
-  .docgrid{grid-template-columns:204px minmax(0,1fr) 330px;gap:26px;max-width:1420px}
-  .docgrid.nol{grid-template-columns:minmax(0,1fr) 330px;max-width:1170px}
-  .docgrid.nor{grid-template-columns:204px minmax(0,1fr);max-width:1016px}
+  .docgrid{grid-template-columns:228px minmax(0,1fr) 326px;gap:24px;max-width:1478px}
+  .docgrid.nol{grid-template-columns:minmax(0,1fr) 326px;max-width:1170px}
+  .docgrid.nor{grid-template-columns:228px minmax(0,1fr);max-width:1036px}
   .docgrid.nol.nor{grid-template-columns:minmax(0,1fr);max-width:780px}
 }
 
@@ -590,7 +598,9 @@ body.dragging .item-ghost{display:flex}
 .rail-h::after{content:"";flex:1;height:1px;background:var(--line2);transform:translateY(-4px)}
 .rail-l .pool+.pool{margin-top:14px}
 .rail-l .pool-t{font-size:10.5px;letter-spacing:.04em;color:var(--muted);margin-bottom:5px}
-.rail-l .chip{white-space:normal;line-height:1.55;padding:5px 8px;font-size:11.5px}
+/* 候选条目：整句铺开、多行显示。字号不动（11.5），靠加宽与内距把长句读顺——
+   字号一加，行数不减，看着反而更挤。 */
+.rail-l .chip{white-space:normal;line-height:1.62;padding:6px 9px}
 
 /* ── 修订清单（更新模式）─────────────────────────────────────────
    更新既有报告时，正文区不是「一份可编辑的全文」，而是「这次要改哪些地方」。
@@ -1516,6 +1526,7 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
         <div class="wbar"><i></i></div>
       </div>
       <div class="wbody"><div class="winner"><div class="wpad">
+        <div class="matline" id="genMat"></div>
         <div class="note-in">
           <div class="ni-h" onclick="toggleNotes()">
             <span class="ni-t">分析员补充说明<span class="ni-opt">可选</span></span>
@@ -1589,7 +1600,10 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
 <script>
 const $ = (s) => document.querySelector(s);
 const S = { company: "", facts: null, uploads: [], mstate: {}, loaded: [], draft: null,
-            stats: null, mode: "new", base: null, rev: null };
+            stats: null, mode: "new", base: null, rev: null,
+            // 本轮材料的份数/页数/字数（[{title, pages, chars}]）。只用于第 3 步那行摘要，
+            // 不参与生成——生成按 S.loaded 的标题过滤，两者口径不同别混用。
+            mats: [] };
 
 /* 两种任务：新建（从材料写一份新报告）与更新（在旧报告上按新依据改）。
    步骤、材料区、待核对侧栏共用同一套，只在三处分叉：材料区要一份底稿、
@@ -1643,7 +1657,7 @@ function paintMode(){
 /* 清掉本轮的中间物，保留企业名。与 resetSession 的区别：这个只清「这一轮的活」，
    不动上传队列，便于同一主体连着试。 */
 function clearRound(){
-  S.loaded = []; S.mstate = {}; S.base = null; S.draft = null;
+  S.loaded = []; S.mstate = {}; S.base = null; S.draft = null; S.mats = [];
   S.actSel = new Set(); S.actInit = false; S.actFilter = "all";
   S.keepChecked = null; S.expand = {};
   PKG.data = null; PKG.sel = {}; PKG.open = false;
@@ -1658,6 +1672,7 @@ function clearRound(){
   }
   STEPS.forEach(s => { ST[s.key] = { state: "wait", pct: 0, detail: "" }; });
   paintSteps();
+  matLine();
   syncButtons();
 }
 
@@ -1674,6 +1689,7 @@ function curCo(){
 function resetSession(){
   S.actSel = new Set(); S.actInit = false; S.actFilter = "all";
   S.loaded = [];
+  S.mats = [];
   S.mstate = {};
   S.uploads = [];
   S.facts = null;
@@ -1697,6 +1713,7 @@ function resetSession(){
       : "检索公告或上传 PDF 后生成草稿";
   }
   resetStepsFrom("search");
+  matLine();                 // 页数摘要跟着清空，不能留着上一家的
   syncButtons();
 }
 
@@ -2290,6 +2307,10 @@ async function restoreHistory(id){
     setStep("materials", { state: "done", pct: 100, detail: nMat ? `${nMat} 份` : "已恢复" });
     setStep("generate", { state: "done", pct: 100, detail: "已恢复 " + fmtTs(rec.ts) + " 的记录" });
     setStep("export", { state: "wait", pct: 0, detail: "可继续编辑后导出" });
+    // 历史记录不存页数（页数只用于本轮核材料），这里显式清掉，免得把上一轮的页数
+    // 挂到打开的旧稿上——那比不显示更容易误判。
+    S.mats = [];
+    matLine();
     openStep("export");
     closeHistory();
     toast("已打开 " + (rec.company || "历史记录"));
@@ -2313,7 +2334,7 @@ async function doSearch(){
   // 同一主体重检索只清材料清单（草稿留着，免得误点一次丢了正在改的稿）。
   // 服务端 do_search 无论哪种情况都会清掉该主体名下的材料。
   if(S.company && S.company !== company) resetSession();
-  else { S.loaded = []; S.mstate = {}; S.keepChecked = null; S.expand = {}; PKG.data = null; PKG.sel = {}; }
+  else { S.loaded = []; S.mats = []; S.mstate = {}; S.keepChecked = null; S.expand = {}; PKG.data = null; PKG.sel = {}; }
   resetStepsFrom("search");
   setStep("search", { state: "run", pct: 0, detail: "检索公告库" });
   try{
@@ -2612,6 +2633,8 @@ async function doFetch(){
     });
     onItems(j.result.items || []);
     captureBase(j.result);
+    // 勾选这一轮就是全量（服务端已按 replace 清空），页数也跟着整体替换
+    keepMats(j.result.materials, false);
     S.loaded = (j.result.all && j.result.all.length)
       ? j.result.all.slice()
       : [...new Set([...S.loaded, ...(j.result.loaded || [])])];
@@ -2642,6 +2665,59 @@ function onItems(items){
   renderUploads();
 }
 
+/* 第 3 步顶上那行摘要：本轮读了几份、共多少页、摘录多少字，页数异常的单独说一句。
+   页数只对 PDF 有意义（docx 材料没有页数），所以「0 页」只在 PDF 上才算异常——
+   把 docx 也算进去，每次都会报一句假异常，久了就没人看了。 */
+function matLine(){
+  const box = $("#genMat");
+  if(!box) return;
+  const loaded = S.loaded || [];
+  const baseT = (S.base && S.base.title) || "";
+  const mats = (S.mats || []).filter(m => m && m.title && m.title !== baseT
+    && (!loaded.length || loaded.includes(m.title)));
+  const n = loaded.length || mats.length;
+  if(!n){ box.innerHTML = ""; return; }
+  const pages = mats.reduce((a, m) => a + (m.pages || 0), 0);
+  const chars = mats.reduce((a, m) => a + (m.chars || 0), 0);
+  const bits = [`材料 <b>${n}</b> 份`];
+  if(pages) bits.push(`共 <b>${fmtNum(pages)}</b> 页`);
+  if(chars) bits.push(`摘录 <b>${(chars / 10000).toFixed(1)}</b> 万字`);
+  // 没读出页数的 PDF：多半是扫描件或加密件，解析只拿到封面，正文会缺内容。
+  // 这一条要说出来，否则只能等生成完了发现正文里没有数。
+  const pdfs = mats.filter(m => /\.pdf$/i.test((m.path || m.title || "")));
+  const zero = pdfs.filter(m => !m.pages);
+  const thin = pdfs.filter(m => m.pages > 0 && m.pages < 3);
+  // 两种异常都说出来：0 页通常是扫描件/加密件（解析只拿到封面），
+  // 1–2 页多半是「只读到封面或摘要」。一次只报一种会漏掉另一份。
+  const warns = [];
+  if(zero.length){
+    warns.push(`${zero.length} 份 PDF 没读出页数：${zero.slice(0, 3).map(m => m.title).join("、")}`
+      + `${zero.length > 3 ? " 等" : ""}——可能是扫描件或加密件，正文可能缺内容，先打开核一下`);
+  }
+  if(thin.length){
+    warns.push(`${thin.length} 份 PDF 只有 ${thin.map(m => m.pages).join("、")} 页，`
+      + "像是只读到了封面或摘要，检查材料是否完整");
+  }
+  box.innerHTML = `<span>${bits.join(" · ")}</span>`
+    + warns.map(w => `<span class="w">${esc(w)}</span>`).join("");
+}
+
+function fmtNum(v){
+  const n = Number(v) || 0;
+  return n.toLocaleString("zh-CN");
+}
+
+/* 把这一轮读到的材料页数记下来。只取服务端回来的 title/pages/chars，
+   正文（text）不进前端——几千页的摘录没必要在浏览器里存一份。 */
+function keepMats(list, append){
+  const rows = (list || []).filter(m => m && m.title)
+    .map(m => ({ title: m.title, pages: m.pages || 0, chars: m.chars || 0,
+                 path: m.path || "" }));
+  if(!append){ S.mats = rows; return; }
+  const seen = new Set(S.mats.map(m => m.title));
+  S.mats = S.mats.concat(rows.filter(m => !seen.has(m.title)));
+}
+
 function markMaterialsDone(n){
   const ok = S.loaded.length;
   // 更新模式：底稿到位但还没外部材料，这是「还差一步」，不是「出错」。
@@ -2650,19 +2726,23 @@ function markMaterialsDone(n){
     setStep("materials", { state: "wait", pct: 0,
       detail: "底稿已就绪，还需外部评级报告" });
     if($("#empty")) $("#empty").textContent = "底稿已就绪，再上传一份外部评级报告（PDF）";
+    matLine();
     syncButtons();
     refreshUsage();
     return;
   }
+  const pg = (S.mats || []).reduce((a, m) => a + (m.pages || 0), 0);
+  const tail = pg ? ` · ${fmtNum(pg)} 页` : "";
   setStep("materials", { state: ok ? "done" : "error", pct: 100,
-    detail: ok ? `${ok} 份就绪` : "没有可用材料" });
+    detail: ok ? `${ok} 份${tail}就绪` : "没有可用材料" });
   if(ok){
-    setStep("generate", { state: "wait", pct: 0, detail: "" });
+    setStep("generate", { state: "wait", pct: 0, detail: `${ok} 份${tail}` });
     $("#empty").textContent = S.mode === "update"
       ? "材料与底稿已就绪，点左侧「分析差异」"
       : "材料已就绪，点左侧「生成草稿」";
     openStep("generate");
   }
+  matLine();
   syncButtons();
   refreshUsage();
 }
@@ -2760,6 +2840,8 @@ async function parseUploads(list){
     });
     onItems(j.result.items || []);
     captureBase(j.result);
+    // 上传是追加：把新读到的几份并进已有清单，不能覆盖（否则前面的公告材料页数就没了）
+    keepMats(j.result.materials, true);
     S.loaded = (j.result.all && j.result.all.length)
       ? j.result.all.slice()
       : [...new Set([...S.loaded, ...(j.result.loaded || [])])];
@@ -3782,6 +3864,9 @@ const CK_RULES = [
   [/摘要条目偏长|一条塞了两件事/, "摘要一条塞了两件事", "blk-pos"],
   [/正面与关注重复/, "正面与关注说了同一件事", "blk-pos"],
   [/找不到直接出处|请复核算式/, "数字在材料里找不到出处", "d-doc"],
+  // 旧记录里这条叫「交底的算式复算不通过」——「交底」是我们自己的说法，
+  // 界面上读不懂。新记录直接带新标题，这里兜的是存量记录。
+  [/交底的算式|算式复算不通过/, "算式对不上正文的数", "d-doc"],
   [/data_notes 已声明为推算值/, "推算出来的数字要说清口径", "d-doc"],
   [/期次写法在台账与材料原文中找不到依据/, "期次写法没有依据", "blk-fintable"],
   [/资产总额与负债加权益相差/, "资产负债表不平", "blk-fintable"],
@@ -4022,7 +4107,7 @@ function ckHtml(v){
       <span class="n"><i id="ckDoneN">${n}</i>/${allRows.length}</span>
       <button class="ck-all" onclick="ckAllDone()" title="把所有异常都标为已看过">全勾</button>
       <button class="ck-reset" onclick="ckReset()" title="清空勾选">清空</button></div>
-    <div class="ck-sub">只列数据对不上的：算式复算不通过、数字在材料里没有原值、财务表不平。措辞与结构会自己改，不占这里。</div>
+    <div class="ck-sub">只列数据对不上的：算式算不出来的、数字在材料里没有原值的、财务表不平的。措辞与结构会自己改，不占这里。</div>
     <div class="ck-bar"><i id="ckBar" style="width:${pct}%"></i></div>
     <div class="ck-list">`;
   if(!items.length){
@@ -6468,7 +6553,12 @@ function demoEnter(){
   renderMaterials(S.facts);
   TOUR_DATA.mats.forEach(m => setMS(m.title, { state: "done", pct: 100, detail: m.label }));
   S.loaded = TOUR_DATA.mats.map(m => m.title);
+  // 演示不编页数：快照里没有这个字段，手写一个数就会与实际材料对不上。
+  // 第 3 步那行摘要此时只显示份数与摘录字数。
+  S.mats = TOUR_DATA.mats.map(m => ({ title: m.title, pages: m.pages || 0,
+                                      chars: m.chars || 0, path: "" }));
   paintMatStates();
+  matLine();
 
   // 草稿：整套正文、财务表、右栏待核对都由 renderDraft 自己画
   S.draft = d;
