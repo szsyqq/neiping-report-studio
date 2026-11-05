@@ -484,6 +484,10 @@ def api_company_suggest(payload: dict) -> dict:
                 pool[k] = max(pool.get(k, 0), v)
             items = _rank_names(q, pool)
 
+    # 残片挡一道：名字以另一个候选结尾的，是标题里带前缀抠出来的假名
+    items = [x for x in items
+             if not any(y is not x and x["name"].endswith(y["name"]) and x["name"] != y["name"]
+                        for y in items)]
     items = items[:5]
     res = {"q": q, "items": items, "mcp_calls": used,
            "note": note or ("" if items else "词库与公告库里都没有相近的名字，确认一下是不是简称或更名过")}

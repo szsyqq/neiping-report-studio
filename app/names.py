@@ -87,18 +87,25 @@ def bootstrap() -> None:
 
 
 def learn(names) -> None:
-    """把见到的全称记下来。只记存在，不累计次数——次数由公告库那次返回给。"""
+    """把见到的全称记下来。只记存在，不累计次数——次数由公告库那次返回给。
+
+    带前缀的残片要挡掉：标题「…延长中国航空资本控股有限责任公司…」会被抠出
+    「延长中国航空资本控股有限责任公司」，它比真名多两个字，排出来很像另一家。
+    判据是有没有以库里已有的全称结尾——公司全称不会以另一家全称收尾。
+    """
     global _CACHE
     want = [n for n in names if n and len(n) >= 6]
     if not want:
         return
     with LOCK:
         data = _CACHE if _CACHE is not None else _read()
-        added = [n for n in want if n not in data]
-        if added:
-            for n in added:
-                data[n] = 0
-            _write(data)
+        for n in sorted(set(want), key=len):
+            if n in data:
+                continue
+            if any(n != k and n.endswith(k) for k in data):
+                continue
+            data[n] = 0
+        _write(data)
         _CACHE = data
 
 
