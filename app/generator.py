@@ -1516,7 +1516,18 @@ def _parse_formula(note: str) -> dict | None:
     nums = [float(x) for x in re.findall(r"\d+(?:\.\d+)?", expr)]
     if len(nums) < 2:
         return None
-    return {"name": name, "expr": m.group("expr"), "nums": nums, "raw": s}
+    # 「× 100%」里的 100 是百分号换算，不是材料里的数。拿它去材料里找原值，
+    # 每条算百分比的行都会多报一句「100 没有原值」——这种噪声一多，整张卡就没人看了。
+    # 求值要用它（nums 不动），校验操作数时不算它（operands）。
+    conv: set[int] = set()
+    for i, mm in enumerate(re.finditer(r"\d+(?:\.\d+)?", expr)):
+        if float(mm.group()) == 100 and expr[mm.end():].lstrip().startswith(("%", "％")):
+            conv.add(i)
+    operands = [n for i, n in enumerate(nums) if i not in conv]
+    if not operands:
+        operands = nums
+    return {"name": name, "expr": m.group("expr"), "nums": nums,
+            "operands": operands, "raw": s}
 
 
 def _eval_formula(expr: str, nums: list[float]) -> float | None:
@@ -1562,21 +1573,38 @@ def _missing_hint(v: float, vals: list[float] | None) -> dict:
     return {"v": v, "kind": kind, "near": best, "rel": round(rel, 4)}
 
 
+def _nf(v: float) -> str:
+    """把数写回人读的样子：整数带千分位，小数按两位原样，不丢精度。
+
+    不能用 f"{v:g}"：它只保留 6 位有效数字，12,860.42 会变成 12860.4，
+    读者拿着这个数去材料里搜，永远搜不到——本来是在帮人定位，反倒多错一层。
+    """
+    if v is None:
+        return "—"
+    if float(v).is_integer():
+        return f"{int(v):,}"
+    return f"{v:,.2f}".rstrip("0").rstrip(".")
+
+
 def _note_missing(row: dict) -> str:
-    """把一个复算不通过的原因说成人话。"""
+    """把一个复算不通过的原因说成人话。
+
+    读者是分析员，不是写这段程序的人：不能出现「data_notes」「按 16.1」这类
+    只有我们知道在说什么的词，要直接说这个数该怎么办。
+    """
     if not row.get("missing"):
-        return "算式的结果没有出现在正文里——写了算式却没用这个数，补上或删掉这条"
+        return "算出来了，但这个值没出现在正文里——写了算式却没用上这个数，补进正文或删掉这条算式"
     parts: list[str] = []
     for d in (row.get("missing_detail") or []):
         v, kind, near = d.get("v"), d.get("kind"), d.get("near")
         if kind == "round":
-            parts.append(f"{v:g} 与材料原文只差四舍五入（材料为 {near:g}）")
+            parts.append(f"算式里的 {_nf(v)} 在材料里是 {_nf(near)}（只差四舍五入）")
         elif kind == "near":
-            parts.append(f"材料里最接近的是 {near:g}，与 {v:g} 差 {abs(near - v):g}，"
-                         "口径或单位可能不同")
+            parts.append(f"算式里的 {_nf(v)} 在材料里查不到，最接近的是 {_nf(near)}，"
+                         f"差 {_nf(round(abs(near - v), 2))}（单位或口径可能不同）")
         else:
-            parts.append(f"{v:g} 在材料原文里没有原值，像是换算、扣减或加总得来的")
-    return "；".join(parts) + "——按 16.1 在 data_notes 写清这个数怎么来，或直接改用材料原值"
+            parts.append(f"算式里的 {_nf(v)} 在材料里没有原值，像是换算、扣减或加总得来的")
+    return "；".join(parts) + "——把算式里这个数换成材料原值，或改用材料原值重算"
 
 
 def _verify_notes(draft: dict, corpus_nums: set[str],
@@ -1613,10 +1641,10 @@ def _verify_notes(draft: dict, corpus_nums: set[str],
         f = _parse_formula(str(note))
         if not f:
             continue
-        # ② 操作数是否都在材料里
+        # ② 操作数是否都在材料里（换算用的 100% 不算操作数，见 _parse_formula）
         missing: list[float] = []
         missing_detail: list[dict] = []
-        for v in f["nums"]:
+        for v in f.get("operands") or f["nums"]:
             cands = {f"{v:.2f}", f"{v:.1f}", f"{v:.0f}",
                      (str(int(v)) if v == int(v) else "")}
             if not any(x and x in corpus_nums for x in cands):
@@ -3024,7 +3052,12 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
                                     "seg": meta.get("seg") or 0}
             return None
 
-        issues.append(f"{len(notes_bad)} 条算式复算不通过（操作数在材料里找不到，或算出来与正文不符）")
+        issues.append(
+            f"{len(notes_bad)} 处数字写了算式，但照这个算式算出来对不上正文。"
+            "算式指的是正文里某个数的来历——比如表格里写「占比 = 3,421.53 ÷ 5,924.25 × 100%」，"
+            "程序把这行原样算一遍：结果与正文写的数不一致，或者算式里用到的某个数在材料里查不到。"
+            "三种常见情形：抄数抄错一位、单位不同（万元配亿元）、算式写反（除数与被除数颠倒）。"
+            "下面逐条列出算式、算出来的值与正文那一句。")
         ndets = []
         for r in notes_bad[:8]:
             loc = _locate_val(r["val"]) or {}
@@ -3033,11 +3066,11 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
                 "where": loc.get("where") or r["name"],
                 "full": loc.get("full") or "", "si": loc.get("si") or 0,
                 "formula": r["expr"], "kind": "算式",
-                "note": ("算式本身算不出来（除零或写法有误）" if r["val"] is None
-                         else _note_missing(r)),
+                "note": ("这条算式本身算不出来（除零，或加减乘除写法有误）——检查括号与运算符"
+                         if r["val"] is None else _note_missing(r)),
                 "anchor": loc.get("anchor") or "d-doc",
                 "field": loc.get("field") or "", "seg": loc.get("seg") or 0})
-        issue_items.append({"t": "交底的算式复算不通过", "a": "d-doc", "d": ndets})
+        issue_items.append({"t": "算式对不上正文的数", "a": "d-doc", "d": ndets})
     if unsourced:
         # 明细不写进 issues 文本（前端要用结构化条目逐条定位），这里只留一句总述，
         # 具体「第几段第几句、哪个数」由 issue_items 承载。
@@ -3045,10 +3078,11 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
         for h in unsourced:
             kinds[h["kind"] or "未定"] = kinds.get(h["kind"] or "未定", 0) + 1
         top = "、".join(f"{k} {v} 个" for k, v in sorted(kinds.items(), key=lambda x: -x[1])[:3])
-        issues.append(f"{len(unsourced)} 个数字既对不上材料原文，也没能用同段数据复原算式"
-                      f"（{top}），已逐条定位到句，请核对")
+        issues.append(f"{len(unsourced)} 个数字在材料里找不到原文，程序也推不出它是怎么算出来的"
+                      f"（{top}）。可能是抄错、口径不同，或者它由别处的数相减相加得来——"
+                      "已逐条定位到句，请在材料里核一下原值。")
         issue_items.append({
-            "t": "数字对不上，算式也复原不了", "a": "d-doc", "note": top,
+            "t": "数字在材料里找不到出处", "a": "d-doc", "note": top,
             "d": [dict(x) for x in unsourced]})
     if derived:
         issues.append(f"{len(derived)} 个数字标为推算值，核对算式口径是否与正文一致")
