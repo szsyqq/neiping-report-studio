@@ -458,6 +458,74 @@ select{width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 8px
 .mkc-tip.show{opacity:1}
 .mkc-tip i{display:inline-block;width:6px;height:6px;border-radius:1px;margin-right:4px}
 .mkc-empty{font-size:10.5px;color:var(--muted);padding:2px 0 3px}
+/* ── 选中一段话就地改 ─────────────────────────────────────────────
+   正文是 textarea，选中文字后没有原生的右键菜单可用，所以自己浮一条。
+   它只在「选中 6 字以上」时出现：选两三个字多半是在改错别字，不需要模型。
+   点一个动作 → 后台跑一次小调用 → 结果进对照弹窗，由人决定要不要换上去。 */
+.selbar{position:fixed;z-index:132;display:none;align-items:center;gap:2px;
+  background:#1b1f24;border-radius:8px;padding:3px;box-shadow:0 10px 26px rgba(17,20,24,.28);
+  font-family:-apple-system,"PingFang SC",sans-serif}
+.selbar.show{display:flex}
+.selbar button{border:0;background:transparent;color:#e8eaee;font-family:inherit;font-size:11.5px;
+  padding:4px 8px;border-radius:5px;cursor:pointer;white-space:nowrap;line-height:1.6}
+.selbar button:hover{background:rgba(255,255,255,.13)}
+.selbar .sep{width:1px;height:14px;background:rgba(255,255,255,.18);margin:0 2px}
+.selbar .busy{color:#9aa1ac;padding:4px 8px;font-size:11.5px}
+
+/* 改写结果：左原文右新句，或上下排。接受才写回去，不做静默替换——
+   模型改错一句话，人一眼就能看出来，但要是直接替换掉，人只会觉得「哪里不对」。 */
+.rfm{position:fixed;inset:0;z-index:140;display:none}
+.rfm.show{display:block}
+.rfm-bg{position:absolute;inset:0;background:rgba(17,20,24,.34)}
+.rfm-p{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:min(720px,calc(100vw - 32px));max-height:min(82vh,640px);display:flex;flex-direction:column;
+  background:#fff;border-radius:14px;box-shadow:0 24px 70px rgba(15,23,42,.26);overflow:hidden;
+  font-family:-apple-system,"PingFang SC",sans-serif}
+.rfm-h{display:flex;align-items:flex-start;gap:10px;padding:14px 16px 8px}
+.rfm-h b{flex:1;font-size:14px;font-weight:600;line-height:1.5}
+.rfm-h .x{border:0;background:none;color:var(--muted);font-size:20px;line-height:1;padding:0 2px}
+.rfm-h .x:hover{color:var(--ink)}
+.rfm-sub{font-size:11.5px;color:var(--muted);padding:0 16px 10px;line-height:1.6}
+.rfm-body{overflow:auto;padding:0 16px 4px;flex:1 1 auto}
+.rfm-sec{margin-bottom:11px}
+.rfm-sec .t{font-size:10.5px;color:var(--muted);letter-spacing:.04em;margin-bottom:4px}
+.rfm-sec .v{font-family:"Kaiti SC","KaiTi","STKaiti",serif;font-size:15px;line-height:1.8;
+  color:#1b1f24;background:#fafbfc;border:1px solid var(--line2);border-radius:7px;
+  padding:9px 11px;white-space:pre-wrap;word-break:break-word;text-align:justify}
+.rfm-sec.new .v{background:#f6faf6;border-color:#dfeade}
+.rfm-sec .v ins{background:#e6f4e6;text-decoration:none;border-radius:2px;padding:0 1px}
+.rfm-sec .v del{background:#fdeeee;color:#9b3b34;text-decoration:line-through;
+  text-decoration-thickness:1px;border-radius:2px;padding:0 1px}
+.rfm-foot{display:flex;align-items:center;gap:8px;padding:10px 16px 13px;border-top:1px solid var(--line2);
+  flex-wrap:wrap}
+.rfm-foot .grow{flex:1 1 auto;min-width:0;font-size:11px;color:var(--muted);line-height:1.55}
+.rfm-foot .btn{font-family:inherit;border:1px solid var(--line);background:#fff;border-radius:7px;
+  font-size:12.5px;padding:7px 14px;cursor:pointer;color:var(--ink2)}
+.rfm-foot .btn:hover{border-color:#cfd4dc;color:var(--ink)}
+.rfm-foot .btn.primary{background:var(--ink);border-color:var(--ink);color:#fff}
+.rfm-foot .btn.primary:hover{background:#000}
+.rfm-foot .btn:disabled{opacity:.5;cursor:default}
+/* 补写一段：块尾的小按钮 + 主题菜单 */
+.addsec{position:relative;display:inline-block;margin-top:4px}
+.addsec>.add{border:0;background:transparent;color:var(--muted);font-size:12px;padding:2px 4px;
+  cursor:pointer;font-family:-apple-system,"PingFang SC",sans-serif}
+.addsec>.add:hover{color:var(--ink)}
+.asecmenu{position:absolute;left:0;top:calc(100% + 4px);min-width:236px;background:#fff;
+  border:1px solid var(--line);border-radius:8px;box-shadow:0 12px 30px rgba(17,20,24,.14);
+  padding:5px;display:none;z-index:40;text-align:left}
+.asecmenu.show{display:block}
+.asecmenu .mh{font-size:10.5px;color:var(--muted);padding:4px 8px 5px;letter-spacing:.03em}
+.asecmenu button{display:block;width:100%;text-align:left;border:0;background:transparent;
+  font-family:inherit;font-size:12.5px;color:var(--ink2);padding:6px 9px;border-radius:5px;cursor:pointer}
+.asecmenu button:hover{background:var(--hover);color:var(--ink)}
+.asecmenu .free{display:flex;gap:5px;padding:4px 6px 2px;border-top:1px solid var(--line2);margin-top:3px}
+.asecmenu .free input{flex:1;min-width:0;border:1px solid var(--line);border-radius:5px;
+  font-family:inherit;font-size:12px;padding:4px 7px;outline:none}
+.asecmenu .free input:focus{border-color:#cfd4dc}
+.asecmenu .free button{width:auto;background:var(--ink);color:#fff;border-radius:5px;padding:4px 10px;
+  font-size:12px}
+.asecmenu .free button:hover{background:#000;color:#fff}
+
 .doc{font-family:"Kaiti SC","KaiTi","STKaiti","Songti SC","SimSun",serif;
   font-size:15.5px;line-height:1.82;color:#1b1f24;
   /* 两端对齐：中文正文的右边缘要齐，否则满行参差、读起来乱。
@@ -553,6 +621,13 @@ body.dragging .item-ghost{display:flex}
 .doc-table th,.doc-table td{padding:3px 8px;border-right:.5px solid #c9ccd1;
   border-bottom:.5px solid #c9ccd1;font-weight:400;text-align:right;vertical-align:middle}
 .doc-table th{font-weight:700;text-align:center}
+/* 两行表头：第二行的「营业收入／收入占比」比期次低一档，读者先看到期次分组 */
+.doc-table th.sub{font-weight:600;font-size:12.5px;color:var(--ink2)}
+.doc-table tr.sum td{font-weight:700}
+/* 表前的引导语是一句正文（「2023—2025年及2026年1—6月，公司收入、占比及毛利率情况如下：」），
+   按正文排版：楷体、首行缩进两字、两端对齐，不做成居中的表题。 */
+.tcap{font-family:inherit;text-align:justify;text-justify:inter-ideograph;
+  text-indent:2em;margin:0 0 2px}
 .doc-table th:first-child,.doc-table td:first-child{text-align:left}
 .doc-table tr>*:last-child{border-right:0}
 .doc-table tbody tr:last-child>*{border-bottom:0}
@@ -1025,6 +1100,14 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
   .mkc{padding:8px 8px 6px;margin:4px 0 8px}
   .mkc-f{gap:2px 10px}
   .mkc-b{font-size:10px;padding:2px 8px}
+
+  /* 手机上浮条钉在视口底部：跟选区走会被键盘顶出屏幕，手指也够不着 */
+  .selbar{left:50% !important;top:auto !important;bottom:calc(10px + env(safe-area-inset-bottom,0px));
+    transform:translateX(-50%);max-width:calc(100vw - 20px);overflow-x:auto}
+  .selbar button{padding:7px 10px;font-size:13px}
+  .rfm-p{width:calc(100vw - 20px);max-height:82vh}
+  .rfm-sec .v{font-size:16px;line-height:1.85}
+  .rfm-foot .btn{flex:1 1 96px;min-height:40px}
 
   /* 工具条：按钮换行，不再挤成一条 */
   /* 步骤卡：标题行 44px 起，拇指好点；辅助说明在窄屏省掉，宽度让给按钮 */
@@ -2423,6 +2506,11 @@ async function suggestCompany(main){
 
 document.addEventListener("keydown", e => {
   if(e.key === "Escape" && SUG.open){ e.stopPropagation(); closeSug(); }
+  // 改写弹窗也要能 Esc 关掉：它是一个「要不要换」的询问，停在屏幕上会挡住正文
+  if(e.key === "Escape" && $("#rfModal") && $("#rfModal").classList.contains("show")){
+    e.stopPropagation(); rfmClose();
+  }
+  if(e.key === "Escape") selHide();
 }, true);
 
 /* ---------------- 材料 ---------------- */
@@ -2903,13 +2991,41 @@ document.addEventListener("paste", e => {
     .replace(/\s*\n+\s*/g, "");
   document.execCommand("insertText", false, txt);
 });
+/* 业务构成表有两种形状：
+   旧稿是单期四列（header + rows）；现在按「每期两格 + 毛利率一格」排，
+   表头因此要两行——第一行写期次、第二行写营业收入与收入占比。合并单元格
+   用 rowspan/colspan，行数少了看起来才不会挤。营业总收入那一行加粗。 */
 function tableHtml(t){
   if(!t || !t.rows) return "";
-  const head = t.periods ? ["项目", ...t.periods] : (t.header || []);
-  let h = `<div class="unit">${esc(t.unit_line || "单位：亿元")}</div><div class="tscroll"><table class="doc-table"><thead><tr>` +
-    head.map(x => `<th>${esc(x)}</th>`).join("") + `</tr></thead><tbody>`;
-  for(const r of t.rows) h += `<tr>` + r.map(c => `<td>${esc(c)}</td>`).join("") + `</tr>`;
-  return h + `</tbody></table></div>`;
+  const bold = new Set((t.bold_rows || []).map(Number));
+  const totalIdx = (() => {
+    const last = t.rows.length - 1;
+    return last >= 0 && /^(营业总收入|营业收入合计|收入合计|合计|总计)$/.test(String(t.rows[last][0] || "").trim())
+      ? last : -1;
+  })();
+  const isBold = i => bold.has(i) || i === totalIdx;
+  let head, body;
+
+  if(t.periods && t.sub_cols){
+    const per = t.sub_cols.length;
+    const extra = t.extra_cols || [];
+    head = `<tr><th rowspan="2">${esc(t.first_col || "业务板块")}</th>`
+      + t.periods.map(p => `<th colspan="${per}">${esc(p)}</th>`).join("")
+      + extra.map(c => `<th rowspan="2">${esc(c)}</th>`).join("")
+      + `</tr><tr>` + t.periods.map(() => t.sub_cols.map(c => `<th class="sub">${esc(c)}</th>`).join("")).join("")
+      + `</tr>`;
+  }else{
+    // 财务指标表：periods 一律从「项目」列起，不要 header
+    const hdr = t.periods ? ["项目", ...t.periods] : (t.header || []);
+    head = `<tr>` + hdr.map(x => `<th>${esc(x)}</th>`).join("") + `</tr>`;
+  }
+  body = t.rows.map((r, i) =>
+    `<tr${isBold(i) ? ' class="sum"' : ""}>` + r.map(c => `<td>${esc(c)}</td>`).join("") + `</tr>`).join("");
+  const cap = t.caption
+    ? `<div class="tcap">${esc(t.caption)}</div>`
+    : "";
+  return `${cap}<div class="unit">${esc(t.unit_line || "单位：亿元")}</div>`
+    + `<div class="tscroll"><table class="doc-table"><thead>${head}</thead><tbody>${body}</tbody></table></div>`;
 }
 
 /* 按钮图标：只描边，颜色跟 currentColor，深浅两档按钮共用一套 */
@@ -3351,16 +3467,19 @@ function renderDraft(){
     <div class="blk" id="blk-basic">
       <div class="doc-h first">1、基本情况</div>
       ${ta("basic", d.basic_info)}
+      ${addSec("basic", "1、基本情况后")}
     </div>
     <div class="blk" id="blk-industry">
       <div class="doc-h first">2、行业情况</div>
       ${ta("in-lead lead", c.industry && c.industry.lead)}
       ${ta("in-body", c.industry && c.industry.body)}
+      ${addSec("industry", "2、行业情况后")}
     </div>
     <div class="blk" id="blk-overview">
       <div class="doc-h first">3、点评</div>
       ${ta("ov-lead lead", c.overview && c.overview.lead)}
-      ${ta("ov-body", c.overview && c.overview.body)}`;
+      ${ta("ov-body", c.overview && c.overview.body)}
+      ${addSec("overview", "3、点评的总述段后")}`;
 
   if(c.segment_table && c.segment_table.rows) h += tableHtml(c.segment_table);
 
@@ -3371,7 +3490,8 @@ function renderDraft(){
     </div>
     <div class="blk" id="blk-asset">
       ${ta("as-lead lead", c.asset && c.asset.lead)}
-      ${ta("as-body", c.asset && c.asset.body)}`;
+      ${ta("as-body", c.asset && c.asset.body)}
+      ${addSec("asset", "资产段后")}`;
 
   if(finRows){
     h += `<div id="blk-fintable"><div style="text-align:center;font-weight:700">${esc(c.financial_table.caption || "公司主要财务数据和财务指标（合并口径）")}</div>`;
@@ -3382,17 +3502,20 @@ function renderDraft(){
       <div class="blk-tag">盈利与现金流</div>
       ${ta("pf-lead lead", c.profit && c.profit.lead)}
       ${ta("pf-body", c.profit && c.profit.body)}
+      ${addSec("profit", "盈利与现金流段后")}
       <span id="blk-cash"></span>
     </div>
     <div class="blk" id="blk-debt">
       ${ta("db-lead lead", c.debt && c.debt.lead)}
       ${ta("db-body", c.debt && c.debt.body)}
+      ${addSec("debt", "债务段后")}
     </div>
     ${(c.market && (c.market.body || c.market.lead)) ? `<div class="blk" id="blk-market">
       <div class="blk-tag">二级市场定价</div>
       <div class="mkc" id="mkChart" data-state="load"></div>
       ${ta("mk-lead lead", c.market.lead)}
       ${ta("mk-body", c.market.body)}
+      ${addSec("market", "二级市场定价段后")}
     </div>` : ""}
     <div class="blk" id="blk-topics">
       <div id="d-advice"></div>
@@ -3634,6 +3757,333 @@ function mkHoverOut(){
   const g = box.querySelector("#mkcHover"), t = box.querySelector("#mkcTip");
   if(g) g.style.display = "none";
   if(t) t.classList.remove("show");
+}
+
+/* ── 选中一段话就地改 / 块尾补写一段 ─────────────────────────────
+   两件事共用一套「建议 → 人确认 → 写回去」的流程：
+   · 选中：正文是 textarea，选中文字后浮一条工具条，点动作 → 后台改 → 对照弹窗
+   · 补写：块尾的「+ 补一段」→ 选主题或自己填 → 后台写 → 同一个对照弹窗
+   弹窗里永远有两个按钮：换上去、放弃。不做静默替换——模型改错一句，人一眼
+   能看出来，但被直接替换掉之后，人只会觉得「哪里不对」却找不到改了什么。 */
+const SEL = { el: null, start: 0, end: 0, text: "", section: "" };
+const RF = { el: null, start: 0, end: 0, before: "", after: "", action: "",
+             topic: "", busy: false, hint: "" };
+
+/* 每个正文块补什么，给几项常写的主题。不是限制：菜单底部有自由输入。
+   分组照抄块名，不按「资产/负债」这类财务口径重排——人找的是「我在哪一段」。 */
+const ADD_TOPICS = {
+  basic: ["股东与持股比例的变化", "实际控制人与出资到位情况", "子公司与并表范围", "增资与注册资本到位"],
+  industry: ["区域市场容量与竞争格局", "价格与成本的走势", "政策与补贴机制"],
+  overview: ["收入结构的变化", "盈利从哪里来", "对政府结算的依赖"],
+  asset: ["应收账款的质量与账龄", "存货构成与去化", "受限资产", "在建工程与投资缺口"],
+  profit: ["毛利率变动的原因", "期间费用的刚性", "减值计提的依据", "政府补助的依赖"],
+  debt: ["债务期限结构", "授信与未使用额度", "对外融资渠道"],
+  market: ["成交与估值水平", "与同评级主体的比较"],
+};
+const ADD_SECTION_LABEL = {
+  basic: "1、基本情况", industry: "2、行业情况", overview: "3、点评（总述段）",
+  asset: "资产段", profit: "盈利与现金流", debt: "债务段", market: "二级市场定价",
+};
+const ADD_TA = {
+  basic: "basic", industry: "in-body", overview: "ov-body",
+  asset: "as-body", profit: "pf-body", debt: "db-body", market: "mk-body",
+};
+
+function addSec(key, label){
+  const items = (ADD_TOPICS[key] || []).map(t =>
+    `<button onclick="expandTopic('${key}','${esc(t)}',event)">${esc(t)}</button>`).join("");
+  return `<span class="addsec">
+    <button class="add" onclick="addSecMenu(this,event)" title="补一段分析，或选中正文里的字就地改">+ 补一段分析</button>
+    <div class="asecmenu">
+      <div class="mh">在此之后补一段，写什么？</div>
+      ${items}
+      <div class="free">
+        <input placeholder="或自己写：如 对外担保" onkeydown="if(event.key==='Enter')expandFree('${key}',this)"/>
+        <button onclick="expandFree('${key}',this.previousElementSibling)">写</button>
+      </div>
+    </div>
+  </span>`;
+}
+
+function addSecMenu(btn, ev){
+  ev.stopPropagation();
+  const box = btn.parentElement.querySelector(".asecmenu");
+  const on = box.classList.contains("show");
+  document.querySelectorAll(".asecmenu.show").forEach(x => x.classList.remove("show"));
+  if(on) return;
+  box.classList.add("show");
+  const inp = box.querySelector(".free input");
+  if(inp) setTimeout(() => inp.focus(), 30);
+}
+document.addEventListener("click", e => {
+  if(!e.target.closest || !e.target.closest(".addsec")){
+    document.querySelectorAll(".asecmenu.show").forEach(x => x.classList.remove("show"));
+  }
+});
+
+function expandFree(key, input){
+  const t = (input.value || "").trim();
+  if(!t) return toast("写一句要补什么", true);
+  input.value = "";
+  document.querySelectorAll(".asecmenu.show").forEach(x => x.classList.remove("show"));
+  expandRun(key, t);
+}
+function expandTopic(key, topic, ev){
+  if(ev) ev.stopPropagation();
+  document.querySelectorAll(".asecmenu.show").forEach(x => x.classList.remove("show"));
+  expandRun(key, topic);
+}
+
+/* 补写：把这一节现有的正文发给模型，让它只写缺的那一块 */
+async function expandRun(key, topic){
+  const taEl = document.querySelector(".ta." + (ADD_TA[key] || ""));
+  if(!taEl) return toast("找不到这一段", true);
+  const d = S.draft || {};
+  RF.el = taEl; RF.start = -1; RF.end = -1; RF.before = ""; RF.after = "";
+  RF.action = "expand"; RF.topic = topic;
+  rfmOpen({ title: `补一段：${topic}`, sub: `写在「${ADD_SECTION_LABEL[key] || key}」之后。生成完先给你看，确认了才写进去。`,
+            before: "", after: "", note: "", busy: true });
+  try{
+    const j = await runJob("expand", {
+      company: curCo(), topic, section: ADD_SECTION_LABEL[key] || key,
+      section_text: taEl.value || "", draft: safeDraft(),
+      titles: S.loaded.slice(), model: curModel()
+    });
+    RF.key = key;
+    rfmOpen({ title: `补一段：${topic}`, sub: `写在「${ADD_SECTION_LABEL[key] || key}」之后。确认后点「换上去」。`,
+              before: taEl.value.slice(-160), after: j.result.text,
+              note: j.result.note || `${j.result.text.length} 字`, warn: j.result.warn || "",
+              busy: false, append: true });
+  }catch(e){
+    rfmClose();
+    toast(e.message, true);
+  }
+}
+
+function curModel(){
+  const v = $("#model") ? $("#model").value : "";
+  return MODEL_IDS.includes(v) ? v : "";
+}
+
+/* 选中文字：只有 6 字以上才浮出来。选两三个字多半是在改错别字，
+   调一次模型要几十秒，不如自己敲。 */
+let selTimer = null;
+document.addEventListener("selectionchange", () => {
+  clearTimeout(selTimer);
+  selTimer = setTimeout(selProbe, 60);
+});
+/* 鼠标松开也要探一次：textarea 里拖选完成时 selectionchange 不一定按预期触发 */
+document.addEventListener("mouseup", () => setTimeout(selProbe, 0));
+document.addEventListener("keyup", e => {
+  if(e.shiftKey || e.key === "Shift") setTimeout(selProbe, 0);
+});
+
+function selProbe(){
+  const a = document.activeElement;
+  const el = (a && a.tagName === "TEXTAREA" && a.closest && a.closest("#draftArea")) ? a : null;
+  if(!el || RF.busy) return selHide();
+  const s = el.selectionStart || 0, e = el.selectionEnd || 0;
+  const txt = (el.value || "").slice(s, e);
+  if(e - s < 6 || !txt.trim()) return selHide();
+  SEL.el = el; SEL.start = s; SEL.end = e; SEL.text = txt;
+  SEL.section = sectionOfTa(el);
+  selShow(el);
+}
+
+function sectionOfTa(el){
+  const blk = el.closest(".blk");
+  if(!blk) return "";
+  const map = { "blk-basic": "基本情况", "blk-industry": "行业情况", "blk-overview": "点评总述段",
+    "blk-asset": "资产段", "blk-profit": "盈利与现金流", "blk-debt": "债务段",
+    "blk-market": "二级市场定价", "blk-segments": "分部业务" };
+  return map[blk.id] || "";
+}
+
+function selShow(el){
+  let bar = $("#selBar");
+  if(!bar){
+    bar = document.createElement("div");
+    bar.id = "selBar"; bar.className = "selbar";
+    bar.innerHTML = `<button onclick="selRun('rewrite')">改写</button>
+      <button onclick="selRun('tighten')">精简</button>
+      <button onclick="selRun('expand')">展开</button>
+      <button onclick="selRun('plain')">去评价</button>
+      <span class="sep"></span>
+      <button onclick="selAsk()">按我的要求改</button>`;
+    // 按下按钮时不让它抢焦点：textarea 一 blur，selectionStart/End 就丢了，
+    // 点「改写」时拿到的是空选区——看起来像点了没反应。
+    bar.addEventListener("mousedown", ev => ev.preventDefault());
+    document.body.appendChild(bar);
+  }
+  if(isPhone()){ bar.classList.add("show"); return; }   // 手机上钉在底部，位置由 CSS 定
+  const r = el.getBoundingClientRect();
+  bar.classList.add("show");
+  const w = bar.offsetWidth || 300, h = bar.offsetHeight || 30;
+  let left = Math.min(Math.max(8, r.right - w), innerWidth - w - 8);
+  let top = r.top - h - 8;
+  if(top < 56) top = Math.min(r.bottom + 8, innerHeight - h - 8);   // 上方放不下就放到下面
+  bar.style.left = left + "px";
+  bar.style.top = top + "px";
+}
+function selHide(){
+  const bar = $("#selBar");
+  if(bar) bar.classList.remove("show");
+}
+
+function selAsk(){
+  const hint = prompt("想怎么改？例：把「显著提升」改成有刻度的说法；补上回款条件", "");
+  if(hint === null) return;
+  selRun("custom", hint);
+}
+
+/* 跑一次局部改写。只发选中那段与前后各一小截——不发全文，
+   模型才不会顺手把别的段落也改了。 */
+async function selRun(action, hint){
+  if(!SEL.el) return;
+  const el = SEL.el, s = SEL.start, e = SEL.end;
+  const val = el.value || "";
+  const before = val.slice(Math.max(0, s - 220), s);
+  const after = val.slice(e, Math.min(val.length, e + 160));
+  RF.el = el; RF.start = s; RF.end = e;
+  RF.before = val.slice(s, e); RF.action = action === "custom" ? "rewrite" : action; RF.hint = hint || "";
+  selHide();
+  rfmOpen({ title: "改写这一段", sub: "改的是你选中的那一句，前后文只作语境。确认后点「换上去」。",
+            before: RF.before, after: "", note: "正在改…", busy: true });
+  try{
+    const j = await runJob("refine", {
+      text: RF.before, action: action === "custom" ? "rewrite" : action,
+      hint: hint || "", before, after, section: SEL.section,
+      full: val, model: curModel()
+    });
+    rfmOpen({ title: "改写这一段", sub: "确认后点「换上去」，不换就点「放弃」。",
+              before: j.result.before, after: j.result.after,
+              note: j.result.note || "", warn: j.result.warn || "", busy: false, action });
+  }catch(err){
+    rfmClose();
+    toast(err.message, true);
+  }
+}
+
+function rfmOpen(o){
+  RF.busy = !!o.busy;
+  let m = $("#rfModal");
+  if(!m){
+    m = document.createElement("div");
+    m.id = "rfModal"; m.className = "rfm";
+    m.innerHTML = `<div class="rfm-bg" onclick="rfmClose()"></div>
+      <div class="rfm-p" role="dialog" aria-modal="true"></div>`;
+    document.body.appendChild(m);
+  }
+  const bodyOf = () => {
+    let h = `<div class="rfm-h"><b>${esc(o.title || "改写")}</b>
+      <button class="x" onclick="rfmClose()" title="关闭（Esc）">×</button></div>
+      <div class="rfm-sub">${esc(o.sub || "")}</div><div class="rfm-body">`;
+    if(o.before) h += `<div class="rfm-sec"><div class="t">${o.append ? "接在这一段之后（节选）" : "原文"}</div>
+      <div class="v">${esc(o.before)}</div></div>`;
+    if(o.busy){
+      h += `<div class="rfm-sec new"><div class="t">新写法</div>
+        <div class="v" style="color:var(--muted)">生成中… <span class="rf-t">已等 0 秒</span></div></div>`;
+    }else if(o.after){
+      h += `<div class="rfm-sec new"><div class="t">新写法</div><div class="v">${diffHtml(o.before || "", o.after)}</div></div>`;
+    }
+    h += `</div><div class="rfm-foot"><span class="grow"${o.warn ? ' style="color:#b0402c"' : ""}>${esc(o.note || "")}</span>`;
+    if(o.busy){
+      h += `<button class="btn" onclick="rfmClose()">取消</button>`;
+    }else{
+      h += `<button class="btn" onclick="rfmRetry()">再改一次</button>
+        <button class="btn" onclick="rfmClose()">放弃</button>
+        <button class="btn primary" onclick="rfmAccept()">换上去</button>`;
+    }
+    return h + `</div>`;
+  };
+  m.querySelector(".rfm-p").innerHTML = bodyOf();
+  m.classList.add("show");
+  RF.last = o;
+  // 生成中要有秒数：一次调用十几秒很正常，只写「生成中」看不出到底在跑还是卡住了。
+  clearInterval(RF.tick);
+  if(o.busy){
+    const t0 = Date.now();
+    RF.tick = setInterval(() => {
+      const el = m.querySelector(".rf-t");
+      if(!el || !RF.busy){ clearInterval(RF.tick); return; }
+      const sec = Math.round((Date.now() - t0) / 1000);
+      el.textContent = sec > 45 ? `已等 ${sec} 秒，这次比较慢，可以取消` : `已等 ${sec} 秒`;
+    }, 1000);
+  }
+}
+
+/* 差异标色：按句比。逐字 diff 在中文长句上会碎成一堆零星高亮，
+   看着像满篇都改了；按句比能直接看出是哪一句换了。 */
+function diffHtml(a, b){
+  // 不用 lookbehind 切句：老一点的 Safari 会在解析阶段直接报错，整段脚本都不执行。
+  const cut = t => ((t || "").match(/[^。；！？]+[。；！？]?/g) || []).map(x => x.trim()).filter(Boolean);
+  const A = cut(a), B = cut(b);
+  if(!A.length) return esc(b);
+  const setA = new Set(A);
+  return B.map(s => setA.has(s) ? esc(s) : `<ins>${esc(s)}</ins>`).join("");
+}
+
+function rfmAccept(){
+  const o = RF.last || {};
+  if(!RF.el) return rfmClose();
+  const el = RF.el;
+  if(o.append){                                   // 补写：接到段末
+    el.value = joinCn(el.value || "", o.after || "");
+  }else{
+    if(RF.start < 0) return rfmClose();
+    el.setRangeText(o.after || "", RF.start, RF.end, "select");
+  }
+  el.dispatchEvent(new Event("input", { bubbles: true }));
+  autoGrow(el);
+  if(S.rev) S.rev.dirty = true;                    // 手改过，复核结果不自动替换
+  RF.start = RF.end = -1;
+  rfmClose();
+  toast(o.append ? "已补进这一段" : "已换上去", false);
+  revalidateSoon();
+}
+
+function rfmRetry(){
+  const o = RF.last || {};
+  const append = !!o.append, key = RF.key, topic = RF.topic;
+  rfmClose();
+  if(append) expandRun(key || "asset", topic || "");
+  else selRun(RF.action || "rewrite", RF.hint || "");
+}
+
+function rfmClose(){
+  const m = $("#rfModal");
+  if(m) m.classList.remove("show");
+  RF.busy = false;
+  clearInterval(RF.tick);
+}
+
+/* 改完立刻重算校验：不重算的话，右栏还挂着「这句没有出处」，
+   而那句话已经被改掉了。节流一下，连改几句只跑一次。 */
+let rvTimer = null;
+function revalidateSoon(){
+  clearTimeout(rvTimer);
+  rvTimer = setTimeout(async () => {
+    if(!S.draft || DEMO.on) return;
+    try{
+      const r = await api("/api/check",
+        { company: curCo(), draft: safeDraft(), titles: (S.loaded || []) });
+      if(!r.validation || r.skipped || r.error) return;
+      S.draft.validation = r.validation;
+      renderRailR();
+    }catch(e){ /* 重算失败不影响改稿，下一次生成会重算 */ }
+  }, 1500);
+}
+
+/* 只重绘右栏。整份 renderDraft 会重建正文区的所有 textarea，
+   光标与滚动位置一起丢——改一句就跳回顶部，比不刷新还糟。 */
+function renderRailR(){
+  const rail = $("#railR");
+  if(!rail || !S.draft) return;
+  rail.innerHTML = `<div id="d-ana"></div>` + ckHtml(S.draft.validation || {});
+  ckApplyFold();
+  ckPaint();
+  loadAna();
+  syncRails();
 }
 
 /* ── 分析附件（侧栏） ─────────────────────────────────────────

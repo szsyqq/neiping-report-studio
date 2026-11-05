@@ -42,6 +42,7 @@ import facts as facts_mod  # noqa: E402
 import generator  # noqa: E402
 import history  # noqa: E402
 import market as market_mod  # noqa: E402
+import editor as editor_mod  # noqa: E402
 import names as names_mod  # noqa: E402
 import jobs  # noqa: E402
 import llm  # noqa: E402
@@ -1297,6 +1298,35 @@ def api_history_delete(payload: dict) -> dict:
     return {"ok": ok}
 
 
+def api_check(payload: dict) -> dict:
+    """改完一段就地重算校验，不动正文、不落盘。
+
+    为什么需要这个：右侧的检查异常是按生成那一刻的稿子算的。人在正文里改了
+    一句，那一句对应的「这个数没有出处」就失效了——不重算，栏里还挂着一条
+    指向已经被改掉的句子的提示，久了这一栏就没人看了。
+    只回 validation，前端拿它重绘右栏；材料从 STATE 取，不必每次上传。
+    """
+    company = (payload.get("company") or "").strip()
+    draft = payload.get("draft")
+    if not isinstance(draft, dict) or not draft:
+        return {"validation": {}}
+    with LOCK:
+        st = STATE.get(_key(company)) or {}
+        mats = st.get("materials") or []
+    titles = {t for t in (payload.get("titles") or []) if t}
+    if titles:
+        mats = [m for m in mats if m.get("title") in titles] or mats
+    if not mats:
+        # 没有材料原文时，数字溯源这一类会全部报「找不到」——那不叫检查，
+        # 是误报。这种情形下干脆不重算，保留上一次的结果。
+        return {"validation": draft.get("validation") or {}, "skipped": "no_materials"}
+    try:
+        return {"validation": generator.validate(draft, {}, mats)}
+    except Exception as e:                                # noqa: BLE001
+        print(f"重算校验失败：{e}")
+        return {"validation": draft.get("validation") or {}, "error": str(e)[:200]}
+
+
 def api_prompt(payload: dict) -> dict:
     company = (payload.get("company") or "").strip()
     with LOCK:
@@ -1311,6 +1341,45 @@ def api_prompt(payload: dict) -> dict:
     prompt = generator.build_user_prompt(facts or facts_mod.empty_facts(company), materials)
     return {"prompt": prompt, "system": generator.SYSTEM_PROMPT,
             "traits": generator.describe_traits(facts or {})}
+
+
+def do_refine(payload: dict) -> dict:
+    """选中一段话，按动作改它。只发那一小段上下文，不发全文与材料。
+
+    局部改写靠的是「这一段自己说得通」，把三万字材料塞进去只会让它跑题；
+    数字那一头由 editor 的提示词守住（只许用原文里的数）。
+    """
+    return editor_mod.refine(
+        text=str(payload.get("text") or ""),
+        action=str(payload.get("action") or "rewrite"),
+        hint=str(payload.get("hint") or ""),
+        before=str(payload.get("before") or ""),
+        after=str(payload.get("after") or ""),
+        section=str(payload.get("section") or ""),
+        full=str(payload.get("full") or ""),
+        model_id=payload.get("model") or None,
+    )
+
+
+def do_expand(payload: dict) -> dict:
+    """就一个主题补一段，接在指定段落之后。材料只给压缩摘录。"""
+    company = (payload.get("company") or "").strip()
+    with LOCK:
+        st = STATE.get(_key(company)) or {}
+        materials = st.get("materials") or []
+    titles = {t for t in (payload.get("titles") or []) if t}
+    if titles:
+        materials = [m for m in materials if m.get("title") in titles] or materials
+    draft = payload.get("draft") or {}
+    return editor_mod.expand(
+        topic=str(payload.get("topic") or ""),
+        section=str(payload.get("section") or ""),
+        section_text=str(payload.get("section_text") or ""),
+        draft_text=editor_mod.draft_brief(draft),
+        materials=materials,
+        model_id=payload.get("model") or None,
+        company=company,
+    )
 
 
 def api_job(kind: str, payload: dict) -> dict:
@@ -1345,6 +1414,12 @@ def api_job(kind: str, payload: dict) -> dict:
         model = payload.get("model")
         rid = str(payload.get("history_id") or "")
         job = jobs.submit("revise", lambda p: do_revise(company, model, p, rid))
+    elif kind == "refine":
+        # 注意：jobs.submit 的回调参数是 progress，不是请求体。写成 lambda p: do_refine(p)
+        # 会把进度函数当 payload 传下去，报「'function' object has no attribute 'get'」。
+        job = jobs.submit("refine", lambda p: do_refine(payload))
+    elif kind == "expand":
+        job = jobs.submit("expand", lambda p: do_expand(payload))
     else:
         raise ValueError("未知任务类型")
     return {"job": job["id"]}
@@ -1625,6 +1700,7 @@ class Handler(BaseHTTPRequestHandler):
             "/api/model/pick": api_model_pick,
             "/api/company/suggest": api_company_suggest,
             "/api/market": api_market,
+            "/api/check": api_check,
             "/api/cost/preview": api_cost_preview,
             "/api/cost/save": api_cost_save,
         }

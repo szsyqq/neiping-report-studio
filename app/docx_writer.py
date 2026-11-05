@@ -177,18 +177,45 @@ def _row_props(row, header: bool = False):
     row.height_rule = WD_ROW_HEIGHT_RULE.AT_LEAST
 
 
-def _add_table(doc, header, rows, unit_line=None, col_widths_cm=None, bold_rows=()):
+def _add_table(doc, header, rows, unit_line=None, col_widths_cm=None, bold_rows=(),
+               groups=None, extra_cols=None, first_col=None):
+    """表头支持两种形状：单行 header；或 groups（期次分组）+ sub_cols 的两行表头。
+
+    两行表头在 Word 里要真合并单元格（gridSpan / vMerge），不能只把字排两行——
+    后者在读者眼里是「第一行空了半截」，看不出哪几列属于哪一期。
+    """
     if unit_line:
         up = _add_para(doc, unit_line, align=WD_ALIGN_PARAGRAPH.RIGHT, indent=False)
         up.paragraph_format.keep_with_next = True  # 单位行不单独留在页尾
-    ncols = len(header) if header else max(len(r) for r in rows)
+    two_row = bool(groups and header)
+    ncols = ((1 + sum(len(g.get("cols") or []) for g in groups) + len(extra_cols or []))
+             if two_row else (len(header) if header else max(len(r) for r in rows)))
     table = doc.add_table(rows=0, cols=ncols)
     table.style = "Table Grid"
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
-    if header:
+
+    if two_row:
+        r1 = table.add_row().cells
+        r2 = table.add_row().cells
+        c0 = r1[0].merge(r2[0])
+        _cell_text(c0, first_col or "业务板块", bold=True, align=WD_ALIGN_PARAGRAPH.CENTER)
+        pos = 1
+        for g in groups:
+            cols = g.get("cols") or []
+            span = max(1, len(cols))
+            cell = r1[pos] if span == 1 else r1[pos].merge(r1[pos + span - 1])
+            _cell_text(cell, g.get("label") or "", bold=True, align=WD_ALIGN_PARAGRAPH.CENTER)
+            for j, cname in enumerate(cols):
+                _cell_text(r2[pos + j], cname, bold=False, align=WD_ALIGN_PARAGRAPH.CENTER)
+            pos += span
+        for k, cname in enumerate(extra_cols or []):
+            cell = r1[pos + k].merge(r2[pos + k])
+            _cell_text(cell, cname, bold=True, align=WD_ALIGN_PARAGRAPH.CENTER)
+    elif header:
         cells = table.add_row().cells
         for i, h in enumerate(header):
             _cell_text(cells[i], h, bold=True, align=WD_ALIGN_PARAGRAPH.CENTER)
+
     for idx, row in enumerate(rows):
         cells = table.add_row().cells
         for i in range(ncols):
@@ -200,7 +227,7 @@ def _add_table(doc, header, rows, unit_line=None, col_widths_cm=None, bold_rows=
 
     widths = list(col_widths_cm or [])
     if len(widths) != ncols:
-        first = 6.6 if ncols <= 4 else 5.0
+        first = 6.6 if ncols <= 4 else 4.6
         rest = max(TEXT_WIDTH_CM - first, 4.0) / max(ncols - 1, 1)
         widths = [first] + [round(rest, 2)] * max(ncols - 1, 0)
     total = sum(widths)
@@ -215,8 +242,9 @@ def _add_table(doc, header, rows, unit_line=None, col_widths_cm=None, bold_rows=
 
     for i, w in enumerate(widths):
         table.columns[i].width = Cm(w)
+    hdr_rows = 2 if two_row else (1 if header else 0)
     for idx, row in enumerate(table.rows):
-        _row_props(row, header=(idx == 0 and bool(header)))
+        _row_props(row, header=(idx < hdr_rows))
         for i, w in enumerate(widths):
             if i < len(row.cells):
                 row.cells[i].width = Cm(w)
@@ -307,14 +335,33 @@ def render_report(data: dict[str, Any], out_path: str | Path) -> Path:
         # 总述段与业务构成表是两个块，中间要有空行（原来这里漏了，
         # 表就顶在总述段的最后一行上）
         _gap()
-        _add_table(
-            doc,
-            seg.get("header") or ["业务板块", "营业收入", "收入占比", "毛利率"],
-            seg.get("rows") or [],
-            unit_line=seg.get("unit_line", "单位：亿元"),
-            col_widths_cm=seg.get("col_widths_cm") or [4.91, 3.91, 3.1, 3.1],
-            bold_rows=[len(seg.get("rows") or []) - 1] if seg.get("last_row_bold", True) else [],
-        )
+        # 表前引导语是一句正文（「2023—2025年及2026年1—6月，公司收入、占比及毛利率情况如下：」），
+        # 按正文排版，不做成居中的表题。
+        if seg.get("caption"):
+            cap = _add_para(doc, seg["caption"])
+            cap.paragraph_format.keep_with_next = True
+        if seg.get("periods") and seg.get("sub_cols"):
+            groups = [{"label": p, "cols": list(seg["sub_cols"])} for p in seg["periods"]]
+            _add_table(
+                doc,
+                seg.get("sub_cols") or ["营业收入", "收入占比"],
+                seg.get("rows") or [],
+                unit_line=seg.get("unit_line", "单位：亿元"),
+                col_widths_cm=seg.get("col_widths_cm"),
+                bold_rows=[len(seg.get("rows") or []) - 1],
+                groups=groups,
+                extra_cols=seg.get("extra_cols") or [],
+                first_col="业务板块",
+            )
+        else:
+            _add_table(
+                doc,
+                seg.get("header") or ["业务板块", "营业收入", "收入占比", "毛利率"],
+                seg.get("rows") or [],
+                unit_line=seg.get("unit_line", "单位：亿元"),
+                col_widths_cm=seg.get("col_widths_cm") or [4.91, 3.91, 3.1, 3.1],
+                bold_rows=[len(seg.get("rows") or []) - 1] if seg.get("last_row_bold", True) else [],
+            )
     _gap()
 
     from generator import segment_heading  # 与网页预览、校验共用同一套编号口径
