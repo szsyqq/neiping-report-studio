@@ -3963,28 +3963,74 @@ function curModel(){
 }
 
 /* 选中文字：只有 6 字以上才浮出来。选两三个字多半是在改错别字，
-   调一次模型要几十秒，不如自己敲。 */
+   调一次模型要几十秒，不如自己敲。
+
+   正文有两种编辑面，两种都要能选中：
+   · textarea —— 绝大多数段落，有 selectionStart/End，坐标拿不到；
+   · contenteditable —— 分部业务段、专题段，只有 Range。
+   以前只认 textarea，那两处选了半天没有浮条，看着像功能不存在。 */
 let selTimer = null;
 document.addEventListener("selectionchange", () => {
   clearTimeout(selTimer);
   selTimer = setTimeout(selProbe, 60);
 });
-/* 鼠标松开也要探一次：textarea 里拖选完成时 selectionchange 不一定按预期触发 */
-document.addEventListener("mouseup", () => setTimeout(selProbe, 0));
+/* 记最后一次指针位置：textarea 拿不到选区坐标，浮条就贴到鼠标松开的地方。
+   不记这个就只能贴 textarea 的整块矩形——一段两百字、选区在中间，
+   浮条却跑到框顶上，整块一滚就在视口外，看着像「点了没反应」。 */
+let selAnchor = null;
+document.addEventListener("mouseup", e => {
+  selAnchor = { x: e.clientX, y: e.clientY };
+  setTimeout(selProbe, 0);
+});
 document.addEventListener("keyup", e => {
   if(e.shiftKey || e.key === "Shift") setTimeout(selProbe, 0);
 });
 
-function selProbe(){
+function selEditable(){
+  // 先看 Range 落在哪个可编辑容器里，再退回 textarea。
+  // 顺序不能反：textarea 是 activeElement 时若先返回它，用户在分部段里
+  // 重新选的区就被忽略，浮条永远出不来（textarea 的 selectionStart 还停在原处）。
+  const sel = window.getSelection();
+  if(sel && sel.rangeCount && !sel.isCollapsed){
+    let n = sel.anchorNode;
+    if(n && n.nodeType !== 1) n = n.parentElement;
+    // contenteditable 的实际取值是 "plaintext-only"，只写 ="true" 匹配不到
+    const ce = n && n.closest ? n.closest('[contenteditable], .seg-line, .topic-body') : null;
+    if(ce && ce.closest("#draftArea")) return { mode: "ce", el: ce, range: sel.getRangeAt(0) };
+  }
   const a = document.activeElement;
-  const el = (a && a.tagName === "TEXTAREA" && a.closest && a.closest("#draftArea")) ? a : null;
-  if(!el || RF.busy) return selHide();
-  const s = el.selectionStart || 0, e = el.selectionEnd || 0;
-  const txt = (el.value || "").slice(s, e);
-  if(e - s < 6 || !txt.trim()) return selHide();
-  SEL.el = el; SEL.start = s; SEL.end = e; SEL.text = txt;
+  if(a && a.tagName === "TEXTAREA" && a.closest && a.closest("#draftArea")) return { mode: "ta", el: a };
+  return null;
+}
+
+function selProbe(){
+  if(RF.busy) return selHide();
+  // 弹窗开着时不去抢选区：对照卡上的文字也能选，但不该再弹一层浮条
+  const m = $("#rfModal");
+  if(m && m.classList.contains("show")) return selHide();
+
+  const hit = selEditable();
+  if(!hit) return selHide();
+  const el = hit.el;
+
+  let txt = "", rect = null;
+  if(hit.mode === "ta"){
+    const s = el.selectionStart || 0, e = el.selectionEnd || 0;
+    txt = (el.value || "").slice(s, e);
+    if(e - s < 6 || !txt.trim()) return selHide();
+    SEL.mode = "ta"; SEL.start = s; SEL.end = e;
+  }else{
+    txt = String(hit.range.toString() || "");
+    if(txt.trim().length < 6) return selHide();
+    SEL.mode = "ce"; SEL.range = hit.range.cloneRange();
+    // 跨行选区要用最后一行定位：getBoundingClientRect 给的是整块包围盒，
+    // 选区在长段中间时它的 top 可能远在视口上方
+    const rs = hit.range.getClientRects();
+    rect = rs.length ? rs[rs.length - 1] : hit.range.getBoundingClientRect();
+  }
+  SEL.el = el; SEL.text = txt;
   SEL.section = sectionOfTa(el);
-  selShow(el);
+  selShow(el, rect);
 }
 
 function sectionOfTa(el){
@@ -3996,7 +4042,7 @@ function sectionOfTa(el){
   return map[blk.id] || "";
 }
 
-function selShow(el){
+function selShow(el, rect){
   let bar = $("#selBar");
   if(!bar){
     bar = document.createElement("div");
@@ -4013,12 +4059,24 @@ function selShow(el){
     document.body.appendChild(bar);
   }
   if(isPhone()){ bar.classList.add("show"); return; }   // 手机上钉在底部，位置由 CSS 定
-  const r = el.getBoundingClientRect();
   bar.classList.add("show");
   const w = bar.offsetWidth || 300, h = bar.offsetHeight || 30;
-  let left = Math.min(Math.max(8, r.right - w), innerWidth - w - 8);
-  let top = r.top - h - 8;
-  if(top < 56) top = Math.min(r.bottom + 8, innerHeight - h - 8);   // 上方放不下就放到下面
+
+  // 优先贴选区本身；拿不到（textarea）就贴鼠标松开处；都没有才退回元素矩形。
+  let ax, ay;
+  if(rect && (rect.width || rect.height)){
+    ax = rect.right; ay = rect.top;
+  }else if(selAnchor){
+    ax = selAnchor.x; ay = selAnchor.y;
+  }else{
+    const r = el.getBoundingClientRect();
+    ax = r.right; ay = r.top;
+  }
+  // 一律夹在视口内：夹不住就会出现「浮条在但看不见」——它在视口外面
+  const left = Math.min(Math.max(8, ax - w), innerWidth - w - 8);
+  let top = ay - h - 8;
+  if(top < 56) top = Math.min(ay + 20, innerHeight - h - 10);
+  top = Math.max(8, Math.min(top, innerHeight - h - 10));
   bar.style.left = left + "px";
   bar.style.top = top + "px";
 }
@@ -4037,19 +4095,44 @@ function selAsk(){
    模型才不会顺手把别的段落也改了。 */
 async function selRun(action, hint){
   if(!SEL.el) return;
-  const el = SEL.el, s = SEL.start, e = SEL.end;
-  const val = el.value || "";
-  const before = val.slice(Math.max(0, s - 220), s);
-  const after = val.slice(e, Math.min(val.length, e + 160));
-  RF.el = el; RF.start = s; RF.end = e;
-  RF.before = val.slice(s, e); RF.action = action === "custom" ? "rewrite" : action; RF.hint = hint || "";
+  const el = SEL.el;
+  // 两种编辑面取「整段文本 + 选中位置」的方式不同，后面统一成
+  // before / sel / after 三段，改写逻辑就不必再分叉。
+  // CE 模式不发位置，替换靠保存下来的 Range 精确落点。
+  // 以前用 innerText.indexOf(选区文本) 反算位置，对不上时「退回整段替换」——
+  // 结果是把整段换成模型返回的一句话，原文后半截还在，直接重复一遍。
+  let val, s, e, before, after, selText;
+  if(SEL.mode === "ce"){
+    val = el.innerText || el.textContent || "";
+    selText = SEL.text || "";
+    s = -1; e = -1;
+    before = val.slice(0, 220);
+    after = val.slice(-160);
+  }else{
+    val = el.value || ""; s = SEL.start; e = SEL.end;
+    before = val.slice(Math.max(0, s - 220), s);
+    after = val.slice(e, Math.min(val.length, e + 160));
+    selText = val.slice(s, e);
+  }
+  RF.el = el; RF.mode = SEL.mode; RF.start = s; RF.end = e;
+  if(SEL.mode === "ce") RF.range = SEL.range.cloneRange();
+  // 分部段以「1）××业务方面，」起句，那是段落编号与板块名，不是正文。
+  // 选区常把它一起框进来，模型顺手就压缩掉了，段落格式跟着散架——
+  // 在要求里点明一句，比事后修补可靠。
+  let hint2 = hint || "";
+  if(SEL.mode === "ce"){
+    const pre = (selText || "").match(
+      /^\s*\d+\s*[）)．.]\s*[^，。；\n]{1,16}(?:业务|板块|产品|服务|行业)?方面[，,]/);
+    if(pre) hint2 = (hint2 ? hint2 + "；" : "") + `开头「${pre[0].trim()}」是段落编号与板块名，必须原样保留`;
+  }
+  RF.before = selText; RF.action = action === "custom" ? "rewrite" : action; RF.hint = hint2;
   selHide();
   rfmOpen({ title: "改写这一段", sub: "改的是你选中的那一句，前后文只作语境。确认后点「换上去」。",
             before: RF.before, after: "", note: "正在改…", busy: true });
   try{
     const j = await runJob("refine", {
       text: RF.before, action: action === "custom" ? "rewrite" : action,
-      hint: hint || "", before, after, section: SEL.section,
+      hint: RF.hint || "", before, after, section: SEL.section,
       full: val, model: curModel()
     });
     rfmOpen({ title: "改写这一段", sub: "确认后点「换上去」，不换就点「放弃」。",
@@ -4125,13 +4208,38 @@ function rfmAccept(){
   if(!RF.el) return rfmClose();
   const el = RF.el;
   if(o.append){                                   // 补写：接到段末
-    el.value = joinCn(el.value || "", o.after || "");
+    if(RF.mode === "ce"){
+      el.innerText = joinCn(el.innerText || "", o.after || "");
+    }else{
+      el.value = joinCn(el.value || "", o.after || "");
+    }
   }else{
-    if(RF.start < 0) return rfmClose();
-    el.setRangeText(o.after || "", RF.start, RF.end, "select");
+    // 两种模式的「位置」是两种东西：textarea 用 start/end，CE 用 Range。
+    // 拿 start<0 当统一守卫会把 CE 的替换直接挡掉（它的 start 本来就是 -1）。
+    if(RF.mode === "ce"){
+      if(!RF.range) return rfmClose();
+    }else if(RF.start < 0){
+      return rfmClose();
+    }
+    if(RF.mode === "ce"){
+      // contenteditable 只能按 Range 换。原 Range 存的是克隆，用户点按钮后
+      // 焦点已离开正文，这里直接拿它改 DOM 再补一个 input 事件，
+      // 让分部段的板块名解析跑一遍。
+      const r = RF.range;
+      if(!r) return rfmClose();
+      r.deleteContents();
+      const node = document.createTextNode(o.after || "");
+      r.insertNode(node);
+      const sel = window.getSelection();
+      const after = document.createRange();
+      after.setStartAfter(node); after.collapse(true);
+      sel.removeAllRanges(); sel.addRange(after);
+    }else{
+      el.setRangeText(o.after || "", RF.start, RF.end, "select");
+    }
   }
   el.dispatchEvent(new Event("input", { bubbles: true }));
-  autoGrow(el);
+  if(RF.mode !== "ce") autoGrow(el);
   if(S.rev) S.rev.dirty = true;                    // 手改过，复核结果不自动替换
   RF.start = RF.end = -1;
   rfmClose();
@@ -5912,7 +6020,8 @@ async function retryMailList(){
 }
 
 function mailDocxOption(){
-  // 优先用已导出的最新一份；没有就现场排版
+  // 这里只决定「文件名显示成什么」，不决定发什么内容：
+  // 发送一律按当前页面的这一稿现场排版（见 runMail 的 payload.draft）。
   const docs = (PKG.data && PKG.data.docx) || [];
   if(MAIL.docx) return { name: MAIL.docx, live: false, meta: "" };
   if(docs.length) return { name: docs[0].name, live: false, meta: docs[0].mtime || "" };
@@ -5949,7 +6058,7 @@ function renderMailPanel(){
     <div class="mlatt">
       <label class="r"><input type="checkbox" checked disabled />
         <span class="n">${d.live ? (esc(co) || "报告") + "内评简评报告.docx" : esc(d.name)}
-          <i>${d.live ? "尚未导出，发送时现场排版" : "报告正文" + (d.meta ? " · 导出于 " + esc(d.meta) : "")}</i></span></label>`;
+          <i>报告正文 · 按当前页面这一稿排版${d.meta ? "（导出于 " + esc(d.meta) + "）" : ""}</i></span></label>`;
 
   if(pdfs.length){
     h += `<label class="r"><input type="checkbox" id="mlPdf" ${MAIL.withPdf ? "checked" : ""}
@@ -6074,15 +6183,18 @@ async function runMail(){
   st.textContent = "正在连接邮件服务器…";
   try{
     if(!cfg.ready) throw new Error("还没配发件邮箱：点「设置」填 SMTP 服务器与授权码");
-    // 没导出过就现场排版：把草稿带上，服务端会先出 docx 再发
-    if(!MAIL.docx && !((PKG.data && PKG.data.docx) || []).length && S.draft){
-      payload.draft = collectDraft();
-    }else{
+    // 一律把页面上的这一稿带上，服务端按它现场排版再发。
+    // 以前是「导出过就传文件名、不发草稿」，于是改完正文点发送，发出去的是
+    // 上一次导出的旧稿——屏幕上一版、收件人手上另一版，两边都看不出来。
+    if(S.draft) payload.draft = collectDraft();
+    // 文件名只作为「没有草稿时」的回落（例如从历史记录打开、只有文件没有稿子）
+    if(!payload.draft){
       payload.docx = MAIL.docx || (((PKG.data && PKG.data.docx) || [])[0] || {}).name || "";
     }
-    // 分析附件由草稿现场生成：带了附件就必须带草稿，否则服务端只能拿它存的那份
-    if(anaKeys.length && !payload.draft && S.draft) payload.draft = collectDraft();
     const r = await api("/api/mail", payload);
+    // 服务端按当前稿重排过，附件名可能与面板上显示的那份不同：记下真实的那份
+    const sent = (r.attachments || []).find(x => /\.docx$/i.test(typeof x === "string" ? x : (x.name || "")));
+    if(sent) MAIL.docx = typeof sent === "string" ? sent : sent.name;
     st.textContent = `已发送 · ${r.attachments.length} 个附件 · ${fmtSize(r.size)}`;
     toast(`已发送给 ${r.to.join("、")}`);
     MAIL.to = payload.to; MAIL.subject = payload.subject; MAIL.body = payload.body;
