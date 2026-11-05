@@ -135,6 +135,15 @@ def build(password: str | None = None, new_pw: bool = False) -> None:
         if src.is_dir():
             shutil.copytree(src, OUT / "site" / sub, dirs_exist_ok=True)
 
+    # 公司名词库：这是知识，不是会话状态，跟着包走。
+    # 容器里 data/ 是空的，不带上它，云端第一次联想只剩企业名录与公告库两路——
+    # 简称（「中航资本」这类）就联想不出词库里那些全称了。只拷这一个文件，
+    # 历史记录、上传件、SMTP 配置一律不带。
+    names_src = BASE / "data" / "company_names.json"
+    if names_src.is_file():
+        (OUT / "data").mkdir(exist_ok=True)
+        shutil.copy2(names_src, OUT / "data" / "company_names.json")
+
     # 口令优先级：命令行 --password > --new-pw 随机 > 上次生成的值 > 出厂默认
     #
     # 默认「沿用上次」而不是每次随机：口令是要发给使用者的，重发一次云端
