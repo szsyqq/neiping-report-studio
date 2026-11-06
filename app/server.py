@@ -1301,6 +1301,10 @@ def _upgrade_record(rec: dict) -> dict:
     for k in ("financial_table", "segment_table"):
         if isinstance(c.get(k), dict):
             c[k] = generator.reorder_table(c[k])
+    # 毛利率列的期次口径变了（现取表内最新一期）：旧记录的列名一并改过来，
+    # 否则打开旧报告看到的还是「2025年毛利率」挨着 2026年1-6月那一列。
+    if isinstance(c.get("segment_table"), dict):
+        c["segment_table"] = generator.normalize_seg_gm(c["segment_table"])
     if c:
         draft["commentary"] = c
         rec["draft"] = draft
@@ -1366,13 +1370,20 @@ def api_prompt(payload: dict) -> dict:
         st = STATE.get(_key(company)) or {}
         facts = st.get("facts") or {}
         materials = st.get("materials") or []
-    if not materials:
-        raise ValueError("请先拉取材料，或上传 PDF")
     titles = {t for t in (payload.get("titles") or []) if t}
     if titles:
         materials = [m for m in materials if m.get("title") in titles] or materials
-    prompt = generator.build_user_prompt(facts or facts_mod.empty_facts(company), materials)
-    return {"prompt": prompt, "system": generator.SYSTEM_PROMPT,
+    # 没材料也要能看提示词：写作要求那一部分与材料无关，把整页挡掉只会让人
+    # 以为「提示词功能坏了」。缺的只是「本次材料」那一段，缺什么就说什么。
+    note = ""
+    if not materials:
+        prompt = ""
+        note = "还没有读材料：下面是固定的写作要求，材料那一段要等拉取材料后才有。"
+    else:
+        prompt = generator.build_user_prompt(facts or facts_mod.empty_facts(company), materials)
+    # 分节视图：页面按「骨干 + 各段」展示，与模型收到的同一份文本，不另存副本。
+    return {"prompt": prompt, "prompt_note": note, "system": generator.SYSTEM_PROMPT,
+            "sections": generator.prompt_sections(),
             "traits": generator.describe_traits(facts or {})}
 
 

@@ -936,6 +936,40 @@ body.dragging .item-ghost{display:flex}
 .setact .msg.err{color:var(--red)}
 .setact .msg.ok{color:#2e7d32}
 
+/* ── 提示词（骨干 + 各段落，按段查，不再给人一整块长文） ───────── */
+#pmtMask{position:fixed;inset:0;z-index:72;display:none;background:rgba(17,20,24,.28);
+  -webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)}
+#pmtMask.show{display:flex;align-items:center;justify-content:center}
+.pmtbox{width:900px;max-width:calc(100% - 28px);height:78vh;display:flex;flex-direction:column;
+  background:#fff;border-radius:10px;box-shadow:0 20px 60px rgba(17,20,24,.20);
+  overflow:hidden;text-align:left}
+.pmtbox .ph{display:flex;align-items:center;gap:8px;padding:14px 18px 11px;
+  border-bottom:1px solid var(--line);flex:none}
+.pmtbox .ph b{font-size:14px}
+.pmtbox .ph .sub{font-size:11px;color:var(--muted)}
+.pmtbox .ph .x{margin-left:auto;border:0;background:transparent;color:#b9bfc8;font-size:16px;
+  cursor:pointer;line-height:1;padding:2px 4px}
+.pmtbox .ph .x:hover{color:var(--red)}
+.pmtbody{flex:1;display:grid;grid-template-columns:188px minmax(0,1fr);min-height:0}
+.pmtnav{border-right:1px solid var(--line2);overflow:auto;padding:6px 0}
+.pmtnav button{display:block;width:100%;text-align:left;border:0;background:transparent;
+  font-size:12px;color:var(--ink2);padding:7px 14px;cursor:pointer;line-height:1.4}
+.pmtnav button:hover{background:var(--hover)}
+.pmtnav button.on{background:#eef2f7;color:var(--ink);font-weight:600}
+.pmtnav .n{color:var(--muted);font-size:10.5px;margin-left:3px;font-weight:400}
+.pmtview{overflow:auto;padding:14px 20px 26px}
+.pmthint{font-size:11.5px;color:var(--muted);line-height:1.65;margin-bottom:12px;
+  padding-bottom:10px;border-bottom:1px dashed var(--line)}
+.pmtrule{margin:0 0 13px}
+.pmtrule .no{display:inline-block;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:10.5px;color:#5a6472;background:#f2f4f7;border-radius:3px;padding:1px 5px;
+  margin-right:6px;vertical-align:1px}
+.pmtrule .tx{font-size:12.5px;line-height:1.78;color:var(--ink);white-space:pre-wrap;
+  word-break:break-word}
+.pmtact{flex:none;display:flex;align-items:center;gap:8px;padding:10px 18px;
+  border-top:1px solid var(--line);background:#fcfcfd}
+.pmtact .grow{flex:1;font-size:11px;color:var(--muted)}
+
 /* ── 版本历史（每次改动一份可运行的快照） ───────────────────────── */
 #verMask{position:fixed;inset:0;z-index:71;display:none;background:rgba(17,20,24,.28);
   -webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)}
@@ -1430,6 +1464,7 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
 </div>
 <div id="setMask"><div class="setbox" id="setBox"></div></div>
 <div id="verMask"><div class="verbox" id="verBox"></div></div>
+<div id="pmtMask"><div class="pmtbox" id="pmtBox"></div></div>
 <div id="fabNav">
   <button id="fabFlow" onclick="jumpTo('flow')" title="回到上方：检索、读材料、生成">↑ 流程</button>
   <button id="fabDoc" onclick="jumpTo('doc')" title="跳到正文">正文 ↓</button>
@@ -3087,7 +3122,7 @@ function renderActions(d){
   <div class="doccol">
     <div class="docbar">
       <div class="acts">
-        <button class="btn-sm" onclick="copyPrompt()" title="复制本次用的提示词">提示词</button>
+        <button class="btn-sm" onclick="openPrompt()" title="看提示词：骨干 + 各段落分别要求了什么">提示词</button>
         <div class="end">
           <div class="pkgwrap">
             <button class="btn-sm ico" id="btnMail" onclick="toggleMail(event)" title="把修订版发到邮箱">${ICON.mail}发送</button>
@@ -3429,7 +3464,7 @@ function renderDraft(){
   <div class="doccol">
     <div class="docbar">
       <div class="acts">
-        <button class="btn-sm" onclick="copyPrompt()" title="复制本次用的提示词">提示词</button>
+        <button class="btn-sm" onclick="openPrompt()" title="看提示词：骨干 + 各段落分别要求了什么">提示词</button>
         <span class="revchip" id="revChip"></span>
         <button class="btn-sm" id="btnGap" onclick="toggleParaGap()"
           title="段与段之间是否空一行（加粗句与它的正文始终连着）">${gapOn ? "段落空行：有" : "段落空行：无"}</button>
@@ -3481,16 +3516,15 @@ function renderDraft(){
       ${addSec("basic", "1、基本情况后")}
     </div>
     <div class="blk" id="blk-industry">
-      <div class="doc-h first">2、行业情况</div>
-      ${ta("in-lead lead", c.industry && c.industry.lead)}
+      <div class="doc-h first">2、点评</div>
+      ${(c.industry && (c.industry.lead || "").trim()) ? ta("in-lead lead", c.industry.lead) : ""}
       ${ta("in-body", c.industry && c.industry.body)}
-      ${addSec("industry", "2、行业情况后")}
+      ${addSec("industry", "行业段后")}
     </div>
     <div class="blk" id="blk-overview">
-      <div class="doc-h first">3、点评</div>
       ${ta("ov-lead lead", c.overview && c.overview.lead)}
       ${ta("ov-body", c.overview && c.overview.body)}
-      ${addSec("overview", "3、点评的总述段后")}`;
+      ${addSec("overview", "总述段后")}`;
 
   if(c.segment_table && c.segment_table.rows) h += tableHtml(c.segment_table);
 
@@ -3498,6 +3532,13 @@ function renderDraft(){
     <div class="blk" id="blk-segments">
       <div id="d-segs"></div>
       <button class="add" onclick="addSeg()">+ 板块</button>
+    </div>
+    <div class="blk" id="blk-profit">
+      <div class="blk-tag">盈利与现金流</div>
+      ${ta("pf-lead lead", c.profit && c.profit.lead)}
+      ${ta("pf-body", c.profit && c.profit.body)}
+      ${addSec("profit", "盈利与现金流段后")}
+      <span id="blk-cash"></span>
     </div>
     <div class="blk" id="blk-asset">
       ${ta("as-lead lead", c.asset && c.asset.lead)}
@@ -3509,13 +3550,6 @@ function renderDraft(){
     h += tableHtml(c.financial_table) + `</div>`;
   }
   h += `</div>
-    <div class="blk" id="blk-profit">
-      <div class="blk-tag">盈利与现金流</div>
-      ${ta("pf-lead lead", c.profit && c.profit.lead)}
-      ${ta("pf-body", c.profit && c.profit.body)}
-      ${addSec("profit", "盈利与现金流段后")}
-      <span id="blk-cash"></span>
-    </div>
     <div class="blk" id="blk-debt">
       ${ta("db-lead lead", c.debt && c.debt.lead)}
       ${ta("db-body", c.debt && c.debt.body)}
@@ -3792,7 +3826,7 @@ const ADD_TOPICS = {
   market: ["成交与估值水平", "与同评级主体的比较"],
 };
 const ADD_SECTION_LABEL = {
-  basic: "1、基本情况", industry: "2、行业情况", overview: "3、点评（总述段）",
+  basic: "1、基本情况", industry: "2、点评（第一段·行业）", overview: "2、点评（第二段·总述）",
   asset: "资产段", profit: "盈利与现金流", debt: "债务段", market: "二级市场定价",
 };
 const ADD_TA = {
@@ -3950,7 +3984,7 @@ function selProbe(){
 function sectionOfTa(el){
   const blk = el.closest(".blk");
   if(!blk) return "";
-  const map = { "blk-basic": "基本情况", "blk-industry": "行业情况", "blk-overview": "点评总述段",
+  const map = { "blk-basic": "基本情况", "blk-industry": "点评第一段（行业）", "blk-overview": "点评总述段",
     "blk-asset": "资产段", "blk-profit": "盈利与现金流", "blk-debt": "债务段",
     "blk-market": "二级市场定价", "blk-segments": "分部业务" };
   return map[blk.id] || "";
@@ -4352,8 +4386,8 @@ const CK_RULES = [
   [/正面不足/, "正面不足 3 条", "blk-pos"],
   [/关注不足/, "关注不足 3 条", "blk-con"],
   [/总述段缺加粗汇总句/, "总述段缺加粗句", "blk-overview"],
-  [/缺行业情况段/, "缺行业情况段", "blk-industry"],
-  [/行业情况偏薄|行业段没有数据/, "行业情况", "blk-industry"],
+  [/缺行业情况段|点评缺第一段/, "点评缺第一段（行业）", "blk-industry"],
+  [/行业情况偏薄|行业段偏薄|行业段没有数据/, "点评第一段（行业）", "blk-industry"],
   [/缺注册资本|缺注册资本\/实收资本/, "注册资本与实收资本", "blk-basic"],
   [/写了没有变化的事/, "没有变化的事", "blk-basic"],
   [/正文偏短/, "正文偏短", "d-doc"],
@@ -4365,7 +4399,7 @@ const WHERE_RULES = [
   [/分部|板块|业务/, "blk-segments"], [/资产/, "blk-asset"],
   [/盈利|利润|亏损|毛利|现金流|收现比|经营活动净现金流/, "blk-profit"],
   [/二级市场|利差|定价/, "blk-market"],
-  [/行业情况|行业景气|供需/, "blk-industry"],
+  [/行业情况|行业景气|供需|第一段（行业）/, "blk-industry"],
   [/债务|负债|有息/, "blk-debt"], [/基本/, "blk-basic"],
   [/专题/, "blk-topics"], [/财务|表/, "blk-fintable"],
 ];
@@ -4754,8 +4788,8 @@ function ckTextFields(){
   push(document.querySelector(".ta.basic"), "basic", "基本情况");
   // 加粗句也要进候选池：主语类问题瞄准的就是加粗句，
   // 只收 body 的话，引文在加粗句里就搜不到，点了没反应。
-  push(document.querySelector(".ta.in-lead"), "in-lead", "行业情况加粗句");
-  push(document.querySelector(".ta.in-body"), "in", "行业情况");
+  push(document.querySelector(".ta.in-lead"), "in-lead", "行业段加粗句");
+  push(document.querySelector(".ta.in-body"), "in", "点评第一段（行业）");
   push(document.querySelector(".ta.ov-lead"), "ov-lead", "总述段加粗句");
   push(document.querySelector(".ta.ov-body"), "ov", "总述段");
   push(document.querySelector(".ta.as-lead"), "as-lead", "资产段加粗句");
@@ -5597,9 +5631,100 @@ async function exportDocx(){
   }
 }
 
-async function copyPrompt(){
+/* 提示词面板：骨干 + 各段落。
+   模型读的是一整块长文，人不是——想问「资产段到底要求了什么」，原来得在六十多条
+   规则里翻。这里按段切开，先给骨干，再一段一段给；显示的就是模型收到的原文
+   （同一份 SYSTEM_PROMPT 解析而来，不另存副本）。 */
+const PMT = { data: null, cur: "" };
+
+async function openPrompt(){
+  $("#pmtMask").classList.add("show");
+  $("#pmtBox").innerHTML = `<div class="ph"><b>提示词</b><span class="sub">正在读取…</span>
+    <button class="x" onclick="closePrompt()">×</button></div>`;
   try{
     const r = await api("/api/prompt", { company: curCo(), titles: S.loaded.slice() });
+    PMT.data = r;
+    PMT.cur = (r.sections && r.sections[0]) ? r.sections[0].key : "_user";
+    paintPrompt();
+  }catch(e){
+    $("#pmtBox").innerHTML = `<div class="ph"><b>提示词</b><span class="sub">读取失败</span>
+      <button class="x" onclick="closePrompt()">×</button></div>
+      <div class="pmtview"><div class="pmthint">${esc(e.message)}</div></div>`;
+  }
+}
+
+function closePrompt(){ $("#pmtMask").classList.remove("show"); }
+
+function pmtPick(k){ PMT.cur = k; paintPrompt(); }
+
+function pmtSections(){
+  const d = PMT.data || {};
+  const secs = (d.sections || []).slice();
+  // 用户提示（材料与台账）放在最后一节：它随材料变，不属于「要求」那一层，
+  // 但看提示词的人迟早要问「材料是怎么塞进去的」。
+  if(d.prompt) secs.push({ key: "_user", name: "本次的材料与台账",
+    hint: "这一段随材料变；上面各节是固定的写作要求。两者一起发给模型。", items: null });
+  return secs;
+}
+
+function paintPrompt(){
+  const d = PMT.data || {};
+  const secs = pmtSections();
+  let cur = secs.find(x => x.key === PMT.cur) || secs[0];
+  if(!cur) return;
+  PMT.cur = cur.key;
+
+  let nav = "";
+  for(const x of secs){
+    nav += `<button class="${x.key === cur.key ? "on" : ""}" onclick="pmtPick('${esc(x.key)}')">`
+      + `${esc(x.name)}<span class="n">${x.items ? x.items.length : "长文"}</span></button>`;
+  }
+
+  let body = "";
+  if(cur.items){
+    for(const it of cur.items){
+      body += `<div class="pmtrule"><span class="no">${esc(it.no)}</span>`
+        + `<span class="tx">${esc(it.text)}</span></div>`;
+    }
+  }else{
+    body = `<div class="pmtrule"><span class="tx">${esc(d.prompt || "")}</span></div>`;
+  }
+
+  $("#pmtBox").innerHTML = `
+    <div class="ph"><b>提示词</b>
+      <span class="sub">${esc(d.prompt_note || "骨干在前，各段落按成稿顺序排；显示的就是模型收到的原文")}</span>
+      <button class="x" onclick="closePrompt()">×</button></div>
+    <div class="pmtbody">
+      <div class="pmtnav">${nav}</div>
+      <div class="pmtview"><div class="pmthint">${esc(cur.hint || "")}</div>${body}</div>
+    </div>
+    <div class="pmtact">
+      <span class="grow">改提示词请改 <code>app/generator.py</code> 的 SYSTEM_PROMPT，这一页跟着变。</span>
+      <button class="btn-sm" onclick="copyPromptSection()">复制本节</button>
+      <button class="btn-sm" onclick="copyPrompt()">复制全部</button>
+    </div>`;
+}
+
+function pmtCurrentText(){
+  const secs = pmtSections();
+  const cur = secs.find(x => x.key === PMT.cur);
+  if(!cur) return "";
+  if(!cur.items) return (PMT.data.prompt || "");
+  return cur.items.map(it => `${it.no}　${it.text}`).join("\n\n");
+}
+
+async function copyPromptSection(){
+  const t = pmtCurrentText();
+  if(!t) return;
+  try{
+    await navigator.clipboard.writeText(t);
+    toast("本节已复制");
+  }catch(e){ toast("复制失败，请手动选中", true); }
+}
+
+async function copyPrompt(){
+  try{
+    const r = PMT.data || await api("/api/prompt", { company: curCo(), titles: S.loaded.slice() });
     await navigator.clipboard.writeText(`【系统提示】\n${r.system}\n\n【用户提示】\n${r.prompt}`);
     toast("提示词已复制");
   }catch(e){ toast(e.message, true); }
@@ -5871,10 +5996,12 @@ function renderVersions(){
 $("#verMask").addEventListener("click", e => { if(e.target.id === "verMask") closeVersions(); });
 
 $("#setMask").addEventListener("click", e => { if(e.target.id === "setMask") closeSettings(); });
+$("#pmtMask").addEventListener("click", e => { if(e.target.id === "pmtMask") closePrompt(); });
 document.addEventListener("keydown", e => {
   if(e.key !== "Escape") return;
   if(SET.open) closeSettings();
   if($("#verMask").classList.contains("show")) closeVersions();
+  if($("#pmtMask").classList.contains("show")) closePrompt();
 });
 
 /* ---------------- 发送邮件 ---------------- */
@@ -6495,106 +6622,86 @@ const TOUR_DATA = {
   "basic_info": "公司前身为中山市公建物业投资管理有限公司，2008年3月成立，后经多次更名与增资，现为中山市城市建设投资管理服务运营商，聚焦城市综合开发、产业园区投资建设运营、基础设施建设三大主业，业务涵盖城市基础设施建设、土地开发、土地指标、物业租赁、公共交通等板块，收入主要来自园区开发及土地转让、物业租赁、公交客运与土地指标出售。截至2026年6月末，公司注册资本42.32亿元，实收资本46.98亿元，实收资本高于注册资本主要系2025年股东将资本公积转增实收资本所致；中山市人民政府持股90.92%，广东省财政厅持股9.08%，中山市政府为控股股东及实际控制人。2026年上半年中山市国资委对公司注资，工商信息暂未变更。截至2026年6月末，公司纳入合并范围的子公司共35家。",
   "commentary": {
    "industry": {
-    "lead": "基础设施投融资行业进入化债攻坚收尾阶段，城投企业融资渠道由非标向银行贷款调整，但存量经营性债务仍需长期市场化消化。",
-    "body": "供需格局方面，2026年上半年中央与地方延续“化债与发展”一体推进，8,000亿元“两重”超长期特别国债全部下达，城市更新“十五五”专项规划落地，基建投资仍是需求端的主要支撑；但2025年中山市固定资产投资同比下降22.6%，2026年上半年降幅收窄至5.7%，区域基建投资力度直接决定公司代建项目结算与土地指标出售的量。价格与成本方面，公司土地指标销售单价按上一年度广东省补充耕地指标公开市场成交均价确定、按年调整，2024年2月调价后单价有所提升；土地二级转让价格则取决于中山市土地市场行情与收储定价，2025年公司转让约1,266.34亩土地实现21.39亿元收入，均价水平受地块区位影响较大。政策方面，2027年退平台硬时限要求推动城投企业实质转型，公司代建项目须与预算单位补签协议后方能结算管理费，这一条直接决定已完工代建项目的回款节奏。传导上，区域基建投资力度决定公司土地指标出售面积与代建结算进度，土地市场行情决定土地转让价格与去化速度，两者共同作用于公司园区开发及土地转让板块的收入与毛利。"
+    "lead": "",
+    "body": "2026年上半年基础设施投融资行业的可用资金仍由中央财政投放与地方化债节奏共同决定。8,000.00亿元「两重」超长期特别国债于年中全部下达，城市更新「十五五」专项规划同期落地，新型基建与城市更新构成本轮增量投资的主要去向；但城投债发行规模继续下降、净融资延续净偿还，借新还旧比例处于历史高位，行业增量资金中相当部分来自银行贷款对非标融资的置换，而非新增项目资本。价格方面，一揽子化债推进下城投债券融资成本延续下行，融资渠道由非标向银行贷款调整，资金链稳定性有所增强，但成本下行只惠及转型进度较快、经营性现金流可覆盖利息的主体。政策上真正作用于这一行业的是全口径债务监测与2027年融资平台退出的硬时限：财政部债务管理司于2026年初全面履职并上线全口径债务监测平台，融资平台「清零」与实质转型同步推进，存量城投经营性债务进入长期市场化消化阶段。这一格局下，融资成本下行与融资渠道收缩同时发生，承担方是经营性现金流不足、依赖借新还旧的尾部平台，政策窗口延续至2027年退平台时限前后。"
    },
    "overview": {
     "lead": "公司收入高度集中于园区开发及土地转让板块，利润对政府补助与投资收益依赖较重，2026年上半年转为亏损。",
     "body": "公司作为中山市城市建设投资管理服务运营商，收入来源分为三类：一是园区开发及土地转让，由子公司板芙城投、中山城投等负责，土地由市土地储备中心收储或出让后按成本加成与镇级财政结算；二是物业租赁、公交客运、土地指标出售等经营性业务，对手方为市场化租户、乘客与用地单位；三是代建管理费与设计测绘等服务性收入，对手方为市财政及政府单位。2025年公司营业总收入30.04亿元，其中园区开发及土地转让收入22.76亿元、占比75.76%，物业租赁收入2.46亿元、占比8.20%，公交客运收入1.83亿元、占比6.11%，土地指标收入0.45亿元、占比1.50%，其余板块合计占比不足一成。收入结构决定了公司盈利主线：园区开发及土地转让的结算进度与毛利率主导整体毛利，公交客运常年亏损、依靠财政补贴平衡，物业租赁提供稳定但规模有限的租金。2025年公司综合毛利率0.61%，净利润0.55亿元；2026年1-6月营业总收入4.08亿元，净利润-1.64亿元，由盈转亏。"
    },
    "segment_table": {
+    "caption": "2023—2025年及2026年1-6月，公司收入及占比情况如下：",
     "unit_line": "单位：亿元",
-    "header": [
-     "业务板块",
-     "营业收入",
-     "收入占比",
-     "毛利率"
+    "periods": [
+     "2026年1-6月",
+     "2025年",
+     "2024年",
+     "2023年"
     ],
+    "sub_cols": [
+     "收入",
+     "占比"
+    ],
+    "extra_cols": [],
     "rows": [
      [
-      "园区开发及土地转让",
-      "22.76",
-      "75.76%",
-      "25.11%"
-     ],
-     [
-      "物业租赁",
+      "租赁业务",
+      "1.32",
+      "32.35%",
       "2.46",
-      "8.20%",
-      "28.16%"
+      "8.19%",
+      "2.12",
+      "7.19%",
+      "2.33",
+      "28.91%"
      ],
      [
       "公交客运",
+      "1.53",
+      "37.50%",
       "1.83",
-      "6.11%",
-      "-405.23%"
+      "6.09%",
+      "1.80",
+      "6.10%",
+      "1.64",
+      "20.35%"
      ],
      [
-      "资产处置",
+      "园区开发及土地转让",
+      "0.16",
+      "3.92%",
+      "22.76",
+      "75.77%",
+      "22.94",
+      "77.79%",
+      "0.79",
+      "9.80%"
+     ],
+     [
+      "其他业务",
+      "0.05",
+      "1.23%",
+      "1.17",
+      "3.89%",
+      "1.04",
+      "3.53%",
       "0.62",
-      "2.07%",
-      "70.35%"
-     ],
-     [
-      "设计测绘",
-      "0.55",
-      "1.84%",
-      "19.72%"
-     ],
-     [
-      "运营管理",
-      "0.47",
-      "1.55%",
-      "-26.20%"
-     ],
-     [
-      "土地指标",
-      "0.45",
-      "1.50%",
-      "79.36%"
-     ],
-     [
-      "公墓业务",
-      "0.26",
-      "0.86%",
-      "87.51%"
-     ],
-     [
-      "保税物流",
-      "0.21",
-      "0.71%",
-      "16.44%"
-     ],
-     [
-      "代建收入",
-      "0.10",
-      "0.33%",
-      "90.65%"
-     ],
-     [
-      "广告业务",
-      "0.10",
-      "0.34%",
-      "-23.89%"
-     ],
-     [
-      "咨询服务费",
-      "0.02",
-      "0.07%",
-      "100.00%"
-     ],
-     [
-      "其他",
-      "0.20",
-      "0.65%",
-      "0.26%"
+      "7.69%"
      ],
      [
       "营业总收入",
+      "4.08",
+      "100%",
       "30.04",
-      "100.00%",
-      "0.61%"
+      "100%",
+      "29.49",
+      "100%",
+      "8.06",
+      "100%"
      ]
+    ],
+    "bold_rows": [
+     4
     ]
    },
    "segments": [
@@ -6723,7 +6830,6 @@ const TOUR_DATA = {
   },
   "validation": {
    "issues": [
-    "行业段的加粗汇总句里没有出现受评主体，读起来不知道在说谁。判断句要有主语：「公司为……」「公司作为……」，或明确换成行业、政策这类外部主语。",
     "4 条算式复算不通过（操作数在材料里找不到，或算出来与正文不符）",
     "1 个数字既对不上材料原文，也没能用同段数据复原算式（差额 1 个），已逐条定位到句，请核对",
     "5 个数字标为推算值，核对算式口径是否与正文一致",
@@ -6731,23 +6837,6 @@ const TOUR_DATA = {
    ],
    "body_chars": 5534,
    "issue_items": [
-    {
-     "t": "加粗句缺主语",
-     "a": "blk-industry",
-     "d": [
-      {
-       "num": "",
-       "where": "行业段加粗句",
-       "kind": "主语",
-       "full": "基础设施投融资行业进入化债攻坚收尾阶段，城投企业融资渠道由非标向银行贷款调整，但存量经营性债务仍需长期市场化消化。",
-       "si": 0,
-       "anchor": "blk-industry",
-       "field": "in-lead",
-       "note": "补主语：公司为……／公司作为……；主语是外部条件时改成明写行业、政策"
-      }
-     ],
-     "fix": "auto"
-    },
     {
      "t": "交底的算式复算不通过",
      "a": "d-doc",

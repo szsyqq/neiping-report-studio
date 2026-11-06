@@ -586,20 +586,19 @@ def render_report(data: dict[str, Any], out_path: str | Path) -> Path:
 
     c = data.get("commentary") or {}
 
-    # 行业情况单列一节。行业的量价与政策放这里，总述段只写公司自己的收入结构——
-    # 两者混在一段里，读者分不清哪句说行业、哪句说公司。
-    #
-    # 编号跟着内容走：这一节有内容时是「2、行业情况」、点评顺延为 3；
-    # 旧稿没有这一节时不留空节，点评仍是「2、点评」。否则导出的成品会跳号
-    # （1、基本情况 → 3、点评），读者以为缺了一页。
-    ind = c.get("industry") or {}
-    has_ind = bool((ind.get("lead") or "").strip() or (ind.get("body") or "").strip())
-    if has_ind:
-        _add_para(doc, "2、行业情况", bold=True, align=WD_ALIGN_PARAGRAPH.LEFT)
-        _add_lead_para(doc, ind.get("lead", ""), ind.get("body", ""))
-        _gap()
+    # 「2、点评」下面第一段是行业，第二段才是总述。
+    # 行业不另立一节：它是点评的开场——外部条件先摆出来，紧接着才说这家公司在
+    # 这个条件下赚了多少、从哪赚的。单独给一节，读者会当成与公司无关的行业综述。
+    _add_para(doc, "2、点评", bold=True, align=WD_ALIGN_PARAGRAPH.LEFT)
 
-    _add_para(doc, "3、点评" if has_ind else "2、点评", bold=True, align=WD_ALIGN_PARAGRAPH.LEFT)
+    ind = c.get("industry") or {}
+    if (ind.get("body") or "").strip():
+        # 新稿的 industry 不带加粗句（它就是一段叙述）；旧稿若带 lead，照旧加粗显示
+        if (ind.get("lead") or "").strip():
+            _add_lead_para(doc, ind.get("lead", ""), ind.get("body", ""))
+        else:
+            _add_para(doc, ind.get("body", ""))
+        _gap()
 
     ov = c.get("overview") or {}
     if ov:
@@ -649,25 +648,6 @@ def render_report(data: dict[str, Any], out_path: str | Path) -> Path:
     if not c.get("segments"):
         pass
 
-    at = c.get("asset") or {}
-    if at:
-        _add_lead_para(doc, at.get("lead", ""), at.get("body", ""))
-        _gap()
-
-    ft = c.get("financial_table")
-    if ft:
-        cap = _add_para(doc, ft.get("caption", "公司主要财务数据和财务指标（合并口径）"),
-                        bold=True, align=WD_ALIGN_PARAGRAPH.CENTER)
-        cap.paragraph_format.keep_with_next = True  # 表题与表格同页
-        _add_table(
-            doc,
-            ["项目"] + list(ft.get("periods") or []),
-            ft.get("rows") or [],
-            unit_line=ft.get("unit_line", "单位：亿元"),
-            col_widths_cm=ft.get("col_widths_cm") or _fin_col_widths(len(ft.get("periods") or [])),
-        )
-        _gap()
-
     pf = c.get("profit") or {}
     cs = c.get("cash") or {}
     # 「盈利与现金流」是一段：新稿只写 profit，老稿可能还带着 cash 段。
@@ -687,8 +667,28 @@ def render_report(data: dict[str, Any], out_path: str | Path) -> Path:
     pf_lead = _join(pf_lead, cs_lead)
     pf_body = _join(str(pf.get("body") or ""), str(cs.get("body") or ""))
     if pf_body or pf_lead:
-        # 位置在财务指标表之后、债务段之前，与网页上的顺序一致。
+        # 位置在分部业务段之后、资产段之前，与网页上的顺序一致：
+        # 先讲这一年赚没赚到钱，再讲资产压在哪儿，最后讲欠了多少。
         _add_lead_para(doc, pf_lead, pf_body)
+        _gap()
+
+    at = c.get("asset") or {}
+    if at:
+        _add_lead_para(doc, at.get("lead", ""), at.get("body", ""))
+        _gap()
+
+    ft = c.get("financial_table")
+    if ft:
+        cap = _add_para(doc, ft.get("caption", "公司主要财务数据和财务指标（合并口径）"),
+                        bold=True, align=WD_ALIGN_PARAGRAPH.CENTER)
+        cap.paragraph_format.keep_with_next = True  # 表题与表格同页
+        _add_table(
+            doc,
+            ["项目"] + list(ft.get("periods") or []),
+            ft.get("rows") or [],
+            unit_line=ft.get("unit_line", "单位：亿元"),
+            col_widths_cm=ft.get("col_widths_cm") or _fin_col_widths(len(ft.get("periods") or [])),
+        )
         _gap()
 
     db = c.get("debt") or {}
@@ -733,8 +733,8 @@ def render_skeleton(template_json: str | Path, out_path: str | Path) -> Path:
         "basic_info": "{{基本情况：成立时间与前身 → 主营与功能定位 → 注册资本与实收资本（不一致时说明差额原因）、股东及持股比例、实际控制人 → 增资到位、上市状态、并表子公司数量。（股权、评级、审计机构未变的，以及董监高更替，一律不写）}}",
         "commentary": {
             "industry": {
-                "lead": "{{行业段加粗判断句：主语是行业或政策，不带数字}}",
-                "body": "{{行业情况（独立一节）：供需格局（产量或需求增速、产能利用率、需求端构成）→ 价格与成本（价格走势与幅度、原材料与能源成本）→ 政策（真正影响这家公司的那一条）→ 传导（怎样落到公司的量、价、毛利上）。每个判断后跟一个可核实的数}}",
+                "lead": "{{留空：行业是点评第一段，不加段首加粗句}}",
+                "body": "{{点评第一段·行业（接在「2、点评」下面直接开始）：供需格局（产量或需求增速、产能利用率、需求端构成）→ 价格与成本（价格走势与幅度、原材料与能源成本）→ 政策（真正作用在这一行业上的那一条）。只写行业，不出现公司及其收入、毛利率、销量；每个判断后跟一个可核实的数}}",
             },
             "overview": {
                 "lead": "{{总述段加粗汇总句：主体定位 + 经营趋势 + 但书}}",

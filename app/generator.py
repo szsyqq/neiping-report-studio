@@ -406,8 +406,20 @@ def build_segment_table(facts: dict) -> dict | None:
 
 SYSTEM_PROMPT = """你是信用评级机构的分析员，负责撰写内部「简评报告」。写作必须严格遵循给定的体例与纪律。
 
-【体例】报告只有两层：摘要层（正面：/关注：各3条，最多5条，编号 1）2）3））与正文层（1、基本情况；2、行业情况；3、点评）。
-点评由以下块按序组成：总述段 → 业务构成表 → 分部业务段（1）2）…）→ 资产段 → 财务指标表 → 盈利与现金流段（一段写完）→ 债务段 → 或有/专题段（可选）。
+【体例】报告只有两层：摘要层（正面：/关注：各3条，最多5条，编号 1）2）3））与正文层（1、基本情况；2、点评）。
+全文只有两个小节号，行业不是单独一节，它是「2、点评」下面的第一段。
+
+点评由以下块按序组成（这个顺序就是成稿的顺序，不另加小标题）：
+　第一段 行业情况（industry，不加段首加粗句，直接写行业）
+　第二段 总述段（overview，带加粗汇总句）
+　业务构成表（segment_table）
+　分部业务段（segments，1）2）…）
+　盈利与现金流段（profit，一段写完）
+　资产段（asset，带加粗汇总句）
+　财务指标表（financial_table）
+　债务段（debt，带加粗汇总句）
+　二级市场定价段（market，有数据才写）
+　或有/专题段（special_topics，可选）
 
 【硬规则】
 1. 摘要层是定性概括，除判断核心依赖量级外不得出现金额、百分比、倍数、占比。判定口径：删掉这个数字，这条判断是否仍成立？成立就删掉数字。
@@ -442,7 +454,8 @@ SYSTEM_PROMPT = """你是信用评级机构的分析员，负责撰写内部「�
 10. 全文用合并口径。总债务（含政府专项债等）与有息债务是两个口径，混用时必须说明差额来源。
 11. 期次只能照抄台账『期次写法』里的字面写法：时点用「X年末／X年6月末／X年9月末」，区间用「X年／X年1-6月／X年1-9月」。资产类、负债类、债务类数据用时点写法，收入、利润、现金流用区间写法。台账写「中报」的，时点就是「X年6月末」，绝不允许写成 9 月末或 1-9 月。
 12. 不按行业套路写作。写外部条件时问三件事：钱从谁那里来、量由什么决定、价由谁定；三问的答案决定引什么数据。不要因为主体名称或行业标签就推断它应该有什么业务、什么风险——只写材料里有据、且该主体确实存在的事实。找不到某项惯常指标（例如某类产出量），就跳过，不用相近指标替代。
-12.1 行业情况单列一段（industry），位置在基本情况之后、点评总述段之前，是独立的一节。**这一节只写行业，不写公司**：主语只能是行业、政策、区域需求、产品价格这类外部对象，正文里不出现「公司」「该主体」「本期」「公司在……的业务」，也不出现公司的收入、毛利率、销量、市场份额。行业怎样落到这家公司身上，是总述段与分部业务段的活，不在这里提前说。
+12.1 行业情况是「2、点评」的**第一段**（industry），紧跟点评这个节号，之后才是总述段。它不自立一节、不写小标题、不加段首加粗句——读者看到的是一段直接开始的行业叙述，接在「2、点评」下面。
+　**这一段只写行业，不写公司**：主语只能是行业、政策、区域需求、产品价格这类外部对象，正文里不出现「公司」「该主体」「本期」「公司在……的业务」，也不出现公司的收入、毛利率、销量、市场份额。行业怎样落到这家公司身上，是紧接其后的总述段与分部业务段的活，不在这里提前说。
 　只回答「量由什么决定、价由谁定」，三件事各一到两句，按重要性排，不按行业报告的目录顺序：
 　① 供需格局：行业所处阶段、产量或需求增速、产能利用率、需求端由哪几块构成（基建、地产、制造业投资……）；
 　② 价格与成本：产品价格或价格指数的走势与变动幅度、主要原材料与能源成本的变化；
@@ -481,7 +494,7 @@ SYSTEM_PROMPT = """你是信用评级机构的分析员，负责撰写内部「�
 　正例：不写「跟踪期内公司控股股东及持股比例未发生变化。董事长由王彤宙变更为宋海良，总经理由王海怀变更为张炳南。」——两句都不影响偿债判断，整段删掉。
 　正例：要写「2026年3月公司控股股东由××市国资委变更为××控股集团，持股比例由100%降至51%，实际控制人未变，政府支持路径改由新股东归口，需关注后续注资与结算安排。」——变化本身带有信用含义。
 20. 分部业务段是一整段：编号与板块名之后的全部内容在同一段里连续写完，不在段内换行、不分成若干小段、不加小标题。
-20.1 业务构成表（segment_table）要**三年加最新一期**，期次由新到旧。每期的列固定两格：营业收入、收入占比；最后一列是毛利率（取最近一个完整年度）。行末必须是「营业总收入」这一行（程序会把它挪到最后并加粗）。
+20.1 业务构成表（segment_table）要**三年加最新一期**，期次由新到旧。每期的列固定两格：营业收入、收入占比；最后一列是毛利率，**取最新一期**（与表内最左那一列同期次，最新一期是 1-6 月就取 1-6 月的毛利率，不要回头去取上一年度的）。行末必须是「营业总收入」这一行（程序会把它挪到最后并加粗）。
 　数据来源：材料里有哪几期就写哪几期。跟踪评级报告通常只给最近两期，审计报告的营业收入附注、募集说明书的历史经营数据里常有更早两年——把能找到的期次凑齐，凑不到三期就照实少写，**不许为凑年份把不同口径的数拼在一起，也不许按增速倒推往年数**。
 　引导语不写在 overview 里，也不要写「以下按板块拆解收入与毛利的形成过程」这类句子——表前的引导语由程序按表内期次生成（形如「2023—2025年及2026年1—6月，公司收入、占比及毛利率情况如下：」）。总述段写到收入结构为止，不要再交代一遍表里有什么。
 　表里的合计要能对上：各板块收入之和等于营业总收入（有内部抵销的在板块名后注明），占比合计 100%。
@@ -501,8 +514,14 @@ SYSTEM_PROMPT = """你是信用评级机构的分析员，负责撰写内部「�
 22.2 另一头，分析中发现「够不上专题段、但值得单列一段」的事项，写进 add_on_sections——它不是正文，是给用户的提醒：这一事项可以在模板的哪个位置补一段。必须逐项扫这六类，扫到就写，扫不到就空着：①对外担保（余额、占净资产比重、被担保方是谁、是否互保、是否已出现代偿）②未决诉讼与仲裁（涉案金额、进展、是否已计提）③对外承诺与票据保函（敞口、到期分布）④股东出资与注资进度（承诺额、到位额）⑤在建项目资金缺口（计划总投资、已累计投资、剩余投资、货币资金）⑥政府补助依赖（补助金额与净利润的比值）。
 22.3 每条五个字段：where 只能写「资产段之后」或「债务段之后」；title 是这段叫什么（如「对外担保」「未决诉讼」）；why 是为什么值得补，必须带材料里的金额与比重，这条只给用户判断用、不进正文；lead 是可直接用的加粗判断句，不带数字；body 是可直接用的正文，带实数，写清对手方、期限与触发条件。
 22.4 六类一项都没有就给空数组。不要用「公司治理结构完善」「未发现重大异常」这类没有数据支撑的话凑数。
-19. 两类专项按条件触发，不按行业标签触发。（1）收入主要来自政府结算（土地整理、代建、特许经营、购买服务）的，总述段交代「钱从谁来」时就要带上区域财力的实数——地区 GDP 与增速、一般公共预算收入、政府性债务余额或债务率，各一句、写明年份，并点明公司在这套结算体系里的层级与回款路径；不要只写「区域财力持续增长」这种不带数的判断，也不要把区域情况另起一段展开。（2）在建工程占非流动资产比重较高的，写清计划总投资、已累计投资、剩余投资，并与货币资金对照说明缺口。材料没有这些数据就整段不写，不许用「预计」「大致」补位。
-23. 「盈利与现金流」是一段，全部写在 profit 的 body 里，位置在财务指标表之后、债务段之前；cash 字段一律输出空字符串（它只为旧稿保留，不许再把这一段拆成两段）。这一段按「收入 → 利润 → 获现 → 差额落在哪 → 覆盖」的顺序连续写完：中途不另起段落、不加小标题、不换加粗句。收入与利润分开写，不许只写收入不写利润；写完利润必须接经营获现，不许只看利润不看获现。
+23. 「盈利与现金流」是一段，全部写在 profit 的 body 里，位置在**分部业务段之后、资产段之前**；cash 字段一律输出空字符串（它只为旧稿保留，不许再把这一段拆成两段）。这一段按「收入 → 利润 → 获现 → 差额落在哪 → 覆盖」的顺序连续写完：中途不另起段落、不加小标题、不换加粗句。收入与利润分开写，不许只写收入不写利润；写完利润必须接经营获现，不许只看利润不看获现。
+23.0 这一段的核心是**变化与原因**，不是账户余额的罗列。写之前先问三件事：跟谁比（同比、与年初、与上年全年）、变多少（百分比或金额）、为什么变（量、价、结构、费用、减值、补助）。三件事少一件就是没写完。
+　硬性要求三条：
+　（1）**收入、利润、获现三类指标，每一类至少写出一处明确的变动幅度**——百分比（同比 -62.30%）或增减金额（较上年减少 1.08 亿元），只有一个都不算写完。
+　（2）**优先用同比**。材料给了上年同期数的，一律写「同比 +×.××%」；只给了上年全年数、没有上年同期数的（半年报常见），就写「较上年全年」或「较年初」，并在同一句点明比的是哪一期——不许把半年数直接与上年全年数说成「同比」。
+　（3）**不许用「分别为」把两年数并排列出了事**。「2024年、2025年分别为 29.49 亿元和 30.04 亿元」这种写法读者要自己减：改成「2025年营业收入 30.04 亿元、较 2024 年的 29.49 亿元增长 1.86%」。
+　反例（只有绝对数，读者看不出变好还是变坏）：「2026年1-6月公司营业收入27.30亿元，利润总额1.02亿元，净利润0.88亿元，经营活动现金流量净额2.14亿元。」——四个数排成一串，等于把报表抄了一遍。
+　正例（每个数后面都跟着变动与原因）：「2026年1-6月营业收入27.30亿元，同比增长12.40%，增量主要来自代建板块结转面积增加；利润总额1.02亿元，由上年同期亏损1.36亿元转盈，其中毛利增加1.85亿元、财务费用下降0.42亿元，政府补助减少0.31亿元抵掉一部分；经营活动现金流量净额2.14亿元，上年同期为-1.08亿元，转正的原因是本期收到区财政结算款3.60亿元。」
 23.1 收入侧：本期营业收入与同比变动幅度；把变动拆成量、价、结构三块，每块落到具体板块或产品——哪个板块销量降了多少、哪个产品均价降了多少、哪个板块新并表或已退出。只写「营业收入下降」不写降在哪一块、是量还是价，等于没写。
 23.2 利润侧：利润总额与净利润各写本期数与同比变动。由盈转亏、亏损扩大、亏损收窄都要明写「亏损」，不得用「利润承压」「盈利弱化」「有所下滑」「利润空间收窄」代替——「承压」是评论，不是利润表上的数。
 23.3 亏损或利润大幅下滑必须逐项归因，一项一句，每句带金额或幅度，按对利润的影响从大到小排：毛利变动（量、价、成本各影响多少）→ 期间费用（销售、管理、研发、财务费用各是多少、为什么变）→ 减值损失（资产减值与信用减值分别是多少、计在哪个科目或哪项资产上、依据什么提的）→ 投资收益与公允价值变动 → 政府补助与其他收益 → 资产处置损益 → 所得税。写完回算一遍：各归因项的方向与规模要能对上利润的变动，加不起来就说明漏项或数字抄错了，回到材料里核，不许就这么交。
@@ -535,9 +554,140 @@ SYSTEM_PROMPT = """你是信用评级机构的分析员，负责撰写内部「�
 25.6 不许写「市场认可度提升」「市场情绪转暖」「投资者信心增强」这类判断：利差只是个价，是涨是跌、是高是低已经写在数里，再加一句评价等于重复。也不许把利差变动归因到某项经营事件，除非材料里明确写了那件事与定价的关联。
 25.7 收口不再重复报数，只把位置说清：这个价在本区间内偏上沿还是偏下沿、相对同评级基准是更紧还是更松。不预测后续走势，不写「预计利差将……」——「位置」是事实，「将走阔」是预测。也不写「中枢」「历史高位」「处在该评级应有水平」这类要更长样本才能成立的判断：手上只有一个月的数据。
 25.8 正文里不要出现中债估值收益率这个数——本文只有利差与走势可用。
+26. 两类专项按条件触发，不按行业标签触发。（1）收入主要来自政府结算（土地整理、代建、特许经营、购买服务）的，总述段交代「钱从谁来」时就要带上区域财力的实数——地区 GDP 与增速、一般公共预算收入、政府性债务余额或债务率，各一句、写明年份，并点明公司在这套结算体系里的层级与回款路径；不要只写「区域财力持续增长」这种不带数的判断，也不要把区域情况另起一段展开。（2）在建工程占非流动资产比重较高的，写清计划总投资、已累计投资、剩余投资，并与货币资金对照说明缺口。材料没有这些数据就整段不写，不许用「预计」「大致」补位。
 【写作风格】以跟踪评级报告正文为语体基准：段首归因（受……影响／受益于）、段中展开（具体来看／结构上／此外）、段末收口（整体来看，……）。判断词要分级（很强/较强/一般/较弱、可控/充足/尚可/承压）。不用「本期」「去年」「大幅」这类不可核实表述，也不用「可能」「大概」「或许」——判断要么有据，要么不写。行文里不出现「材料」「披露」「外部条件」这类词：它们是分析员的作业对象，不是报告的语言。
 
 【输出】只输出一个 JSON 对象，不要任何解释文字。"""
+
+
+# ── 提示词的分节视图 ────────────────────────────────────────────────
+# 提示词是一整块长文本：模型整块读没问题，人要按段落查就不行了——想问
+# 「资产段到底要求了什么」，得在六十多条规则里翻。这里把**同一份** SYSTEM_PROMPT
+# 按段落切开交给页面，先给骨干（每段都适用的），再一段一段给。
+# 不另存一份文本：面板显示的就是模型收到的那些字，改了提示词面板跟着变，
+# 不会出现「面板写着 A、模型看到 B」。
+_RULE_RE = re.compile(r"^(\d+(?:\.\d+)*)\.?\s+")
+_RULE_HEAD_RE = re.compile(r"^\d+(?:\.\d+)*\.?\s*")
+_MARK_RE = re.compile(r"^【([^】]+)】")
+
+
+def _parse_prompt(text: str) -> dict:
+    """把提示词拆成：开头说明、规则（有序，一条规则含它的续行）、【…】小节。"""
+    head: list[str] = []
+    rules: list[dict] = []
+    marks: dict[str, str] = {}
+    cur: dict | None = None
+    cur_mark: str | None = None
+    for line in text.splitlines():
+        if _MARK_RE.match(line):
+            cur_mark = _MARK_RE.match(line).group(1)
+            marks[cur_mark] = line
+            cur = None
+            continue
+        # 有些子条缩在全角空格后面（「　24.1 跟踪评级报告是…」）。这种要当
+        # 独立规则收，否则它连同下面几行一起并进父条，面板里就成了一个看不出
+        # 层次的大块；而「　① 供需格局」「　判断方法：」这类要照旧算续行。
+        stripped = line.lstrip("　")
+        sub = _RULE_RE.match(stripped)
+        m = sub if (sub and not line.startswith("　")) else (
+            sub if (sub and re.match(r"^\d+\.\d+", stripped)) else None)
+        if m:
+            cur = {"no": m.group(1), "text": stripped.strip()}
+            rules.append(cur)
+            cur_mark = None
+            continue
+        if cur is not None:
+            cur["text"] += "\n" + line
+        elif cur_mark:
+            marks[cur_mark] += "\n" + line
+        else:
+            head.append(line)
+    return {"head": "\n".join(head).strip(), "rules": rules, "marks": marks}
+
+
+# 每一段用哪几条规则。顺序就是这个面板的阅读顺序，与成稿顺序一致。
+PROMPT_SECTIONS: list[dict] = [
+    {"key": "core", "name": "骨干", "head": True,
+     "hint": "体例、主语、数字与期次、措辞、材料怎么用、输出格式——每一段都按这些写",
+     "rules": ["3", "3.1", "4", "5", "6", "10", "11", "13", "14", "15",
+               "17", "17.1", "18", "19", "19.2"],
+     "marks": ["体例", "写作风格", "输出"]},
+    {"key": "summary", "name": "摘要：正面／关注",
+     "hint": "各 3 条（最多 5 条）、一条一件事、只分等级不做评价",
+     "rules": ["1", "2", "21", "21.1", "21.2", "21.3"]},
+    {"key": "basic", "name": "1、基本情况",
+     "hint": "成立与前身 → 主营与定位 → 注册资本与实收资本 → 股东与实控人",
+     "rules": ["12.2"]},
+    {"key": "industry", "name": "2、点评 · 第一段：行业",
+     "hint": "点评的第一段，不另立小节、不带加粗句；只写行业，不出现公司",
+     "rules": ["12", "12.1"]},
+    {"key": "overview", "name": "2、点评 · 第二段：总述 + 业务构成表",
+     "hint": "钱从谁来、收入结构；表前引导语由程序按表内期次生成",
+     "rules": ["19.1", "20.1"]},
+    {"key": "segment", "name": "分部业务段",
+     "hint": "六拍、一段写完；占比不足 5% 的并成「其他业务」",
+     "rules": ["7", "7.1", "20"]},
+    {"key": "profit", "name": "盈利与现金流段",
+     "hint": "位置在分部业务之后、资产段之前；每个数都带同比与原因，不许只列数",
+     "rules": ["23", "23.0", "23.1", "23.2", "23.3", "23.4", "23.5", "23.6",
+               "23.7", "23.8", "23.9", "23.10", "23.11", "23.12"],
+     "marks": ["盈利部分的检验法", "盈利与现金流的检验法"]},
+    {"key": "asset", "name": "资产段",
+     "hint": "逐科目：科目 金额（占资产总额 ××.××%），主要为×××，再交代质量",
+     "rules": ["8"]},
+    {"key": "debt", "name": "债务段",
+     "hint": "负债总额与负债率 → 全部债务与长短债 → 融资构成 → 覆盖 → 授信",
+     "rules": ["9"]},
+    {"key": "market", "name": "二级市场定价段",
+     "hint": "口径 → 绝对水平 → 变动与相对幅度 → 与基准比 → 位置，不预测",
+     "rules": ["25", "25.1", "25.2", "25.3", "25.4", "25.5", "25.6", "25.7", "25.8"]},
+    {"key": "topic", "name": "专题段与补充建议",
+     "hint": "默认空数组；够不上专题但值得补的写进 add_on_sections",
+     "rules": ["22", "22.1", "22.2", "22.3", "22.4"]},
+    {"key": "numbers", "name": "数字与自算值",
+     "hint": "自算值把算式写进 data_notes，程序逐条复算",
+     "rules": ["16", "16.1"]},
+    {"key": "materials", "name": "材料怎么用",
+     "hint": "跟踪报告是判断依据，审计报告只用来对齐口径与看意见，公告只挑有信用含义的",
+     "rules": ["24", "24.1", "24.2", "24.3", "24.4", "26"]},
+]
+
+
+def prompt_sections() -> list[dict]:
+    """按段落切好的提示词。
+
+    未被任何一段收走的规则会落到末尾「其他」里——那一节平时应当为空；
+    它一旦出现，说明分组表漏了规则，照着补进 PROMPT_SECTIONS 即可。
+    """
+    parsed = _parse_prompt(SYSTEM_PROMPT)
+    by_no: dict[str, list[str]] = {}
+    for r in parsed["rules"]:
+        by_no.setdefault(r["no"], []).append(r["text"])
+
+    out: list[dict] = []
+    used: set[tuple[str, str]] = set()
+    for sec in PROMPT_SECTIONS:
+        items: list[dict] = []
+        if sec.get("head") and parsed["head"]:
+            items.append({"no": "开头", "text": parsed["head"], "plain": True})
+        for no in sec.get("rules") or []:
+            for t in by_no.get(no, []):
+                # 编号已经在左边的角标里，正文再从「23. 」起一遍就成了两个 23。
+                items.append({"no": no, "text": _RULE_HEAD_RE.sub("", t, count=1)})
+                used.add((no, t))
+        for mk in sec.get("marks") or []:
+            if parsed["marks"].get(mk):
+                items.append({"no": f"【{mk}】", "text": parsed["marks"][mk], "plain": True})
+        if items:
+            out.append({"key": sec["key"], "name": sec["name"],
+                        "hint": sec.get("hint") or "", "items": items})
+
+    rest = [{"no": r["no"], "text": r["text"]} for r in parsed["rules"]
+            if (r["no"], r["text"]) not in used]
+    if rest:
+        out.append({"key": "rest", "name": "其他",
+                    "hint": "没归到任何一段的规则（正常应为空）", "items": rest})
+    return out
 
 
 def build_user_prompt(facts: dict, materials: list[dict], user_notes: str = "") -> str:
@@ -612,16 +762,16 @@ def build_user_prompt(facts: dict, materials: list[dict], user_notes: str = "") 
   "concern_pool": ["候选：从正文回抽、够格但没进定稿的关注判断，5-8 条"],
   "basic_info": "150-300字，一段：成立与前身→主营与功能定位（含靠什么收钱）→注册资本与实收资本（两者不一致要说清差额原因）/股东及比例/实控人→增资到位、上市状态、并表子公司。报告期内股权、控制权、评级、审计机构没有变化的，一句都不写",
   "commentary": {
-    "industry": {"lead": "行业段加粗判断句（不带数字，主语是行业或政策，如「水泥需求随基建与地产投资回落，价格中枢下移压制行业毛利」）", "body": "行业情况正文（独立一节，250-420字）：供需格局（产量或需求增速、产能利用率、需求端构成）→ 价格与成本（价格走势与幅度、原材料与能源成本）→ 政策（真正影响这家公司的那一条）→ 传导（怎样落到公司的量、价、毛利上）。每个判断后跟一个可核实的数"},
+    "industry": {"lead": "留空字符串。行业是点评第一段，不加段首加粗句", "body": "点评第一段（250-420字，接在「2、点评」下面直接开始，不写小标题）：供需格局（产量或需求增速、产能利用率、需求端构成）→ 价格与成本（价格走势与幅度、原材料与能源成本）→ 政策（真正作用在这一行业上的那一条）。只写行业，不出现公司及其收入、毛利率、销量；每个判断后跟一个可核实的数"},
     "overview": {"lead": "加粗汇总句（不带数字）", "body": "总述段正文：先交代钱的来源与公司自身的经营主线，再写收入结构概览。收口不用另写一句「如下表」——业务构成表前的引导语由程序按表内期次生成。行业的量价与政策已在行业段写过，这里不重抄"},
     "segments": [{"name": "该主体自己用的板块名，照原文写，不改写不带编号", "body": "承接『1）××业务方面，』之后的正文"}],
+    "profit": {"lead": "加粗汇总句（不带数字，说清这一年利润被什么吃掉、经营获现够不够覆盖）", "body": "盈利与现金流一段（不拆段，位置在分部业务与资产段之间）。收入、利润、获现每一类至少一处写明变动幅度（优先同比，没有上年同期就写较上年全年并点明口径），不许用「分别为」把两年数并排：营业收入及同比 → 增量拆成量、价、结构 → 利润总额与净利润及同比 → 亏损或大幅下滑逐项归因（毛利、费用、减值、投资收益、补助、处置、所得税，每项带金额）→ 利润被什么吃掉、哪些偶发哪些持续 → 经营活动净现金流及同比、来源与去向 → 收现比 → 投资与筹资净额 → 利润与获现的差额落在哪 → 非受限货币资金对短期债务与利息支出的覆盖 → 缺口靠什么补"},
     "asset": {"lead": "加粗汇总句（不带数字）", "body": "资产段正文"},
-    "profit": {"lead": "加粗汇总句（不带数字，说清这一年利润被什么吃掉、经营获现够不够覆盖）", "body": "盈利与现金流一段（不拆段）：营业收入与同比 → 量、价、结构 → 利润总额与净利润及同比 → 亏损或下滑逐项归因（毛利、费用、减值、投资收益、补助、处置、所得税，每项带金额）→ 利润被什么吃掉、哪些偶发哪些持续 → 经营活动净现金流及同比、来源与去向 → 收现比 → 投资与筹资净额 → 利润与获现的差额落在哪 → 非受限货币资金对短期债务与利息支出的覆盖 → 缺口靠什么补"},
     "cash": {"lead": "", "body": ""},
     "debt": {"lead": "加粗汇总句（不带数字）", "body": "债务段正文"},
     "market": {"lead": "二级市场定价段加粗判断句（不带数字，说清定价处在什么水平、往哪个方向走）", "body": "二级市场定价段正文：数据区间与口径（中债估值、主体存续债中位数）→ 期末信用利差绝对水平与区间高低点、极差 → 期初期末变动幅度与相对幅度 → 期末在区间内的位置 → 超额利差绝对值（相对同评级同类型是更紧还是更松）→ 日均绝对变动与单日最大变动 → 收口：位置，不预测"},
     "special_topics": [],
-    "segment_table": {"periods": ["2026年1-6月", "2025年", "2024年", "2023年"], "unit_line": "单位：亿元", "with_gm": true, "rows": [["板块名", "本期收入", "上年收入", "前年收入", "第三年收入", "最近完整年度毛利率"], ["营业总收入", "0.00", "0.00", "0.00", "0.00", "8.00%"]]},
+    "segment_table": {"periods": ["2026年1-6月", "2025年", "2024年", "2023年"], "unit_line": "单位：亿元", "with_gm": true, "rows": [["板块名", "本期收入", "上年收入", "前年收入", "第三年收入", "本期毛利率"], ["营业总收入", "0.00", "0.00", "0.00", "0.00", "8.00%"]]},
     "financial_table": {"unit_line": "单位：亿元", "periods": ["2023年", "2024年", "2025年"], "rows": [["资产总额", "0.00", "0.00", "0.00"], ["负债总额", "0.00", "0.00", "0.00"], ["净利润", "0.00", "0.00", "0.00"]]},
     "add_on_sections": [
       {"where": "债务段之后（或资产段之后）", "title": "这一段叫什么，如「对外担保」",
@@ -855,7 +1005,10 @@ def _clean_llm_table(t: Any) -> dict | None:
         "unit_line": t.get("unit_line") or "单位：亿元",
         "periods": periods,
         "sub_cols": _SEG_SUB_COLS,
-        "extra_cols": [f"{periods[1] if len(periods) > 1 else periods[0]}毛利率"] if has_gm else [],
+        # 毛利率取最新一期，与表内最左那一列同期次。
+        # 原来取「最近完整年度」——读者对着最左边的 2026年1-6月 看，末列却是
+        # 2025 年的毛利率，两列并排却不是同一个时期，很容易被当成同期。
+        "extra_cols": [f"{periods[0]}毛利率"] if has_gm else [],
         "rows": clean_rows,
         "bold_rows": [len(clean_rows) - 1],
     }
@@ -1195,11 +1348,29 @@ def _table_has_values(t: dict) -> bool:
     return False
 
 
+def _norm_period(p: str) -> str:
+    """把「2026.6」「2026-6」「2026/6」「2026」统一成报告里的写法。
+
+    评级报告表头写「2026.6」，正文却必须写「2026年6月末」（规则 11）。
+    表与正文两种写法并存，读者对不上哪一列是时点。
+    """
+    x = str(p or "").strip().replace("．", ".").replace("／", "/")
+    if re.fullmatch(r"\d{4}", x):
+        return f"{x}年"
+    m = re.fullmatch(r"(\d{4})\s*[.\-/年]\s*(\d{1,2})\s*月?(?:末)?", x)
+    if m:
+        y, mo = m.group(1), int(m.group(2))
+        if mo == 12:
+            return f"{y}年"
+        return f"{y}年{mo}月末"
+    return x
+
+
 def _clean_fin_table(t: Any) -> dict | None:
     """清洗模型从材料原文整理的财务表（台账无数据时使用）。"""
     if not isinstance(t, dict):
         return None
-    periods = [str(p).strip() for p in (t.get("periods") or []) if str(p).strip()]
+    periods = [_norm_period(p) for p in (t.get("periods") or []) if str(p).strip()]
     if len(periods) < 2:
         return None
     take = min(3, len(periods))  # 最新一期 + 近两年，与参考件一致
@@ -1226,9 +1397,22 @@ def _clean_fin_table(t: Any) -> dict | None:
     }
 
 
+# 模型习惯把「加粗」写成 markdown 的 **…**。Word 里不认这些星号，页面上也不会
+# 自动变粗——它们原样留在段首，读者看到的是「**公司是……**」。加粗由排版决定
+# （lead 单独一段、整段加粗），文字里不该带标记。
+_MD_MARK_RE = re.compile(r"\*\*+|__+|(?<![\w*])\*(?=\S)|(?<=\S)\*(?![\w*])")
+
+
+def _strip_md(txt: str) -> str:
+    s = str(txt or "")
+    if "**" not in s and "__" not in s:
+        return s
+    return _MD_MARK_RE.sub("", s).strip()
+
+
 def _lead(txt: str) -> str:
-    """段首加粗句：清理来源交代；万一被清空，宁可留原句，也不让段落没头。"""
-    raw = (txt or "").strip()
+    """段首加粗句：清理来源交代与 markdown 星号；万一被清空，宁可留原句。"""
+    raw = _strip_md((txt or "").strip())
     out = polish_language(raw)
     return out or raw
 
@@ -1441,6 +1625,24 @@ def _ensure_structure(draft: dict, facts: dict) -> dict:
     return out
 
 
+def normalize_seg_gm(t) -> dict:
+    """业务构成表的毛利率列一律取表内最新一期。
+
+    旧稿末列写的是「2025年毛利率」（当时的规则是「最近完整年度」），而表里
+    最左一列是 2026年1-6月——两列并排却是两个时期，读者很容易当成同期。
+    存量记录在升级时一并改名，页面、校验、导出三处才对得上口径。
+    """
+    if not isinstance(t, dict):
+        return t
+    ps = [str(x).strip() for x in (t.get("periods") or []) if str(x).strip()]
+    extra = list(t.get("extra_cols") or [])
+    if not ps or not extra:
+        return t
+    out = dict(t)
+    out["extra_cols"] = [f"{ps[0]}毛利率" if "毛利率" in str(x) else x for x in extra]
+    return out
+
+
 def polish_draft(draft: dict) -> dict:
     """导出前的最后一道语言清理：只改文字，不动结构与表格。
 
@@ -1453,7 +1655,7 @@ def polish_draft(draft: dict) -> dict:
 
     def _pol(s: str) -> str:
         nonlocal changed
-        out = polish_language(s)
+        out = polish_language(_strip_md(s))
         if out != (s or "").strip():
             changed += 1
         return out
@@ -1464,8 +1666,12 @@ def polish_draft(draft: dict) -> dict:
         if isinstance(d.get(key), list):
             d[key] = [s for s in (_pol(x) for x in d[key]) if s]
     d["basic_info"] = dedupe_sentences(_pol(d.get("basic_info") or ""))
+    # 摘要层与候选池上面走的是 _pol，星号已清；这里补一段说明，免得以后有人
+    # 在别处直接写 polish_language 而漏掉 _strip_md。
 
     c = dict(d.get("commentary") or {})
+    if isinstance(c.get("segment_table"), dict):
+        c["segment_table"] = normalize_seg_gm(c["segment_table"])
 
     def para(p):
         p = dict(p or {})
@@ -2159,7 +2365,7 @@ def _nochange_rows(draft: dict) -> list[dict]:
     c = draft.get("commentary") or {}
     fields: list[tuple[str, str, str]] = [
         ("基本情况", "basic", "blk-basic", draft.get("basic_info") or ""),
-        ("行业情况", "in-body", "blk-industry", (c.get("industry") or {}).get("body") or ""),
+        ("点评第一段（行业）", "in-body", "blk-industry", (c.get("industry") or {}).get("body") or ""),
         ("总述段", "ov-body", "blk-overview", (c.get("overview") or {}).get("body") or ""),
         ("资产段", "as-body", "blk-asset", (c.get("asset") or {}).get("body") or ""),
         ("盈利段", "pf-body", "blk-profit", (c.get("profit") or {}).get("body") or ""),
@@ -2191,7 +2397,7 @@ def _nochange_rows(draft: dict) -> list[dict]:
 # 校验规则的版本号。规则一改就加一，存量记录据此判断要不要重算——
 # 只看「有没有 issue_items」是不够的：新加的校验项不会进到老记录里，
 # 用户打开旧报告就看不到新提示，等于没上。
-VALIDATOR_REV = 14
+VALIDATOR_REV = 15
 
 # 校验项分三类，决定它出现在哪儿：
 #   auto   —— 表述与结构问题，程序能改。生成后自动走一轮修订，改掉了就不给人看。
@@ -2200,7 +2406,7 @@ VALIDATOR_REV = 14
 # 判据只有一条：改它需要不需要做事实判断。需要，就是 manual。
 FIX_AUTO = (
     "摘要层措辞没有刻度", "摘要一条塞了两件事", "加粗句缺主语",
-    "缺行业情况段", "行业情况偏薄", "行业段没有数据",
+    "点评缺第一段（行业）", "行业段偏薄", "行业段没有数据",
     "写了没有变化的事", "正面与关注说了同一件事",
     "资产段缺金额占比", "缺盈利段", "缺现金流段", "只写收入没写利润", "亏损没写成亏损",
     "亏损原因没说清", "归因还被空话占着", "财务表缺净利润行",
@@ -2481,7 +2687,7 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
     _meta_rows: list[dict] = []
     _scan: list[tuple[str, str, str, str]] = [
         (draft.get("basic_info") or "", "基本情况", "blk-basic", "bi-body")]
-    for _k, _nm, _an, _fd in (("industry", "行业情况", "blk-industry", "in-body"),
+    for _k, _nm, _an, _fd in (("industry", "点评第一段（行业）", "blk-industry", "in-body"),
                               ("overview", "总述段", "blk-overview", "ov-body"),
                               ("asset", "资产段", "blk-asset", "as-body"),
                               ("profit", "盈利段", "blk-profit", "pf-body"),
@@ -2580,34 +2786,34 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
             + "）：一条只讲一件事、一句话，把并列的那半句拆出去。")
         issue_items.append({"t": "摘要一条塞了两件事", "a": "blk-pos", "d": long_rows[:8]})
 
-    # 1.16) 行业情况：必须是独立一段，且每句站得住
-    # 这一段此前不存在，行业的量价被揉进总述段，与公司自己的收入结构混在一起，
-    # 读的人分不清哪句说行业、哪句说公司。规则 12.1 要求单列，这里兜底检查。
+    # 1.16) 行业：点评的第一段，且每句站得住
+    # 它在成稿里接在「2、点评」下面、总述段之前，不另立小节。这里兜底检查：
+    # 少了这一段，点评就直接从公司自己的收入讲起，外部条件一个字没有。
     _ind = _c0.get("industry") or {}
     _ind_body = str(_ind.get("body") or "").strip()
     if not (_ind_body or str(_ind.get("lead") or "").strip()):
         issues.append(
-            "缺少「行业情况」一段。行业处在什么阶段、量由什么决定、价由谁定，"
-            "这一段要单独写，不能揉进总述段与公司自己的收入结构混在一起。")
-        issue_items.append({"t": "缺行业情况段", "a": "blk-industry",
-                            "d": [{"num": "", "where": "行业情况", "kind": "结构",
+            "点评缺第一段（行业）。行业处在什么阶段、量由什么决定、价由谁定，"
+            "这一段写在「2、点评」下面、总述段之前，不能省掉、也不能与公司自己的收入结构混成一段。")
+        issue_items.append({"t": "点评缺第一段（行业）", "a": "blk-industry",
+                            "d": [{"num": "", "where": "点评第一段（行业）", "kind": "结构",
                                    "full": "", "si": 0, "anchor": "blk-industry",
                                    "field": "in-body",
                                    "note": "补一段：供需 → 价格与成本 → 政策，只写行业"}]})
     elif len(_ind_body) < 120:
-        issues.append(f"行业情况只有 {len(_ind_body)} 字，"
+        issues.append(f"点评第一段（行业）只有 {len(_ind_body)} 字，"
                       "写不完整就退化成一句行业概述。按供需 → 价格与成本 → 政策三件事展开，不写公司。")
-        issue_items.append({"t": "行业情况偏薄", "a": "blk-industry",
-                            "d": [{"num": f"{len(_ind_body)} 字", "where": "行业情况",
+        issue_items.append({"t": "行业段偏薄", "a": "blk-industry",
+                            "d": [{"num": f"{len(_ind_body)} 字", "where": "点评第一段（行业）",
                                    "kind": "写法", "full": _ind_body[:140], "si": 0,
                                    "anchor": "blk-industry", "field": "in-body",
                                    "note": "补价格与成本、政策两条，都只用行业自身的数"}]})
     elif not re.search(r"\d", _ind_body):
         issues.append(
-            "行业情况整段没有一个数字。行业分析靠的是产量增速、产能利用率、价格涨跌幅、"
+            "点评第一段（行业）整段没有一个数字。行业分析靠的是产量增速、产能利用率、价格涨跌幅、"
             "区域投资额这类可核实的量，纯定性的行业判断换个人写也一样，读者据此比不了强弱。")
         issue_items.append({"t": "行业段没有数据", "a": "blk-industry",
-                            "d": [{"num": "缺数据", "where": "行业情况", "kind": "写法",
+                            "d": [{"num": "缺数据", "where": "点评第一段（行业）", "kind": "写法",
                                    "full": _ind_body[:140], "si": 0,
                                    "anchor": "blk-industry", "field": "in-body",
                                    "note": "每个判断后面跟一个数（增速、幅度、利用率、区域投资额）"}]})
@@ -2623,17 +2829,56 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
             _frag = _bad[0].strip()
             _sent = next((x for x in _sentences(_ind_body) if _frag[:14] in x), _frag)
             issues.append(
-                "行业情况里写到了公司自己（"
+                "点评第一段（行业）里写到了公司自己（"
                 + (f"「{_frag[:40]}」" if _frag else "出现了「公司」二字")
-                + "）。这一节只分析行业：供需、价格与成本、政策，主语是行业或政策；"
+                + "）。这一段只分析行业：供需、价格与成本、政策，主语是行业或政策；"
                 "行业落到公司的哪一项指标上，写在总述段与分部业务段，不在这里提前表态。")
             issue_items.append({"t": "行业段写到了公司", "a": "blk-industry",
-                                "d": [{"num": "", "where": "行业情况", "kind": "写法",
+                                "d": [{"num": "", "where": "点评第一段（行业）", "kind": "写法",
                                        "full": _sent[:160] if _sent else _ind_body[:120],
                                        "si": _index_of_sent(_ind_body, _sent) if _sent else 0,
                                        "anchor": "blk-industry", "field": "in-body",
                                        "note": "把这句里关于公司的那半句挪到总述段或分部业务段，"
                                                "行业段只留行业自身的量、价、政策"}]})
+
+    # 1.16c) 盈利与现金流：写的是变化与原因，不是把报表抄一遍
+    # 这一段的毛病不是没数据，而是**只有数据**：四个数排成一串，读者看不出
+    # 变好还是变坏、变在哪。判据落在两个可数的地方——变动词、归因词各够不够。
+    _pf = _c0.get("profit") or {}
+    _pf_body = str(_pf.get("body") or "").strip()
+    if len(_pf_body) >= 80:
+        # 数年份不算数：2026年1-6月 会被拆成 2026、1、6 三个「数」，一段里十几个
+        # 期次就能把计数顶到四十多，判据随即失效。
+        _pnums = [x for x in re.findall(r"\d+(?:\.\d+)?", _pf_body)
+                  if not (len(x) == 4 and x[:2] in ("19", "20"))]
+        _chg = re.findall(r"同比|比上年|较上年|较年初|上年同期|较年初|变动|增长|下降|减少|增加|"
+                          r"收窄|扩大|转正|转亏|由盈转亏|上升|回落|降至|增至|转为", _pf_body)
+        # 归因词的判据是「这句话有没有说出成因」，不是认几张固定句式。
+        # 「亏损的直接来源是收入与费用的错配」也是归因，漏了它就会把合格稿判成不合格。
+        _why = re.findall(r"主要(?:来自|由于|系)|原因是|由于|因为|得益于|所致|受.{0,12}(?:影响|拖累)|"
+                          r"带动|抵消|抵掉|弥补|来源是|源于|系因|使得|归因|造成|形成|"
+                          r"随.{0,10}变化|取决于", _pf_body)
+        if len(_pnums) >= 6 and len(_chg) < 3:
+            issues.append(
+                f"盈利与现金流这一段有 {len(_pnums)} 个数，却只出现 {len(_chg)} 处变动表述——"
+                "等于把报表抄了一遍。这一段要回答的是「跟谁比、变多少、为什么变」："
+                "每个关键指标后面都跟上同比（±×.××% 或 ±×.×× 亿元），再说清增减来自哪一块。")
+            issue_items.append({
+                "t": "盈利段只列了数没看变化", "a": "blk-profit", "fix": "manual",
+                "d": [{"num": f"{len(_pnums)} 个数 / {len(_chg)} 处变动", "where": "盈利与现金流",
+                       "kind": "写法", "full": _pf_body[:160], "si": 0,
+                       "anchor": "blk-profit", "field": "pf-body",
+                       "note": "给每个指标补同比与原因，别让读者自己算"}]})
+        elif len(_pnums) >= 6 and not _why:
+            issues.append(
+                "盈利与现金流这一段只有变化、没有原因：收入降了、利润转了，但没说降在哪个板块、"
+                "是量还是价、费用还是减值。有了幅度没给成因，读者还是判断不了这次下滑是暂时还是要持续。")
+            issue_items.append({
+                "t": "盈利段有变化没说原因", "a": "blk-profit", "fix": "manual",
+                "d": [{"num": f"{len(_chg)} 处变动", "where": "盈利与现金流",
+                       "kind": "写法", "full": _pf_body[:160], "si": 0,
+                       "anchor": "blk-profit", "field": "pf-body",
+                       "note": "逐项归因：毛利（量、价、成本）→ 费用 → 减值 → 补助，各带金额"}]})
 
     # 1.17) 基本情况：注册资本与实收资本
     # 这两项是判断「股东到底投了多少钱」的唯一依据，注册了不等于实缴了。
@@ -2993,7 +3238,7 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
         ("基本情况", draft.get("basic_info", ""),
          {"anchor": "blk-basic", "field": "basic"})]
     c = draft.get("commentary") or {}
-    for k, name in (("industry", "行业情况"), ("overview", "总述段"), ("asset", "资产段"),
+    for k, name in (("industry", "行业"), ("overview", "总述"), ("asset", "资产"),
                     ("profit", "盈利段"), ("debt", "债务段")):
         block = c.get(k) or {}
         field = {"industry": "in-body", "overview": "ov-body", "asset": "as-body",
@@ -3749,6 +3994,337 @@ def _fill_missing(draft: dict, facts: dict, materials: list[dict],
     return draft
 
 
+# 财务指标表的补写。表排在 JSON 末尾（见 schema 的字段顺序说明），撞上输出
+# 上限时它最先被砍——正文里却处处引用「上表」，空的表比没有表更难看。
+# 这一趟只要一张表，输入是材料摘录，输出很小，几秒就能回来。
+_FIN_HINT = """上一轮写这份报告时，输出在写完正文前就撞上了长度上限，财务指标表没能写出来。
+现在只补这张表，正文一个字都不要写。
+
+【格式】只输出一个 JSON 对象：
+{{"periods": ["{latest}", "2025年", "2024年"], "unit_line": "单位：亿元",
+  "rows": [["资产总额", "0.00", "0.00", "0.00"], ["负债总额", "0.00", "0.00", "0.00"]]}}
+
+【纪律】
+1. 期次由新到旧，最近一期在最左；2—3 列，不为了凑数填不存在的期次。
+   最新一期是半年报／季报的，期次写成时点（「2026年6月末」「2026年9月末」）：
+   这张表里资产、负债是时点数，收入与利润是同期累计数，评级报告一贯按「2026.6」
+   一个列名并列，写成「2026年1-6月」会让资产总额看着像半年内的发生额。
+2. 必含这几行：资产总额、负债总额、所有者权益、资产负债率、营业总收入、净利润。
+   材料有数再加：货币资金、应收账款、存货、全部债务、短期债务、经营活动现金流量净额。
+3. 数字只能取自材料。材料里的表格是以文字形式给出的，长这样：
+   「项目 / 2023 / 2024 / 2025 / 2026.6」后面紧跟各期数字，按行读即可；
+   也可能写成「截至2026年6月末，公司资产总额248.12亿元」。两种都要用上。
+   材料确实没有的格子填「--」，不许推算、不许用相近科目替代。
+4. 单位统一亿元、两位小数、带千分位；比率两位小数加百分号。
+5. 不要输出别的字段，不要解释。"""
+
+
+_FIN_KEYS = ("资产总额", "资产总计", "营业总收入", "营业收入", "净利润",
+             "经营活动产生的现金流量净额", "所有者权益", "负债总额", "资产负债率")
+
+
+def _fin_digest(materials: list[dict], limit: int = 14000) -> str:
+    """只摘「含财务数据」的片段，不把整份材料塞进去。
+
+    直接截前 5000 字是不行的：三表在附注后面，前面全是公司与会计政策。实测
+    整段截取时模型只能回一列「--」，因为它压根没看到资产总额那几个数。
+    这里按关键词定位，各取前后一段——评级报告的「主要财务数据」表、审计报告的
+    三表，文本里都长这样：项目 / 2023 / 2024 / 2025 / 当期 紧跟几串数字。
+    """
+    chunks: list[str] = []
+    for m in (materials or []):
+        t = m.get("text") or ""
+        if not t:
+            continue
+        got: list[str] = []
+        for kw in _FIN_KEYS:
+            for hit in re.finditer(kw, t):
+                i = hit.start()
+                seg = t[max(0, i - 120): i + 420]
+                if seg in got or any(seg[:80] in g for g in got):
+                    continue
+                got.append(seg)
+                if len(got) >= 6:
+                    break
+            if len(got) >= 6:
+                break
+        if got:
+            chunks.append(f"— {m.get('title') or ''} —\n" + "\n……\n".join(got))
+    return "\n\n".join(chunks)[:limit]
+
+
+def _fill_fin_table(draft: dict, materials: list[dict], model_id: str | None = None) -> dict:
+    c = dict(draft.get("commentary") or {})
+    if _table_has_values(c.get("financial_table") or {}):
+        return draft
+    ps = [str(x).strip() for x in ((c.get("segment_table") or {}).get("periods") or [])]
+    latest = ps[0] if ps else "最新一期"
+    digest = _fin_digest(materials)
+    if not digest:
+        return draft
+    used: dict = {}
+    try:
+        raw = llm.chat([{"role": "system", "content": "你只输出一个 JSON 对象，不要解释。"},
+                        {"role": "user", "content": _FIN_HINT.format(latest=latest)
+                         + "\n\n【材料摘录】\n" + digest}],
+                       model_id=model_id, temperature=0.2, max_tokens=2500,
+                       timeout=240, thinking=False, usage_out=used)
+    except Exception as e:                                    # noqa: BLE001
+        print(f"补写财务表失败：{e}")
+        return draft
+    try:
+        got = llm.parse_json(raw)
+    except Exception:                                         # noqa: BLE001
+        return draft
+    if isinstance(got, list):
+        got = got[0] if got else {}
+    t = got.get("financial_table") if isinstance(got.get("financial_table"), dict) else got
+    clean = _clean_fin_table(t)
+    if not clean:
+        return draft
+    c["financial_table"] = clean
+    draft["commentary"] = c
+    try:
+        usage_mod.record("generate", company="", model=used.get("model") or (model_id or ""),
+                         prompt_tokens=used.get("prompt_tokens", 0),
+                         completion_tokens=used.get("completion_tokens", 0),
+                         total_tokens=used.get("total_tokens", 0),
+                         cached_tokens=used.get("cached_tokens", 0),
+                         seconds=0, note="补写财务指标表")
+    except Exception:                                         # noqa: BLE001
+        pass
+    return draft
+
+
+_SEG_HINT = """上一轮写这份报告时，输出撞上了长度上限，业务构成表没能写出来。现在只补这张表，
+正文一个字都不要写。
+
+【格式】只输出一个 JSON 对象（紧凑格式：每期只给收入，占比由程序按同期营业总收入计算）：
+{{"periods": ["2026年1-6月", "2025年", "2024年", "2023年"], "unit_line": "单位：亿元",
+  "with_gm": true,
+  "rows": [["板块名", "本期收入", "上年收入", "前年收入", "第三年收入", "本期毛利率"],
+           ["营业总收入", "0.00", "0.00", "0.00", "0.00", "0.00%"]]}}
+
+【纪律】
+1. 期次由新到旧，最近一期在最左，最多四期；材料只有两年的就写两期，不按增速倒推。
+2. 板块名照材料原文，不改写、不带编号；收入占比不足 5% 的并成「其他业务」。
+3. 最后一行必须是「营业总收入」，各板块收入之和要等于它。
+4. 毛利率取最新一期（最左那一列同期次）；材料不披露分板块毛利率的，这一列整列省掉
+   （with_gm 写 false，行里不要那一格），不要推算。
+5. 数字只能取自材料。材料里的表格以文字给出，长这样：
+   「业务板块 / 2023 / 2024 / 2025 / 2026.6」后面紧跟各期收入，按行读；
+   也可能写成「代建业务实现收入 12.34 亿元」。单位万元的要先换算成亿元。
+6. 找不到分板块收入的，不要编板块名：直接回 {"rows": []}。
+   不要输出别的字段，不要解释。"""
+
+
+def seg_missing(t: dict) -> bool:
+    """业务构成表缺不缺：没有行、或者只有合计行，都算缺。"""
+    rows = (t or {}).get("rows") or []
+    body = [r for r in rows if str((r or [""])[0]).strip()
+            and not _is_total_row(str(r[0]))]
+    return not body
+
+
+_SEG_KEYS = ("营业收入构成", "收入构成", "分业务", "分板块", "主营业务收入",
+             "营业收入情况", "营业总收入", "业务板块", "板块")
+
+
+def _seg_digest(materials: list[dict], limit: int = 12000) -> str:
+    """只摘「含分板块收入」的片段。
+
+    整段截前三千字是不行的：评级报告开头是评级观点与主体概况，分板块收入表在
+    业务那一节。实测整段摘取时模型只回了一行「营业总收入」——它没看到板块明细。
+    """
+    chunks: list[str] = []
+    for m in (materials or []):
+        t = m.get("text") or ""
+        if not t:
+            continue
+        got: list[str] = []
+        for kw in _SEG_KEYS:
+            for hit in re.finditer(kw, t):
+                i = hit.start()
+                seg = t[max(0, i - 80): i + 520]
+                if any(seg[:80] in g for g in got):
+                    continue
+                got.append(seg)
+                if len(got) >= 8:
+                    break
+            if len(got) >= 8:
+                break
+        if got:
+            chunks.append(f"— {m.get('title') or ''} —\n" + "\n……\n".join(got))
+    return "\n\n".join(chunks)[:limit]
+
+
+def _fill_seg_table(draft: dict, materials: list[dict], model_id: str | None = None) -> dict:
+    c = dict(draft.get("commentary") or {})
+    if not seg_missing(c.get("segment_table") or {}):
+        return draft
+    digest = _seg_digest(materials)
+    if not digest:
+        return draft
+    used: dict = {}
+    try:
+        raw = llm.chat([{"role": "system", "content": "你只输出一个 JSON 对象，不要解释。"},
+                        {"role": "user", "content": _SEG_HINT + "\n\n【材料摘录】\n" + digest}],
+                       model_id=model_id, temperature=0.2, max_tokens=2000,
+                       timeout=240, thinking=False, usage_out=used)
+    except Exception as e:                                    # noqa: BLE001
+        print(f"补写业务构成表失败：{e}")
+        return draft
+    try:
+        got = llm.parse_json(raw)
+    except Exception:                                         # noqa: BLE001
+        return draft
+    if isinstance(got, list):
+        got = got[0] if got else {}
+    t = got.get("segment_table") if isinstance(got.get("segment_table"), dict) else got
+    clean = _clean_llm_table(t)
+    if not clean or seg_missing(clean):
+        return draft
+    c["segment_table"] = clean
+    draft["commentary"] = c
+    try:
+        usage_mod.record("generate", company="", model=used.get("model") or (model_id or ""),
+                         prompt_tokens=used.get("prompt_tokens", 0),
+                         completion_tokens=used.get("completion_tokens", 0),
+                         total_tokens=used.get("total_tokens", 0),
+                         cached_tokens=used.get("cached_tokens", 0),
+                         seconds=0, note="补写业务构成表")
+    except Exception:                                         # noqa: BLE001
+        pass
+    return draft
+
+
+_MKT_HINT = """上一轮写这份报告时，输出撞上了长度上限，二级市场定价这一段没能写出来。
+现在只写这一段，别的都不要写。
+
+【格式】只输出一个 JSON 对象：{{"market": {{"lead": "加粗判断句（不带数字）", "body": "正文"}}}}
+
+【纪律】照下面这份数据写，规则与正文其他段一致：
+1. 先交代口径与区间（中债估值、按主体存续债逐券计算取中位数、共几个交易日）；
+2. 先报绝对水平：期末信用利差多少 BP，区间最低、最高与极差；只说「走阔 3BP」不说走阔到多少，读者不知道这 3BP 是从哪到哪；
+3. 变动带相对幅度：期初 → 期末、走阔或收窄多少 BP；
+4. 与基准比：超额利差多少 BP，为负说明比同评级同类型更紧，为正则更松；
+5. 波动只写数据里给的日均绝对变动与单日最大变动；
+6. 收口只说位置，不预测走势，不写「市场认可度提升」这类评价；
+7. 只写数据里有的数，不补、不推算。"""
+
+
+def _fill_market(draft: dict, facts: dict, model_id: str | None = None) -> dict:
+    """补写二级市场定价段。
+
+    这一段排在债务段之后，是截断时最先丢掉的内容之一；而「有行情数据却没写进
+    正文」会让读者以为这家主体没有可比价。数据本来就在 facts 里，补一趟很便宜。
+    """
+    c = dict(draft.get("commentary") or {})
+    if str((c.get("market") or {}).get("body") or "").strip():
+        return draft
+    import market as market_mod
+    try:
+        blk = market_mod.as_text((facts or {}).get("market") or {})
+    except Exception:                                         # noqa: BLE001
+        # 数据块格式变了、或里层缺字段：宁可这一段不写，也不要让整次生成崩在补写上
+        return draft
+    if not blk:
+        return draft
+    used: dict = {}
+    try:
+        raw = llm.chat([{"role": "system", "content": "你只输出一个 JSON 对象，不要解释。"},
+                        {"role": "user", "content": _MKT_HINT + "\n\n【二级市场数据】\n" + blk}],
+                       model_id=model_id, temperature=0.3, max_tokens=1500,
+                       timeout=240, thinking=False, usage_out=used)
+    except Exception as e:                                    # noqa: BLE001
+        print(f"补写二级市场段失败：{e}")
+        return draft
+    try:
+        got = llm.parse_json(raw)
+    except Exception:                                         # noqa: BLE001
+        return draft
+    if isinstance(got, list):
+        got = got[0] if got else {}
+    m = got.get("market") if isinstance(got.get("market"), dict) else got
+    body = str((m or {}).get("body") or "").strip()
+    if not body:
+        return draft
+    c["market"] = {"lead": _lead(str((m or {}).get("lead") or "")),
+                   "body": polish_language(body)}
+    draft["commentary"] = c
+    try:
+        usage_mod.record("generate", company="", model=used.get("model") or (model_id or ""),
+                         prompt_tokens=used.get("prompt_tokens", 0),
+                         completion_tokens=used.get("completion_tokens", 0),
+                         total_tokens=used.get("total_tokens", 0),
+                         cached_tokens=used.get("cached_tokens", 0),
+                         seconds=0, note="补写二级市场定价段")
+    except Exception:                                         # noqa: BLE001
+        pass
+    return draft
+
+
+def _period_rank(p: str) -> tuple[int, int]:
+    """期次的可比大小：先年、再月（整年按 12 月）。「2026年6月末」>「2025年」。"""
+    x = _norm_period(p)
+    m = re.match(r"(\d{4})年(?:\s*(\d{1,2})\s*月)?", x)
+    if not m:
+        return (0, 0)
+    return (int(m.group(1)), int(m.group(2) or 12))
+
+
+def fin_outdated(fin: dict, latest: str) -> bool:
+    """台账那张表是不是比正文用的期次旧。
+
+    台账是财汇的结构化数据，只到最近一个完整年度；正文却按材料写到了 2026年
+    6月末。两者并排出现，读者会以为财务表没更新。
+    """
+    ps = [str(x) for x in ((fin or {}).get("periods") or [])]
+    if not ps or not latest:
+        return False
+    return _period_rank(max(ps, key=_period_rank)) < _period_rank(latest)
+
+
+def _merge_fin(old: dict, new: dict) -> dict:
+    """把补出来的表并进原表：按期次并集，行名以原表为主。
+
+    原表的行是台账按「字段可得 + 占比够大」选的，顺序有讲究；补出来的表来自
+    材料，行少但期次新。直接替换会丢行，所以按行名对齐、缺的期次补「--」。
+    """
+    if not new or not (new.get("rows") or []):
+        return old
+    periods = [str(x) for x in (new.get("periods") or [])]
+    for p in (old.get("periods") or []):
+        if str(p) not in periods:
+            periods.append(str(p))
+    periods = sorted(periods, key=_period_rank, reverse=True)
+
+    def row_map(t: dict) -> dict[str, dict[str, str]]:
+        out: dict[str, dict[str, str]] = {}
+        ps = [str(x) for x in (t.get("periods") or [])]
+        for r in (t.get("rows") or []):
+            if not r:
+                continue
+            out[str(r[0]).strip()] = {ps[i]: str(r[i + 1]) for i in range(min(len(ps), len(r) - 1))}
+        return out
+
+    nmap, omap = row_map(new), row_map(old)
+    rows: list[list[str]] = []
+    order = [str(r[0]).strip() for r in (old.get("rows") or []) if r]
+    order += [k for k in nmap if k not in omap]
+    for name in order:
+        vals = []
+        for p in periods:
+            v = (nmap.get(name) or {}).get(p) or (omap.get(name) or {}).get(p) or "--"
+            vals.append(v if v not in ("", None) else "--")
+        rows.append([name] + vals)
+    out = dict(old)
+    out.update({"periods": periods, "rows": rows,
+                "caption": old.get("caption") or new.get("caption"),
+                "unit_line": old.get("unit_line") or new.get("unit_line")})
+    return out
+
+
 def _looks_empty(draft) -> bool:
     """解析出来了，但正文几乎没有——不是截断，是模型没写出东西。
 
@@ -4074,6 +4650,30 @@ def generate(facts: dict, materials: list[dict], model_id: str | None = None,
             # 四千字与一万字差别不大，但对超长材料是能不能塞进上下文的问题。
             draft = _fill_missing(draft, facts, _trim_materials(materials, 0.5),
                                   model_id, progress)
+    # 财务表排在 JSON 末尾，常是第一个被截掉的：空白表比没有表更难看，
+    # 而正文里到处写着「上表」。这里补一趟，只要一张表。
+    _c_now = draft.get("commentary") or {}
+    _seg_ps = [str(x) for x in ((_c_now.get("segment_table") or {}).get("periods") or [])]
+    _latest = _seg_ps[0] if _seg_ps else ""
+    _fin = _c_now.get("financial_table") or {}
+    if not _table_has_values(_fin) or fin_outdated(_fin, _latest):
+        _p(progress, 94, "补写财务指标表", "材料里有三表的，重新整理一份")
+        _before = json.loads(json.dumps(_fin)) if _table_has_values(_fin) else {}
+        draft = _fill_fin_table(draft, materials, model_id)
+        _after = (draft.get("commentary") or {}).get("financial_table") or {}
+        # 台账那张表行更全（12 行），补出来的是材料口径、期次更新（含 2026年6月末）：
+        # 合并成「台账的行 + 材料的新期次」，两边都不丢。
+        if _before and _table_has_values(_after) and fin_outdated(_before, _latest):
+            merged = _merge_fin(_before, _after)
+            if _table_has_values(merged):
+                cc = dict(draft.get("commentary") or {})
+                cc["financial_table"] = merged
+                draft["commentary"] = cc
+    if seg_missing((draft.get("commentary") or {}).get("segment_table") or {}):
+        _p(progress, 94, "补写业务构成表", "按材料里的分板块收入重排一张")
+        draft = _fill_seg_table(draft, materials, model_id)
+    if not str(((draft.get("commentary") or {}).get("market") or {}).get("body") or "").strip():
+        draft = _fill_market(draft, facts, model_id)
     _p(progress, 95, "语言清理", "去重复句、清来源交代语")
     # 这一步以前只在导出前做，于是页面上看到的草稿是没清过的：同一句话出现两遍、
     # 「材料显示」这类词都还挂着，校验把它们逐条报出来让人改。规则能删的就不该
