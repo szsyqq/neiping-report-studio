@@ -1406,6 +1406,58 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
 @keyframes tbar{0%{width:0}18%{width:8%}62%{width:78%}88%,100%{width:100%}}
 
 /* 补充说明：两行字写到一半，光标在末尾闪 */
+/* 演示模式（留在演示态里随便点）：常驻一条窄条，随时能退出。
+   不遮不挡不压正文——领导要看的是「正常怎么操作」，多一层浮层就变成看界面了。 */
+/* 演示条挂在 header 里，不悬浮：悬浮条会压在导航栏上，演示时看着像界面坏了。 */
+#demoBar{display:none;align-items:center;gap:6px;background:#fff8e6;border:1px solid #f0dfae;
+  border-radius:14px;padding:2px 4px 2px 10px;font-size:11.5px;color:#7a5a08;
+  font-family:-apple-system,"PingFang SC",sans-serif;white-space:nowrap;flex:none}
+#demoBar.show{display:inline-flex}
+#demoBar b{font-weight:600}
+#demoBar .dsep{color:#d9c68d}
+#demoBar .dbtn{border:0;background:transparent;color:#7a5a08;font-size:12px;cursor:pointer;
+  padding:3px 9px;border-radius:14px;font-family:inherit}
+#demoBar .dbtn:hover{background:#f6ead0}
+#demoBar .dbtn.exit{background:#7a5a08;color:#fff}
+#demoBar .dbtn.exit:hover{background:#664a06}
+
+/* 引导入口（? 按钮）的三项菜单 */
+#tourMenu{position:fixed;z-index:101;display:none;min-width:212px;background:#fff;
+  border:1px solid var(--line);border-radius:9px;box-shadow:0 14px 38px rgba(17,20,24,.18);
+  padding:5px;text-align:left}
+#tourMenu.show{display:block}
+#tourMenu button{display:block;width:100%;text-align:left;border:0;background:transparent;
+  padding:7px 10px;border-radius:6px;font-size:12.5px;color:var(--ink);cursor:pointer;line-height:1.45}
+#tourMenu button:hover{background:var(--hover)}
+#tourMenu button i{display:block;font-style:normal;font-size:11px;color:var(--muted);margin-top:2px}
+
+/* 引导走完：给两个去处，而不是直接把人踢回空白页 */
+#tourEnd{position:fixed;inset:0;z-index:104;display:none;align-items:center;justify-content:center;
+  padding:16px;background:rgba(17,20,24,.34)}
+#tourEnd.show{display:flex}
+.tend-p{width:452px;max-width:100%;background:#fff;border-radius:12px;
+  box-shadow:0 26px 70px rgba(17,20,24,.28);padding:20px 22px 16px;text-align:left}
+.tend-p h3{margin:0 0 5px;font-size:15px;font-weight:600}
+.tend-p .sub{margin:0 0 15px;font-size:12.5px;color:var(--ink2);line-height:1.7}
+.tend-p .opt{display:block;width:100%;text-align:left;border:1px solid var(--line);background:#fff;
+  border-radius:9px;padding:10px 13px;margin-bottom:9px;cursor:pointer;font-family:inherit}
+.tend-p .opt:last-of-type{margin-bottom:2px}
+.tend-p .opt:hover{border-color:#cfd4dc;background:var(--hover)}
+.tend-p .opt b{display:block;font-size:13px;font-weight:600;margin-bottom:2px;color:var(--ink)}
+.tend-p .opt i{display:block;font-style:normal;font-size:11.5px;color:var(--muted);line-height:1.6}
+
+@media (max-width:1180px){
+  /* 导航栏位置不够：把说明文字收掉，只留「演示模式」与两个按钮 */
+  #demoBar .dtext,#demoBar .dsep{display:none}
+}
+@media (max-width:760px){
+  /* 手机上导航栏本来就挤：演示条只留「演示模式 + 退出」，
+     重播改从右上角的 ? 菜单进，功能不缺，宽度省一半。 */
+  #demoBar{padding:2px 3px 2px 8px;font-size:11px}
+  #demoBar .dbtn{padding:2px 6px;font-size:11px}
+  #demoBar .dbtn:not(.exit){display:none}
+}
+
 /* 演示标记：界面里摆的是示例数据，必须一眼看得出来 */
 .demotag{display:inline-flex;align-items:center;font-family:-apple-system,"PingFang SC",sans-serif;
   font-size:10.5px;font-weight:600;color:#fff;background:#a97b12;border-radius:20px;
@@ -1451,6 +1503,25 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
   <div class="tour-hole" id="tourHole"></div>
   <div class="tour-tip" id="tourTip" role="dialog" aria-label="使用引导"></div>
 </div>
+<div id="tourEnd" role="dialog" aria-label="引导结束">
+  <div class="tend-p">
+    <h3>看完了。接下来去哪儿？</h3>
+    <p class="sub">界面里现在摆的是中山城建 2026 年跟踪期的一份真稿，不是截图。</p>
+    <button class="opt" onclick="tourPickStay()">
+      <b>留在这份示例里，自己点一遍</b>
+      <i>可以翻段、改字、加减条目、拖顺序、导出 Word；不调模型、不发信。看完点顶部「退出演示」。</i>
+    </button>
+    <button class="opt" onclick="tourPickNormal()">
+      <b>结束演示，开始用我自己的主体</b>
+      <i>清掉这份示例，回到空白工作台，从检索主体开始。</i>
+    </button>
+  </div>
+</div>
+<div id="tourMenu">
+  <button onclick="tourMenuAct('replay')">重播引导<i>把这一遍从头再讲一次</i></button>
+  <button onclick="tourMenuAct('demo')">进入演示模式<i>直接打开中山城建那一份，自己点</i></button>
+  <button onclick="tourMenuAct('normal')" data-act="normal">正式开始使用<i>关掉示例，填自己的主体</i></button>
+</div>
 <div id="gate" class="show">
   <div class="gcard">
     <div class="gt">内评简评报告</div>
@@ -1483,8 +1554,14 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
   <span class="sep"></span>
   <button class="usage" id="lockBtn" onclick="logout()" title="退出，重新需要口令">锁定</button>
   <span class="sep"></span>
-  <button class="tourbtn" id="tourBtn" onclick="startTour(0)"
-    title="重看使用引导：四个步骤、哪里能改、哪里能拖、哪里能加" aria-label="使用引导">?</button>
+  <span id="demoBar">
+    <b>演示模式</b><span class="dsep">·</span><span class="dtext">中山城建示例，可以随便改</span>
+    <button class="dbtn" onclick="startTour(0)">重播</button>
+    <button class="dbtn exit" onclick="demoExit(true)">退出演示</button>
+  </span>
+  <span class="sep"></span>
+  <button class="tourbtn" id="tourBtn" onclick="openTourMenu(event)"
+    title="重播引导 / 进入演示模式 / 正式开始使用" aria-label="使用引导">?</button>
   <span class="sep"></span>
   <a href="docs/wiki.html" id="docLink" target="_blank"
      title="说明与方法：五步流程、涉及哪些文件、模板与提示词的结构；详版另讲写作判据与实现细节">说明</a>
@@ -2354,6 +2431,9 @@ function histDocx(encoded){
 
 /* ---------------- 检索 ---------------- */
 async function doSearch(){
+  // 演示模式：不真的检索、读材料、调模型。领导看的是界面怎么用，
+  // 真跑一遍要几十秒、还花钱，中途出来一堆进度反而讲不下去。
+  if(DEMO.stay) return toast("演示模式：这一步不真跑。退出演示后用你自己的主体操作。", true);
   const company = $("#company").value.trim();
   if(!company) return toast("请输入企业全称", true);
   hideSug();                // 上一轮的候选不该留在屏幕上，会被当成这一轮的结果
@@ -2647,6 +2727,9 @@ function paintMatStates(){
 }
 
 async function doFetch(){
+  // 演示模式：不真的检索、读材料、调模型。领导看的是界面怎么用，
+  // 真跑一遍要几十秒、还花钱，中途出来一堆进度反而讲不下去。
+  if(DEMO.stay) return toast("演示模式：这一步不真跑。退出演示后用你自己的主体操作。", true);
   // kind 一起带上：后端据此决定摘录策略（审计报告只留意见页与三表页）
   const picks = [...document.querySelectorAll(".mchk:checked")].map(el => ({
     url: el.dataset.url, title: el.dataset.title,
@@ -2947,6 +3030,9 @@ window.addEventListener("resize", () => syncFab());
 
 /* ---------------- 生成 ---------------- */
 async function doGenerate(){
+  // 演示模式：不真的检索、读材料、调模型。领导看的是界面怎么用，
+  // 真跑一遍要几十秒、还花钱，中途出来一堆进度反而讲不下去。
+  if(DEMO.stay) return toast("演示模式：这一步不真跑。退出演示后用你自己的主体操作。", true);
   if(S.mode === "update" && !S.base) return toast("请先上传待修订的旧报告（.docx）", true);
   if(!S.loaded.length) return toast("请先读取材料，或上传 PDF", true);
   busy.gen = true; syncButtons();
@@ -5997,8 +6083,16 @@ $("#verMask").addEventListener("click", e => { if(e.target.id === "verMask") clo
 
 $("#setMask").addEventListener("click", e => { if(e.target.id === "setMask") closeSettings(); });
 $("#pmtMask").addEventListener("click", e => { if(e.target.id === "pmtMask") closePrompt(); });
+document.addEventListener("click", e => {
+  const m = $("#tourMenu");
+  if(!m || !m.classList.contains("show")) return;
+  if(m.contains(e.target) || e.target.closest("#tourBtn")) return;
+  closeTourMenu();
+}, true);
+
 document.addEventListener("keydown", e => {
   if(e.key !== "Escape") return;
+  if($("#tourMenu").classList.contains("show")) { closeTourMenu(); return; }
   if(SET.open) closeSettings();
   if($("#verMask").classList.contains("show")) closeVersions();
   if($("#pmtMask").classList.contains("show")) closePrompt();
@@ -6201,6 +6295,9 @@ function mailAnaFold(e){
 }
 
 async function runMail(){
+  // 发信是对外动作，演示态一律不发：把「这封信会真的发出去」当成演示的一部分，
+  // 迟早会有人在领导面前把中山的示例稿发给真的客户。
+  if(DEMO.stay) return toast("演示模式：这里不发信。退出演示后，发送的就是你自己那一稿。", true);
   const go = $("#mlGo"), st = $("#mlSt");
   const cfg = MAIL.cfg || {};
   const anaKeys = Object.keys(MAIL.ana || {}).filter(k => MAIL.ana[k]);
@@ -6277,6 +6374,24 @@ async function toggleBundle(e){
 async function fetchFileList(force){
   // 报告与底稿清单：打包和发邮件都要用，取一次存 PKG.data
   if(PKG.data && !force) return PKG.data;
+  // 演示模式：示例材料不在本机（快照里没有路径），服务端那份清单也对不上。
+  // 这里给一份本地清单：报告走「按当前稿现场排版」，附件列两份示例让人看到
+  // 「可以框选」这件事本身；真打包时只带报告，见 runBundle。
+  if(DEMO.stay){
+    PKG.data = {
+      docx: [{ name: (TOUR_DATA.company || "示例") + "内评简评报告.docx",
+               size: 0, mtime: "按当前内容现场排版" }],
+      materials: [],
+      analysis: [
+        { key: "demo-fin", name: "财务指标提取.txt", short: "财务指标提取",
+          desc: "台账与三表对齐", chars: 2400 },
+        { key: "demo-spread", name: "利差走势.txt", short: "利差走势",
+          desc: "中债估值 · 22 个交易日", chars: 1180 },
+      ],
+      demo: true,
+    };
+    return PKG.data;
+  }
   const q = new URLSearchParams();
   q.set("company", pkgCompany());
   // 带上记录 id：服务重启后 STATE 是空的，后端靠记录把这一轮的草稿与材料找回来，
@@ -6420,6 +6535,9 @@ async function runBundle(){
   // 分析附件是从草稿算出来的：不管有没有导出 Word，都把当前页面上的版本带上，
   // 否则压缩包里的核对结果会停在生成那一刻，页面上改过的对不上。
   if(!body.draft && S.draft && body.analysis.length) body.draft = collectDraft();
+  // 演示态：示例附件只是让人看见「附件可以勾」，本机没有对应材料，
+  // 传过去只会让服务端去提取一份不存在的 PDF。只打报告正文。
+  if(DEMO.stay){ body.materials = []; body.analysis = []; }
 
   PKG.busy = true;
   const go = $("#pkGo");
@@ -6474,42 +6592,57 @@ const TOUR_STEPS = [
     body: `四类公告都会列出来，勾好点「读取选中材料」；本机 PDF 也能直接拖进来。`,
     demo: "mats" },
 
-  { sel: [".note-in"], title: "第 3 步 · 先写判断再生成", wiz: "generate",
+  // 第 3 步拆成三拍：先写判断、再选模型、最后按生成。原来把「写判断」讲完
+  // 就直接跳到成稿，中间这两下（选哪个模型、按钮在哪）从来没讲过，
+  // 第一次用的人会在这一步停住。
+  { sel: [".note-in"], title: "第 3 步 · 先把判断写下来", wiz: "generate",
     when: () => !!document.querySelector(".note-in"),
-    body: `把读完材料的判断写在这里，决定正文往哪写；留空也行。` },
+    body: `读完材料的判断写在这里，决定正文往哪写：要强调什么、哪里存疑、必须单列哪一段。留空也行。` },
 
-  { sel: ["#railL", "#p-pos"], title: "候选观点：手动补一条", wiz: "export",
-    when: () => !!(document.querySelector("#p-pos .chip") || document.querySelector("#p-con .chip")),
-    body: `正文没用上的判断句留在这里，点一条就追加进正面或关注，加过的自动消失。`,
-    demo: "pool" },
+  { sel: ["#ws-generate .modelrow", "#model"], title: "第 3 步 · 选模型", wiz: "generate",
+    when: () => !!document.querySelector("#model"),
+    body: `这里选用哪个模型写，右边是这一次的大致花费。默认那个通常就够用。` },
 
-  { sel: ["#blk-basic", "#blk-overview"], title: "正文每一段都能改", wiz: "export",
-    body: `每段都是输入框，直接改；发送、导出、下载读的都是这一份。` },
+  { sel: ["#btnGen"], title: "第 3 步 · 点生成", wiz: "generate",
+    when: () => !!document.querySelector("#btnGen"),
+    body: `按下去就去写了，约 30–60 秒，可以先把页面切走。写的过程中不用守着。` },
 
-  { sel: ["#blk-segments .add", "#blk-segments"], title: "自己加一节", wiz: "export",
+  { sel: ["#blk-basic", "#blk-overview"], title: "正文：每一段都能直接改", wiz: "export",
+    body: `每段都是一个输入框，点进去就能改字、改数。选中一句话还能单独改写、精简或补写——后面会说。` },
+
+  { sel: ["#blk-segments .add", "#blk-segments"], title: "正文：缺什么自己加", wiz: "export",
     when: () => !!document.querySelector("#blk-segments"),
-    body: `点「+ 板块」空一节出来，标题正文都能直接写；摘要「+ 条目」、末尾「+ 专题段」同理。`,
+    body: `「+ 板块」加一节业务，「+ 条目」加一条摘要，末尾还能加专题段（对外担保、未决诉讼这类）。每个板块后也有「补一段分析」。`,
     demo: "add" },
 
-  { sel: ["#blk-pos"], title: "顺序可以拖", wiz: "export", try: true,
-    body: `按住条目左边的序号上下拖就能换位置——这一步不用看，现在就能试。` },
+  { sel: ["#railL", "#p-pos"], title: "候选观点：正文没用上的判断", wiz: "export",
+    when: () => !!(document.querySelector("#p-pos .chip") || document.querySelector("#p-con .chip")),
+    body: `模型从正文里抽出来、但没进定稿的判断句都在这里。点一条就追加进正面或关注，加过的自动消失。`,
+    demo: "pool" },
+
+  { sel: ["#blk-pos"], title: "观点的顺序可以拖", wiz: "export", try: true,
+    body: `按住条目左边的序号上下拖就能换位置，摘要按新顺序排。这一步不用看，现在就能试。` },
 
   { sel: ["#railR .ck-list", ".rail-r .ck-h"], title: "核验栏：只核数字", wiz: "export",
-    body: `这里只留程序判不了的数字问题，点一条跳到正文那句，核完打勾。` },
+    body: `这里只留程序判不了的数字问题，点一条跳到正文那句，核完打勾。措辞类的程序已经自己改掉了。` },
 
-  // 出稿放在全部确认之后：核验栏看完了再发、再导，顺序跟上文一致。
-  // 发送与导出各占一步——「怎么发」和「怎么排版」是两件事，合成一句时
-  // 三个按钮挤在一行，看完只记得「这里能出稿」，记不住附件是可选勾的。
-  { sel: ["#btnMail"], title: "第 4 步 · 发送（可带附件）", wiz: "export",
+  // 出稿三个动作各占一步：发出去、存到本机、按模板排版，
+  // 合成一句讲的时候，三个按钮挤在一行，看完只记得「这里能出稿」。
+  { sel: ["#btnMail"], title: "出稿 · 发送", wiz: "export",
     when: () => !!document.querySelector("#btnMail"),
-    body: `正文一定会带上；底稿 PDF 与分析附件按需勾，收件人只看正文就不勾。` },
+    body: `正文一定会带上；底稿 PDF 与分析附件在面板里按需勾选，收件人只看正文就不勾。` },
 
-  { sel: ["#btnExport"], title: "第 4 步 · 导出 Word", wiz: "export",
+  { sel: ["#btnPkg"], title: "出稿 · 下载到本地", wiz: "export",
+    when: () => !!document.querySelector("#btnPkg"),
+    body: `打开是一张清单：报告、底稿、分析附件都在里面，勾哪几份就打包哪几份，下载成 zip。`,
+    },
+
+  { sel: ["#btnExport"], title: "出稿 · 导出 Word", wiz: "export",
     when: () => !!document.querySelector("#btnExport"),
-    body: `按模板排版，段落、加粗、表格都在；旁边的下载把报告与材料打成包。` },
+    body: `按模板排好版直接落盘：段落、加粗、表格、页边距都在，打开就能改。` },
 
-  { sel: ["#tourBtn", "#docLink"], title: "随时可以重看",
-    body: `点右上角的 ? 重看；「说明」讲流程与写法。← → 翻页，Esc 退出。` },
+  { sel: ["#tourBtn", "#docLink"], title: "随时可以再看、也可以直接进演示",
+    body: `点右上角 <b>?</b> 有三个去处：<b>重播引导</b>、<b>进入演示模式</b>（自己点这份示例）、<b>正式开始使用</b>。← → 翻页，Esc 退出。` },
 ];
 
 const TOUR = { on: false, i: 0, raf: 0, scrollTo: null, settle: 0, openWas: undefined, notesOpened: false };
@@ -7098,12 +7231,13 @@ const TOUR_DEMO = {
 /* 演示态：把真实一轮灌进真实界面。
    只在手上一片空白时做——已经有草稿或材料时演示会盖掉用户的活，
    那种情况下引导只指位置，不填内容（demoEnter 返回 false）。 */
-const DEMO = { on: false };
+const DEMO = { on: false, stay: false };
 
 function demoEnter(){
   if(DEMO.on) return true;
   if(S.draft || S.loaded.length || (S.facts && S.facts.materials)) return false;
   DEMO.on = true;
+  DEMO.stay = false;
   document.body.classList.add("demo");
 
   const d = JSON.parse(JSON.stringify(TOUR_DATA.draft));
@@ -7145,9 +7279,20 @@ function demoEnter(){
   return true;
 }
 
-function demoExit(){
-  if(!DEMO.on) return;
+/* 退出演示。fromBar=true 表示用户自己点了「退出演示」，要回一句确认；
+   引导收尾、重播、开始正式使用时静默清掉，不必每次都弹提示。 */
+function demoExit(fromBar){
+  if(!DEMO.on){
+    // 不在演示态也允许调用：把可能残留的条与标记一并收掉
+    DEMO.stay = false;
+    const b0 = $("#demoBar");
+    if(b0) b0.classList.remove("show");
+    return;
+  }
   DEMO.on = false;
+  DEMO.stay = false;
+  const bar = $("#demoBar");
+  if(bar) bar.classList.remove("show");
   document.body.classList.remove("demo");
   S.company = "";
   const co = $("#company");
@@ -7163,7 +7308,26 @@ function demoExit(){
   // 流程区在 aside 里、正文在 main 里，各自滚，光 reset window 不够。
   try{ scrollTo({ top: 0, behavior: "auto" }); }catch(e){ scrollTo(0, 0); }
   document.querySelectorAll("aside, main").forEach(x => { x.scrollTop = 0; });
-  toast("演示内容已清除，可以填自己的主体了");
+  if(fromBar) toast("已退出演示，可以填自己的主体了");
+}
+
+/* 留在演示态：不清数据，只摘掉引导遮罩，挂一条常驻窄条。
+   领导要看的是「正常操作长什么样」——翻段、改字、加减条目、拖顺序、导 Word
+   都能照常做；会花钱或会对外发东西的（检索、生成、发信）由各动作自己拦住。 */
+function demoStay(){
+  if(!DEMO.on) return false;
+  DEMO.stay = true;
+  document.body.classList.add("demo");
+  const bar = $("#demoBar");
+  if(bar) bar.classList.add("show");
+  // 演示标签在正文标题行；重新进演示态时可能已被清掉，补一枚
+  const sub = document.querySelector("#draftArea .doc-sub");
+  if(sub && !sub.querySelector(".demotag")){
+    sub.insertAdjacentHTML("afterbegin",
+      `<span class="demotag" title="演示模式：中山城建 2026 年跟踪期的真实一轮，退出即清除">示例</span>`);
+  }
+  closeTourMask();
+  return true;
 }
 
 /* 引导讲到第几步，左侧就把那一步展开。
@@ -7233,22 +7397,69 @@ function startTour(idx){
   tourPaint(true);
 }
 
-function tourEnd(){
-  TOUR.on = false;
-  try{ localStorage.setItem(TOUR_KEY, "1"); }catch(e){}
+/* 摘掉引导本身：遮罩、气泡、键盘与滚动监听、body 的滚动锁。
+   与「清掉演示数据」分开——走完引导要问一句去哪儿，那时候数据还得留着。 */
+function closeTourMask(){
   const mask = $("#tourMask");
+  if(!mask) return;
   mask.classList.remove("show");
   mask.setAttribute("aria-hidden", "true");
+  mask.classList.remove("passthru");
+  const hole = $("#tourHole");
+  if(hole) hole.classList.add("off");
+  const tip = $("#tourTip");
+  if(tip) tip.innerHTML = "";
   document.body.style.overflow = "";
   document.body.style.paddingRight = "";
-  $("#tourTip").innerHTML = "";
-  mask.classList.remove("passthru");
+}
+
+function tourDetach(){
+  TOUR.on = false;
+  clearTimeout(TOUR.settle); TOUR.settle = 0;
   document.removeEventListener("keydown", tourKey);
   window.removeEventListener("resize", tourRepaint);
   window.removeEventListener("scroll", tourRepaint, true);
   if(TOUR.scrollTo){ TOUR.scrollTo = null; }
+  closeTourMask();
+}
+
+/* 走完最后一步：不直接清场，先问「留在这儿继续点」还是「开始用自己的」。
+   领导演示最怕的是讲完一按退出，屏幕上什么都没了，再想看一眼得重新生成。 */
+function tourFinish(){
+  if(!TOUR.on && !$("#tourMask").classList.contains("show")) return;
+  tourDetach();
+  try{ localStorage.setItem(TOUR_KEY, "1"); }catch(e){}
+  TOUR.openWas = undefined; TOUR.notesOpened = false;
+  $("#tourEnd").classList.add("show");
+}
+
+function tourPickStay(){
+  $("#tourEnd").classList.remove("show");
+  closeTourMask();
+  if(!demoStay()){
+    // 手上有真稿时 demoStay 不会生效：那种情况下演示本来就没铺开
+    toast("手上已有草稿，没有铺演示。点右上角 ? 可以进演示模式。");
+  }else{
+    toast("已留在演示里：可以随便点、随便改，顶部「退出演示」随时走");
+  }
+}
+
+function tourPickNormal(){
+  $("#tourEnd").classList.remove("show");
+  closeTourMask();
+  demoExit();
+  toast("已退出演示，可以填自己的主体了");
+}
+
+/* 跳过（Esc / ×）：直接收场并清数据，与「看完再选」区分开——
+   × 的语义就是「我不想看了」，这时候再拦一道选择只会让人再点一次。 */
+function tourEnd(){
+  if(!TOUR.on && !$("#tourMask").classList.contains("show")) return;
+  const stay = DEMO.stay;
+  tourDetach();
+  try{ localStorage.setItem(TOUR_KEY, "1"); }catch(e){}
   // 手上有活时只借用了展开状态（和补充说明的折叠），退出就还回去。
-  // 演示态交给 demoExit：它整套复位，不用这里再关一次。
+  // 演示态交给 demoExit / demoStay：不用这里再关一次。
   if(!DEMO.on){
     if(TOUR.notesOpened){
       const nb = $("#niBody");
@@ -7259,11 +7470,59 @@ function tourEnd(){
     }
   }
   TOUR.openWas = undefined; TOUR.notesOpened = false;
-  // 演示内容一律收回：看完引导，工作台要是空的，否则下一轮会把中山城建那份稿子当成自己的
-  demoExit();
+  if(stay) demoStay(); else demoExit();
 }
 
-function tourNext(){ if(TOUR.i >= TOUR_STEPS.length - 1) tourEnd(); else tourGo(1); }
+/* ── ? 按钮：三个去处 ─────────────────────────────────────────
+   原来这个按钮直接重播整段引导。对第二次来的人（尤其演示给领导看的场合）
+   「再看一遍动画」和「直接进演示自己点」是两件事，得让人选。 */
+function openTourMenu(e){
+  if(e) e.stopPropagation();
+  const m = $("#tourMenu");
+  const btn = $("#tourBtn");
+  if(!m || !btn) return;
+  const r = btn.getBoundingClientRect();
+  const w = m.offsetWidth || 214;
+  m.style.left = Math.max(8, Math.min(innerWidth - w - 8, r.right - w)) + "px";
+  m.style.top = (r.bottom + 6) + "px";
+  const third = m.querySelector('[data-act="normal"]');
+  if(third){
+    third.innerHTML = DEMO.on
+      ? `退出演示，开始用我自己的<i>清掉示例数据，回到空白工作台</i>`
+      : `正式开始使用<i>关掉示例，填自己的主体</i>`;
+  }
+  m.classList.add("show");
+}
+
+function closeTourMenu(){
+  const m = $("#tourMenu");
+  if(m) m.classList.remove("show");
+}
+
+function tourMenuAct(k){
+  closeTourMenu();
+  if(k === "replay"){
+    if(DEMO.on) demoExit();
+    startTour(0);
+  }else if(k === "demo"){
+    if(DEMO.on){ demoStay(); toast("已在演示模式里"); return; }
+    if(!demoEnter()){
+      // 手上有稿时不要拿示例盖掉人家正在改的东西
+      toast("手上已有草稿：先导出或清空，再进演示", true);
+      return;
+    }
+    demoStay();
+    toast("已进入演示模式：中山城建那一份可以随便点");
+  }else if(k === "normal"){
+    demoExit();
+    toast(DEMO.on ? "仍在演示模式" : "已回到正常模式，可以填自己的主体了");
+  }
+}
+
+function tourNext(){
+  if(TOUR.i >= TOUR_STEPS.length - 1) tourFinish();
+  else tourGo(1);
+}
 function tourPrev(){ tourGo(-1); }
 function tourGo(d){
   const n = TOUR.i + d;
@@ -7300,7 +7559,7 @@ function tourPaint(scroll){
         `<i class="${k === TOUR.i ? "on" : ""}" onclick="tourJump(${k})" title="第 ${k + 1} 步"></i>`).join("")}
         <span class="tour-n">${TOUR.i + 1}/${TOUR_STEPS.length}</span></div>
       ${TOUR.i > 0 ? `<button class="tour-btn ghost" onclick="tourPrev()">上一步</button>` : ""}
-      <button class="tour-btn primary" id="tourNextBtn" onclick="tourNext()">${last ? "开始使用" : (TOUR.i === 0 ? "看一遍" : "下一步")}</button>
+      <button class="tour-btn primary" id="tourNextBtn" onclick="tourNext()">${last ? "看完了" : (TOUR.i === 0 ? "看一遍" : "下一步")}</button>
     </div>`;
 
   // 讲到第几步，左侧手风琴就展开那一步；同步改完再量孔，位置才对得上。
