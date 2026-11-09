@@ -1266,6 +1266,8 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
   font-variant-numeric:tabular-nums}
 .tour-tip p{margin:0 0 8px}
 .tour-tip p:last-of-type{margin-bottom:0}
+/* 只有标题、没有解释的步骤（界面上本来就写着怎么做）：标题不留空档 */
+.tour-tip.nb h4{margin-bottom:0}
 .tour-tip b{color:var(--ink);font-weight:600}
 .tour-tip code{background:#f4f5f7;border-radius:4px;padding:0 4px;font-size:12px;
   font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--ink)}
@@ -1273,17 +1275,20 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
   border-bottom-width:2px;border-radius:4px;padding:0 4px;font-size:11px;
   font-family:ui-monospace,Menlo,monospace;background:#fcfcfd;color:var(--ink2)}
 
-.tour-foot{display:flex;align-items:center;gap:8px;margin-top:13px;padding-top:11px;
-  border-top:1px solid var(--line2)}
-.tour-dots{display:flex;gap:5px;align-items:center;margin-right:auto}
-.tour-dots i{width:5px;height:5px;border-radius:50%;background:#d7dade;cursor:pointer;
+/* 进度点与按钮分两行：十几个点时，点和「上一步／下一步」挤在一行放不下，
+   按钮会被顶到第二行去，而且「下一步」独占一行的右边，看着像错版。 */
+.tour-foot{display:flex;align-items:center;gap:6px;margin-top:12px;padding-top:10px;
+  border-top:1px solid var(--line2);flex-wrap:wrap}
+.tour-dots{display:flex;gap:4px;align-items:center;flex:1 1 100%;margin:0}
+.tour-dots i{width:5px;height:5px;border-radius:50%;background:#d7dade;cursor:pointer;flex:none;
   transition:width .2s,background .2s}
 .tour-dots i.on{width:15px;border-radius:3px;background:var(--ink)}
-.tour-n{font-size:10.5px;color:#b6bcc4;margin-left:6px;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.tour-n{font-size:10.5px;color:#b6bcc4;margin-left:5px;flex:none;
+  font-variant-numeric:tabular-nums;letter-spacing:.02em}
 .tour-btn{border:1px solid var(--line);background:#fff;color:var(--ink2);
-  border-radius:7px;padding:5px 12px;font-size:12.5px;line-height:1.5;cursor:pointer}
+  border-radius:6px;padding:4px 10px;font-size:12px;line-height:1.5;cursor:pointer;flex:none}
 .tour-btn:hover{background:var(--hover);color:var(--ink)}
-.tour-btn.primary{background:var(--ink);border-color:var(--ink);color:#fff}
+.tour-btn.primary{background:var(--ink);border-color:var(--ink);color:#fff;margin-left:auto}
 .tour-btn.primary:hover{background:#000;color:#fff}
 .tour-btn.ghost{border-color:transparent;padding:5px 8px;color:var(--muted)}
 .tour-btn.ghost:hover{color:var(--ink)}
@@ -2134,15 +2139,19 @@ function fmtYuan(y){
   return "¥" + y.toFixed(2);
 }
 
-/* 生成步骤里那行「这次约多少钱」。进步骤、换模型、改补充说明都重算一次。 */
+/* 生成步骤里那行「这次约多少钱」。进步骤、换模型、改补充说明都重算一次。
+   演示态不显示：那一轮是示例，价格和上限都是现场按材料算的，摆出来只会
+   让人盯着数字问「为什么这么贵／为什么有上限」，谈不到报告本身。 */
 let costTimer = 0;
 function refreshCostHint(){
   const el = $("#costHint");
   if(!el) return;
+  if(typeof DEMO !== "undefined" && DEMO.on){ el.textContent = ""; el.title = ""; return; }
   const model = ($("#model") && $("#model").value) || "";
   if(!model || !MODEL_IDS.includes(model)){ el.textContent = ""; return; }
   clearTimeout(costTimer);
   costTimer = setTimeout(async () => {
+    if(typeof DEMO !== "undefined" && DEMO.on){ el.textContent = ""; return; }
     try{
       const d = await api("/api/cost/preview", { company: curCo() || S.company || "",
         model, notes: notesText() });
@@ -2165,8 +2174,10 @@ function refreshCostHint(){
   }, 260);
 }
 
-/* 生成完成后把实际花费写进步骤提示：预估是预估，人更关心真花了多少 */
+/* 生成完成后把实际花费写进步骤提示：预估是预估，人更关心真花了多少。
+   演示态不写：那是示例稿，写个金额反而是假的。 */
 function paintSpent(usage){
+  if(typeof DEMO !== "undefined" && DEMO.on) return;
   if(!usage || !usage.cost) return;
   const el = $("#genHint");
   if(!el) return;
@@ -4692,7 +4703,13 @@ function ckHtml(v){
   // 财务表不平、期次没有依据。表述与结构问题（缺主语、摘要偏长、比喻、板块偏薄）
   // 一律不进这里——它们在生成时已经走过一轮自动修订，改不掉的也不该占着
   // 待核对的卡片：那会让人以为数字有问题，逐条看完才发现全是措辞。
-  const items = all.filter(it => it.fix !== "auto" && it.fix !== "hint");
+  const items0 = all.filter(it => it.fix !== "auto" && it.fix !== "hint");
+  // 演示只留两三条重点。整栏十条摆出来，看的人会以为每份稿都要人工核这么多，
+  // 而这一栏真正的意思是「剩下的机器已经算过」。
+  const items = (typeof DEMO !== "undefined" && DEMO.on && items0.length > 2)
+    ? items0.slice(0, 2).map((it, i) => Object.assign({}, it,
+        { rows: it.rows.slice(0, i === 0 ? 2 : 1) }))
+    : items0;
   const leftAuto = all.filter(it => it.fix === "auto");
   const fixedList = v.auto_fixed || [];
   const auto = (v.auto_checks || []);
@@ -5241,21 +5258,39 @@ function usePool(kind, i){
   rest.splice(i, 1);                         // 从候选里拿掉
   renderPool(kind, rest);
   renumber();
-  // 左栏和正文隔着一条街：加进去的条目在视野外就滚过去闪一下，
-  // 否则点了没反应，会以为没加上
+  // 左栏在左、正文在中，两栏各滚各的：点完不滚回去，正文还停在下面某一节的
+  // 「补一段」上，看着像是没加成。所以一律把目标板块拉到视口顶部，再闪一下。
+  const blk = document.querySelector(kind === "pos" ? "#blk-pos" : "#blk-con");
   const items = document.querySelectorAll(kind === "pos" ? ".it-pos" : ".it-con");
-  const last = items[items.length - 1];
-  if(!last) return;
-  const r = last.getBoundingClientRect();
-  if(r.top < 70 || r.bottom > innerHeight - 40) last.scrollIntoView({ behavior: "smooth", block: "center" });
-  const blk = last.closest(".blk");
-  if(blk){
+  revealBlk(blk, items[items.length - 1]);
+}
+
+/* 把一块拉到视口顶部（留一点余量给工具条）。
+   「已经在视野里就不动」这种判断不要做：刚 focus 过的输入框会被浏览器
+   顶到视口边缘，测出来算「在视野里」，结果什么都没滚。
+   main 与 aside 各是一个滚动容器，所以要找最近的那个，不能直接动 window。 */
+function revealBlk(blk, item){
+  if(!blk) return;
+  const host = scrollHost(blk);
+  const r = blk.getBoundingClientRect();
+  let y;
+  if(host === document.scrollingElement || host === document.documentElement
+     || host === document.body){
+    y = r.top + (window.scrollY || window.pageYOffset || 0) - 16;
+  }else{
+    y = host.scrollTop + r.top - host.getBoundingClientRect().top - 16;
+  }
+  try{ host.scrollTo({ top: Math.max(0, y), behavior: "smooth" }); }
+  catch(e){ host.scrollTop = Math.max(0, y); }
+  if(!item) return;
+  const show = () => {
     blk.classList.remove("flash");
     void blk.offsetWidth;
     blk.classList.add("flash");
     clearTimeout(blk._fl);
     blk._fl = setTimeout(() => blk.classList.remove("flash"), 1900);
-  }
+  };
+  show();
 }
 
 /* 条目 markup：序号兼作拖动把手，删除做成右上角一个圈 */
@@ -5277,7 +5312,10 @@ function addItem(kind, text){
   div.innerHTML = itemHtml(kind, text, box.children.length + 1);
   box.appendChild(div);
   renumber();
-  div.querySelector("textarea").focus();
+  // 不跟着滚：加完要滚到哪一节由调用方决定（候选观点加完是回正文开头）。
+  // 光标还是落在新条目里，直接就能改。
+  try{ div.querySelector("textarea").focus({ preventScroll: true }); }
+  catch(e){ div.querySelector("textarea").focus(); }
   autoGrow(div.querySelector("textarea"));
 }
 /* 删除：先淡出再摘掉，同时留一个「撤销」。
@@ -6206,7 +6244,7 @@ function renderMailPanel(){
   if(pdfs.length){
     h += `<label class="r"><input type="checkbox" id="mlPdf" ${MAIL.withPdf ? "checked" : ""}
         onchange="MAIL.withPdf=this.checked" />
-      <span class="n">原底稿 ${pdfs.length} 份 PDF<i>${pdfs.map(x => fmtSize(x.size || 0)).join(" · ")}</i></span></label>`;
+      <span class="n">原底稿 ${pdfs.length} 份 PDF<i>${pdfs.map(x => x.size ? fmtSize(x.size) : "").filter(Boolean).join(" · ")}</i></span></label>`;
   }
   // 分析附件：核对结果、自算算式、来源对照… 一份一份可以单独勾。
   // 默认都不勾——收件人多数只要报告正文；要留痕的场合再勾，且能只挑其中几份。
@@ -6382,14 +6420,20 @@ async function toggleBundle(e){
 async function fetchFileList(force){
   // 报告与底稿清单：打包和发邮件都要用，取一次存 PKG.data
   if(PKG.data && !force) return PKG.data;
-  // 演示模式：示例材料不在本机（快照里没有路径），服务端那份清单也对不上。
+  // 演示：示例材料不在本机（快照里没有路径），服务端那份清单也对不上。
   // 这里给一份本地清单：报告走「按当前稿现场排版」，附件列两份示例让人看到
   // 「可以框选」这件事本身；真打包时只带报告，见 runBundle。
-  if(DEMO.stay){
+  // 判据用 DEMO.on 而不是 DEMO.stay：引导讲到发送／下载那两步时还没「留在演示」，
+  // 那时也要能弹出带清单的面板，否则孔里只有一颗按钮。
+  if(DEMO.on){
     PKG.data = {
       docx: [{ name: (TOUR_DATA.company || "示例") + "内评简评报告.docx",
                size: 0, mtime: "按当前内容现场排版" }],
-      materials: [],
+      // 底稿按快照里那四份列出来：演示时「原底稿（0 份）」说服不了人——
+      // 材料区明明写着读了四份。页数与大小快照里没有，就不编，只列名字。
+      materials: (TOUR_DATA.mats || []).map(m => ({
+        name: m.title + ".pdf", title: m.title, size: 0, pages: 0, source: "caihui",
+      })),
       analysis: [
         { key: "demo-fin", name: "财务指标提取.txt", short: "财务指标提取",
           desc: "台账与三表对齐", chars: 2400 },
@@ -6464,7 +6508,7 @@ function renderBundle(){
     ? `<button onclick="pkgAll('pdf:', ${!pdfOn})">${pdfOn ? "取消全选" : "全选"}</button>` : ""}</div>`;
   if(mats.length){
     mats.forEach(x => {
-      const meta = [x.pages ? x.pages + " 页" : "", fmtSize(x.size),
+      const meta = [x.pages ? x.pages + " 页" : "", x.size ? fmtSize(x.size) : "",
                     x.source === "upload" ? "本地上传" : "财汇下载"].filter(Boolean).join(" · ");
       b += pkgRow("pdf:" + x.name, x.title || x.name, meta);
     });
@@ -6576,11 +6620,13 @@ document.addEventListener("click", e => {
 let booted = false;
 
 /* ══ 首次引导 ═══════════════════════════════════════════════════
-   十二个点：四步流程各一句，加上正文区能改/能拖/能加、右栏只剩什么、
-   出稿怎么走、说明页在哪。只讲「这里能做什么」，不复述操作手册——
-   手册在说明页。出稿两步排在核验之后：先把正文与数字确认完，再发、再导。
-   拖动与新增用 CSS 动画演示：首屏没有草稿，指不到真实元素，讲一百遍
-   「按住序号能拖」不如看它动一下。 */
+   四步流程各一段，加上正文区能改/能拖/能加、右栏核什么、出稿怎么走、
+   说明页在哪。只讲「这里能做什么」，不复述操作手册——手册在说明页。
+   按钮上写着字的地方（检索、生成）气泡里就不写了：界面上已经写着怎么用，
+   气泡再抄一遍只是重复，还挡住要看的那个框。出稿三步排在核验之后：
+   先把正文与数字确认完，再发、再导。发送与下载要连面板一起看，所以那两步
+   会真的把面板打开再圈进去。拖动与新增用 CSS 动画演示：首屏没有草稿，
+   指不到真实元素，讲一百遍「按住序号能拖」不如看它动一下。 */
 
 const TOUR_KEY = "nr_tour_v1";
 
@@ -6592,28 +6638,25 @@ const TOUR_STEPS = [
     demo: "flow", wiz: "search" },
 
   { sel: ["#ws-search .wbody"], title: "第 1 步 · 检索主体", wiz: "search",
-    body: `填工商全称（简称也认），点检索；要改上一版报告，切「更新既有报告」。`,
+    body: "",
     demo: "search" },
 
-  { sel: ["#matList"], title: "第 2 步 · 读取材料", wiz: "materials",
+  // 框整块而不只是清单：清单下面那颗「读取选中材料」是这一步真正的动作，
+  // 只框列表的话，按哪个按钮全靠猜。清单本身有 40vh 上限，框不会顶出视口。
+  { sel: ["#ws-materials .wbody"], title: "第 2 步 · 读取材料", wiz: "materials",
     when: () => document.querySelectorAll("#matList .mat").length > 0,
-    body: `四类公告都会列出来，勾好点「读取选中材料」；本机 PDF 也能直接拖进来。`,
+    body: "",
     demo: "mats" },
 
-  // 第 3 步拆成三拍：先写判断、再选模型、最后按生成。原来把「写判断」讲完
-  // 就直接跳到成稿，中间这两下（选哪个模型、按钮在哪）从来没讲过，
-  // 第一次用的人会在这一步停住。
+  // 这两步只指位置，不再写「点这里、再点那里」：界面上按钮与输入框上的字
+  // 已经写清了怎么用，气泡再抄一遍既重复又抢注意力。
   { sel: [".note-in"], title: "第 3 步 · 先把判断写下来", wiz: "generate",
     when: () => !!document.querySelector(".note-in"),
     body: `读完材料的判断写在这里，决定正文往哪写：要强调什么、哪里存疑、必须单列哪一段。留空也行。` },
 
-  { sel: ["#ws-generate .modelrow", "#model"], title: "第 3 步 · 选模型", wiz: "generate",
-    when: () => !!document.querySelector("#model"),
-    body: `这里选用哪个模型写，右边是这一次的大致花费。默认那个通常就够用。` },
-
-  { sel: ["#btnGen"], title: "第 3 步 · 点生成", wiz: "generate",
+  { sel: ["#ws-generate .wfoot"], title: "第 3 步 · 生成草稿", wiz: "generate",
     when: () => !!document.querySelector("#btnGen"),
-    body: `按下去就去写了，约 30–60 秒，可以先把页面切走。写的过程中不用守着。` },
+    body: "" },
 
   { sel: ["#blk-basic", "#blk-overview"], title: "正文：每一段都能直接改", wiz: "export",
     body: `每段都是一个输入框，点进去就能改字、改数。选中一句话还能单独改写、精简或补写——后面会说。` },
@@ -6631,19 +6674,23 @@ const TOUR_STEPS = [
   { sel: ["#blk-pos"], title: "观点的顺序可以拖", wiz: "export", try: true,
     body: `按住条目左边的序号上下拖就能换位置，摘要按新顺序排。这一步不用看，现在就能试。` },
 
-  { sel: ["#railR .ck-list", ".rail-r .ck-h"], title: "核验栏：只核数字", wiz: "export",
-    body: `这里只留程序判不了的数字问题，点一条跳到正文那句，核完打勾。措辞类的程序已经自己改掉了。` },
+  /* 这一栏里除了数字，还有「推算值口径」这类要人判断的条目，
+     标题不能写成「只核数字」——它自己就说了不只数字。 */
+  { sel: ["#railR .ck-list", ".rail-r .ck-h"], title: "检查异常：一条一条核", wiz: "export",
+    body: `每条都带着原文那一句与算式，点一条跳到正文；核完打勾，勾满这一栏就收起。措辞与结构问题程序在生成时就改过了，不占这里。` },
 
-  // 出稿三个动作各占一步：发出去、存到本机、按模板排版，
-  // 合成一句讲的时候，三个按钮挤在一行，看完只记得「这里能出稿」。
-  { sel: ["#btnMail"], title: "出稿 · 发送", wiz: "export",
+  // 出稿三个动作各占一步：发出去、存到本机、按模板排版。
+  // 发送与下载都会弹出一张面板，框只圈按钮的话，面板里的收件人、附件清单
+  // 全在孔外看不见——所以这两步先把面板打开，再把按钮与面板一起圈进去。
+  { sel: ["#mailPanel", "#btnMail"], union: ["#btnMail"], panel: "mail",
+    title: "出稿 · 发送", wiz: "export",
     when: () => !!document.querySelector("#btnMail"),
     body: `正文一定会带上；底稿 PDF 与分析附件在面板里按需勾选，收件人只看正文就不勾。` },
 
-  { sel: ["#btnPkg"], title: "出稿 · 下载到本地", wiz: "export",
+  { sel: ["#pkgPanel", "#btnPkg"], union: ["#btnPkg"], panel: "pkg",
+    title: "出稿 · 下载到本地", wiz: "export",
     when: () => !!document.querySelector("#btnPkg"),
-    body: `打开是一张清单：报告、底稿、分析附件都在里面，勾哪几份就打包哪几份，下载成 zip。`,
-    },
+    body: `打开是一张清单：报告、底稿、分析附件都在里面，勾哪几份就打包哪几份，下载成 zip。` },
 
   { sel: ["#btnExport"], title: "出稿 · 导出 Word", wiz: "export",
     when: () => !!document.querySelector("#btnExport"),
@@ -6653,7 +6700,8 @@ const TOUR_STEPS = [
     body: `点右上角 <b>?</b> 有三个去处：<b>重播引导</b>、<b>进入演示模式</b>（自己点这份示例）、<b>正式开始使用</b>。← → 翻页，Esc 退出。` },
 ];
 
-const TOUR = { on: false, i: 0, raf: 0, scrollTo: null, settle: 0, openWas: undefined, notesOpened: false };
+const TOUR = { on: false, i: 0, raf: 0, scrollTo: null, settle: 0, panelT: 0,
+               openWas: undefined, notesOpened: false };
 
 /* ══ 引导用的那一轮真实数据 ═══════════════════════════════════════
    中山城市建设集团有限公司 2026 年跟踪期：4 份材料、摘录 7.7 万字、
@@ -7384,6 +7432,34 @@ function tourTarget(step){
   return null;
 }
 
+/* 出稿两步：把发送／下载面板真正打开，孔才能连着面板里的收件人、附件清单一起圈住。
+   每步只留自己要的那一张——两张面板都从同一个工具条往下弹，同时开会互相压住。 */
+function tourPanels(step){
+  const want = step.panel || "";
+  if(want !== "mail" && MAIL.open) closeMail();
+  if(want !== "pkg" && PKG.open) closeBundle();
+  if(want === "mail" && !MAIL.open){ toggleMail(); return true; }
+  if(want === "pkg" && !PKG.open){ toggleBundle(); return true; }
+  return false;
+}
+
+/* 一个孔圈住两处：面板从按钮下方弹出，只圈面板的话，「是这颗按钮开的」就看不出来了。 */
+function unionRect(r, step){
+  if(!step.union || !r) return r;
+  const u = { left: r.left, top: r.top, right: r.right, bottom: r.bottom,
+              width: r.width, height: r.height };
+  step.union.forEach(q => {
+    const x = tourEl(q);
+    if(!x) return;
+    const b = x.getBoundingClientRect();
+    if(b.width < 4 || b.height < 8) return;
+    u.left = Math.min(u.left, b.left); u.top = Math.min(u.top, b.top);
+    u.right = Math.max(u.right, b.right); u.bottom = Math.max(u.bottom, b.bottom);
+    u.width = u.right - u.left; u.height = u.bottom - u.top;
+  });
+  return u;
+}
+
 function startTour(idx){
   if(TOUR.on) { /* 重看时从头来 */ }
   // 先铺演示：讲第 2 步时要指的清单、第 7 步要指的正文，得先存在
@@ -7424,10 +7500,14 @@ function closeTourMask(){
 function tourDetach(){
   TOUR.on = false;
   clearTimeout(TOUR.settle); TOUR.settle = 0;
+  clearTimeout(TOUR.panelT); TOUR.panelT = 0;
   document.removeEventListener("keydown", tourKey);
   window.removeEventListener("resize", tourRepaint);
   window.removeEventListener("scroll", tourRepaint, true);
   if(TOUR.scrollTo){ TOUR.scrollTo = null; }
+  // 引导为了讲发送／下载开过面板，收场时一并合上
+  if(MAIL.open) closeMail();
+  if(PKG.open) closeBundle();
   closeTourMask();
 }
 
@@ -7558,9 +7638,11 @@ function tourPaint(scroll){
   const hole = $("#tourHole"), tip = $("#tourTip");
   const last = TOUR.i === TOUR_STEPS.length - 1;
 
+  const bodyTxt = typeof step.body === "function" ? step.body() : (step.body || "");
+  tip.classList.toggle("nb", !bodyTxt);
   tip.innerHTML = `<button class="tour-skip" onclick="tourEnd()" title="跳过引导（Esc）">×</button>
     <h4>${esc(step.title)}</h4>
-    <p>${typeof step.body === "function" ? step.body() : step.body}</p>
+    ${bodyTxt ? `<p>${bodyTxt}</p>` : ""}
     ${step.demo && TOUR_DEMO[step.demo] ? TOUR_DEMO[step.demo]() : ""}
     <div class="tour-foot">
       <div class="tour-dots">${TOUR_STEPS.map((_, k) =>
@@ -7575,6 +7657,12 @@ function tourPaint(scroll){
   const moved = step.wiz ? tourFocus(step.wiz) : false;
   // 「自己试一下」那一步：遮罩让开点击，页面照常能操作，气泡自己还接事件
   $("#tourMask").classList.toggle("passthru", !!step.try);
+  // 出稿两步要连着面板一起看：先把发送／下载面板真的打开，等清单回来再量一次孔。
+  // 只圈按钮的话，面板里的收件人、附件清单全在孔外，等于没讲。
+  if(tourPanels(step)){
+    clearTimeout(TOUR.panelT);
+    TOUR.panelT = setTimeout(() => { if(TOUR.on) tourPaint(false); }, 620);
+  }
   // 手风琴展开是 .32s 的过渡：刚换步那一帧量到的是中途高度，孔会落在旧位置。
   // 等它走完再量一次，框才和内容对得上（第 2 步曾偏 116px）。
   if(moved){
@@ -7608,12 +7696,12 @@ function tourPaint(scroll){
       const pad = 4;
       let th2 = tip.offsetHeight;
       const sc = scrollHost(el);
-      let r = el.getBoundingClientRect();
+      let r = unionRect(el.getBoundingClientRect(), step);
       // 气泡放在下边，把目标顶滚到 8px，上方那一整块就都归孔了
       const d0 = Math.round(r.top - pad - 8);
       if(sc && Math.abs(d0) > 2){
         sc.scrollBy(0, d0);
-        r = el.getBoundingClientRect();
+        r = unionRect(el.getBoundingClientRect(), step);
       }
       let atBottom = true, topLimit = 2, bottomLimit = vh - th2 - 18;
       // 滚到头还被气泡压着（目标贴着页面底部）：翻到上边去
@@ -7659,7 +7747,7 @@ function tourPaint(scroll){
   }
 
   // 需要时先把它滚进视野——已在上面统一处理
-  const r = el.getBoundingClientRect();
+  const r = unionRect(el.getBoundingClientRect(), step);
   const pad = 5;
   const hl = Math.max(2, r.left - pad), ht = Math.max(2, r.top - pad);
   const hw = Math.min(vw - 4, r.width + pad * 2);
