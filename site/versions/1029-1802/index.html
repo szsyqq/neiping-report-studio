@@ -965,7 +965,7 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
 
 <div id="vbar">
   <span class="tag">v8.5 · 10-29 18:02</span>
-  <span class="tt"><b>修「JSON 无法解析」：输出上限 8192 把稿子截断</b>　报错看起来像 JSON 格式问题，实际是输出被长度上限砍断。线上环境变量写的是 LLM_MAX_OUTPUT=8192，而一份报告的 JSON 实测就要 6900–7800 token，余量只剩几百——材料稍多或模型多写两条，输出就断在半句，解析自然失败。输入侧完全没超：5.2 万 token 对 13 万上下文，用了四成。</span>
+  <span class="tt"><b>修复 JSON 无法解析：输出上限过低导致截断</b>　报错显示 JSON 格式错误，实为输出被长度上限截断。线上输出上限设为 8192，而一份报告实测需 6900—7800 token，余量仅数百。</span>
   <span class="st" id="vstat">正在连接…</span>
   <a href="../">全部版本</a>
   <a href="../../">回到最新版</a>

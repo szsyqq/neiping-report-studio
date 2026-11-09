@@ -1017,6 +1017,12 @@ body.dragging .item-ghost{display:flex}
 .vi .meta .now{color:#2e7d32}
 .vi h3{margin:2px 0 3px;font-size:13px;font-weight:600;line-height:1.55}
 .vi .sum{font-size:11.5px;color:var(--ink2);margin:0 0 4px;line-height:1.65}
+/* 版本说明按「问题 / 做法」两行排：一段散文读完记不住重点，两行标签一眼能扫 */
+.vi .pb{display:grid;grid-template-columns:30px 1fr;gap:0 8px;font-size:11.5px;
+  line-height:1.65;margin:3px 0;color:var(--ink2)}
+.vi .pb b{font-weight:600;font-size:10.5px;letter-spacing:.04em;color:var(--muted);
+  padding-top:2px;white-space:nowrap}
+.vi .pb.fx b{color:#2f6b3a}
 .vi details summary{cursor:pointer;font-size:11px;color:#2f5fd0;list-style:none;outline:none;
   display:inline-block}
 .vi details summary::-webkit-details-marker{display:none}
@@ -6065,7 +6071,9 @@ function renderVersions(){
           ${isCur ? `<span class="now">当前</span>` : ""}
         </div>
         <h3>${esc(v.title)}</h3>
-        <p class="sum">${esc(v.summary)}</p>
+        ${v.problem ? `<div class="pb"><b>问题</b><span>${esc(v.problem)}</span></div>` : ""}
+        ${v.fix ? `<div class="pb fx"><b>做法</b><span>${esc(v.fix)}</span></div>`
+                : (v.summary ? `<p class="sum">${esc(v.summary)}</p>` : "")}
         <details><summary>具体改动 ${(v.items || []).length} 项</summary><ul>${items}</ul>
           ${v.note ? `<div class="note">${esc(v.note)}</div>` : ""}</details>
         <a class="go" href="${withShare("versions/" + encodeURIComponent(v.id) + "/" + (tk ? "?t=" + encodeURIComponent(tk) : ""))}"

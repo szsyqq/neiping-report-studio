@@ -963,7 +963,7 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
 
 <div id="vbar">
   <span class="tag">v7.6 · 10-27 13:45</span>
-  <span class="tt"><b>修「未找到财汇 MCP」：密钥不再依赖启动方式</b>　云端副本的财汇与模型密钥只写在 start.sh 里，而部署工具用自定义启动命令直接跑 app/server.py 时并不会执行 start.sh，进程环境里一个密钥都没有。表现为检索时报「未找到财汇 MCP」，实际是整份配置没加载。</span>
+  <span class="tt"><b>修复云端报「未找到财汇 MCP」：配置不依赖启动方式</b>　云端副本的密钥只写在启动脚本中，部署工具以自定义命令直接运行服务时脚本未执行，进程环境缺少全部密钥，检索报「未找到财汇 MCP」。</span>
   <span class="st" id="vstat">正在连接…</span>
   <a href="../">全部版本</a>
   <a href="../../">回到最新版</a>

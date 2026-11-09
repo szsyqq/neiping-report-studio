@@ -128,10 +128,13 @@ SHIM = """
 def inject(html: str, v: dict) -> str:
     """抹掉写死的本机地址，并在页面最前面插入横幅。"""
     html = html.replace("http://127.0.0.1:8770", "")
+    # 横幅一行放不下「问题 + 做法」，只留标题与问题：点进来是为了用旧界面，
+    # 详情在时间线页上看得更清楚。
+    lead = v.get("problem") or v.get("summary") or ""
     bar = f"""{BAR_CSS}
 <div id="vbar">
   <span class="tag">v{v.get('ver') or v['label']} · {v['at'][5:]}</span>
-  <span class="tt"><b>{v['title']}</b>　{v['summary']}</span>
+  <span class="tt"><b>{v['title']}</b>　{lead}</span>
   <span class="st" id="vstat">正在连接…</span>
   <a href="../">全部版本</a>
   <a href="../../">回到最新版</a>
@@ -187,6 +190,11 @@ body{margin:0;background:#fff;color:var(--ink);
   border-radius:9px;padding:0 6px;line-height:16px}
 .v h2{font-size:14px;font-weight:600;margin:3px 0 4px;line-height:1.5}
 .v .sum{color:var(--ink2);font-size:12.5px;margin:0 0 6px;max-width:66ch}
+/* 版本说明两行：问题在前、做法在后。一段散文读完记不住重点。 */
+.v .pb{display:grid;grid-template-columns:34px 1fr;gap:0 9px;margin:4px 0;
+  max-width:68ch;font-size:12.5px;color:var(--ink2);line-height:1.7}
+.v .pb b{font-weight:600;font-size:11px;letter-spacing:.05em;color:var(--muted);padding-top:3px}
+.v .pb.fx b{color:#2f6b3a}
 .v details summary{cursor:pointer;font-size:11.5px;color:#2f5fd0;list-style:none;
   display:inline-block;outline:none}
 .v details summary::-webkit-details-marker{display:none}
@@ -269,7 +277,9 @@ def timeline_html(spec: dict) -> str:
     <span class="kind{' mj' if is_major else ''}">{'大版本' if is_major else '小版本'}</span>
     {'<span class="cur-tag">当前</span>' if is_cur else ''}</div>
   <h2>{v['title']}</h2>
-  <p class="sum">{v['summary']}</p>
+  {f'<div class="pb"><b>问题</b><span>{v["problem"]}</span></div>' if v.get('problem') else ''}
+  {f'<div class="pb fx"><b>做法</b><span>{v["fix"]}</span></div>' if v.get('fix')
+     else (f'<p class="sum">{v["summary"]}</p>' if v.get('summary') else '')}
   <details><summary>具体改动 {len(v.get('items') or [])} 项</summary><ul>{lis}</ul>{note}</details>
   <a class="open" href="./{v['id']}/">打开这个版本 →</a>
 </div>""")
@@ -288,8 +298,8 @@ def timeline_html(spec: dict) -> str:
   <div class="top"><h1>版本历史</h1>
     <span class="n">{len(order)} 个大版本 · {len(vs)} 次改动</span></div>
   <p class="lede">按大版本归档：每个大版本写明主要更新与主要修复，其下按时间列出各次改动。
-    每次改动都留了一份当时的页面，点开能直接用——不是截图，是那时的界面接现在的数据接口。
-    想回最新版去 <a href="../../">工作台</a>。</p>
+    每条改动先写问题、再写做法，具体改动可展开。每次改动都留了一份当时的页面，点开可直接使用：
+    那时的界面接现在的数据接口。返回 <a href="../../">工作台</a>。</p>
   {''.join(blocks)}
   <div class="foot">快照由 <code>make_versions.py</code> 从 git 历史生成。清单在 <code>versions.json</code>，
     改完重跑脚本即可。</div>

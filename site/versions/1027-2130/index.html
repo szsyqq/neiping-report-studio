@@ -963,7 +963,7 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
 
 <div id="vbar">
   <span class="tag">v7.10 · 10-27 21:30</span>
-  <span class="tt"><b>会话快照：进程重启不再丢材料与草稿</b>　会话状态一直只活在内存里，后端一重启，材料清单、已生成的草稿、分析附件全部消失，材料还得重新解析一遍。这一轮把状态落到磁盘并在启动时读回。原计划接入云服务做这件事，开通确认弹窗被取消，因此按本地实现完成。</span>
+  <span class="tt"><b>会话状态落盘，进程重启不再丢材料与草稿</b>　会话状态只存在于内存，后端重启后材料清单、草稿与分析附件全部消失，材料需重新解析。</span>
   <span class="st" id="vstat">正在连接…</span>
   <a href="../">全部版本</a>
   <a href="../../">回到最新版</a>

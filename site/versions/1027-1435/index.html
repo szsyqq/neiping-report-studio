@@ -963,7 +963,7 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
 
 <div id="vbar">
   <span class="tag">v7.8 · 10-27 14:35</span>
-  <span class="tt"><b>修「没有可用模型」：模型清单不再挂在登录态后面</b>　模型下拉里出现「没有可用模型」，而 deepseek 明明可用。追下去是两件事叠在一起：模型清单接口在口令闸门之后，token 一过期就回 401，页面把「没登录」显示成「没有可用模型」；而重新登录后因为一个已初始化标记，清单再也不会重拉，于是这句提示一直留着。</span>
+  <span class="tt"><b>模型清单与登录状态解耦，默认模型稳定生效</b>　模型下拉显示「没有可用模型」，而模型实际可用：清单接口位于口令校验之后，token 过期即返回 401，页面把未登录显示为清单为空；重新登录后又因初始化标记存在，清单不再重拉。</span>
   <span class="st" id="vstat">正在连接…</span>
   <a href="../">全部版本</a>
   <a href="../../">回到最新版</a>

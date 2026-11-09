@@ -1435,7 +1435,7 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
 
 <div id="vbar">
   <span class="tag">v9.14 · 11-05 16:44</span>
-  <span class="tt"><b>导出的 Word 在编辑与粘贴后版式不再走样；表格不再逐格折行</b>　导出稿看着正常，一在 Word 里编辑就散：回车新建的段落段后多出 10pt、没有首行缩进、字号回到等线 11pt；粘一段文字进来，段前段后与行距全跟原文走。原因是版式只写在每个段落的直接格式上，Normal 样式里只有字体字号，而用户新建与粘贴得到的正是 Normal。这一版把段前段后、1.15 倍行距、首行缩进 2 字符、两端对齐、不吸附网格全部写进 Normal 与 docDefaults，并关掉文档行网格——中文模板默认的 18pt 网格会把 1.15 倍行距取整，行距看着忽宽忽窄。同时修掉表格逐格折行：列宽改成按每列内容分配、字号随列数降档，营业总收入的数不再被挤成两行。</span>
+  <span class="tt"><b>Word 导出：编辑与粘贴后版式不变，表格不逐格折行</b>　导出稿在 Word 中新建段落或粘贴后，段前段后、行距与字号回到 Word 默认；业务构成表每格都折行，数字被拆成两段。</span>
   <span class="st" id="vstat">正在连接…</span>
   <a href="../">全部版本</a>
   <a href="../../">回到最新版</a>
