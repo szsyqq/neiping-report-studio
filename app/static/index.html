@@ -7807,11 +7807,25 @@ function bootData(){
   syncButtons();  // 初始状态：无材料时两个动作都灰着
 }
 gateBoot();
-/* 点遮罩空白处翻到下一步：手机上不必去够按钮。
-   只认遮罩本身——气泡里的按钮照常工作。 */
-$("#tourMask").addEventListener("click", e => {
-  if(!TOUR.on) return;
-  if(e.target.id === "tourMask" || e.target.id === "tourHole") tourNext();
+/* 引导期间点哪儿都算下一步：手机上一只手就够，不必去够那颗按钮。
+   只有几种点法不是「翻页」，判据是「这一点是要用这个东西，还是要往下看」：
+   气泡里的按钮与圆点、「看完了」那张选择卡、右上角 ? 与它的菜单、演示条，
+   以及链接与表单控件（点正文那一格是想改字，不是想翻页）。
+   挂 document 而不是遮罩：遮罩在「自己试一下」那步会让开点击，
+   挂遮罩的话那一步点空白就没反应了。
+   判「是不是控件」必须在捕获阶段：气泡里那颗按钮一按下去就 tourPrev/tourNext，
+   重绘会把按钮从文档里摘掉，冒泡到 document 时 e.target 已经是个孤儿，
+   closest() 一律返回 null——于是「上一步」被当成普通点击，进一退一，原地不动。 */
+const TOUR_CLICK_SKIP = "#tourTip button, #tourTip .tour-dots i, #tourEnd, #tourBtn, #tourMenu, "
+  + "#demoBar, a, input, textarea, select, [contenteditable]";
+let tourClickCtl = false;
+document.addEventListener("click", e => {
+  const t = e.target;
+  tourClickCtl = !!(t && t.closest && t.closest(TOUR_CLICK_SKIP));
+}, true);
+document.addEventListener("click", () => {
+  if(!TOUR.on || tourClickCtl) return;
+  tourNext();
 });
 $("#company").addEventListener("keydown", e => { if(e.key === "Enter") doSearch(); });
 /* 改了企业名就当作换主体：上一家的材料、草稿、邮件与打包缓存全部作废，

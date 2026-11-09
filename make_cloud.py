@@ -121,6 +121,12 @@ def build(password: str | None = None, new_pw: bool = False) -> None:
     static = OUT / "app" / "static"
     static.mkdir()
     shutil.copy2(BASE / "app" / "static" / "index.html", static / "index.html")
+    # 离线演示单文件（make_demo_offline.py 生成）顺带放一份到 static：
+    # 它自己掐掉所有 /api，谁打开都不碰后端，线上也能直接看，
+    # 地址是 /static/demo.html（记得带 sharecode）。
+    demo = BASE / "site" / "demo.html"
+    if demo.exists():
+        shutil.copy2(demo, static / "demo.html")
     shutil.copy2(BASE / "01_模板" / "内评简评报告通用模板_v1.1.json",
                  OUT / "01_模板" / "内评简评报告通用模板_v1.1.json")
     shutil.copy2(BASE / "requirements.txt", OUT / "requirements.txt")
