@@ -141,7 +141,9 @@
     "#flow .fl-x{border:1px solid var(--line);background:#fff;border-radius:6px;padding:4px 10px;",
     "  font-size:12px;color:var(--ink2)}",
     "#flow .fl-x:hover{border-color:#c4c9d1;background:var(--hover)}",
-    "#flow .fl-body{flex:1;overflow-y:auto;padding:20px 22px 96px}",
+    "#flow .fl-x.primary{background:var(--ink);border-color:var(--ink);color:#fff}",
+    "#flow .fl-x.primary:hover{background:#000;border-color:#000;color:#fff}",
+    "#flow .fl-body{flex:1;overflow-y:auto;padding:20px 22px 34px}",
     /* 换页带方向：往下一步从右边推进来，退回上一步从左邊滑回来 */
     "#flow .fl-page{max-width:1120px;margin:0 auto}",
     "#flow .fl-page.dirR{animation:flInR .3s cubic-bezier(.22,.7,.3,1) both}",
@@ -221,9 +223,14 @@
     "  font-variant-numeric:tabular-nums}",
     "#flow .fl-stats span{font-size:11px;color:var(--muted)}",
     "#flow .fl-stats .key{background:#fff;border-color:#cfd4db}",
-    "#flow .fl-grid{display:grid;grid-template-columns:minmax(0,1fr) 306px;gap:14px;align-items:start}",
+    "#flow .fl-grid{display:grid;grid-template-columns:minmax(0,1fr) 322px;gap:14px;align-items:start}",
+    /* 提交页右栏要装一整段评级意见，给宽一点，结构不变 */
+    "#flow .fl-grid.wide{grid-template-columns:minmax(0,1fr) 424px}",
     "#flow .fl-main{min-width:0}",
     "#flow .fl-side .fl-card{margin-bottom:14px}",
+    /* 右栏是「结论 + 写理由 + 提交」，三页同一套顺序；左栏只放材料与比分 */
+    "#flow .fl-side .fl-card:last-child{margin-bottom:0}",
+    "#flow .fl-two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 22px}",
     /* 左栏比右栏长一截，滚动时让右栏跟着走，底下不会空出一大片 */
     "@media (min-width:1001px){#flow .fl-side{position:sticky;top:0}}",
     "#flow .fl-kv{display:flex;justify-content:space-between;gap:12px;padding:5px 0;font-size:12.5px;",
@@ -234,6 +241,7 @@
     "#flow .fl-kv b.big{font-size:15px}",
     "#flow .fl-list{margin:0;padding-left:16px;font-size:12px;color:var(--ink2);line-height:1.8}",
     "#flow .fl-list li{margin:0;padding:0}",
+    "#flow .fl-sub{font-size:11.5px;color:var(--muted);margin:0 0 3px;letter-spacing:.3px}",
     "#flow .fl-sel{width:auto;min-width:104px;padding:4px 6px;font-size:12px;border-radius:5px}",
     "#flow .fl-warn{display:block;font-size:11px;color:#8a5a00;margin-top:4px;line-height:1.5}",
     "#flow .fl-flow{display:flex;flex-direction:column;gap:0}",
@@ -373,39 +381,39 @@
     "#flow .fl-done{animation:cardIn .4s cubic-bezier(.22,.7,.3,1) both}",
     "#flow .fl-kpis div{transition:border-color .2s ease}",
     "#flow .fl-kpis div:hover{border-color:#c4c9d1}",
-    "#flowBar.show{animation:barIn .32s cubic-bezier(.22,.7,.3,1) both}",
-    "@keyframes barIn{from{opacity:0;transform:translate(-50%,14px)}to{opacity:1;transform:translateX(-50%)}}",
-    "#flowBar .fb-prog{display:flex;gap:3px;align-items:center;padding:0 2px 0 6px}",
-    "#flowBar .fb-prog i{width:15px;height:4px;border-radius:2px;background:#e3e6ea;",
-    "  transition:background .3s ease}",
-    "#flowBar .fb-prog i.on{background:var(--ink)}",
     /* 不想看动效的机器上就别动 */
     "@media (prefers-reduced-motion:reduce){",
-    "  #flow *, #flowBar *{animation-duration:.001s!important;",
+    "  #flow *{animation-duration:.001s!important;",
     "    animation-delay:0s!important;transition-duration:.001s!important}",
     "}",
-    /* 第 2 步：工作台自己露出来，靠底部一条导航把流程接上 */
-    "#flowBar{position:fixed;left:50%;transform:translateX(-50%);bottom:16px;z-index:190;",
-    "  display:none;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);",
-    "  border-radius:999px;box-shadow:0 12px 30px -14px rgba(17,20,24,.4);",
-    "  padding:6px 7px 6px 6px;max-width:calc(100vw - 20px)}",
-    "#flowBar.show{display:flex}",
-    "#flowBar button{border:1px solid var(--line);background:#fff;border-radius:999px;",
-    "  padding:6px 13px;font-size:12px;color:var(--ink2);white-space:nowrap}",
-    "#flowBar button:hover{border-color:#c4c9d1;background:var(--hover);color:var(--ink)}",
-    "#flowBar button.primary{background:var(--ink);border-color:var(--ink);color:#fff}",
-    "#flowBar button.primary:hover{background:#000}",
-    "#flowBar .fb-mid{display:flex;align-items:center;gap:9px;padding:0 8px 0 12px;min-width:0}",
-    "#flowBar .fb-mid b{font-size:12px;font-weight:600;white-space:nowrap;flex:none}",
-    "#flowBar .fb-mid span{font-size:11.5px;color:var(--muted);white-space:nowrap;",
-    "  overflow:hidden;text-overflow:ellipsis;max-width:380px;padding-left:9px;border-left:1px solid var(--line)}",
+    /* 第 2 步：工作台本身就是正文。但顶栏不撤——五个步骤的框架每一页都得
+       长一样，所以只把工作台自己那条顶栏让开，别在屏幕上叠两条。 */
+    "#flow.embed{background:transparent;pointer-events:none}",
+    "#flow.embed .fl-hd{pointer-events:auto}",
+    "#flow.embed .fl-body,#flow.embed #flAct{display:none}",
+    "body.flow-embed{padding-top:var(--flhd,52px)}",
+    "body.flow-embed header{display:none}",
+    "body.flow-embed #fabNav{display:none!important}",
+    "body.flow-embed .wrap{animation:flEmbed .34s cubic-bezier(.22,.7,.3,1) both}",
+    "@keyframes flEmbed{from{opacity:0;transform:translate3d(0,8px,0)}to{opacity:1;transform:none}}",
+    // 顶栏在手机上是两行，量出来再顶开，别硬写 52px——写死会把正文压掉一截。
+    // 980px 以下工作台自己改成单列、整页滚动，这里就不锁高度（跟它同步）。
+    "@media (min-width:981px){body.flow-embed .wrap{height:calc(100vh - var(--flhd,52px))}}",
     "#flAct{display:none}",
     "body.flow-open{overflow:hidden}",
-    "body.flow-bar #fabNav{display:none!important}",
-    "body.flow-bar #toast{bottom:96px}",
     "#toast{z-index:400}",
+    /* 中屏（平板横放、小笔记本）顶栏放不下「品牌副标题 + 五步文字 + 徽标」，
+       按重要性一路往下摘，别让它们互相压住。 */
+    "@media (max-width:1180px){",
+    "  #flow .fl-hd-l i{display:none}",
+    "  #flow .fl-badge{display:none}",
+    "}",
+    "@media (max-width:920px){",
+    "  #flow .fl-step .fl-ring-t{display:none}",
+    "  #flow .fl-nav button{padding:5px 6px;gap:5px}",
+    "}",
     "@media (max-width:1000px){",
-    "  #flow .fl-grid{grid-template-columns:minmax(0,1fr)}",
+    "  #flow .fl-grid,#flow .fl-grid.wide{grid-template-columns:minmax(0,1fr)}",
     "  #flow .fl-side{order:2}",
     "  #flow .fl-stats{grid-template-columns:repeat(2,minmax(0,1fr))}",
     "}",
@@ -444,7 +452,14 @@
     "  #flow .fl-step .fl-ring-t{display:none}",
     "  #flow .fl-eq .t{display:none}",
     "  #flow .fl-tw{margin:0 -12px;padding:0 12px}",
+    // 手机上表格别硬挤成竖排字：给下限，超出就横向滚
+    "  #flow .fl-bonds{min-width:600px}",
+    "  #flow .fl-sumtab{min-width:560px}",
     "  #flow .fl-pick b{font-size:18px}",
+    "  #flow .fl-two{grid-template-columns:minmax(0,1fr);gap:0}",
+    "  #flow .fl-hd-r .fl-x{padding:4px 8px;font-size:11.5px}",
+    // 手机上一行放不下「下一步：级别认定 →」，去掉后半截，留「下一步 →」
+    "  #flow .fl-lbl{display:none}",
     "  #flow .fl-body{padding-bottom:78px}",
     "  #flAct{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:205;gap:8px;",
     "    padding:8px 12px calc(8px + env(safe-area-inset-bottom,0px));background:#fff;",
@@ -453,15 +468,11 @@
     "    padding:9px 0;font-size:13px;color:var(--ink)}",
     "  #flAct button.primary{background:var(--ink);border-color:var(--ink);color:#fff}",
     "  #flAct button[disabled]{color:#c2c7cf;border-color:var(--line2)}",
-    "  #flowBar{gap:6px;bottom:10px;padding:5px}",
-    "  #flowBar .fb-mid span{display:none}",
-    "  #flowBar .fb-prog{display:none}",
-    "  #flowBar button{padding:5px 10px;font-size:11.5px}",
     "}"
   ].join("\n");
 
   /* ── 骨架 ─────────────────────────────────────────────────── */
-  var root, body, nav, bar, progText, progSub, progNum, ring;
+  var root, body, nav, progText, progSub, progNum, ring, hdWb, hdNext;
 
   function build(){
     var st = document.createElement("style");
@@ -485,15 +496,16 @@
             '<span id="flStepS">任务列表 · 已完成 20%</span></div>' +
         "</div>" +
         '<div class="fl-hd-r"><span class="fl-badge">演示数据</span>' +
-          '<button class="fl-x" data-act="workbench">回到工作台</button></div>' +
+          // 第 2 步在工作台里，没有右栏可放按钮，就把「下一步」提到顶栏；
+          // 其余四步一律落在右栏底部，位置固定。
+          '<button class="fl-x primary" id="flHdNext" data-act="next" data-n="3">' +
+            '下一步<span class="fl-lbl">：级别认定</span> →</button>' +
+          '<button class="fl-x" id="flHdWb" data-act="workbench">回到报告编辑</button>' +
+        "</div>" +
       '</div>' +
       '<div class="fl-body" id="flBody"></div>' +
       '<div id="flAct"></div>';
     document.body.appendChild(root);
-
-    bar = document.createElement("div");
-    bar.id = "flowBar";
-    document.body.appendChild(bar);
 
     body = root.querySelector("#flBody");
     nav = root.querySelector("#flNav");
@@ -501,11 +513,12 @@
     progNum = root.querySelector("#flStepN");
     progSub = root.querySelector("#flStepS");
     ring = root.querySelector("#flRing");
+    hdNext = root.querySelector("#flHdNext");
+    hdWb = root.querySelector("#flHdWb");
 
     root.addEventListener("click", onClick);
     body.addEventListener("input", onInput);
     body.addEventListener("change", onChange);
-    bar.addEventListener("click", onClick);
   }
 
   var STEP_NAMES = ["任务列表", "报告编辑", "级别认定", "债项评级", "提交审批"];
@@ -525,7 +538,7 @@
     nav.innerHTML = html;
   }
 
-  /* 进度：顶栏那根细线 + 右上角的圈。第 2 步在工作台那边，靠 #flowBar 的格子。 */
+  /* 进度：顶栏那根细线 + 右上角的圈。五个步骤同一套，第 2 步也不例外。 */
   function paintProg(){
     var p = S.step / 5;
     root.style.setProperty("--flp", (p * 100).toFixed(1) + "%");
@@ -535,15 +548,19 @@
     if(ring) ring.setAttribute("stroke-dashoffset", (94.25 * (1 - p)).toFixed(2));
   }
 
-  function paintBar(){
-    var dots = "";
-    for(var k = 1; k <= 5; k++) dots += '<i class="' + (k <= 2 ? "on" : "") + '"></i>';
-    bar.innerHTML =
-      '<button data-act="go" data-n="1">← 任务列表</button>' +
-      '<div class="fb-prog">' + dots + "</div>" +
-      '<div class="fb-mid"><b>第 2 步 / 共 5 步</b>' +
-        '<span>内评简评报告 · ' + esc(CO.name) + "</span></div>" +
-      '<button class="primary" data-act="go" data-n="3">下一步：级别认定 →</button>';
+  /* 顶栏右下角那两个按钮随步骤换：第 2 步在工作台里，只能在这儿给「下一步」；
+     其余四步的「下一步」在右栏底部，这里就只留一个跳回报告的入口。 */
+  function paintHead(){
+    if(hdNext) hdNext.style.display = S.step === 2 ? "" : "none";
+    if(hdWb) hdWb.style.display = (S.step >= 3 && S.step <= 5) ? "" : "none";
+    syncHeadH();
+  }
+
+  /* 手机屏上顶栏会折成两行，52px 就不够了：量一遍，把正文往下顶开相应的高度 */
+  function syncHeadH(){
+    var hd = root.querySelector(".fl-hd");
+    var h = hd ? hd.offsetHeight : 52;
+    document.body.style.setProperty("--flhd", (h || 52) + "px");
   }
 
   /* ── 第 1 步：任务列表 ─────────────────────────────────────── */
@@ -792,10 +809,29 @@
 
           '<div class="fl-pick">本次认定 <b>' + levelWord(S.level) + "</b>" +
             '<span class="fl-dev ' + dev.c + '">' + dev.t + "</span></div>" +
-          '<p class="fl-hint">点一格就落定，上面那根指针会跟着走。</p>' +
-          '<textarea id="flReason" data-field="reason" rows="3" ' +
-            'placeholder="认定理由：与模型不一致时写明依据（区域支持、资产质量、治理等）">' +
-            esc(S.reason) + "</textarea>" +
+          '<p class="fl-hint">点一格就落定，上面那根指针会跟着走；理由在右侧「认定理由」里写。</p>' +
+        "</section>" +
+
+        // 正面与关注是判断依据，跟打分表一起放左栏；右栏只留结论与提交
+        '<section class="fl-card"><h3>正面与关注<i>摘自报告正文</i></h3>' +
+          '<div class="fl-two">' +
+            "<div>" +
+              '<div class="fl-sub">正面</div>' +
+              '<ul class="fl-list">' +
+                "<li>区域专营地位较强，土地指标业务为全市唯一实施主体</li>" +
+                "<li>公共交通亏损由市财政按成本规制全额补贴</li>" +
+                "<li>银行授信未使用额度充足，备用流动性尚可</li>" +
+              "</ul>" +
+            "</div>" +
+            "<div>" +
+              '<div class="fl-sub">关注</div>' +
+              '<ul class="fl-list">' +
+                "<li>收入高度依赖园区开发及土地转让，回款依赖财政结算</li>" +
+                "<li>有息债务持续增长，非受限货币资金不足以覆盖短期债务</li>" +
+                "<li>2026 年上半年由盈转亏，对外担保与未决诉讼形成或有压力</li>" +
+              "</ul>" +
+            "</div>" +
+          "</div>" +
         "</section>" +
       "</div>" +
 
@@ -808,22 +844,11 @@
           '<div class="fl-kv"><span>本次认定</span><b class="big">' + levelWord(S.level) + "</b></div>" +
           '<div class="fl-kv"><span>评级展望</span><b>稳定</b></div>' +
         "</div>" +
-        '<div class="fl-card"><h3>正面与关注<i>摘自报告</i></h3>' +
-          '<div style="font-size:11.5px;color:var(--muted);margin:0 0 4px">正面</div>' +
-          '<ul class="fl-list">' +
-            "<li>区域专营地位较强，土地指标业务为全市唯一实施主体</li>" +
-            "<li>公共交通亏损由市财政按成本规制全额补贴</li>" +
-            "<li>银行授信未使用额度充足，备用流动性尚可</li>" +
-          "</ul>" +
-          '<div style="font-size:11.5px;color:var(--muted);margin:9px 0 4px">关注</div>' +
-          '<ul class="fl-list">' +
-            "<li>收入高度依赖园区开发及土地转让，回款依赖财政结算</li>" +
-            "<li>有息债务持续增长，非受限货币资金不足以覆盖短期债务</li>" +
-            "<li>2026 年上半年由盈转亏，对外担保与未决诉讼形成或有压力</li>" +
-          "</ul>" +
-        "</div>" +
-        '<div class="fl-card"><h3>操作</h3>' +
-          '<div class="fl-bar">' +
+        '<div class="fl-card"><h3>认定理由<i>与模型不一致时必填</i></h3>' +
+          '<textarea id="flReason" data-field="reason" rows="5" ' +
+            'placeholder="写明依据：区域支持、资产质量、治理等">' +
+            esc(S.reason) + "</textarea>" +
+          '<div class="fl-bar" style="margin-top:10px">' +
             '<button class="fl-btn" data-act="go" data-n="2">上一步</button>' +
             '<button class="fl-btn primary" data-act="next" data-n="4">下一步：债项评级</button>' +
           "</div>" +
@@ -863,6 +888,12 @@
 
     var ownLevels = CO.bonds.map(function(b, i){ return bondWord(i); });
     var summary = ownLevels.join(" / ");
+    var same = 0, above = 0;
+    CO.bonds.forEach(function(b, i){
+      var idx = lvIndex(bondWord(i)), midx = lvIndex(S.level);
+      if(idx === midx) same++;
+      else if(idx >= 0 && midx >= 0 && idx < midx) above++;
+    });
 
     return '<div class="fl-page">' +
       '<div class="fl-ph"><div><h1>债项评级</h1>' +
@@ -870,16 +901,18 @@
         "</b> 已认定 · 存续债券 " + CO.bonds.length + " 只</p></div></div>" +
       '<div class="fl-grid"><div class="fl-main">' +
         '<section class="fl-card"><h3>存续债券<i>级别默认与主体一致，可逐只调整</i></h3>' +
-          '<div class="fl-tw"><table><thead><tr><th class="num">债券代码</th><th>债券简称</th>' +
+          '<div class="fl-tw"><table class="fl-bonds"><thead><tr><th class="num">债券代码</th><th>债券简称</th>' +
             "<th>类型</th><th class=\"num\">余额（亿元）</th><th class=\"num\">到期日</th>" +
             "<th>担保</th><th>债项级别</th></tr></thead><tbody>" + rows + "</tbody></table></div>" +
-          '<p class="fl-hint">债项级别一般不高于主体级别；由第三方提供全额担保的债券可在主体级别基础上上调，' +
-            "并须在评级意见中写明增信安排与实际代偿能力。</p>" +
         "</section>" +
-        '<section class="fl-card"><h3>债项评级意见<i>选填</i></h3>' +
-          '<textarea id="flBondOp" data-field="bondOpinion" rows="3" ' +
-            'placeholder="两只债券清偿顺序一致、无特殊条款时可不填；上调需写明担保方与代偿能力">' +
-            esc(S.bondOpinion) + "</textarea>" +
+        '<section class="fl-card"><h3>定级口径<i>这一页的规矩</i></h3>' +
+          '<ul class="fl-list">' +
+            "<li>债项级别一般不高于主体级别，逐只可调</li>" +
+            "<li>由第三方提供全额担保的债券，可在主体级别基础上上调</li>" +
+            "<li>上调须在评级意见中写清增信安排与实际代偿能力</li>" +
+          "</ul>" +
+          '<div class="fl-kv" style="margin-top:8px"><span>与主体一致</span><b>' + same + " 只</b></div>" +
+          '<div class="fl-kv"><span>高于主体</span><b>' + above + " 只</b></div>" +
         "</section>" +
       "</div>" +
       '<aside class="fl-side">' +
@@ -889,8 +922,11 @@
           '<div class="fl-kv"><span>评级展望</span><b>稳定</b></div>' +
           '<div class="fl-kv"><span>评级类型</span><b>主体 + 债项</b></div>' +
         "</div>" +
-        '<div class="fl-card"><h3>操作</h3>' +
-          '<div class="fl-bar">' +
+        '<div class="fl-card"><h3>债项评级意见<i>选填</i></h3>' +
+          '<textarea id="flBondOp" data-field="bondOpinion" rows="5" ' +
+            'placeholder="两只债券清偿顺序一致、无特殊条款时可不填；上调需写明担保方与代偿能力">' +
+            esc(S.bondOpinion) + "</textarea>" +
+          '<div class="fl-bar" style="margin-top:10px">' +
             '<button class="fl-btn" data-act="go" data-n="3">上一步</button>' +
             '<button class="fl-btn primary" data-act="next" data-n="5">下一步：提交审批</button>' +
           "</div>" +
@@ -934,7 +970,8 @@
         '<td class="num">' + b.amount + "</td>" +
         '<td class="num"><b>' + bondWord(i) + "</b></td></tr>";
     }).join("");
-    return '<table><tbody>' +
+    // 手机上四列会挤成竖排字，给个下限让它横向滚，比竖排好读
+    return '<div class="fl-tw"><table class="fl-sumtab"><tbody>' +
       '<tr><td style="width:96px;color:var(--muted)">发行人</td><td><b>' + esc(CO.name) + "</b></td>" +
         '<td style="width:96px;color:var(--muted)">任务编号</td><td class="num">' + CO.task + "</td></tr>" +
       '<tr><td style="color:var(--muted)">主体级别</td><td><b>' + levelWord(S.level) + "</b>" +
@@ -943,9 +980,9 @@
       '<tr><td style="color:var(--muted)">评级展望</td><td>稳定</td>' +
         '<td style="color:var(--muted)">评级有效期</td><td class="num">2026-11-10 至 2027-11-09</td></tr>' +
     "</tbody></table>" +
-    '<table style="margin-top:10px"><thead><tr><th>债券简称</th><th>类型</th>' +
+    '<table class="fl-sumtab" style="margin-top:10px"><thead><tr><th>债券简称</th><th>类型</th>' +
       '<th class="num">余额（亿元）</th><th class="num">债项级别</th></tr></thead><tbody>' +
-      rows + "</tbody></table>";
+      rows + "</tbody></table></div>";
   }
 
   function pageSubmit(){
@@ -979,41 +1016,49 @@
           "。修改级别或意见后可重新提交。</span></div>"
         : "");
 
+    /* 右栏一律「结论 → 写意见 → 提交」：审核时把只读的评级意见挪到左栏当记录，
+       右栏只留审批意见与两个按钮，位置和三、四步完全对齐。 */
     var opinionBox = review
-      ? '<div class="fl-card"><h3>评级意见<i>已提交，不可修改</i></h3>' +
-        '<div style="white-space:pre-wrap;font-size:12.5px;line-height:1.85;color:var(--ink2)">' +
-          esc(S.opinion) + "</div></div>" +
-        '<div class="fl-card"><h3>审批意见</h3>' +
-          '<textarea id="flRv" data-field="reviewerNote" rows="3" ' +
-            'placeholder="同意可直接通过；退回请写明需要补充或修改的地方">' +
-            esc(S.reviewerNote) + "</textarea>" +
-          '<div class="fl-bar" style="margin-top:12px">' +
-            '<button class="fl-btn" data-act="reject">退回修改</button>' +
-            '<button class="fl-btn primary" data-act="approve">同意，完成评级</button>' +
-          "</div>" +
-          '<p class="fl-hint">演示里这一步由你直接扮演 ' + CO.reviewer + "（" + CO.reviewerRole + "）。</p>" +
-        "</div>"
+      ? '<div class="fl-card"><h3>审批意见<i>同意可直接通过，退回要写明改哪儿</i></h3>' +
+        '<textarea id="flRv" data-field="reviewerNote" rows="5" ' +
+          'placeholder="同意可直接通过；退回请写明需要补充或修改的地方">' +
+          esc(S.reviewerNote) + "</textarea>" +
+        '<div class="fl-bar" style="margin-top:10px">' +
+          '<button class="fl-btn" data-act="reject">退回修改</button>' +
+          '<button class="fl-btn primary" data-act="approve">同意，完成评级</button>' +
+        "</div>" +
+        '<p class="fl-hint">演示里这一步由你直接扮演 ' + CO.reviewer + "（" + CO.reviewerRole + "）。</p>" +
+      "</div>"
       : '<div class="fl-card"><h3>评级意见<i>会写入评级意见书</i></h3>' +
-        '<textarea id="flOp" data-field="opinion" rows="8">' +
+        '<textarea id="flOp" data-field="opinion" rows="13">' +
           esc(S.opinion || defaultOpinion()) + "</textarea>" +
-        '<div class="fl-bar" style="margin-top:12px">' +
+        '<div class="fl-bar" style="margin-top:10px">' +
           '<button class="fl-btn" data-act="go" data-n="4">上一步</button>' +
           '<button class="fl-btn primary" data-act="submit">提交审批</button>' +
-        "</div></div>";
+        "</div>" +
+        '<p class="fl-hint">提交后进入 ' + CO.reviewer + " 审核；意见书按这段文字生成。</p>" +
+      "</div>";
+
+    var submitted = review
+      ? '<section class="fl-card"><h3>评级意见<i>已提交，不可修改</i></h3>' +
+        '<div style="white-space:pre-wrap;font-size:12.5px;line-height:1.85;color:var(--ink2)">' +
+          esc(S.opinion) + "</div></section>"
+      : "";
 
     return '<div class="fl-page">' + head + banner +
-      '<div class="fl-grid"><div class="fl-main">' +
+      '<div class="fl-grid wide"><div class="fl-main">' +
         '<section class="fl-card"><h3>评级结论<i>提交后进入审核</i></h3>' + summaryTable() + "</section>" +
-        opinionBox +
-      "</div><aside class=\"fl-side\">" +
-        '<div class="fl-card"><h3>审批流</h3>' + timeline() + "</div>" +
-        '<div class="fl-card"><h3>提交前检查</h3>' +
+        submitted +
+        '<section class="fl-card"><h3>提交前检查</h3>' +
           '<div class="fl-chk"><s>✓</s><span>报告正文已生成并复核（5,534 字）</span></div>' +
           '<div class="fl-chk"><s>✓</s><span>级别认定' +
             (S.adj ? "已作定性调整并说明" : "与模型一致，未作定性调整") + "</span></div>" +
           '<div class="fl-chk"><s>✓</s><span>债项级别不高于主体级别</span></div>' +
           '<div class="fl-chk"><s>✓</s><span>评级意见已填写</span></div>' +
-        "</div>" +
+        "</section>" +
+      "</div><aside class=\"fl-side\">" +
+        '<div class="fl-card"><h3>审批流</h3>' + timeline() + "</div>" +
+        opinionBox +
       "</aside></div></div>";
   }
 
@@ -1081,22 +1126,25 @@
   function paint(){
     paintNav();
     paintProg();
+    paintHead();
     paintBody();
     paintAct();
   }
 
+  /* 两副壳子：四步是整幅流程页；第 2 步只留顶栏，底下交给工作台。
+     顶栏的五个步骤、进度圈、细进度条在两种壳子里都在，位置一模一样。 */
   function showFlow(){
+    root.classList.remove("embed");
     root.style.display = "";
     document.body.classList.add("flow-open");
-    document.body.classList.remove("flow-bar");
-    bar.classList.remove("show");
+    document.body.classList.remove("flow-embed");
   }
 
-  function hideFlow(){
-    root.style.display = "none";
+  function embedFlow(){
+    root.classList.add("embed");
+    root.style.display = "";
     document.body.classList.remove("flow-open");
-    document.body.classList.add("flow-bar");
-    bar.classList.add("show");
+    document.body.classList.add("flow-embed");
   }
 
   /* 新开一轮：级别、债项、意见、审批状态全部回到起点。
@@ -1115,15 +1163,13 @@
     if(n > S.max) S.max = n;
     if(n === 2){
       S.max = Math.max(S.max, 2);
-      hideFlow();
+      embedFlow();
       // 工作台是第 2 步的正文：先把示例铺上，再露出来，免得露出一张空白台
       try{
         if(typeof DEMO !== "undefined" && !DEMO.on) demoEnter();
         if(typeof demoStay === "function") demoStay();
       }catch(e){ /* 铺不上也只是空工作台，不拦流程 */ }
-      paintBar();
-      paintNav();
-      paintProg();
+      paint();
       return;
     }
     showFlow();
@@ -1259,6 +1305,10 @@
     bindSearch();
     showFlow();
     paint();
+    // 转屏、拉窗口时顶栏高度会变，第 2 步的正文要让位
+    window.addEventListener("resize", function(){
+      if(document.body.classList.contains("flow-embed")) syncHeadH();
+    });
   }
 
   if(document.readyState === "loading"){
