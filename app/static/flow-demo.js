@@ -224,6 +224,8 @@
     "#flow .fl-grid{display:grid;grid-template-columns:minmax(0,1fr) 306px;gap:14px;align-items:start}",
     "#flow .fl-main{min-width:0}",
     "#flow .fl-side .fl-card{margin-bottom:14px}",
+    /* 左栏比右栏长一截，滚动时让右栏跟着走，底下不会空出一大片 */
+    "@media (min-width:1001px){#flow .fl-side{position:sticky;top:0}}",
     "#flow .fl-kv{display:flex;justify-content:space-between;gap:12px;padding:5px 0;font-size:12.5px;",
     "  border-bottom:1px dashed var(--line2)}",
     "#flow .fl-kv:last-child{border-bottom:0}",
