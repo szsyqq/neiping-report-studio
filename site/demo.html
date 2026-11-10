@@ -8107,7 +8107,7 @@ $("#company").addEventListener("change", () => {
   ];
 
   var S = {
-    step: 1, max: 1,
+    step: 1, max: 1, dir: 1,
     tab: "全部", kw: "",
     level: MODEL_LEVEL, adj: 0, reason: "",
     bonds: CO.bonds.map(function(b){ return { level: "", note: "" }; }),
@@ -8183,7 +8183,8 @@ $("#company").addEventListener("change", () => {
     "#flow .fl-nav button.on{background:#eef0f3;color:var(--ink);font-weight:500}",
     "#flow .fl-nav button.on b{background:var(--ink);border-color:var(--ink);color:#fff}",
     "#flow .fl-nav button.done b{background:#fff;border-color:#b9c0c8;color:var(--ink2)}",
-    "#flow .fl-nav button[disabled]{color:#cfd4db;cursor:default;background:transparent}",
+    "#flow .fl-nav button[disabled]{color:#c2c8d0;cursor:default;background:transparent}",
+    "#flow .fl-nav button[disabled] b{border-color:#e2e5e9;color:#aeb5be}",
     "#flow .fl-nav i{font-style:normal;color:#d8dce1;font-size:11px}",
     "#flow .fl-hd-r{display:flex;align-items:center;gap:10px;flex:none}",
     "#flow .fl-badge{font-size:11px;color:#7a5a08;background:#fff8e6;border:1px solid #f0dfae;",
@@ -8192,11 +8193,17 @@ $("#company").addEventListener("change", () => {
     "  font-size:12px;color:var(--ink2)}",
     "#flow .fl-x:hover{border-color:#c4c9d1;background:var(--hover)}",
     "#flow .fl-body{flex:1;overflow-y:auto;padding:20px 22px 96px}",
-    "#flow .fl-page{max-width:1120px;margin:0 auto;animation:flIn .18s ease}",
-    "@keyframes flIn{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}",
+    /* 换页带方向：往下一步从右边推进来，退回上一步从左邊滑回来 */
+    "#flow .fl-page{max-width:1120px;margin:0 auto}",
+    "#flow .fl-page.dirR{animation:flInR .3s cubic-bezier(.22,.7,.3,1) both}",
+    "#flow .fl-page.dirL{animation:flInL .3s cubic-bezier(.22,.7,.3,1) both}",
+    "@keyframes flInR{from{opacity:0;transform:translate3d(34px,0,0)}to{opacity:1;transform:none}}",
+    "@keyframes flInL{from{opacity:0;transform:translate3d(-34px,0,0)}to{opacity:1;transform:none}}",
+    /* 同页重绘（选级别、切标签）不重播入场，否则点一下整页闪一次 */
+    "#flow .fl-page.quiet *{animation:none!important}",
     "#flow .fl-ph{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:14px}",
     "#flow h1{font-size:17px;font-weight:600;margin:0 0 4px;letter-spacing:.2px}",
-    "#flow .fl-ph p{margin:0;color:var(--muted);font-size:12px;line-height:1.6}",
+    "#flow .fl-ph p{margin:3px 0 0;color:var(--muted);font-size:12px;line-height:1.6}",
     "#flow .fl-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}",
     "#flow .fl-kpis div{background:#fff;border:1px solid var(--line);border-radius:9px;padding:10px 14px}",
     "#flow .fl-kpis b{display:block;font-size:19px;font-weight:600;line-height:1.3;",
@@ -8243,13 +8250,11 @@ $("#company").addEventListener("change", () => {
     "  transition:background .12s ease,border-color .12s ease,color .12s ease}",
     "#flow .fl-lv button:hover{border-color:#b9c0c8;background:var(--hover)}",
     "#flow .fl-lv button.on{background:var(--ink);border-color:var(--ink);color:#fff;font-weight:600}",
-    "#flow .fl-lv2{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}",
-    "#flow .fl-lv2 button{border:1px solid var(--line);background:#fff;border-radius:6px;",
-    "  padding:6px 14px;font-size:12px;color:var(--ink2)}",
-    "#flow .fl-lv2 button:hover{border-color:#b9c0c8;background:var(--hover)}",
-    "#flow .fl-lv2 button.on{background:var(--ink);border-color:var(--ink);color:#fff}",
-    "#flow .fl-lv2 button i{font-style:normal;color:var(--muted);font-size:11px;margin-left:5px}",
-    "#flow .fl-lv2 button.on i{color:#c9ced6}",
+    "#flow .fl-lv button.sp{grid-column:span 2;display:flex;align-items:center;",
+    "  justify-content:center;gap:5px;background:#fbfbfc}",
+    "#flow .fl-lv button.sp i{font-style:normal;color:var(--muted);font-size:10px}",
+    "#flow .fl-lv button.sp.on{background:var(--ink)}",
+    "#flow .fl-lv button.sp.on i{color:#c9ced6}",
     "#flow .fl-pick{display:flex;align-items:center;gap:10px;margin:12px 0 4px;",
     "  font-size:12.5px;color:var(--ink2)}",
     "#flow .fl-pick b{font-size:20px;font-weight:600;color:var(--ink);letter-spacing:.5px;",
@@ -8318,11 +8323,116 @@ $("#company").addEventListener("change", () => {
     "  display:grid;place-items:center;margin:0 auto 16px;font-size:22px}",
     "#flow .fl-done h2{font-size:18px;margin:0 0 8px}",
     "#flow .fl-done p{color:var(--muted);font-size:12.5px;margin:0 0 18px;line-height:1.8}",
-    "#flow .fl-done .fl-kv{text-align:left;max-width:340px;margin:0 auto 18px}",
+    "#flow .fl-done .fl-kv{text-align:left;max-width:296px;margin:0 auto 18px}",
     "#flow .fl-chk{display:flex;align-items:flex-start;gap:8px;font-size:11.5px;color:var(--ink2);",
     "  line-height:1.6;padding:3px 0}",
     "#flow .fl-chk s{width:13px;height:13px;border-radius:3px;background:var(--ink);color:#fff;",
     "  text-decoration:none;display:grid;place-items:center;font-size:9px;flex:none;margin-top:2px}",
+
+    /* ── 进度：标题条顶端的细进度 + 页头的圈 ── */
+    "#flow .fl-hd{position:relative}",
+    "#flow .fl-hd:after{content:'';position:absolute;left:0;bottom:-1px;height:2px;width:var(--flp,20%);",
+    "  background:linear-gradient(90deg,#a8b0b8,#2b323a);border-radius:0 2px 2px 0;",
+    "  transition:width .5s cubic-bezier(.3,.8,.3,1)}",
+    "#flow .fl-step{display:flex;align-items:center;gap:9px;flex:none;margin-left:2px;",
+    "  padding-left:14px;border-left:1px solid var(--line2)}",
+    "#flow .fl-ring-w{position:relative;width:32px;height:32px;flex:none}",
+    "#flow .fl-ring-w b{position:absolute;inset:0;display:grid;place-items:center;font-size:11px;",
+    "  font-weight:600;font-variant-numeric:tabular-nums}",
+    "#flow .fl-ring{width:32px;height:32px;flex:none;transform:rotate(-90deg)}",
+    "#flow .fl-ring circle{fill:none;stroke-width:2.6}",
+    "#flow .fl-ring .rbg{stroke:#eceef1}",
+    "#flow .fl-ring .rfg{stroke:var(--ink);stroke-linecap:round;",
+    "  transition:stroke-dashoffset .55s cubic-bezier(.3,.8,.3,1)}",
+    "#flow .fl-ring-t{font-size:11px;line-height:1.35;white-space:nowrap}",
+    "#flow .fl-ring-t b{display:block;font-size:11px;font-weight:600;letter-spacing:.2px}",
+    "#flow .fl-ring-t span{color:var(--muted);font-size:10.5px}",
+    "#flow .fl-pct{font-variant-numeric:tabular-nums;color:var(--ink2);font-weight:600}",
+
+    /* ── 模型打分：算式条 + 分项得分 ── */
+    "#flow .fl-meta{display:flex;flex-wrap:wrap;background:#fff;border:1px solid var(--line);",
+    "  border-radius:9px;padding:8px 14px;margin-bottom:14px;font-size:12px}",
+    "#flow .fl-meta span{display:flex;align-items:baseline;gap:6px;padding-right:16px;",
+    "  margin-right:16px;border-right:1px solid var(--line2);line-height:1.9}",
+    "#flow .fl-meta span:last-child{border-right:0;margin-right:0;padding-right:0}",
+    "#flow .fl-meta em{font-style:normal;color:var(--muted);font-size:11px;white-space:nowrap}",
+    "#flow .fl-meta b{font-weight:500}",
+    "#flow .fl-eq{display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:12.5px;",
+    "  color:var(--ink2);background:#fbfbfc;border:1px solid var(--line2);border-radius:8px;",
+    "  padding:9px 12px;margin-bottom:11px}",
+    "#flow .fl-eq em{font-style:normal;color:var(--muted);font-size:11.5px}",
+    "#flow .fl-eq>b{font-size:15px;font-variant-numeric:tabular-nums;letter-spacing:.2px}",
+    "#flow .fl-eq .ar{color:#b9c0c8}",
+    "#flow .fl-eq .lv{background:var(--ink);color:#fff;border-radius:5px;padding:1px 8px;",
+    "  font-size:12px;font-weight:600;letter-spacing:.4px;margin-left:2px}",
+    "#flow .fl-eq .t{color:var(--muted);font-size:11.5px;margin-left:auto}",
+    "#flow .fl-sc{display:flex;align-items:center;gap:7px;justify-content:flex-end}",
+    "#flow .fl-sc i{display:block;width:64px;height:5px;border-radius:3px;background:#e9ebef;",
+    "  overflow:hidden;flex:none}",
+    "#flow .fl-sc i em{display:block;height:100%;border-radius:3px;background:#7c8794;",
+    "  transform-origin:left;animation:barGrow .55s cubic-bezier(.3,.8,.3,1) both}",
+    "#flow .fl-sc b{font-weight:600;font-variant-numeric:tabular-nums;min-width:34px;text-align:right}",
+    "@keyframes barGrow{from{transform:scaleX(0)}to{transform:scaleX(1)}}",
+    "#flow .fl-grp{font-size:11px;color:var(--muted);background:#f7f8f9;font-weight:500}",
+    "#flow .fl-grp b{color:var(--ink2);font-weight:500}",
+    "#flow .fl-sum td{background:#fafbfc;font-weight:500}",
+    "#flow .fl-hl{background:#fffbeb}",
+    "#flow tr.fl-total td{border-top:1px solid var(--line);border-bottom:0;padding-top:9px}",
+
+    /* ── 级别刻度：模型在哪、本次定在哪 ── */
+    "#flow .fl-scale{position:relative;height:72px;margin:6px 0 6px}",
+    "#flow .fl-track{position:absolute;left:26px;right:26px;top:30px;height:6px;border-radius:3px;",
+    "  background:linear-gradient(90deg,#c3d2ea,#d9dde3 48%,#ead4ce)}",
+    "#flow .fl-tk{position:absolute;top:24px;width:1px;height:18px;background:#e4e7eb}",
+    "#flow .fl-mk{position:absolute;transform:translateX(-50%);display:flex;flex-direction:column;",
+    "  align-items:center;transition:left .45s cubic-bezier(.25,.8,.3,1)}",
+    "#flow .fl-mk.mdl{top:0}",
+    "#flow .fl-mk.mdl b{font-size:10.5px;color:var(--muted);font-weight:500;white-space:nowrap;",
+    "  letter-spacing:.2px}",
+    "#flow .fl-mk.mdl i{width:0;height:0;border-left:5px solid transparent;",
+    "  border-right:5px solid transparent;border-top:6px solid #9aa3ad;margin-top:8px}",
+    "#flow .fl-mk.cur{top:37px}",
+    "#flow .fl-mk.cur i{width:10px;height:10px;border-radius:50%;background:var(--ink);",
+    "  box-shadow:0 0 0 3px #fff,0 0 0 4px #dfe3e8}",
+    "#flow .fl-mk.cur b{font-size:10.5px;font-weight:600;white-space:nowrap;margin-top:4px;",
+    "  font-variant-numeric:tabular-nums}",
+    "#flow .fl-axes{display:flex;justify-content:space-between;font-size:10px;color:#b3bac2;",
+    "  margin:0 20px 10px;font-variant-numeric:tabular-nums}",
+
+    /* ── 小块动效 ── */
+    "#flow .fl-page:not(.quiet) .fl-card{animation:cardIn .36s cubic-bezier(.22,.7,.3,1) both}",
+    "@keyframes cardIn{from{opacity:0;transform:translate3d(0,8px,0)}to{opacity:1;transform:none}}",
+    "#flow .fl-page:not(.quiet) .fl-main>.fl-card:nth-child(2){animation-delay:.06s}",
+    "#flow .fl-page:not(.quiet) .fl-main>.fl-card:nth-child(3){animation-delay:.12s}",
+    "#flow .fl-page:not(.quiet) .fl-main>.fl-card:nth-child(4){animation-delay:.17s}",
+    "#flow .fl-page:not(.quiet) .fl-side{animation:cardIn .4s cubic-bezier(.22,.7,.3,1) .1s both}",
+    "#flow .fl-lv button.on{animation:lvPop .24s cubic-bezier(.2,.9,.3,1.4)}",
+    "@keyframes lvPop{0%{transform:scale(.9)}100%{transform:scale(1)}}",
+    "#flow .fl-lv button{transition:background .12s ease,border-color .12s ease,color .12s ease,",
+    "  transform .12s ease}",
+    "#flow .fl-lv button:active{transform:scale(.94)}",
+    "#flow .fl-page:not(.quiet) .fl-chk{animation:chkIn .3s ease both}",
+    "#flow .fl-page:not(.quiet) .fl-chk:nth-child(2){animation-delay:.05s}",
+    "#flow .fl-page:not(.quiet) .fl-chk:nth-child(3){animation-delay:.1s}",
+    "#flow .fl-page:not(.quiet) .fl-chk:nth-child(4){animation-delay:.15s}",
+    "@keyframes chkIn{from{opacity:0;transform:translateX(-6px)}to{opacity:1;transform:none}}",
+    "#flow .fl-done .fl-ck{animation:ckPop .52s cubic-bezier(.2,.9,.3,1.3) both}",
+    "@keyframes ckPop{0%{opacity:0;transform:scale(.4)}62%{opacity:1;transform:scale(1.12)}",
+    "  100%{opacity:1;transform:scale(1)}}",
+    "#flow .fl-done{animation:cardIn .4s cubic-bezier(.22,.7,.3,1) both}",
+    "#flow .fl-kpis div{transition:border-color .2s ease}",
+    "#flow .fl-kpis div:hover{border-color:#c4c9d1}",
+    "#flowBar.show{animation:barIn .32s cubic-bezier(.22,.7,.3,1) both}",
+    "@keyframes barIn{from{opacity:0;transform:translate(-50%,14px)}to{opacity:1;transform:translateX(-50%)}}",
+    "#flowBar .fb-prog{display:flex;gap:3px;align-items:center;padding:0 2px 0 6px}",
+    "#flowBar .fb-prog i{width:15px;height:4px;border-radius:2px;background:#e3e6ea;",
+    "  transition:background .3s ease}",
+    "#flowBar .fb-prog i.on{background:var(--ink)}",
+    /* 不想看动效的机器上就别动 */
+    "@media (prefers-reduced-motion:reduce){",
+    "  #flow *, #flowBar *{animation-duration:.001s!important;",
+    "    animation-delay:0s!important;transition-duration:.001s!important}",
+    "}",
     /* 第 2 步：工作台自己露出来，靠底部一条导航把流程接上 */
     "#flowBar{position:fixed;left:50%;transform:translateX(-50%);bottom:16px;z-index:190;",
     "  display:none;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);",
@@ -8350,9 +8460,14 @@ $("#company").addEventListener("change", () => {
     "}",
     "@media (max-width:760px){",
     "  #flow .fl-hd{height:auto;flex-wrap:wrap;padding:8px 12px;gap:8px}",
-    "  #flow .fl-nav{order:3;width:100%;margin:0;justify-content:space-between}",
-    "  #flow .fl-nav button{padding:4px 3px;font-size:11px}",
+    /* 手机上一行放不下五个「圆 + 文字」，只留圆；圆与圆之间拉开，不然挤成一坨 */
+    "  #flow .fl-nav{order:3;width:100%;margin:0;justify-content:center;gap:16px;overflow:visible}",
+    "  #flow .fl-nav button{padding:0;gap:0}",
+    "  #flow .fl-nav button b{width:22px;height:22px;font-size:11px}",
     "  #flow .fl-nav button span{display:none}",
+    "  #flow .fl-nav i{display:none}",
+    "  #flow .fl-sc i{width:44px}",
+    "  #flow .fl-sc b{min-width:30px;font-size:12px}",
     "  #flow .fl-hd-l b{font-size:12.5px}",
     "  #flow .fl-hd-l i{display:none}",
     "  #flow .fl-badge{display:none}",
@@ -8371,8 +8486,12 @@ $("#company").addEventListener("change", () => {
     "  #flow .fl-task th:nth-child(6),#flow .fl-task td:nth-child(6),",
     "  #flow .fl-task th:nth-child(8),#flow .fl-task td:nth-child(8),",
     "  #flow .fl-task th:nth-child(9),#flow .fl-task td:nth-child(9){display:none}",
-    "  #flow .fl-score th:last-child,#flow .fl-score td:last-child{display:none}",
+    "  #flow .fl-score th:nth-child(3),#flow .fl-score td:nth-child(3):not(.num){display:none}",
     "  #flow .fl-score td:first-child{white-space:nowrap}",
+    "  #flow .fl-meta{display:grid;grid-template-columns:1fr 1fr;gap:0 10px;padding:8px 12px}",
+    "  #flow .fl-meta span{border-right:0;margin-right:0;padding-right:0}",
+    "  #flow .fl-step .fl-ring-t{display:none}",
+    "  #flow .fl-eq .t{display:none}",
     "  #flow .fl-tw{margin:0 -12px;padding:0 12px}",
     "  #flow .fl-pick b{font-size:18px}",
     "  #flow .fl-body{padding-bottom:78px}",
@@ -8385,12 +8504,13 @@ $("#company").addEventListener("change", () => {
     "  #flAct button[disabled]{color:#c2c7cf;border-color:var(--line2)}",
     "  #flowBar{gap:6px;bottom:10px;padding:5px}",
     "  #flowBar .fb-mid span{display:none}",
+    "  #flowBar .fb-prog{display:none}",
     "  #flowBar button{padding:5px 10px;font-size:11.5px}",
     "}"
   ].join("\n");
 
   /* ── 骨架 ─────────────────────────────────────────────────── */
-  var root, body, nav, bar;
+  var root, body, nav, bar, progText, progSub, progNum, ring;
 
   function build(){
     var st = document.createElement("style");
@@ -8404,6 +8524,15 @@ $("#company").addEventListener("change", () => {
         '<div class="fl-hd-l"><span class="fl-logo">内</span>' +
           '<div><b>信用评级管理系统</b><i>内评简评 · 全流程演示</i></div></div>' +
         '<nav class="fl-nav" id="flNav"></nav>' +
+        '<div class="fl-step" id="flStep">' +
+          '<div class="fl-ring-w"><svg class="fl-ring" viewBox="0 0 36 36" aria-hidden="true">' +
+            '<circle class="rbg" cx="18" cy="18" r="15"></circle>' +
+            '<circle class="rfg" id="flRing" cx="18" cy="18" r="15" ' +
+              'stroke-dasharray="94.25" stroke-dashoffset="75.4"></circle>' +
+          '</svg><b id="flStepN">1</b></div>' +
+          '<div class="fl-ring-t"><b id="flStepB">第 1 步 / 共 5 步</b>' +
+            '<span id="flStepS">任务列表 · 已完成 20%</span></div>' +
+        "</div>" +
         '<div class="fl-hd-r"><span class="fl-badge">演示数据</span>' +
           '<button class="fl-x" data-act="workbench">回到工作台</button></div>' +
       '</div>' +
@@ -8417,6 +8546,10 @@ $("#company").addEventListener("change", () => {
 
     body = root.querySelector("#flBody");
     nav = root.querySelector("#flNav");
+    progText = root.querySelector("#flStepB");
+    progNum = root.querySelector("#flStepN");
+    progSub = root.querySelector("#flStepS");
+    ring = root.querySelector("#flRing");
 
     root.addEventListener("click", onClick);
     body.addEventListener("input", onInput);
@@ -8441,9 +8574,22 @@ $("#company").addEventListener("change", () => {
     nav.innerHTML = html;
   }
 
+  /* 进度：顶栏那根细线 + 右上角的圈。第 2 步在工作台那边，靠 #flowBar 的格子。 */
+  function paintProg(){
+    var p = S.step / 5;
+    root.style.setProperty("--flp", (p * 100).toFixed(1) + "%");
+    if(progText) progText.textContent = "第 " + S.step + " 步 / 共 5 步";
+    if(progNum) progNum.textContent = S.step;
+    if(progSub) progSub.textContent = STEP_NAMES[S.step - 1] + " · 已完成 " + Math.round(p * 100) + "%";
+    if(ring) ring.setAttribute("stroke-dashoffset", (94.25 * (1 - p)).toFixed(2));
+  }
+
   function paintBar(){
+    var dots = "";
+    for(var k = 1; k <= 5; k++) dots += '<i class="' + (k <= 2 ? "on" : "") + '"></i>';
     bar.innerHTML =
       '<button data-act="go" data-n="1">← 任务列表</button>' +
+      '<div class="fb-prog">' + dots + "</div>" +
       '<div class="fb-mid"><b>第 2 步 / 共 5 步</b>' +
         '<span>内评简评报告 · ' + esc(CO.name) + "</span></div>" +
       '<button class="primary" data-act="go" data-n="3">下一步：级别认定 →</button>';
@@ -8543,44 +8689,142 @@ $("#company").addEventListener("change", () => {
     return { t: "较模型" + dir + " " + Math.abs(big) + " 个大档" + tail, c: "warn" };
   }
 
+  /* 模型打分明细。加权合计要能和 40.92 对上，所以分数是倒推的：
+     48.20×20% + 52.40×25% + 58.80×15% = 31.56
+     26.00×15% + 24.00×15% + 18.60×10% =  9.36  →  合计 40.92，对应 4C */
+  var SCORE = [
+    { g: "财务风险", w: 60, sub: [
+      { n: "盈利能力", w: 20, s: 48.20, v: "营业总收入 30.04 亿元，净利润 0.55 亿元" },
+      { n: "偿债能力", w: 25, s: 52.40, v: "总资本化比率 63.03%，EBITDA 利息保障 2.66 倍" },
+      { n: "经营规模", w: 15, s: 58.80, v: "总资产 412.65 亿元，净资产 158.32 亿元" }
+    ]},
+    { g: "非财务风险", w: 40, sub: [
+      { n: "区域环境", w: 15, s: 26.00, v: "一般公共预算收入 316.8 亿元，区域债务率偏高" },
+      { n: "股东与支持", w: 15, s: 24.00, v: "市国资委全资持股，上年财政补贴 1.86 亿元" },
+      { n: "治理与信息质量", w: 10, s: 18.60, v: "标准无保留意见，未发现重大会计差错" }
+    ]}
+  ];
+
+  function scoreTable(){
+    var rows = "";
+    SCORE.forEach(function(g){
+      var wt = g.sub.reduce(function(a, r){ return a + r.w * r.s / 100; }, 0);
+      rows += '<tr class="fl-grp"><td colspan="2"><b>' + g.g + "</b> · 权重 " + g.w + "%</td>" +
+              "<td>" + g.sub.length + ' 项指标</td><td class="num">加权 ' + wt.toFixed(2) +
+              "</td></tr>";
+      g.sub.forEach(function(r){
+        rows += "<tr><td>" + r.n + "</td>" +
+          '<td class="num">' + r.w + "%</td>" +
+          '<td class="fl-v">' + r.v + "</td>" +
+          '<td class="num"><span class="fl-sc"><i><em style="width:' + r.s + '%"></em></i>' +
+            "<b>" + r.s.toFixed(2) + "</b></span></td></tr>";
+      });
+    });
+    return '<div class="fl-tw"><table class="fl-score"><thead><tr><th>评分指标</th>' +
+      '<th class="num">权重</th><th>指标表现</th><th class="num">得分</th></tr></thead><tbody>' +
+      rows +
+      '<tr class="fl-total"><td><b>加权合计</b></td><td class="num">100%</td>' +
+        "<td>对应模型级别 <b>" + MODEL_LEVEL + "</b></td>" +
+        '<td class="num"><b>' + MODEL_SCORE.toFixed(2) + "</b></td></tr>" +
+      "</tbody></table></div>";
+  }
+
+  /* 级别在刻度上的位置：36 格平均铺开，DDD 与「都不评」压到最右 */
+  function ratioOf(v){
+    if(!v || v === "都不评" || v === "DDD") return 1;
+    var i = lvIndex(v);
+    return i < 0 ? 0 : i / (LEVELS.length - 1);
+  }
+  /* 两端各留 26px：标记是以中心定位的，不留余量时选到 1A 文字会顶出卡片 */
+  function at(r){ return "calc(26px + (100% - 52px)*" + r.toFixed(4) + ")"; }
+
+  function scaleBar(){
+    var ticks = "";
+    for(var i = 0; i < LEVELS.length; i += 4){
+      ticks += '<div class="fl-tk" style="left:' + at(i / (LEVELS.length - 1)) + '"></div>';
+    }
+    return '<div class="fl-scale">' + ticks + '<div class="fl-track"></div>' +
+      '<div class="fl-mk mdl" style="left:' + at(ratioOf(MODEL_LEVEL)) + '">' +
+        "<b>模型 " + MODEL_LEVEL + "</b><i></i></div>" +
+      '<div class="fl-mk cur" style="left:' + at(ratioOf(S.level)) + '">' +
+        "<i></i><b>" + (S.level === "都不评" ? "不评级"
+          : (S.level === MODEL_LEVEL ? "本次一致" : "本次 " + S.level)) + "</b></div>" +
+      "</div>" +
+      '<div class="fl-axes"><span>1A 最优</span><span>9D 最差 · DDD 违约</span></div>';
+  }
+
+  /* 改级别不整页重绘：重绘会把刻度那根指针直接挪到位，看不到它滑过去。
+     只改这几处随级别变的地方，指针的 transition 才起作用。 */
+  function applyLevel(){
+    body.querySelectorAll(".fl-lv button").forEach(function(x){
+      x.classList.toggle("on", x.getAttribute("data-v") === S.level);
+    });
+    var pick = body.querySelector(".fl-pick b");
+    if(pick) pick.textContent = levelWord(S.level);
+    var dev = body.querySelector(".fl-pick .fl-dev");
+    if(dev){
+      var d = devText();
+      dev.textContent = d.t;
+      dev.className = "fl-dev " + d.c;
+    }
+    var mk = body.querySelector(".fl-mk.cur");
+    if(mk){
+      mk.style.left = at(ratioOf(S.level));
+      var lb = mk.querySelector("b");
+      if(lb) lb.textContent = S.level === "都不评" ? "不评级"
+        : (S.level === MODEL_LEVEL ? "本次一致" : "本次 " + S.level);
+    }
+    var big = body.querySelector(".fl-side .fl-kv b.big");
+    if(big) big.textContent = levelWord(S.level);
+    var ao = body.querySelector("[data-adjout]");
+    if(ao) ao.textContent = adjLevel();
+  }
+
   function pageLevel(){
     var tiles = LEVELS.map(function(v){
       return '<button class="' + (S.level === v ? "on" : "") + '" data-act="lv" data-v="' + v + '">' +
              v + "</button>";
-    }).join("");
+    }).join("") +
+    '<button class="sp' + (S.level === "DDD" ? " on" : "") + '" data-act="lv" data-v="DDD">' +
+      "DDD<i>违约</i></button>" +
+    '<button class="sp' + (S.level === "都不评" ? " on" : "") + '" data-act="lv" data-v="都不评">' +
+      "都不评</button>";
     var dev = devText();
+    var wt = CO.fin * 0.6, wtn = CO.nonfin * 0.4;
+
     return '<div class="fl-page">' +
       '<div class="fl-ph"><div><h1>模型级别认定</h1>' +
-        "<p>" + esc(CO.name) + " · " + CO.task + " · 分析师 " + CO.analyst +
-        " · 财报年度 " + CO.year + "</p></div></div>" +
+        "<p>先看模型打分，再决定是否定性调整，最后在级别底稿上落一个级别。</p></div></div>" +
+
+      '<div class="fl-meta">' +
+        "<span><em>发行人</em><b>" + esc(CO.name) + "</b></span>" +
+        "<span><em>任务编号</em><b>" + CO.task + "</b></span>" +
+        "<span><em>评级模型</em><b>" + CO.model + "</b></span>" +
+        "<span><em>财报期</em><b>" + CO.year + " 年报</b></span>" +
+        "<span><em>分析师</em><b>" + CO.analyst + "</b></span>" +
+      "</div>" +
+
       '<div class="fl-grid"><div class="fl-main">' +
-        '<section class="fl-card"><h3>模型测算结果<i>内评模型 v4.2 · 合并口径</i></h3>' +
-          '<div class="fl-stats">' +
-            "<div><b>" + CO.fin.toFixed(2) + "</b><span>财务得分 · 权重 60%</span></div>" +
-            "<div><b>" + CO.nonfin.toFixed(2) + "</b><span>非财务得分 · 权重 40%</span></div>" +
-            "<div><b>" + MODEL_SCORE.toFixed(2) + "</b><span>加权总得分</span></div>" +
-            '<div class="key"><b>' + MODEL_LEVEL + "</b><span>模型测算级别</span></div>" +
+        '<section class="fl-card"><h3>模型打分<i>内评模型 v4.2 · 合并口径</i>' +
+          '<span class="r">六项指标 · 满分 100</span></h3>' +
+          '<div class="fl-eq">' +
+            "<em>财务</em><b>" + CO.fin.toFixed(2) + '</b><span class="ar">×</span><span>60%</span>' +
+            '<span class="ar">＋</span>' +
+            "<em>非财务</em><b>" + CO.nonfin.toFixed(2) + '</b><span class="ar">×</span><span>40%</span>' +
+            '<span class="ar">＝</span><b data-count="' + MODEL_SCORE + '">0.00</b>' +
+            '<span class="ar">→</span><span class="lv">' + MODEL_LEVEL + "</span>" +
+            '<span class="t">加权 ' + wt.toFixed(2) + " ＋ " + wtn.toFixed(2) + "</span>" +
           "</div>" +
-          '<table class="fl-score" style="margin-top:12px"><thead><tr><th>评分项</th><th class="num">权重</th>' +
-            '<th class="num">得分</th><th class="num">加权</th><th>主要依据</th></tr></thead><tbody>' +
-            '<tr><td>财务风险</td><td class="num">60%</td><td class="num">' + CO.fin.toFixed(2) +
-              '</td><td class="num">' + (CO.fin * 0.6).toFixed(2) +
-              "</td><td>2025 年营业总收入 30.04 亿元，总资本化比率 63.03%，EBITDA 利息保障倍数 2.66 倍</td></tr>" +
-            '<tr><td>非财务风险</td><td class="num">40%</td><td class="num">' + CO.nonfin.toFixed(2) +
-              '</td><td class="num">' + (CO.nonfin * 0.4).toFixed(2) +
-              "</td><td>市国资委控股，区域专营地位较强；2026 年上半年净利润 -1.64 亿元</td></tr>" +
-            '<tr><td><b>合计</b></td><td class="num">100%</td><td class="num">—</td>' +
-              '<td class="num"><b>' + MODEL_SCORE.toFixed(2) + "</b></td>" +
-              "<td>对应模型级别 <b>" + MODEL_LEVEL + "</b></td></tr>" +
-          "</tbody></table>" +
+          scoreTable() +
         "</section>" +
 
-        '<section class="fl-card"><h3>定性调整<i>可选 · 本次不作调整</i></h3>' +
+        '<section class="fl-card"><h3>定性调整底稿<i>模型之外，人还能动一档</i></h3>' +
           '<table><thead><tr><th>调整项</th><th class="num">调整</th><th>依据</th></tr></thead><tbody>' +
-            '<tr><td>区域重要性</td><td class="num">0</td><td>中山市主城区唯一市级城投平台，但区域财力一般</td></tr>' +
-            '<tr><td>政府支持</td><td class="num">0</td><td>2025 年收到财政补贴 1.86 亿元，与上年基本持平</td></tr>' +
-            '<tr><td>治理与信息质量</td><td class="num">0</td><td>审计意见为标准无保留意见，未发现重大会计差错</td></tr>' +
-            '<tr><td><b>调整后级别</b></td><td class="num"><b>' + adjLevel() + "</b></td>" +
+            '<tr><td>区域重要性</td><td class="num">0</td><td>主城区唯一市级城投平台，但区域财力一般</td></tr>' +
+            '<tr><td>政府支持</td><td class="num">0</td><td>上年收到财政补贴 1.86 亿元，与前期基本持平</td></tr>' +
+            '<tr><td>治理与信息质量</td><td class="num">0</td><td>审计意见为标准无保留，未发现重大会计差错</td></tr>' +
+            '<tr class="fl-sum"><td><b>调整后级别</b></td>' +
+              '<td class="num"><b data-adjout>' + adjLevel() + "</b></td>" +
               "<td>调整分合计 " + (S.adj > 0 ? "+" : "") + S.adj + "</td></tr>" +
           "</tbody></table>" +
           '<div class="fl-bar" style="margin-top:10px">' +
@@ -8591,16 +8835,13 @@ $("#company").addEventListener("change", () => {
           "</div>" +
         "</section>" +
 
-        '<section class="fl-card"><h3>本次认定级别<i>1A 最好，DDD 为违约</i></h3>' +
-          '<div class="fl-lv">' + tiles + "</div>" +
-          '<div class="fl-lv2">' +
-            '<button class="' + (S.level === "DDD" ? "on" : "") + '" data-act="lv" data-v="DDD">' +
-              "DDD<i>违约</i></button>" +
-            '<button class="' + (S.level === "都不评" ? "on" : "") + '" data-act="lv" data-v="都不评">' +
-              "都不评</button>" +
-          "</div>" +
+        '<section class="fl-card"><h3>选择模型级别<i>1A 最好，9D 最差，DDD 为违约</i></h3>' +
+          scaleBar() +
+          '<div class="fl-lv" style="margin-top:12px">' + tiles + "</div>" +
+
           '<div class="fl-pick">本次认定 <b>' + levelWord(S.level) + "</b>" +
             '<span class="fl-dev ' + dev.c + '">' + dev.t + "</span></div>" +
+          '<p class="fl-hint">点一格就落定，上面那根指针会跟着走。</p>' +
           '<textarea id="flReason" data-field="reason" rows="3" ' +
             'placeholder="认定理由：与模型不一致时写明依据（区域支持、资产质量、治理等）">' +
             esc(S.reason) + "</textarea>" +
@@ -8826,6 +9067,20 @@ $("#company").addEventListener("change", () => {
   }
 
   /* ── 渲染 ─────────────────────────────────────────────────── */
+  /* 算式里那个总分从 0 滚到 40.92，比直接甩一个数出来更像刚算完 */
+  function countUp(){
+    body.querySelectorAll("[data-count]").forEach(function(el){
+      var to = +el.getAttribute("data-count"), t0 = null;
+      function step(ts){
+        if(t0 === null) t0 = ts;
+        var p = Math.min(1, (ts - t0) / 620);
+        el.textContent = (to * (1 - Math.pow(1 - p, 3))).toFixed(2);
+        if(p < 1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    });
+  }
+
   function paintBody(keepScroll){
     var html = "";
     if(S.step === 1) html = pageTasks();
@@ -8834,7 +9089,20 @@ $("#company").addEventListener("change", () => {
     else if(S.step === 5) html = pageSubmit();
     var top = keepScroll ? body.scrollTop : 0;
     body.innerHTML = html;
+    var pg = body.querySelector(".fl-page");
+    if(pg){
+      // 换页才滑；同页重绘（选级别、切标签）滑一次会像闪屏
+      if(keepScroll) pg.classList.add("quiet");
+      else pg.classList.add(S.dir < 0 ? "dirL" : "dirR");
+    }
     body.scrollTop = top;
+    if(keepScroll){
+      body.querySelectorAll("[data-count]").forEach(function(el){
+        el.textContent = (+el.getAttribute("data-count")).toFixed(2);
+      });
+    }else{
+      countUp();
+    }
   }
 
   /* 窄屏底部操作条：长表单里「下一步」在页面最下面，手机上要滑很久才够得到。
@@ -8861,6 +9129,7 @@ $("#company").addEventListener("change", () => {
 
   function paint(){
     paintNav();
+    paintProg();
     paintBody();
     paintAct();
   }
@@ -8890,6 +9159,7 @@ $("#company").addEventListener("change", () => {
 
   function go(n){
     if(n < 1 || n > 5) return;
+    S.dir = n < S.step ? -1 : 1;
     S.step = n;
     if(n > S.max) S.max = n;
     if(n === 2){
@@ -8902,6 +9172,7 @@ $("#company").addEventListener("change", () => {
       }catch(e){ /* 铺不上也只是空工作台，不拦流程 */ }
       paintBar();
       paintNav();
+      paintProg();
       return;
     }
     showFlow();
@@ -8938,7 +9209,7 @@ $("#company").addEventListener("change", () => {
 
     if(act === "lv"){
       S.level = b.getAttribute("data-v");
-      paintBody(true);
+      applyLevel();
       return;
     }
 
