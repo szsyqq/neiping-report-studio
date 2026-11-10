@@ -2,14 +2,15 @@
 """把工作台打成一个离线单文件 HTML（演示版）。
 
 产物是 `site/demo.html`：一份文件，双击就能开，不需要后端、不需要口令。
-打开时铺的是演示那一轮（中山城建），可以改字、加减条目、翻段、看检查栏；
+打开先落在全流程的任务列表（`app/static/flow-demo.js`），
+点「处理」进报告编辑页（工作台本身），再依次走级别认定、债项评级、提交审批；
 生成、导出 Word、发信这些真的要后端的事，点下去给一句人话，不做假动作。
 
 用法：
     python3 make_demo_offline.py
 
-改前端之后要重跑一次；`app/static/offline-demo.js` 是垫片源码，
-它只被这一份产物内联，线上版不加载。
+改前端或流程层之后要重跑一次；`app/static/offline-demo.js` 与
+`app/static/flow-demo.js` 是源码，都只被这一份产物内联，线上版不加载。
 """
 import pathlib
 import re
@@ -18,6 +19,7 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parent
 SRC = ROOT / "app" / "static" / "index.html"
 SHIM = ROOT / "app" / "static" / "offline-demo.js"
+FLOW = ROOT / "app" / "static" / "flow-demo.js"
 OUT = ROOT / "site" / "demo.html"
 
 
@@ -35,9 +37,12 @@ def main():
         raise SystemExit(f"[x] 找不到前端：{SRC}")
     if not SHIM.exists():
         raise SystemExit(f"[x] 找不到垫片：{SHIM}")
+    if not FLOW.exists():
+        raise SystemExit(f"[x] 找不到流程层：{FLOW}")
 
     html = SRC.read_text(encoding="utf-8")
     shim = SHIM.read_text(encoding="utf-8")
+    flow = FLOW.read_text(encoding="utf-8")
 
     # 垫片靠 TOUR_KEY 这个名字把「首次自动播引导」关掉。前端改了名，
     # 这里必须当场报错——否则产物会悄悄退回自动播，打开先糊一层遮罩。
@@ -48,7 +53,7 @@ def main():
         raise SystemExit("[x] 垫片里的 TOUR_KEY 与前端不一致：前端是 %r" % m.group(1))
 
     html = must_replace(html, "<title>内评简评报告</title>",
-                        "<title>内评简评报告 · 演示版（离线）</title>", "标题")
+                        "<title>内评简评报告 · 全流程演示（离线）</title>", "标题")
     # 口令页默认是 show + body.locked，离线版连登录都没有，先摘掉再谈别的，
     # 否则打开先闪一下「请输入访问口令」。
     html = must_replace(html, '<body class="locked">', '<body class="offline">', "body")
@@ -69,6 +74,11 @@ if(window.OFFLINE_DEMO){
 }
 """, "启动入口")
 
+    # 流程层排在 </body> 前：这时 DOM 已经解析完，可以直接建层；
+    # 也晚于主脚本，拿得到 demoEnter / demoStay / DEMO 这几个名字。
+    html = must_replace(html, "</body>",
+                        "<script>\n" + flow + "\n</script>\n</body>", "流程层位置")
+
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(html, encoding="utf-8")
 
@@ -79,6 +89,8 @@ if(window.OFFLINE_DEMO){
         ("口令页已摘", '<body class="offline">' in got and '<div id="gate" class="show">' not in got),
         ("不再直接 gateBoot", "\ngateBoot();\n" not in got),
         ("演示快照在位", "const TOUR_DATA = {" in got),
+        ("流程层已内联", "window.FLOW = {" in got),
+        ("流程数据在位", "26中山城建MTN001" in got),
         ("无外链资源", "<script src" not in got and "<link " not in got),
     ]
     bad = [n for n, ok in checks if not ok]
