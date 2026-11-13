@@ -3258,7 +3258,7 @@ document.addEventListener("paste", e => {
    表头因此要两行——第一行写期次、第二行写营业收入与收入占比。合并单元格
    用 rowspan/colspan，行数少了看起来才不会挤。营业总收入那一行加粗。 */
 function tableHtml(t){
-  if(!t || !t.rows) return "";
+  if(!t || !t.rows || !t.rows.length) return "";
   const bold = new Set((t.bold_rows || []).map(Number));
   const totalIdx = (() => {
     const last = t.rows.length - 1;

@@ -607,7 +607,9 @@ def render_report(data: dict[str, Any], out_path: str | Path) -> Path:
         _add_lead_para(doc, ov.get("lead", ""), ov.get("body", ""))
 
     seg = c.get("segment_table")
-    if seg:
+    # 表被核掉时（材料没有分板块收入）rows 为空：不能把一张空表排进 Word，
+    # 那会在正文里留下一道空白边框，读者以为是排版坏了。
+    if seg and seg.get("rows"):
         # 总述段与业务构成表是两个块，中间要有空行（原来这里漏了，
         # 表就顶在总述段的最后一行上）
         _gap()
