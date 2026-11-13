@@ -1065,6 +1065,9 @@ body.dragging .item-ghost{display:flex}
 .pmtbox .ph .x:hover{color:var(--red)}
 .pmtbody{flex:1;display:grid;grid-template-columns:188px minmax(0,1fr);min-height:0}
 .pmtnav{border-right:1px solid var(--line2);overflow:auto;padding:6px 0}
+.pmtgrp{font-size:10.5px;font-weight:600;color:var(--muted);letter-spacing:.04em;
+  padding:12px 14px 4px;border-top:1px solid var(--line2);margin-top:4px}
+.pmtgrp:first-child{border-top:0;margin-top:0;padding-top:4px}
 .pmtnav button{display:block;width:100%;text-align:left;border:0;background:transparent;
   font-size:12px;color:var(--ink2);padding:7px 14px;cursor:pointer;line-height:1.4}
 .pmtnav button:hover{background:var(--hover)}
@@ -3339,7 +3342,7 @@ function renderActions(d){
   <div class="doccol">
     <div class="docbar">
       <div class="acts">
-        <button class="btn-sm" onclick="openPrompt()" title="看提示词：骨干 + 各段落分别要求了什么">提示词</button>
+        <button class="btn-sm" onclick="openPrompt()" title="看提示词：骨干 → 行业特点 → 复合 → 修改">提示词</button>
         <div class="end">
           <div class="pkgwrap">
             <button class="btn-sm ico" id="btnMail" onclick="toggleMail(event)" title="把修订版发到邮箱">${ICON.mail}发送</button>
@@ -3665,7 +3668,7 @@ function renderDraft(){
   if((S.draft.mode || "new") === "update") return renderActions(S.draft);
   restoreNotes(S.draft);
   const d = S.draft, c = d.commentary || {}, v = d.validation || {};
-  // 老稿把「盈利」与「现金流」分成两段。现在这一段只写一段（提示词规则 23），
+  // 老稿把「盈利」与「现金流」分成两段。现在这一段只写一段（提示词规则 3.4），
   // 打开旧记录时先接起来：正文直接相接（中文以句号断句，接上即成一段）。
   // 加粗句只留一句——盈利那句已经说了获现时，现金流那句不再并进来。
   if(c.cash && (c.cash.body || c.cash.lead)){
@@ -3682,7 +3685,7 @@ function renderDraft(){
   <div class="doccol">
     <div class="docbar">
       <div class="acts">
-        <button class="btn-sm" onclick="openPrompt()" title="看提示词：骨干 + 各段落分别要求了什么">提示词</button>
+        <button class="btn-sm" onclick="openPrompt()" title="看提示词：骨干 → 行业特点 → 复合 → 修改">提示词</button>
         <span class="revchip" id="revChip"></span>
         <button class="btn-sm" id="btnGap" onclick="toggleParaGap()"
           title="段与段之间是否空一行（加粗句与它的正文始终连着）">${gapOn ? "段落空行：有" : "段落空行：无"}</button>
@@ -6513,8 +6516,8 @@ function pmtSections(){
   const secs = (d.sections || []).slice();
   // 用户提示（材料与台账）放在最后一节：它随材料变，不属于「要求」那一层，
   // 但看提示词的人迟早要问「材料是怎么塞进去的」。
-  if(d.prompt) secs.push({ key: "_user", name: "本次的材料与台账",
-    hint: "这一段随材料变；上面各节是固定的写作要求。两者一起发给模型。", items: null });
+  if(d.prompt) secs.push({ key: "_user", name: "本次的材料与台账", group: "附 · 本次输入",
+    hint: "这一段随材料变；上面四步是固定的写作要求。两者一起发给模型。", items: null });
   return secs;
 }
 
@@ -6525,8 +6528,15 @@ function paintPrompt(){
   if(!cur) return;
   PMT.cur = cur.key;
 
-  let nav = "";
+  // 导航按四步分组：骨干 → 行业特点 → 复合 → 修改。分组标题来自
+  // PROMPT_SECTIONS 的 group 字段，不在这里另写一份名字。
+  let nav = "", grp = null;
   for(const x of secs){
+    const g = x.group || "";
+    if(g !== grp){
+      if(g) nav += `<div class="pmtgrp">${esc(g)}</div>`;
+      grp = g;
+    }
     nav += `<button class="${x.key === cur.key ? "on" : ""}" onclick="pmtPick('${esc(x.key)}')">`
       + `${esc(x.name)}<span class="n">${x.items ? x.items.length : "长文"}</span></button>`;
   }
@@ -6543,7 +6553,7 @@ function paintPrompt(){
 
   $("#pmtBox").innerHTML = `
     <div class="ph"><b>提示词</b>
-      <span class="sub">${esc(d.prompt_note || "骨干在前，各段落按成稿顺序排；显示的就是模型收到的原文")}</span>
+      <span class="sub">${esc(d.prompt_note || "按四步排：骨干 → 行业特点 → 复合 → 修改；显示的就是模型收到的原文")}</span>
       <button class="x" onclick="closePrompt()">×</button></div>
     <div class="pmtbody">
       <div class="pmtnav">${nav}</div>

@@ -1297,7 +1297,7 @@ def _upgrade_record(rec: dict) -> dict:
             history.replace_draft(rec.get("id") or "", draft)
         except Exception:                                   # noqa: BLE001 — 落盘失败不影响阅读
             pass
-    # 老稿的「盈利段 + 现金流段」现在是同一段（规则 23）：打开旧记录时就地合并，
+    # 老稿的「盈利段 + 现金流段」现在是同一段（规则 3.4）：打开旧记录时就地合并，
     # 页面、校验、导出读到的是同一份文本，不必等用户重新生成才看到新版式。
     _cash = (draft.get("commentary") or {}).get("cash") or {}
     if _cash.get("body") or _cash.get("lead"):
@@ -1617,10 +1617,11 @@ def api_prompt(payload: dict) -> dict:
     note = ""
     if not materials:
         prompt = ""
-        note = "还没有读材料：下面是固定的写作要求，材料那一段要等拉取材料后才有。"
+        note = "还没有读材料：下面是固定的写作要求（骨干 → 行业特点 → 复合 → 修改），材料那一段要等拉取材料后才有。"
     else:
         prompt = generator.build_user_prompt(facts or facts_mod.empty_facts(company), materials)
-    # 分节视图：页面按「骨干 + 各段」展示，与模型收到的同一份文本，不另存副本。
+    # 分节视图：页面按「骨干 → 行业特点 → 复合 → 修改」四步展示，与模型收到的
+    # 同一份文本，不另存副本。
     return {"prompt": prompt, "prompt_note": note, "system": generator.SYSTEM_PROMPT,
             "sections": generator.prompt_sections(),
             "traits": generator.describe_traits(facts or {})}
