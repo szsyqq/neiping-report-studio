@@ -1522,9 +1522,17 @@ def api_trace_deep(payload: dict) -> dict:
 
 
 def api_trace_page(payload: dict) -> dict:
-    """把某一页渲成图片。溯源要能「看见」那一页，只给页码还是得自己去找。"""
+    """把某一页渲成图片，并把那个数框出来。
+
+    只给页码还是要人自己去找：一页上几十个数，肉眼扫一个 20.00 很费劲。
+    所以后端在页面上搜出它的坐标、画个框，前端再把图滚到框的位置——这才叫
+    「看到原始位置」，而不是「看到第 6 页」。
+    """
     title = (payload.get("title") or "").strip()
     company = (payload.get("company") or "").strip()
+    num = str(payload.get("num") or "").strip()
+    quote = str(payload.get("quote") or "").strip()
+    zoom = bool(payload.get("zoom"))
     try:
         page = int(payload.get("page") or 0)
     except (TypeError, ValueError):
@@ -1536,23 +1544,27 @@ def api_trace_page(payload: dict) -> dict:
     if not paths:
         return {"data": "", "note": "本地找不到这份 PDF"}
     path = paths[0]
-    key = f"{path}|{page}"
+    # 同一页但框的不是同一个数，图也不一样，缓存键要把数和放大与否算进去
+    key = f"{path}|{page}|{num}|{1 if zoom else 0}|{quote[:24]}"
     with _PAGE_LOCK:
         hit = _PAGE_IMG.get(key)
     if hit:
-        return {"data": hit, "file": path.name}
+        return dict(hit, cached=True)
     try:
-        img = trace_mod.page_image(str(path), page)
+        got = trace_mod.render_page(str(path), page, num=num, quote=quote, zoom=zoom)
     except Exception as e:                                # noqa: BLE001
         return {"data": "", "note": f"这一页渲不出来：{str(e)[:120]}"}
+    img = got.get("img") or b""
     if not img:
-        return {"data": "", "note": "这一页是空的或页号超出范围"}
-    b64 = base64.b64encode(img).decode()
+        return {"data": "", "marks": [], "note": got.get("note") or "这一页是空的或页号超出范围"}
+    out = {"data": base64.b64encode(img).decode(), "file": path.name,
+           "page": page, "marks": got.get("marks") or [], "zoom": zoom,
+           "marked": bool(got.get("marks")), "note": ""}
     with _PAGE_LOCK:
         if len(_PAGE_IMG) > 60:          # 一页约 100KB，攒多了吃内存
             _PAGE_IMG.clear()
-        _PAGE_IMG[key] = b64
-    return {"data": b64, "file": path.name}
+        _PAGE_IMG[key] = out
+    return out
 
 
 def api_prompt(payload: dict) -> dict:
@@ -1763,6 +1775,21 @@ class Handler(BaseHTTPRequestHandler):
                         self._file(fp)
                     else:
                         self._json({"error": f"没有这个版本：{vid}", "versions": "/versions"}, 404)
+            elif p == "/api/trace/pdf":
+                # 原件本身。图上标不出坐标的那类（扫描件、表格），只能让人自己翻，
+                # 但至少别让他去文件系统里找——直接给这一份、这一页。
+                if not self._authed():
+                    self._need_login()
+                    return
+                q = parse_qs(urlparse(self.path).query)
+                fp = _safe_pdf((q.get("path") or [""])[0])
+                if not fp:
+                    self._json({"error": "找不到这份 PDF"}, 404)
+                    return
+                self._send(200, fp.read_bytes(), "application/pdf", {
+                    "Content-Disposition":
+                        "inline; filename*=UTF-8''" + quote(fp.name),
+                })
             elif p == "/api/versions":
                 self._json(json.loads((BASE / "versions.json").read_text(encoding="utf-8")))
             elif p == "/api/session":

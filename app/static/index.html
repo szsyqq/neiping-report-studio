@@ -346,8 +346,11 @@ select{width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 8px
     overscroll-behavior:contain;padding:3px 2px 26px;scrollbar-width:thin}
   .rail::-webkit-scrollbar{width:6px}
   .rail::-webkit-scrollbar-thumb{background:#e3e6ea;border-radius:3px}
-  /* 右栏与正文首段对齐：让过工具条与企业名两行 */
-  .rail-r{padding-top:120px}
+  /* 右栏与正文首段对齐：让过工具条与企业名两行。
+     用占位块而不是 padding：右栏是滚动容器，padding-top 会把吸顶的页签卡在
+     120px 处，下面的统计与筛选滚上来正好压在它底下。 */
+  .rail-r{padding-top:0}
+  .rail-pad{display:block;height:120px}
 }
 @media(min-width:1780px){
   .docgrid{grid-template-columns:228px minmax(0,1fr) 326px;gap:24px;max-width:1478px}
@@ -967,6 +970,24 @@ body.dragging .item-ghost{display:flex}
   background:#f7f8fa;min-height:54px;display:flex;align-items:center;justify-content:center;
   font-size:10.5px;color:var(--muted);text-align:center;padding:14px 8px}
 .tr-img img{display:block;width:100%;height:auto;padding:0}
+/* 整页图 + 黄框：框是按页内相对坐标算的，容器与图同框才能对齐 */
+.tr-pg{position:relative;display:block;font-size:0;line-height:0;
+  margin-top:7px;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#fff}
+.tr-pgimg{display:block;width:100%;height:auto}
+.tr-box{position:absolute;border:1.4px solid #d21f1f;background:rgba(255,214,64,.42);
+  border-radius:2px;pointer-events:none}
+.tr-pgnote{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;
+  font-size:10px;color:var(--muted);margin-top:4px;line-height:1.6}
+.tr-pgnote .ok{color:#2f7a4f}
+.tr-pgnote .no{color:#b4692b}
+.tr-pgnote .lnk{margin-left:auto;display:flex;gap:8px;align-items:center}
+.tr-pgnote a{color:#2f5fd0;text-decoration:none;font-size:10px}
+.tr-pgnote a:hover{text-decoration:underline}
+.tr-pgnote .lk{border:0;background:none;padding:0;font:inherit;font-size:10px;
+  color:#2f5fd0;cursor:pointer}
+.tr-pgnote .lk:hover{text-decoration:underline}
+.tr-zoom{margin-top:6px;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.tr-zoom img{display:block;width:100%;height:auto}
 .tr-empty{font-size:11px;color:var(--muted);line-height:1.7;padding:12px 2px}
 .tr-empty b{color:var(--ink2);font-weight:600}
 .tr-note{font-size:10.5px;color:#8a9099;line-height:1.6;margin:5px 0 0}
@@ -1280,6 +1301,7 @@ body.locked>header,body.locked>.wrap{pointer-events:none;user-select:none}
   .ckr .p,.ckr .s,.ckr .f{font-size:11px}
   .ckr .go{display:none}
   .rail-r{margin:2px 0 16px}
+.rail-pad{display:none;height:0}
 
   /* 表格：整表横向滑动，单元格不折行，否则「-10.66%」会被拆成两行看错 */
   .tscroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -14px;padding:0 14px}
@@ -3355,7 +3377,7 @@ function renderActions(d){
       </div>
     </div>
   </div>
-  <aside class="rail rail-r" id="railR">${railTabsHtml()}<div class="rpane" id="paneCheck"><div id="d-ana"></div>${ckHtml(v)}</div><div class="rpane hide" id="paneTrace">${traceHtml()}</div></aside>
+  <aside class="rail rail-r" id="railR"><div class="rail-pad"></div>${railTabsHtml()}<div class="rpane" id="paneCheck"><div id="d-ana"></div>${ckHtml(v)}</div><div class="rpane hide" id="paneTrace">${traceHtml()}</div></aside>
 </div>`;
 
   $("#draftArea").innerHTML = h;
@@ -3769,7 +3791,7 @@ function renderDraft(){
       </div>
     </div>
   </div></div>
-  <aside class="rail rail-r" id="railR">${railTabsHtml()}<div class="rpane" id="paneCheck"><div id="d-ana"></div>${ckHtml(v)}</div><div class="rpane hide" id="paneTrace">${traceHtml()}</div></aside>
+  <aside class="rail rail-r" id="railR"><div class="rail-pad"></div>${railTabsHtml()}<div class="rpane" id="paneCheck"><div id="d-ana"></div>${ckHtml(v)}</div><div class="rpane hide" id="paneTrace">${traceHtml()}</div></aside>
 </div>`;
 
   $("#draftArea").innerHTML = h;
@@ -4433,7 +4455,7 @@ function revalidateSoon(){
 function renderRailR(){
   const rail = $("#railR");
   if(!rail || !S.draft) return;
-  rail.innerHTML = railTabsHtml()
+  rail.innerHTML = `<div class="rail-pad"></div>` + railTabsHtml()
     + `<div class="rpane" id="paneCheck"><div id="d-ana"></div>`
     + ckHtml(S.draft.validation || {}) + `</div>`
     + `<div class="rpane hide" id="paneTrace">${traceHtml()}</div>`;
@@ -4881,7 +4903,8 @@ function ckPaint(){
    没有来源的数照样列出来：说「摘录里没有」不等于说「材料里没有」，
    这两句话的区别，决定人是回去补材料还是回去改数。 */
 const TR = {rows: [], stats: {}, docs: [], q: "", filter: "all", open: -1,
-            loaded: false, busy: false, mode: "num", tab: "check", err: ""};
+            autoOpen: -1, loaded: false, busy: false, mode: "num", tab: "check",
+            err: ""};
 
 // [样式类, 列表里的短标, 详情卡里的长标]。列表一行只有 300px 宽，
 // 「材料原文」四个字加段名就挤成两行；短标 + 颜色足够分得清，展开再看全称。
@@ -4994,7 +5017,8 @@ async function traceLoad(){
    还按上一份的行号去点，会指到别的段落。 */
 function traceReset(){
   TR.rows = []; TR.stats = {}; TR.docs = [];
-  TR.loaded = false; TR.open = -1; TR.q = ""; TR.filter = "all"; TR.err = "";
+  TR.loaded = false; TR.open = -1; TR.autoOpen = -1; TR.q = "";
+  TR.filter = "all"; TR.err = "";
 }
 
 function trSearch(q){ TR.q = q || ""; TR.open = -1; tracePaint(); }
@@ -5030,7 +5054,8 @@ function tracePaint(){
     if(stat) stat.innerHTML = `<span>${esc(TR.err || "打开这一栏会开始核对")}</span>`;
     if(bar) bar.style.width = "0";
     if(fbox) fbox.innerHTML = "";
-    list.innerHTML = `<div class="tr-empty">切到这一栏就自动开始。也可以直接点正文里的数字。</div>`;
+    list.innerHTML = `<div class="tr-empty">切到这一栏就自动开始。<br>
+      点正文里的数，右栏直接给出材料那一页、用黄框标出它的位置，再放大一处。</div>`;
     return;
   }
   if(TR.err && !TR.rows.length){
@@ -5079,7 +5104,9 @@ function trRowHtml(r, i){
 }
 
 function traceOpen(i){
-  TR.open = (TR.open === i) ? -1 : i;
+  const same = TR.open === i;
+  TR.open = same ? -1 : i;
+  TR.autoOpen = -1;
   tracePaint();
   if(TR.open >= 0){
     const el = document.querySelector(`#trList .tr-row.on`);
@@ -5132,9 +5159,10 @@ function trCardHtml(r, i){
   if(c){
     h += `<div class="tr-sec"><div class="tr-sec-h">${c.guess ? "算式（按同段数字反推）" : "算式（模型交底）"}</div>
       <div class="tr-fx">${c.name ? esc(c.name) + " = " : ""}${esc(c.disp)}</div>
-      <ul class="tr-ops">` + (c.ops || []).map(o => o.miss
+      <ul class="tr-ops">` + (c.ops || []).map((o, j) => o.miss
         ? `<li class="miss">${esc(o.disp)} · 材料里没有这个原值（像是由另两个数相减或换算得来）</li>`
-        : `<li>${esc(o.disp)} · <span class="p">${esc(trShortDoc(o.doc_title))} 第 ${o.page} 页</span></li>`
+        : `<li>${esc(o.disp)} · <span class="p" onclick="trPage(${i},null,${j})"
+             title="看这个原数在原件里的位置">${esc(trShortDoc(o.doc_title))} 第 ${o.page} 页</span></li>`
       ).join("") + `</ul>`;
     const q = (c.ops || []).find(o => o.quote);
     if(q) h += `<div class="tr-qt" style="margin-top:5px">${esc(q.quote)}</div>`;
@@ -5150,7 +5178,7 @@ function trCardHtml(r, i){
 
   h += `<div class="tr-act">
       <button onclick="trJump(${i})">定位到正文</button>`;
-  if(r.quote && r.doc_title) h += `<button onclick="trPage(${i})">看这一页</button>`;
+  if(r.page) h += `<button onclick="trPage(${i})">在原件里看</button>`;
   if(r.kind === "none") h += `<button onclick="trDeep(${i})">翻全文</button>`;
   h += `</div><div id="trExtra${i}"></div></div>`;
   return h;
@@ -5220,20 +5248,95 @@ function trSelect(el, at, len){
   return false;
 }
 
-async function trPage(i, page, title, path){
+/* 一张卡里能看的位置有两类：这个数本身在材料里的那一页，或者算式里某个原数的
+   那一页。取错了就会指着别处的数说「就是这里」，所以按 op 分开取。 */
+function trSrcOf(i, op){
+  const r = TR.rows[i];
+  if(!r) return null;
+  if(op !== null && op !== undefined){
+    const o = ((r.calc && r.calc.ops) || [])[op];
+    if(!o || o.miss || !o.page) return null;
+    return {page: o.page, title: o.doc_title || "", path: o.doc_path || "",
+            num: o.mat_raw || "", quote: o.quote || ""};
+  }
+  if(r.page) return {page: r.page, title: r.doc_title || "", path: r.doc_path || "",
+                     num: r.mat_raw || r.raw, quote: r.quote || ""};
+  return null;
+}
+
+/* 把材料里那一页渲出来，并把数字框上。
+   点正文的数，人要的是「它在原始文件里长什么样」，不是「有一处原文」——所以
+   这一屏必须先给图，黄框落在那个数上，再跟一条放大。 */
+async function trPage(i, mode, op){
   const r = TR.rows[i];
   const box = $("#trExtra" + i);
   if(!r || !box) return;
-  const pg = page || r.page;
-  const doc = title || r.doc_title;
-  box.innerHTML = `<div class="tr-img">正在渲染第 ${pg} 页…</div>`;
+  const src = trSrcOf(i, op === undefined ? null : op);
+  const zoom = mode === "zoom";
+  if(!src){
+    if(!zoom) box.innerHTML = `<div class="tr-img">这一条没有可打开的原件：来自计算，或材料没有对应页。</div>`;
+    return;
+  }
+  const vid = `z${i}_${(op === undefined || op === null) ? "r" : op}`;
+  if(zoom){
+    const z = $("#" + vid);
+    if(!z) return;
+    z.innerHTML = `<div class="tr-img">正在放大…</div>`;
+    try{
+      const d = await api("/api/trace/page",
+        {title: src.title, page: src.page, path: src.path, company: curCo(),
+         num: src.num, quote: src.quote, zoom: true});
+      z.innerHTML = d.data
+        ? `<div class="tr-zoom"><img src="data:image/jpeg;base64,${d.data}" alt="放大"/></div>`
+        : `<div class="tr-img">${esc(d.note || "这一处放不出来")}</div>`;
+    }catch(e){
+      z.innerHTML = `<div class="tr-img">放大失败：${esc(String((e && e.message) || e))}</div>`;
+    }
+    return;
+  }
+
+  box.innerHTML = `<div class="tr-img">正在渲染第 ${src.page} 页…</div>`;
   try{
     const d = await api("/api/trace/page",
-      {title: doc, page: pg, path: path || r.doc_path || "", company: curCo()});
-    box.innerHTML = d.data
-      ? `<div class="tr-img" style="padding:0"><img src="data:image/jpeg;base64,${d.data}"
-           alt="第 ${pg} 页"/></div>`
-      : `<div class="tr-img">${esc(d.note || "取不到这一页")}</div>`;
+      {title: src.title, page: src.page, path: src.path, company: curCo(),
+       num: src.num, quote: src.quote});
+    if(!d.data){
+      box.innerHTML = `<div class="tr-img">${esc(d.note || "取不到这一页")}</div>`;
+      return;
+    }
+    const mk = (d.marks && d.marks[0]) || null;
+    const st = mk ? `left:${(mk[0] * 100).toFixed(2)}%;top:${(mk[1] * 100).toFixed(2)}%;`
+                  + `width:${((mk[2] - mk[0]) * 100).toFixed(2)}%;`
+                  + `height:${((mk[3] - mk[1]) * 100).toFixed(2)}%` : "";
+    const pdf = src.path
+      ? `/api/trace/pdf?path=${encodeURIComponent(src.path)}#page=${src.page}` : "";
+    box.innerHTML = `<div class="tr-pg">
+        <img class="tr-pgimg" src="data:image/jpeg;base64,${d.data}" alt="第 ${src.page} 页"/>
+        ${mk ? `<i class="tr-box" style="${st}"></i>` : ""}
+      </div>
+      <div class="tr-pgnote">
+        <span>${esc(trShortDoc(src.title || d.file || ""))} · 第 ${src.page} 页</span>
+        ${mk ? `<span class="ok">黄框是它在页上的位置</span>`
+             : `<span class="no">这一页没标出位置（扫描件或表格排版），对着原文找一下</span>`}
+        <span class="lnk">
+          ${mk ? `<button class="lk" onclick="trPage(${i},'zoom',${(op === undefined || op === null) ? "null" : op})">放大这一处</button>` : ""}
+          ${pdf ? `<a href="${pdf}" target="_blank" rel="noopener">打开原件</a>` : ""}
+        </span>
+      </div>
+      <div id="${vid}"></div>`;
+    if(TR.autoOpen === i){
+      // 从正文点过来：卡片比一栏还高，页图不滚到眼前就等于没给。让过吸顶的
+      // 页签再对齐，滚过去正好是这一页的上沿。
+      const rail = $("#railR");
+      if(rail){
+        const y = box.getBoundingClientRect().top - rail.getBoundingClientRect().top
+                + rail.scrollTop - 46;
+        try{ rail.scrollTo({top: Math.max(0, y), behavior: "smooth"}); }
+        catch(e){ rail.scrollTop = Math.max(0, y); }
+      }
+      // 整页图看得见位置，但看不清那个数，连放大一起给
+      trPage(i, "zoom", (op === undefined ? null : op));
+    }
   }catch(e){
     box.innerHTML = `<div class="tr-img">这一页取不出来：${esc(String((e && e.message) || e))}</div>`;
   }
@@ -5328,11 +5431,18 @@ function trPickAt(el){
     toast("这个数不在溯源清单里（可能是刚改的），换到「溯源」页可以整体重算");
     return;
   }
+  const again = (TR.open === idx && TR.autoOpen === idx);
   TR.open = idx;
+  TR.autoOpen = idx;
   if(TR.tab !== "trace") railTab("trace");
   tracePaint();
   const row = document.querySelector("#trList .tr-row.on");
   if(row) row.scrollIntoView({block: "nearest"});
+  // 点数字要的是原始位置：直接把材料那一页渲出来、框上这个数，再放大一处，
+  // 不用再点一次「看这一页」。等一帧，让卡片先挂到 DOM 上。
+  if(!again) setTimeout(() => {
+    if(TR.open === idx && TR.autoOpen === idx) trPage(idx);
+  }, 0);
   try{
     if(box.tagName === "TEXTAREA") box.setSelectionRange(hit.at, hit.at + hit.len);
   }catch(e){ /* 选不中不影响右栏已经展开 */ }
@@ -5345,6 +5455,15 @@ document.addEventListener("click", e => {
   if(!box) return;
   // 等浏览器把光标放好再读，否则拿到的是上一次的位置
   setTimeout(() => { if(TR.tab === "trace") trPickAt(box); }, 0);
+}, true);
+
+// 在「核验」页里单击数字不能抢——那是在改稿，光标落在数里是常事。双击取词
+// 已经是一个明确的动作，用它来溯源不会误伤编辑。
+document.addEventListener("dblclick", e => {
+  if(!e.target || !e.target.closest) return;
+  const box = e.target.closest(".ta, .seg-line, .topic-body");
+  if(!box) return;
+  setTimeout(() => trPickAt(box), 0);
 }, true);
 
 function ckOne(input){

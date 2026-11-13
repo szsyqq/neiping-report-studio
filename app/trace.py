@@ -375,7 +375,8 @@ def _trace_one(t: dict, field: str, name: str, idx: MatIndex,
         top = hits[0]
         base.update({"doc": top["doc"], "doc_title": top["doc_title"],
                      "doc_path": top.get("doc_path") or "",
-                     "page": top["page"], "quote": top["quote"]})
+                     "page": top["page"], "quote": top["quote"],
+                     "mat_raw": top.get("mat_raw") or ""})
         if len(hits) > 1:
             base["note"] = f"同一数值在材料里出现 {len(hits)} 处，已按上下文挑最相关的一处"
     elif card:
@@ -423,9 +424,13 @@ def _search(idx: MatIndex, num: float, unit: str, sent: str) -> list[dict]:
                 continue
             quote = idx.context(di, pos)
             same = bool(mu) and mk == want
+            # 材料里这个数原本怎么写（含千分位）。页面上要按它去找坐标，
+            # 正文的写法可能与材料不同：正文「7.60 亿元」，材料写「75,980.00 万」。
+            mt = _NUM.match(idx.docs[di]["text"], pos)
             out.append({"doc": di, "doc_title": idx.docs[di]["title"],
                         "doc_path": idx.docs[di]["path"], "page": page,
                         "quote": quote, "same_unit": same,
+                        "mat_raw": mt.group(0) if mt else "",
                         "score": _overlap(sent, quote) + (2.0 if same else 0.0)})
     out.sort(key=lambda x: (-x["score"], -int(x["same_unit"]), x["page"], x["doc"]))
     return out
@@ -465,7 +470,8 @@ def _calc_card(f: dict, idx: MatIndex) -> dict:
         if hits:
             one.update({"doc": hits[0]["doc"], "page": hits[0]["page"],
                         "quote": hits[0]["quote"], "doc_title": hits[0]["doc_title"],
-                        "doc_path": hits[0].get("doc_path") or ""})
+                        "doc_path": hits[0].get("doc_path") or "",
+                        "mat_raw": hits[0].get("mat_raw") or ""})
         else:
             one["miss"] = True
         ops.append(one)
@@ -509,7 +515,8 @@ def _reverse(num: float, unit: str, table: dict, idx: MatIndex) -> dict | None:
             if hits:
                 one.update({"doc": hits[0]["doc"], "page": hits[0]["page"],
                             "quote": hits[0]["quote"], "doc_title": hits[0]["doc_title"],
-                            "doc_path": hits[0].get("doc_path") or ""})
+                            "doc_path": hits[0].get("doc_path") or "",
+                            "mat_raw": hits[0].get("mat_raw") or ""})
             else:
                 one["miss"] = True
             ops.append(one)
@@ -587,5 +594,88 @@ def page_image(pdf_path: str, page: int, dpi: int = 150) -> bytes:
             return b""
         pix = doc[page - 1].get_pixmap(dpi=dpi)
         return pix.tobytes("jpeg", jpg_quality=72)
+    finally:
+        doc.close()
+
+
+def _page_rects(pg, num: str, quote: str) -> list:
+    """在这一页上找那个数的坐标。
+
+    先拿引述里带上下文的片段去搜，搜不到再退到数本身：PDF 里的空格与抽取出来
+    的不一样，「20.00 亿元」经常抽成「20.00亿元」，按整段搜必然落空。带上下文的
+    片段命中，还能把同一页上出现好几次的数认准是哪一个。
+    """
+    q = re.sub(r"\s+", "", quote or "").strip("…")
+    n = re.sub(r"\s+", "", num or "")
+    cands: list[str] = []
+    if n and q:
+        i = q.find(n)
+        if i >= 0:
+            for w in (12, 8, 4):
+                a, b = max(0, i - w), min(len(q), i + len(n) + w)
+                frag = q[a:b]
+                if len(frag) > len(n):
+                    cands.append(frag)
+    if n:
+        cands.append(n)
+    for c in cands:
+        try:
+            got = pg.search_for(c)
+        except Exception:                    # noqa: BLE001 - 搜不到就是没坐标
+            got = []
+        if got:
+            return got
+    return []
+
+
+def render_page(pdf_path: str, page: int, num: str = "", quote: str = "",
+                zoom: bool = False, dpi: int = 150) -> dict:
+    """渲一页，并把那个数框出来。
+
+    只给整页图还是得人自己找——一页上几十个数，找一个 20.00 要扫半天。所以
+    在页面上画出它的框，前端再把图滚到框的位置；`zoom` 走另一路，把框周围
+    放大截出来，看得清是哪一个数、旁边写的是什么。
+    """
+    try:
+        import pymupdf
+    except ImportError:
+        import fitz as pymupdf             # type: ignore
+    doc = pymupdf.open(pdf_path)
+    try:
+        if not (1 <= page <= doc.page_count):
+            return {"img": b"", "marks": [], "note": "页号超出范围"}
+        pg = doc[page - 1]
+        rects = _page_rects(pg, num, quote)
+        W, H = pg.rect.width, pg.rect.height
+        marks = [[round(r.x0 / W, 4), round(r.y0 / H, 4),
+                  round(r.x1 / W, 4), round(r.y1 / H, 4)] for r in rects]
+        if zoom:
+            if not rects:
+                return {"img": b"", "marks": [], "note": "页面上没找到这个数的位置"}
+            r = rects[0]
+            # 左右多给一些、上下只留一行：横着读得出「注册资本 20.00 亿元」，
+            # 竖着多取几行会把下一行的别的数字也框进来，看着像还有别的出处。
+            clip = pymupdf.Rect(max(pg.rect.x0, r.x0 - 84),
+                                max(pg.rect.y0, r.y0 - 5),
+                                min(pg.rect.x1, r.x1 + 84),
+                                min(pg.rect.y1, r.y1 + 5))
+            # 放大图里也要框：表格里的数一排挨着一排，不框就分不清是哪一个
+            pg.draw_rect(pymupdf.Rect(r.x0 - 1.2, r.y0 - 1.2,
+                                      r.x1 + 1.2, r.y1 + 1.2),
+                         color=(0.83, 0.12, 0.12), fill=(1.0, 0.88, 0.25),
+                         width=1.0, fill_opacity=0.45, overlay=True)
+            pix = pg.get_pixmap(dpi=200, clip=clip)
+            return {"img": pix.tobytes("jpeg", jpg_quality=82), "marks": [],
+                    "note": ""}
+        if rects:
+            # 只标第一处：一页上标三四个框，等于没标
+            r = rects[0]
+            pg.draw_rect(pymupdf.Rect(r.x0 - 1.5, r.y0 - 1.5,
+                                      r.x1 + 1.5, r.y1 + 1.5),
+                         color=(0.83, 0.12, 0.12), fill=(1.0, 0.88, 0.25),
+                         width=1.1, fill_opacity=0.55, overlay=True)
+        pix = pg.get_pixmap(dpi=dpi)
+        return {"img": pix.tobytes("jpeg", jpg_quality=72), "marks": marks,
+                "note": ""}
     finally:
         doc.close()
