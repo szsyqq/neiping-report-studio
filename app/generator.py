@@ -724,15 +724,16 @@ SYSTEM_PROMPT = """你是信用评级机构的分析员，负责撰写内部「�
 　投资与筹资合成一句：资本开支多少，借款是净增还是净还、净额多少。这一句决定「钱是靠经营挣来的还是借来的」，不必把每一笔收付款都列出来。
 　覆盖能力只写能算得出来的：非受限货币资金 ÷ 短期债务、经营活动净现金流 ÷ 利息支出。材料只给货币资金总额、没给受限部分的，就写货币资金并注明「含受限部分」，不许把货币资金总额直接当非受限资金用（受限部分往往不能拿来还债，这一处最容易把风险写小）。
 　这一段最后收口：经营获现能不能覆盖利息与一年内到期债务；不能覆盖的，缺口靠什么补、这个来源下一期还在不在。
-3.5 资产段（asset）。逐科目展开，一个科目一句话，句式固定为「科目 金额（占资产总额 ××.××%），主要为×××，再交代质量」：
-　（1）科目取前三大到前五大，按最新期次的实际金额降序排列（不是沿用旧名单换数字）。
-　（2）括号里只放占比，写法固定为「（占资产总额 27.74%）」；占比由该科目金额÷资产总额算出，并写进 data_notes（见 3.9）。
-　（3）括号之后紧跟「主要为……」，把这个科目里装的是什么说清：对手方是谁、做什么用、什么形态（土地房产、往来款、工程结算款、理财与存单）。这句不是评价，是把科目名还原成事实。
-　（4）每个科目还要落到质量：什么时候能回来、在谁手里、有没有被质押冻结、账龄落在哪一档。
-　（5）段内另给一句前五大合计占资产总额的比重；受限资产收在段末，写清金额、占总资产比重、主要为哪些资产、因什么受限。
+3.5 资产段（asset）。一段写四块，顺序固定：总量与增速 → 前五大科目由大到小 → 关键资产与前五大合计 → 受限资产。四块之间用句号断开，不另起段落、不加小标题。
+3.5A 头一句给总量与两期增速，句式照此：「截至××××年×月末，公司资产总额2,110.15亿元，较上年末增长0.28%；2025年末为2,104.18亿元，较上年末增长24.32%，主要系孚能科技纳入合并范围所致。」最近一期是年末的，两期都写「××××年末，……较上年末增长××.××%」。增速的原因（并表范围变化、借款与项目投入、资产处置、应收增加）材料给了就接在后面，没给就到此为止——「主要系公司业务规模扩大所致」不是原因，是把要解释的事换个说法。
+3.5B 第二句以「主要科目中，」起头，把前五大科目按最新一期金额从大到小一句写完，科目之间分号断开、整串只在末尾收一个句号。每个科目照这个式子写：「科目 金额亿元（占比××.××%，主要为×××，再交代质量）」——括号里先给占比，只写「占比」，不再写「占资产总额」；再写这一格里装的是什么（对手方、用途、形态：土地房产、往来款、工程结算款、理财与存单）；最后写质量（账龄落在哪一档、有没有质押冻结、什么时候能回来、随什么增减）。
+3.5C 货币资金必须有。前五大里没有货币资金，就在这一串末尾补一句：「货币资金××.××亿元（占比××.××%），主要为银行存款及保证金，2025年末受限比例33.27%」；材料只给了货币资金总额、没给受限部分的，就写到「主要为银行存款」，不估比例。货币资金已在前五大里的，受限比例直接写进那一项的括号。理由很实在：读者先看手上有没有现钱，缺了这一项，资产结构就少一条腿。
+3.5D 顺序按金额，不按习惯。金额取最新一期，从大到小排；与材料表怎么排、上一稿怎么写都无关。占比＝该科目金额÷资产总额，算式写进 data_notes（见 3.9）。
+3.5E 第三块写关键资产：体量最大的那一项、增长最快的那一项、变现最弱的那一项，各一句——涨的原因、卡在哪个环节、靠什么变现，全部落在材料给的数上。接着给一句前五大合计占资产总额的比重。上一块已经把金额与占比写过的，这里不重复报数，只写变化与机制。
+3.5F 受限资产收在段末（asset 段的最后一句）：金额、占资产总额比重、主要是哪几项资产、因什么受限（抵质押给谁、为哪笔借款、哪类保证金）。材料没有受限资产的口径就整句不写，也不许用「部分资产存在受限情况」占位。
 　反例：「应收账款规模较大，回收存在一定不确定性；存货占比较高，变现能力一般。」
-　正例：「应收账款 342.16 亿元（占资产总额 27.74%），主要为应收××区财政局的工程结算款，账龄一年以内的占 68.20%，回款节奏取决于年度预算安排；存货 128.40 亿元（占资产总额 10.41%），主要为代建项目的开发成本，未计提跌价准备，变现依赖项目结算进度。」
-　只写「规模较大」「占比较高」不写金额与占比，等于没写：读者判断不了这个科目到底压了多少资产。
+　正例：「主要科目中，货币资金403.17亿元（占比19.11%，主要为银行存款及保证金，2025年末受限比例33.27%）；固定资产399.79亿元（占比18.95%，主要为机器设备和房屋建筑物，随动力电池及轮胎产能项目转固增长）；应收账款271.21亿元（占比12.85%，主要为销售货款，1年以内账龄占比70.59%）。前五大科目合计占资产总额的72.40%。截至2026年3月末，受限资产合计156.82亿元，占资产总额7.43%，主要为用于借款抵押的固定资产与土地使用权，以及保证金存款。」
+　只写「规模较大」「占比较高」不写金额与占比，等于没写：读者判断不了这个科目到底压了多少资产；科目不按金额排，读者也看不出钱压在哪。
 3.6 债务段（debt）。按固定顺序展开：负债总额与资产负债率 → 全部债务及长短债结构与占比 → 有息债务的融资构成 → 利息保障与经营获现 → 非受限货币资金对短债覆盖 → 授信与未使用额度。或有事项不进债务段——它由用户在页面上自行决定是否单列一段（见 3.8），债务段里不写「或有事项方面，……」。
 3.7 二级市场定价段（market）。单独成段，位置在债务段之后、专题段之前。只在给了【二级市场数据】时写；没有这份数据就把 lead 与 body 都输出空字符串，不要在正文里交代「未获取到市场价格」——那是在说作业过程。
 　篇幅 150—200 字，最多 230 字，句号不超过 4 个。这一段要回答的只有一件事——市场按什么价钱借钱给这家公司、这个价钱在区间里处在什么位置。把数据块里的每一项都搬进正文，就成了把行情表译成中文。
@@ -913,8 +914,9 @@ PROMPT_SECTIONS: list[dict] = [
      "hint": "500—700 字、句号不超过 9 个；收入、利润、获现三类都要有变动与原因",
      "rules": ["3.4", "3.4A", "3.4B", "3.4C", "3.4D", "3.4E", "3.4F"]},
     {"key": "asset", "group": "第三步 · 复合", "name": "资产段",
-     "hint": "逐科目：科目 金额（占资产总额 ××.××%），主要为×××，再交代质量",
-     "rules": ["3.5"]},
+     "hint": "总量与两期增速 → 「主要科目中，」按金额从大到小 → 关键资产与合计 → 受限资产；"
+             "货币资金必须有",
+     "rules": ["3.5", "3.5A", "3.5B", "3.5C", "3.5D", "3.5E", "3.5F"]},
     {"key": "debt", "group": "第三步 · 复合", "name": "债务段",
      "hint": "负债总额与负债率 → 全部债务与长短债 → 融资构成 → 覆盖 → 授信",
      "rules": ["3.6"]},
@@ -1072,7 +1074,7 @@ def build_user_prompt(facts: dict, materials: list[dict], user_notes: str = "") 
     "overview": {"lead": "加粗汇总句（不带数字）", "body": "总述段正文：先交代钱的来源与公司自身的经营主线，再写收入结构概览。收口不用另写一句「如下表」——业务构成表前的引导语由程序按表内期次生成。行业的量价与政策已在行业段写过，这里不重抄"},
     "segments": [{"name": "该主体自己用的板块名，照原文写，不改写不带编号", "body": "承接『1）××业务方面，』之后的正文"}],
     "profit": {"lead": "加粗汇总句（不带数字，说清这一年利润被什么吃掉、经营获现够不够覆盖）", "body": "盈利与现金流一段（不拆段，位置在分部业务与资产段之间）。收入、利润、获现每一类至少一处写明变动幅度（优先同比，没有上年同期就写较上年全年并点明口径），不许用「分别为」把两年数并排：营业收入及同比 → 增量拆成量、价、结构 → 利润总额与净利润及同比 → 亏损或大幅下滑逐项归因（毛利、费用、减值、投资收益、补助、处置、所得税，每项带金额）→ 利润被什么吃掉、哪些偶发哪些持续 → 经营活动净现金流及同比、来源与去向 → 收现比 → 投资与筹资净额 → 利润与获现的差额落在哪 → 非受限货币资金对短期债务与利息支出的覆盖 → 缺口靠什么补"},
-    "asset": {"lead": "加粗汇总句（不带数字）", "body": "资产段正文"},
+    "asset": {"lead": "加粗汇总句（不带数字）", "body": "资产段正文，四块：① 截至××年×月末资产总额、较上年末增长，再给上年末数与它的增速及原因；②「主要科目中，」按最新一期金额从大到小写前五大科目，每项「科目 金额亿元（占比××.××%，主要为×××，再交代质量）」；前五大里没有货币资金的，末尾补一句货币资金；③ 关键资产（最大项、增长最快项、变现最弱项）与前五大合计占比；④ 段末收受限资产（金额、占比、主要是哪些、因何受限）"},
     "cash": {"lead": "", "body": ""},
     "debt": {"lead": "加粗汇总句（不带数字）", "body": "债务段正文"},
     "market": {"lead": "二级市场定价段加粗判断句（不带数字，说清定价处在什么水平、往哪个方向走）", "body": "二级市场定价段正文：数据区间与口径（中债估值、主体存续债中位数）→ 期末信用利差绝对水平与区间高低点、极差 → 期初期末变动幅度与相对幅度 → 期末在区间内的位置 → 超额利差绝对值（相对同评级同类型是更紧还是更松）→ 日均绝对变动与单日最大变动 → 收口：位置，不预测"},
@@ -1124,6 +1126,17 @@ def build_user_prompt(facts: dict, materials: list[dict], user_notes: str = "") 
             "4. 不写行业景气、产能利用率、行业竞争、产品价格这类行业话术——城投没有可比的行业；"
             "第④拍不写公司的收入结构、毛利率与板块占比，那是总述段与分部业务段的事。\n"
         )
+    # 业务构成表：材料里有原表就先抓出来，正文与表用同一组数。这一块以前没有，
+    # 模型没看到分板块收入就自己凑，凑出来的表又被逐格核对裁掉——两头都不对。
+    _seg_tbl, _seg_note = segment_table_from_materials(materials, _latest_rev(facts))
+    seg_block = ""
+    if _seg_tbl:
+        seg_block = (
+            "\n【业务构成表（程序已按材料原表整理，正文的板块收入只能照这里写）】\n"
+            + segment_table_digest(_seg_tbl) +
+            "\n用法：① 分部业务段里的板块收入与占比一律照抄本表，不改数、不另算、不补"
+            "表里没有的板块；② commentary.segment_table 一律输出 null——这张表由程序"
+            "按上表生成，你不用再写一遍，写了也不会被采用。\n")
     return f"""请为下列主体撰写内评简评报告，按给定 JSON 结构输出。
 
 【模板结构】{json.dumps(tmpl_brief, ensure_ascii=False)}
@@ -1133,11 +1146,11 @@ def build_user_prompt(facts: dict, materials: list[dict], user_notes: str = "") 
 
 【材料原文】
 {mat_block}
-{market_block}{notes_block}{region_block}
+{market_block}{seg_block}{notes_block}{region_block}
 【输出 JSON 结构】
 {schema}
 
-注意：若【事实台账】已有「财务指标」，财务指标表由程序按台账生成，你不需要输出 financial_table；若台账没有财务指标，你必须从【材料原文】的「主要财务数据」表整理 financial_table——期次取最近三期（前两年 + 最新一期），一律由新到旧排列、最新一期放最左（与业务构成表同款），期次写法照抄材料表头，行项按规模→结构→盈利→获现→债务→偿债排列，其中盈利类必须有「营业总收入」与「净利润」两行，材料给了「利润总额」「营业毛利率」也一并列出——利润表上看不出亏没亏，后面的归因就无从谈起；金额统一亿元、两位小数，数字与材料逐一对应，材料没有的行不要编。若台账无主营构成数据，请从评级报告正文补出 segment_table（金额按亿元、两位小数，占比两位小数，缺毛利率则该列留空字符串），否则 segment_table 输出 null。你只需保证正文里的数字与材料一致，且能被台账或材料原文支撑。segments 的 name 用该公司自己披露的板块名称，不要带「业务方面」四个字，也不带编号；板块数量按收入结构决定，不要为了凑段数拆分或合并材料里没有的板块。special_topics 默认给空数组（用户在前端按需加段）；确有重大事项才写一条，且必须自带加粗判断句作 lead。add_on_sections 是给用户的「可以在模板这里补一段」提醒，不要把它写进正文，也不要为了填满而凑数；扫到六类事项（对外担保、未决诉讼、对外承诺、股东出资、在建缺口、补助依赖）就给，扫不到给空数组。资产段每个科目都必须带金额与占比，并按 3.5 的句式展开。"""
+注意：若【事实台账】已有「财务指标」，财务指标表由程序按台账生成，你不需要输出 financial_table；若台账没有财务指标，你必须从【材料原文】的「主要财务数据」表整理 financial_table——期次取最近三期（前两年 + 最新一期），一律由新到旧排列、最新一期放最左（与业务构成表同款），期次写法照抄材料表头，行项按规模→结构→盈利→获现→债务→偿债排列，其中盈利类必须有「营业总收入」与「净利润」两行，材料给了「利润总额」「营业毛利率」也一并列出——利润表上看不出亏没亏，后面的归因就无从谈起；金额统一亿元、两位小数，数字与材料逐一对应，材料没有的行不要编。若台账无主营构成数据，请从评级报告正文补出 segment_table（金额按亿元、两位小数，占比两位小数，缺毛利率则该列留空字符串），否则 segment_table 输出 null。你只需保证正文里的数字与材料一致，且能被台账或材料原文支撑。segments 的 name 用该公司自己披露的板块名称，不要带「业务方面」四个字，也不带编号；板块数量按收入结构决定，不要为了凑段数拆分或合并材料里没有的板块。special_topics 默认给空数组（用户在前端按需加段）；确有重大事项才写一条，且必须自带加粗判断句作 lead。add_on_sections 是给用户的「可以在模板这里补一段」提醒，不要把它写进正文，也不要为了填满而凑数；扫到六类事项（对外担保、未决诉讼、对外承诺、股东出资、在建缺口、补助依赖）就给，扫不到给空数组。资产段按 3.5—3.5F 的四块顺序写：总量与两期增速 →「主要科目中，」按金额从大到小 → 关键资产与前五大合计 → 受限资产；每个科目都带金额与占比，货币资金一个都不能少。"""
 
 
 _SEG_TOTAL_NAMES = ("营业总收入", "营业收入合计", "收入合计", "合计", "总计",
@@ -1985,10 +1998,17 @@ def _ensure_structure(draft: dict, facts: dict) -> dict:
     mkt = para(c.get("market"))
     topics = [para(t) for t in (c.get("special_topics") or []) if str(t.get("body") or "").strip()]
 
+    # 业务构成表三个来源，按可靠程度取：材料原表（多期、逐格出自材料）→ 台账
+    # 主营构成（单期、结构化）→ 模型那份。前两个已经有了就别再让模型改一遍。
+    _seg_now = c.get("segment_table") if isinstance(c.get("segment_table"), dict) else {}
+    if _seg_now.get("from_material") and _seg_now.get("rows"):
+        _seg_tbl = _seg_now
+    else:
+        _seg_tbl = build_segment_table(facts) or _clean_llm_table(_seg_now)
     out["commentary"] = {
         "industry": industry,
         "overview": overview,
-        "segment_table": build_segment_table(facts) or _clean_llm_table(c.get("segment_table")),
+        "segment_table": _seg_tbl,
         "segments": segments,
         "asset": asset,
         "financial_table": fin_table,
@@ -2106,7 +2126,432 @@ def normalize_seg_gm(t) -> dict:
     return out
 
 
-# ── 业务构成表：逐格对来源 ─────────────────────────────────────────────
+# ── 业务构成表：优先照材料原表重建 ─────────────────────────────────────
+# 这张表一度全靠模型输出，而模型在没看到分板块收入时会给「凑」一组：按板块名
+# 与营业总收入编个看起来合理的数，再把「其他」做成合计减已列板块的余额。程序
+# 后来改成逐格对来源，凑出来的整表裁掉——于是材料里明明印着这张表，报告里却
+# 一张表都没有（中交建那份，材料表 6 写着基建建设 6,490.25 亿元，模型给的是
+# 6,034.00 亿元，全表被判无出处）。
+#
+# 现在先走这条路：从材料原文把这张表抓出来，抓到就用材料的数，模型一个字都改
+# 不了；抓不到才退回模型那份、逐格对来源。评级报告与募集说明书里这张表的表头
+# 是固定的（「近年来公司各业务收入、占比及毛利率情况」「公司主要板块收入和毛
+# 利率构成」），PDF 抽成文字后一行一格，按「名字 + 每期若干列数」就能还原。
+
+_SEG_TITLE_RE = re.compile(r"表\s*[\d\-]+\s*[：:•·]\s*([^\n]{0,80})")
+_SEG_NOISE_RE = re.compile(
+    r"(信用评级报告|跟踪评级报告|资料来源|单位：|注：|^\d{1,3}$|^\d{4}\s*年度.{2,30}$"
+    r"|^\[第\s*\d{1,3}\s*页\]$|^第\s*\d{1,3}\s*页$"
+    # 跨页时页眉只剩一个公司名，它会被当成板块名接到下一行上（「××公司广告收入」）
+    r"|^[\u4e00-\u9fa5（）()]{4,30}(有限公司|股份有限公司|集团有限公司|集团|公司)$)")
+_SEG_PERIOD_RE = re.compile(
+    r"(20\d{2})\s*年?\s*(?:"
+    r"[.．]\s*(\d{1,2})\s*[~～\-－]\s*(\d{1,2})"        # 2026.1~6
+    r"|(\d{1,2})\s*[-－~～]\s*(\d{1,2})\s*月"           # 2026年1-6月
+    r"|(\d{1,2})\s*月)?")                               # 2026年6月
+_SEG_HDR_KEYS = ("项目", "收入分类", "业务板块", "收入来源", "分产品", "分行业", "板块",
+                 "业务", "产品", "收入", "占比", "毛利率", "金额", "成本", "单位", "名称",
+                 "序号", "类别")
+# 「租赁业务」也含「业务」二字。判表头只认「整行就是表头词」或「含结构词」，
+# 否则第一行数据会被当成表头吃掉——中山那张表就这样丢了租赁业务与公交客运。
+_SEG_HDR_EXACT = ("项目", "收入分类", "业务板块", "收入来源", "分产品", "分行业", "板块",
+                  "业务", "产品", "收入", "占比", "毛利率", "金额", "成本", "单位",
+                  "名称", "序号", "类别", "项目名称", "业务名称", "分业务", "分类")
+_SEG_HDR_STRUCT = ("项目", "分类", "来源", "板块", "产品", "行业", "单位", "名称", "序号")
+_SEG_COL_LABELS = ("收入", "占比", "毛利率", "金额", "成本")
+# 不是板块名的行：出现在数字被误当成板块的时候（「补贴分别为」「元、」）
+_SEG_BAD_NAME = ("分别", "其中", "单位", "注", "合计", "小计")
+# 这些行不是板块：投资收益、营业外收入属于「不是主营的进项」，小计是重复计数
+_SEG_ROW_SKIP = ("投资收益", "营业外", "公允价值", "小计", "其中", "减：", "加：")
+_SEG_TOTAL_WORDS = ("营业总收入", "营业收入合计", "收入合计", "合计", "总计")
+
+# 单位辨识：材料表头写「亿元」「万元」「百万元」，亿元是报告的口径
+_SEG_UNIT = (("百万元", 0.01), ("万元", 0.0001), ("亿元", 1.0))
+
+
+def _seg_unit_factor(title: str, chunk: str) -> tuple[float, str]:
+    """这张表用什么单位；返回（换算到亿元的系数, 交代用）。"""
+    head = f"{title}\n{chunk[:400]}"
+    if "港币" in head or "美元" in head:
+        return 0.0, "外币口径"
+    for word, f in _SEG_UNIT:
+        if word in head:
+            return f, word
+    return 1.0, "亿元"
+
+
+def _seg_lines(chunk: str) -> list[str]:
+    out = []
+    for raw in chunk.splitlines():
+        t = raw.strip()
+        if not t or _SEG_NOISE_RE.search(t):
+            continue
+        if re.fullmatch(r"\d{1,3}", t):
+            continue
+        out.append(t)
+    return out
+
+
+def _seg_split_cell(line: str) -> tuple[str, list[str]]:
+    """一行里既有名字又有数时拆开：'基建建设 6658.66' → ('基建建设', ['6658.66'])。
+
+    纯破折号行是「这一格没有数」，当成一个缺值占位——不然它会被当成板块名，
+    后面每一行的数就整体错位一格（中交建那张表就出过「----其他」这种行）。
+    负数的负号要跟着数走：按「第一个数字」切，不能按「第一个非汉字」切，
+    否则「-466.64」会先切出一个名字「-」，把这一行已经攒下的数全清掉。
+    """
+    if re.fullmatch(r"[-—－~～\s]+", line):
+        return "", ["--"]
+    m = re.search(r"[+\-−]?\d[\d,]*(?:\.\d+)?", line)
+    if not m:
+        return line, []
+    head, tail = line[:m.start()].strip(), line[m.start():]
+    nums = re.findall(r"[+\-−]?\d[\d,]*(?:\.\d+)?%?|--", tail)
+    if (head and re.search(r"[\u4e00-\u9fa5A-Za-z]", head)
+            and re.fullmatch(r"[\u4e00-\u9fa5A-Za-z（）()·、/&\-\s]{1,24}", head)):
+        return head.strip(), nums
+    return "", nums
+
+
+def _seg_is_total(name: str) -> bool:
+    t = str(name or "").strip()
+    return any(w in t for w in _SEG_TOTAL_WORDS)
+
+
+def _seg_parse_block(chunk: str) -> dict | None:
+    """把一张表还原成「期次 + 每期哪几列 + 行」。认不出形状就返回 None。"""
+    lines = _seg_lines(chunk)
+    hdr: list[str] = []
+    i = 0
+    while i < len(lines):
+        l = lines[i]
+        if l in _SEG_HDR_EXACT or (len(l) <= 8 and any(k in l for k in _SEG_HDR_STRUCT)):
+            hdr.append(l); i += 1; continue
+        if _SEG_PERIOD_RE.fullmatch(l) or l in ("（亿元）", "（%）", "(%)", "%", "亿元"):
+            hdr.append(l); i += 1; continue
+        break
+    hdr_txt = " ".join(hdr)
+    # 每期几列、分别是什么，按表头里列名的出现顺序取。只数「有几个列名」不够：
+    # 「收入＋毛利率」与「收入＋占比」都是两列，取错了会把毛利率当占比印进表里。
+    labels = [l for l in hdr if l in _SEG_COL_LABELS]
+    cols = sum(1 for k in ("收入", "占比", "毛利率") if k in hdr_txt)
+    if not labels:
+        if "金额" in hdr_txt and "占比" in hdr_txt:
+            labels = ["金额", "占比"]
+        elif cols >= 2:
+            labels = ["收入", "占比", "毛利率"][:cols]
+    if len(labels) < 2:
+        return None
+    layout = labels[:max(2, cols if cols <= 3 else 3)]
+    periods: list[str] = []
+    for m in _SEG_PERIOD_RE.finditer(hdr_txt):
+        y = m.group(1)
+        h1, h2, h3, h4, h5 = m.group(2), m.group(3), m.group(4), m.group(5), m.group(6)
+        if h1 and h2:
+            periods.append(f"{y}年1-{h2}月")
+        elif h3 and h4:
+            periods.append(f"{y}年1-{h4}月")
+        elif h5:
+            periods.append(f"{y}年1-{h5}月")
+        else:
+            periods.append(f"{y}年")
+    seen: set[str] = set()
+    periods = [p for p in periods if not (p in seen or seen.add(p))]
+    if not periods:
+        return None
+    cols = len(layout)
+    rows: list[tuple[str, list[str]]] = []
+    name_buf: list[str] = []
+    nums: list[str] = []
+    need = cols * len(periods)
+    for l in lines[i:]:
+        nm, ns = _seg_split_cell(l)
+        # 表在哪结束：遇到既不是板块名、也不是数字的行就停。不设这道闸，表尾的
+        # 正文（「变现能力好；2025 年以来……」）里的年份会被当成数据继续累加，
+        # 一路把下一张表的数字也算进来（深投那份表的末行就成了「存货」）。
+        if not nm and (not ns or (len(l) > 24 and re.search(r"[。；，]", l))):
+            break
+        if nm:
+            if nums:                    # 上一个名字还没凑满数就被顶掉：这一行不要了
+                name_buf, nums = [nm], []
+            else:
+                name_buf.append(nm)
+        nums.extend(ns)
+        while len(nums) >= need:
+            full, nums = nums[:need], nums[need:]
+            name = "".join(name_buf).strip()
+            name_buf = []
+            if not name or len(name) > 20 or re.search(r"[。，；：！？、]", name):
+                continue
+            vals = [_cell_num(x) for x in full]
+            # 一整行「2,023 2,024 2,025」是把年份当成了数（深投那份报告的表标题
+            # 里带「2023－2025」，抓下来就成了一个叫「类口径与」的板块）
+            if all(v is not None and 1980 <= abs(v) <= 2100 for v in vals):
+                continue
+            rows.append((name, full))
+    return {"cols": cols, "layout": layout, "periods": periods, "rows": rows,
+            "hdr": hdr_txt}
+
+
+def _seg_bad_rows(rows: list[tuple[str, list[str]]]) -> float:
+    """这一堆「板块名」里有多少根本不像板块名。
+
+    数字被错当成名字时会出现「补贴分别为」「元、」这类行。超过三成就不认这张表：
+    宁可用模型那份逐格核对，也不要把正文段落的名字印进表里。
+    """
+    if not rows:
+        return 1.0
+    bad = sum(1 for n, _ in rows
+              if any(w in n for w in _SEG_BAD_NAME)
+              or re.search(r"(为|是|的)$", n)
+              or len(n) < 2)
+    return bad / len(rows)
+
+
+def _seg_candidates(materials: list[dict]) -> list[dict]:
+    """材料里所有像「收入构成」的表，按可信度排好。"""
+    corpus = "\n".join(str(m.get("text") or "") for m in (materials or []))
+    if len(corpus.strip()) < 500:
+        return []
+    out: list[dict] = []
+    for m in _SEG_TITLE_RE.finditer(corpus):
+        title = m.group(1).strip()
+        if not re.search(r"(收入|业务|板块)", title):
+            continue
+        if not re.search(r"(构成|占比|毛利率|情况)", title):
+            continue
+        # 只认主体自己的表：深投那份报告里赛格、深圳国际、天音、怡亚通各有一张
+        # 子公司收入表，抓错了会把子公司的收入当母公司的板块
+        if not re.search(r"(公司|发行人|主体)", title):
+            continue
+        end = corpus.find("资料来源", m.end())
+        chunk = corpus[m.end(): end if 0 < end - m.end() < 6000 else m.end() + 3000]
+        blk = _seg_parse_block(chunk)
+        if not blk or len(blk["rows"]) < 2:
+            continue
+        if _seg_bad_rows(blk["rows"]) > 0.3:
+            continue                       # 名字不像板块名，说明这张表没读对
+        factor, unit = _seg_unit_factor(title, chunk)
+        if not factor:
+            continue
+        blk.update({"title": title, "factor": factor, "unit": unit})
+        out.append(blk)
+    return out
+
+
+def _seg_collapse_blocks(body: list[dict], n_col: int) -> list[dict]:
+    """父行与它的明细行同时出现时只留父行。
+
+    评级报告的业务表常写成两级：「科技金融板块 408.91」下面挨着保险、担保、证券、
+    股权投资、资产管理，加起来正好是 408.91。两组都进表，收入会被算两遍，占比
+    合计能到 200%。判据只有一条：紧随其后的几行相加等于父行（±8%），那几行就是
+    明细。
+    """
+    if len(body) < 3:
+        return body
+    out: list[dict] = []
+    i = 0
+    while i < len(body):
+        cur = body[i]
+        out.append(cur)
+        i += 1
+        if "板块" not in cur["name"]:
+            continue
+        parent = [abs(v or 0) for v in cur["revs"]]
+        acc = [0.0] * n_col
+        j = i
+        while j < len(body) and "板块" not in body[j]["name"]:
+            nxt = body[j]["revs"]
+            trial = [a + abs(v or 0) for a, v in zip(acc, nxt)]
+            if any(p and t > p * 1.08 for t, p in zip(trial, parent)):
+                break
+            acc, j = trial, j + 1
+        if j > i and all((not p) or abs(a - p) <= p * 0.08 for a, p in zip(acc, parent)):
+            i = j                       # 这几行是明细，跳过
+    return out
+
+
+def _latest_rev(facts: dict) -> float | None:
+    """台账里最近完整年度的营业总收入，用来验业务构成表的合计。
+
+    只认完整年度：最近一期常是半年数，拿它当分母，三成对得上的表也会被判成
+    对不上。
+    """
+    fin = (facts or {}).get("financials") or {}
+    data = fin.get("data") or {}
+    periods = [str(p) for p in (fin.get("periods") or [])]
+    row = data.get("营业总收入") or data.get("营业收入") or data.get("营业总收入(亿元)")
+    if not row or not periods:
+        return None
+    pairs: list[tuple[tuple[int, int], float]] = []
+    for i, p in enumerate(periods):
+        if i >= len(row) or not is_annual_period(p):
+            continue
+        try:
+            pairs.append((_period_key(p), float(str(row[i]).replace(",", ""))))
+        except (TypeError, ValueError):
+            continue
+    return sorted(pairs, reverse=True)[0][1] if pairs else None
+
+
+def segment_table_from_materials(materials: list[dict],
+                                 total_rev: float | None = None) -> tuple[dict | None, str]:
+    """从材料原表重建业务构成表；抓不到返回 (None, "")。
+
+    返回的表与模型输出的表同一个形状（periods / sub_cols / extra_cols / rows /
+    bold_rows / caption），所以页面、导出、校验三处不用改。期次只留完整年度、
+    由新到旧；行按最近完整年度的收入从大到小排。
+
+    total_rev 是台账里最近完整年度的营业总收入。给了就用它验一遍表里的合计：
+    机场那份材料的「非航业务」子表也有合计行，把它当成全公司的业务构成，整张表
+    就只剩航空以外的收入了。
+    """
+    cands = _seg_candidates(materials)
+    if not cands:
+        return None, ""
+
+    # 几张表都像：取最近完整年度收入合计最大的那张——那是全公司口径，
+    # 「非航业务」「租赁收入」这类子表合计一定更小
+    def _scale(c: dict) -> float:
+        tot = 0.0
+        for name, vals in c["rows"]:
+            if not _seg_is_total(name):
+                continue
+            for k, p in enumerate(c["periods"]):
+                if p.endswith("年"):
+                    v = _cell_num(vals[k * c["cols"]])
+                    tot = max(tot, abs(v or 0))
+        return tot * c["factor"]
+
+    cands.sort(key=_scale, reverse=True)
+    best = cands[0]
+    cols, periods, factor = best["cols"], best["periods"], best["factor"]
+    layout = best["layout"]
+    # 只留完整年度：半年/季度的分板块收入与年度不可比（规则 3.2 与 seg_annual_only 同款）
+    keep_cols = [k for k, p in enumerate(periods) if p.endswith("年")]
+    if not keep_cols:
+        return None, ""
+    # 表内由新到旧：材料多数按时间正序印，直接搬会变成「2023、2024、2025」
+    keep_cols = sorted(keep_cols, reverse=True)
+    periods = [periods[k] for k in keep_cols]
+    pct_at = layout.index("占比") if "占比" in layout else None
+    gm_at = layout.index("毛利率") if "毛利率" in layout else None
+
+    def _v(vals: list[str], k: int, j: int) -> float | None:
+        n = _cell_num(vals[k * cols + j]) if len(vals) > k * cols + j else None
+        return None if n is None else n * factor
+
+    body: list[dict] = []
+    total_rows: list[tuple[str, list[str]]] = []
+    for name, vals in best["rows"]:
+        if any(w in name for w in _SEG_ROW_SKIP):
+            continue
+        if _seg_is_total(name):
+            total_rows.append((name, vals))
+            continue
+        revs = [_v(vals, k, 0) for k in keep_cols]
+        if all(r is None for r in revs):
+            continue
+        body.append({"name": name, "revs": revs, "vals": vals})
+    # 材料里可能有两行合计（「营业总收入」与「经调整的营业总收入」）。谁的占比是
+    # 100%，板块的占比就是按谁算的，合计行取那一行，表内分母才自洽。
+    total_row = total_rows[0] if total_rows else None
+    if total_rows and pct_at is not None:
+        for cand in total_rows:
+            pcts = [_v(cand[1], k, pct_at) for k in keep_cols]
+            if pcts and all(p is not None and abs(p - 100) <= 0.5 for p in pcts):
+                total_row = cand
+                break
+    if len(body) < 2:
+        return None, ""
+    body = _seg_collapse_blocks(body, len(keep_cols))
+
+    tot_by_col: list[float | None] = []
+    for idx, k in enumerate(keep_cols):
+        tot = _v(total_row[1], k, 0) if total_row is not None else None
+        if tot is None:                        # 材料没给合计行：用板块相加兜住
+            s = sum(abs(b["revs"][idx] or 0) for b in body)
+            tot = s or None
+        tot_by_col.append(tot)
+    if total_rev:
+        # 表里的合计要能对上营业总收入；对不上说明抓的是子表（非航业务、租赁收入）
+        near = any(t and abs(abs(t) - abs(total_rev)) / max(abs(total_rev), 1e-6) <= 0.06
+                   for t in tot_by_col)
+        if not near:
+            return None, ""
+
+    body.sort(key=lambda b: -(abs(b["revs"][0] or 0)))       # 最近年度收入从大到小
+    with_gm = gm_at is not None and len(body) > 0
+    rows: list[list[str]] = []
+    for b in body:
+        out = [b["name"]]
+        for idx, k in enumerate(keep_cols):
+            rev = b["revs"][idx]
+            if rev is None:
+                out.extend(["", ""])
+                continue
+            out.append(f"{rev:,.2f}")
+            # 占比照材料原值（材料自己按主营收入或含抵销口径算），没有才算
+            pct = _v(b["vals"], k, pct_at) if pct_at is not None else None
+            if pct is None and tot_by_col[idx]:
+                pct = abs(rev) / abs(tot_by_col[idx]) * 100
+            out.append(f"{pct:.2f}%" if pct is not None else "")
+        if with_gm:
+            gm = _v(b["vals"], keep_cols[0], gm_at)
+            out.append(f"{gm:.2f}%" if gm is not None else "")
+        rows.append(out)
+    if total_row is not None:
+        out = ["营业总收入"]
+        for idx, k in enumerate(keep_cols):
+            rev = _v(total_row[1], k, 0)
+            out.extend([f"{rev:,.2f}" if rev is not None else "", "100%"])
+        if with_gm:
+            gm = _v(total_row[1], keep_cols[0], gm_at)
+            out.append(f"{gm:.2f}%" if gm is not None else "")
+        rows.append(out)
+    if len(rows) < 3:
+        return None, ""
+    tbl = {
+        "unit_line": "单位：亿元",
+        "periods": periods,
+        "sub_cols": _SEG_SUB_COLS,
+        "extra_cols": [f"{periods[0]}毛利率"] if with_gm else [],
+        "rows": rows,
+        "bold_rows": [len(rows) - 1] if total_row is not None else [],
+        "caption": seg_caption(periods, with_gm),
+        "from_material": True,
+    }
+    note = (f"业务构成表按材料原表重建（{best['title']}，原表单位{best['unit']}，"
+            f"取 {len(rows) - (1 if total_row else 0)} 个板块、{'、'.join(periods)}）")
+    return tbl, note
+
+
+def segment_table_digest(tbl: dict, max_rows: int = 12) -> str:
+    """把表压成几行交给模型：正文引用的板块收入只能照这里写。"""
+    if not isinstance(tbl, dict) or not (tbl.get("rows") or []):
+        return ""
+    cols = tbl.get("sub_cols") or ["收入", "占比"]
+    ps = [str(p) for p in (tbl.get("periods") or [])]
+    out = [f"期次：{'、'.join(ps)}（由新到旧，单位亿元；括号内为占营业总收入比重）"]
+    body, tot = [], ""
+    for r in (tbl.get("rows") or []):
+        if not r:
+            continue
+        if _seg_is_total(str(r[0])):
+            tot = str(r[0]) + " " + " / ".join(f"{r[1 + 2 * i] or '—'}" for i in range(len(ps)))
+            continue
+        cells = []
+        for i in range(len(ps)):
+            rev = r[1 + 2 * i] if len(r) > 1 + 2 * i else ""
+            pct = r[2 + 2 * i] if len(r) > 2 + 2 * i else ""
+            cells.append(f"{rev or '—'}（{pct or '—'}）" if rev else "—")
+        body.append(f"· {r[0]}：" + "；".join(f"{p} {c}" for p, c in zip(ps, cells)))
+    if tot:
+        body.append("· " + tot)
+    return "\n".join(out + body[:max_rows])
+
+
+# ── 业务构成表：逐格对来源（材料没有原表时的退路）─────────────────────
 # 财务指标表早就逐格对过材料，业务构成表一直没对。材料里同时给了分板块收入与
 # 总数时它抄得对；只给总数、只给分板块毛利率的时候，模型会「凑」——按板块名与
 # 总数编一组看起来合理的收入，再把「其他」做成合计减已列板块的余额。于是合计
@@ -2252,11 +2697,10 @@ def audit_segment_table(tbl: dict, materials: list[dict]) -> tuple[dict, dict]:
             allsum += abs(v)
             if _ok(r[1 + 2 * i], str(r[0])):
                 verified += abs(v)
-        tot = _cell_num(total_row[1 + 2 * i]) if total_row else None
-        # 板块加起来对不上营业总收入，说明有一格串了行（把新签合同额、子公司收入
-        # 当成了板块收入最常见）。这种表的「每一格都找得到」也能成立，只有合计能拆穿。
-        off = bool(tot and allsum and abs(allsum - abs(tot)) / abs(tot) > 0.02)
-        if allsum and verified / allsum >= 0.9 and not off:
+        # 只看「每一格的数在材料里找不找得到」。以前还加一条「板块相加要等于
+        # 营业总收入」，实测这条会误杀：中交建那张原表自己就是板块收入大于
+        # 营业总收入（分部间抵销），差 4.5%，一条好表因此被判成编的。
+        if allsum and verified / allsum >= 0.9:
             keep.append(i)
         else:
             rep["dropped"].append(periods[i])
@@ -3242,7 +3686,7 @@ def _approx_rows(draft: dict) -> list[dict]:
 # 校验规则的版本号。规则一改就加一，存量记录据此判断要不要重算——
 # 只看「有没有 issue_items」是不够的：新加的校验项不会进到老记录里，
 # 用户打开旧报告就看不到新提示，等于没上。
-VALIDATOR_REV = 18
+VALIDATOR_REV = 19
 
 # 区域段里不该出现的行业话术。不是禁词表，是「写错对象」的迹象：这些词
 # 出现在城投的第一段，说明作者把它当成了一家行业里的企业。
@@ -3949,6 +4393,12 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
     # 实测一份写得完全合格的资产段会被这条规则报出十条，提示就失效了。
     _c = draft.get("commentary") or {}
     as_body = ((_c.get("asset") or {}).get("body") or "")
+    _mat_all = "\n".join((m.get("text") or "") for m in materials)
+    # 科目项统一按「科目 金额亿元（占比××.××%，……」拆。资产总额那句没有括号，
+    # 天然不会被当成科目项——它本来就是分母。
+    _items = [(n, float(a.replace(",", "")), float(p)) for n, a, p in
+              re.findall(r"([\u4e00-\u9fa5A-Za-z]{2,12})\s*([\d,]+\.\d{2})\s*亿元\s*"
+                         r"[（(]\s*(?:占比|占资产总额)?\s*([\d.]+)\s*%", as_body)]
     if as_body:
         bare: list[tuple[str, str]] = []
         clauses = [x.strip() for x in re.split(r"[。；;]", as_body) if x.strip()]
@@ -3968,7 +4418,7 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
                 "num": re.sub(r"\s", "", amt), "where": "资产段",
                 "kind": "写法", "full": seg[:140], "si": 0,
                 "anchor": "blk-asset", "field": "as-body",
-                "note": "金额后面补「（占资产总额 ××.××%）」，再交代「主要为……」与质量",
+                "note": "金额后面补「（占比 ××.××%，主要为……」与质量",
             } for amt, seg in bare[:5]]
             if no_main:
                 rows.append({
@@ -3980,9 +4430,66 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
             issues.append(
                 f"资产段有 {len(bare)} 个科目只给了金额没给占比"
                 + ("，整段也没有「主要为……」" if no_main else "")
-                + "。每个科目按「科目 金额（占资产总额 ××.××%），主要为×××，"
+                + "。每个科目按「科目 金额亿元（占比 ××.××%，主要为×××，"
                   "再交代能否变现／是否质押／账龄」写，读者才知道压了多少资产、是什么。")
             issue_items.append({"t": "资产段缺金额占比", "a": "blk-asset", "d": rows[:6]})
+
+        # 1.3a) 科目没有按金额从大到小排。这是最好核对的一条：把每一项的金额拉出来
+        # 看一遍就行，不需要知道材料写了什么。读者按顺序读，排错了就以为小项更重要。
+        if len(_items) >= 3:
+            _order = [x[1] for x in _items]
+            if any(_order[i] < _order[i + 1] * 0.995 for i in range(len(_order) - 1)):
+                issues.append(
+                    "资产段的科目没有按金额从大到小排："
+                    + " → ".join(f"{n} {a:,.2f}" for n, a, _ in _items[:6])
+                    + "。同一串里按最新一期金额降序，读者的注意力才会落在压钱最多的那几项上。")
+                issue_items.append({
+                    "t": "资产段科目未按金额排序", "a": "blk-asset",
+                    "d": [{"num": f"{a:,.2f}亿元", "where": f"资产段·{n}", "kind": "写法",
+                           "full": "", "si": 0, "anchor": "blk-asset",
+                           "field": "as-body", "note": "按金额从大到小重排，占比随科目走"}
+                          for n, a, _ in _items[:5]]})
+        # 1.3b) 缺货币资金。前五大里没有它，也得单独补一句：读者第一眼看的是手上
+        # 有没有现钱，这一项缺了，资产结构就少一条腿。
+        if as_body and "货币资金" not in as_body and "货币资金" in _mat_all:
+            issues.append(
+                "资产段没有货币资金。前五大科目里没有它，就在科目串末尾单独补一句："
+                "「货币资金××.××亿元（占比××.××%），主要为银行存款及保证金，"
+                "受限比例××.××%」——材料给了受限比例就照写，没给就只写形态。")
+            issue_items.append({
+                "t": "资产段缺货币资金", "a": "blk-asset",
+                "d": [{"num": "货币资金", "where": "资产段", "kind": "漏项",
+                       "full": as_body[:120], "si": 0, "anchor": "blk-asset",
+                       "field": "as-body",
+                       "note": "在科目串末尾补一句货币资金：金额、占比、主要为、受限比例"}]})
+        # 1.3c) 开头没给资产总额与增速。这一段的第一句是「盘子有多大、比上期多了多少」，
+        # 缺了它，后面列再多科目也读不出规模。
+        _head = clauses[0] if clauses else ""
+        if as_body and "资产总额" not in _head:
+            issues.append(
+                "资产段的第一句没有给资产总额。开头固定写成「截至××××年×月末，"
+                "公司资产总额××××.××亿元，较上年末增长××.××%；××××年末为"
+                "×,×××.××亿元，较上年末增长××.××%，主要系×××所致」，"
+                "再往下写「主要科目中，……」。")
+            issue_items.append({
+                "t": "资产段开头缺资产总额", "a": "blk-asset",
+                "d": [{"num": "资产总额", "where": "资产段首句", "kind": "结构",
+                       "full": _head[:120], "si": 0, "anchor": "blk-asset",
+                       "field": "as-body",
+                       "note": "首句写总量与两期增速，再写两期数与原因"}]})
+        # 1.3d) 材料写了受限资产，资产段末一字不提。受限部分是「看着有、动不了」的钱，
+        # 不写等于把可用于偿债的资产说多了。
+        if "受限" in _mat_all and "受限" not in as_body:
+            issues.append(
+                "材料里有受限资产的披露，资产段末尾没有写。段末收一句：金额、"
+                "占资产总额比重、主要是哪几项、因什么受限（抵质押给谁、为哪笔借款）。"
+                "材料没有受限口径的，这句才不写。")
+            issue_items.append({
+                "t": "资产段没写受限资产", "a": "blk-asset",
+                "d": [{"num": "受限资产", "where": "资产段末", "kind": "漏项",
+                       "full": as_body[-120:], "si": 0, "anchor": "blk-asset",
+                       "field": "as-body",
+                       "note": "段末补受限资产：金额、占比、主要为哪些、因何受限"}]})
 
     # 1.4) 或有事项：材料里给了担保、诉讼的实数，正文一处不提，也没给补段建议。
     # 或有事项不进债务段（规则 3.6），但也不能因此消失——它能单列就提示用户补一段。
@@ -4735,12 +5242,19 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
                    "field": "mk-body", "seg": 0,
                    "note": "点「+ 补一段分析」选「成交与估值水平」补上，或重新生成"}]})
 
-    # 7.w) 业务构成表逐格对来源。放在期次检查之前：表里的数如果不成立，
-    # 谈「期次够不够」没有意义，而且先裁掉编的列，后面的期次判断才是在数真数据。
+    # 7.w) 业务构成表：材料里有原表就照原表重建，没有才逐格核模型那份。
+    # 顺序不能反：模型给的表再自洽，也不如材料上印着的那一行可靠；而逐格核对
+    # 一旦整表对不上，表就整张没了（材料明明有表，报告里却一张都没有）。
     _st = c.get("segment_table") or {}
-    _st, _st_rep = audit_segment_table(_st, materials)
-    if _st_rep.get("checked"):
-        c["segment_table"] = _st
+    _st_built, _st_note = segment_table_from_materials(materials, _latest_rev(facts))
+    if _st_built:
+        c["segment_table"] = _st_built
+        _st, _st_rep = _st_built, {"checked": True, "dropped": [], "gm_bad": 0,
+                                   "empty": False, "built": True}
+    else:
+        _st, _st_rep = audit_segment_table(_st, materials)
+        if _st_rep.get("checked"):
+            c["segment_table"] = _st
     # 表被核掉这件事本身要一直说下去：保存后再打开、材料原文已经不在手上时，
     # 页面上只剩一个空位，没有这句话就成了「这次怎么没生成表」。
     _seg_empty = bool(_st_rep.get("empty") or _st.get("drop_reason") == "unsourced")
@@ -5211,6 +5725,12 @@ def _seg_digest(materials: list[dict], limit: int = 12000) -> str:
 def _fill_seg_table(draft: dict, materials: list[dict], model_id: str | None = None) -> dict:
     c = dict(draft.get("commentary") or {})
     if not seg_missing(c.get("segment_table") or {}):
+        return draft
+    # 材料里本来就有这张表：直接按原表重建，比再问一次模型准得多，也省一轮调用
+    _built, _ = segment_table_from_materials(materials)
+    if _built:
+        c["segment_table"] = _built
+        draft["commentary"] = c
         return draft
     digest = _seg_digest(materials)
     if not digest:
