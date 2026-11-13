@@ -1289,6 +1289,27 @@ def _upgrade_record(rec: dict) -> dict:
             history.replace_draft(rec.get("id") or "", draft)
         except Exception:                                   # noqa: BLE001 — 落盘失败不影响阅读
             pass
+    # 业务构成表只留完整年度（v74：表格不再列最近一期）。这一步必须放在下面的
+    # 早退之前——已经按当前规则算过校验的老记录会直接 return，放在后面就永远裁不到，
+    # 打开旧报告看到的仍是「2026年1-6月」那一列。幂等：裁过的不会再动。
+    _c0 = draft.get("commentary") or {}
+    if isinstance(_c0.get("segment_table"), dict):
+        _seg, _seg_note = generator.seg_annual_only(_c0["segment_table"])
+        _seg = generator.normalize_seg_gm(_seg)
+        if _seg.get("periods"):
+            _seg["caption"] = generator.seg_caption(
+                _seg["periods"], bool(_seg.get("extra_cols")))
+        if json.dumps(_seg, ensure_ascii=False, sort_keys=True) != \
+                json.dumps(_c0["segment_table"], ensure_ascii=False, sort_keys=True):
+            _c0["segment_table"] = _seg
+            draft["commentary"] = _c0
+            if _seg_note and _seg_note not in (draft.get("data_notes") or []):
+                draft["data_notes"] = list(draft.get("data_notes") or []) + [_seg_note]
+            rec["draft"] = draft
+            try:
+                history.replace_draft(rec.get("id") or "", draft)
+            except Exception:                              # noqa: BLE001 — 落盘失败不影响阅读
+                pass
     if val.get("rev") == generator.VALIDATOR_REV:   # 已按当前规则算过
         return rec
     if rec.get("_reval") == "skip":                 # 试过、材料已不在，别每次都试
@@ -1303,10 +1324,7 @@ def _upgrade_record(rec: dict) -> dict:
     for k in ("financial_table", "segment_table"):
         if isinstance(c.get(k), dict):
             c[k] = generator.reorder_table(c[k])
-    # 毛利率列的期次口径变了（现取表内最新一期）：旧记录的列名一并改过来，
-    # 否则打开旧报告看到的还是「2025年毛利率」挨着 2026年1-6月那一列。
-    if isinstance(c.get("segment_table"), dict):
-        c["segment_table"] = generator.normalize_seg_gm(c["segment_table"])
+
     if c:
         draft["commentary"] = c
         rec["draft"] = draft
