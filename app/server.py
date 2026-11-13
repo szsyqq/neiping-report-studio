@@ -10,6 +10,7 @@
 
 from __future__ import annotations
 
+import base64
 import difflib
 import hashlib
 import json
@@ -50,6 +51,7 @@ import mailer  # noqa: E402
 import settings_store  # noqa: E402
 import state_store  # noqa: E402
 import pdf_text  # noqa: E402
+import trace as trace_mod  # noqa: E402
 import updater  # noqa: E402
 import usage as usage_mod  # noqa: E402
 from mcp_client import CaihuiClient, MCPError  # noqa: E402
@@ -1364,6 +1366,195 @@ def api_check(payload: dict) -> dict:
         return {"validation": draft.get("validation") or {}, "error": str(e)[:200]}
 
 
+# ── 数字溯源 ──────────────────────────────────────────────────────────
+# 正文里每个数字回到材料原文（× 页）、回到算式、回到算式里每个原数的来源。
+# 与「检查异常」是两件事：那一栏报问题，这一栏回答「这个数哪来的」，
+# 所以它要覆盖全部数字，不只是有问题的那些。
+_PAGE_IMG: dict[str, str] = {}
+_PAGE_LOCK = threading.Lock()
+
+
+def _trace_materials(company: str, titles: set[str], rid: str = "") -> tuple[list[dict], str]:
+    """取这一轮真正进了提示词的材料摘录。
+
+    只能用摘录，不能拿全文：模型写出来的数只可能来自它看到的那几页。
+    拿全文当底，会把「材料里有、模型没看到」的数也标成已溯源，那是假溯源。
+    真要翻全文，走 api_trace_deep，并且明确告诉用户那一页没进过上下文。
+
+    不按 titles 收缩：STATE 里的材料本身就是「这一轮勾选并读过」的那几份，
+    再按标题筛一遍反而会筛丢——页面上的标题来自历史记录（「2026年度××
+    ××公司信用评级报告」），STATE 里存的是抽取时的短标题（「2026年度信用
+    评级报告」），两者对不上，一筛就只剩能对上的一条，覆盖率凭空掉一半。
+    """
+    with LOCK:
+        st = STATE.get(_key(company)) or {}
+        mats = st.get("materials") or []
+    if not mats and rid:
+        # 服务重启后 STATE 是空的。记录里存着材料路径，按它重读一遍，
+        # 否则「打开上周的报告查一个数」这件事直接做不了。
+        rec = history.get(rid) or {}
+        mats = [m for m in (rec.get("materials") or []) if m.get("path")]
+    if not mats:
+        return [], "这一轮还没有读材料，数字无从溯起"
+    src = mats if all((m.get("text") or "") for m in mats) else (_reload_materials(mats) or [])
+    if not src:
+        return [], "材料原件已不在本地，重新读取失败"
+    return src, ""
+
+
+def api_trace(payload: dict) -> dict:
+    """一次算完整份稿子的数字溯源。
+
+    不分页、不分次请求：正文两三百个数，逐个点开再问一次服务端，每次都要
+    重建材料索引，反而更慢。一次给全，之后的检索与点击都在本地完成。
+    """
+    company = (payload.get("company") or "").strip()
+    draft = payload.get("draft")
+    if not isinstance(draft, dict) or not draft:
+        return {"stats": {}, "rows": [], "docs": [], "note": "还没有正文"}
+    titles = {t for t in (payload.get("titles") or []) if t}
+    rid = str(payload.get("history_id") or draft.get("history_id") or "")
+    src, note = _trace_materials(company, titles, rid)
+    if not src:
+        return {"stats": {}, "rows": [], "docs": [], "note": note}
+    try:
+        out = trace_mod.build(draft, src)
+    except Exception as e:                                # noqa: BLE001
+        print(f"数字溯源失败：{e}")
+        return {"stats": {}, "rows": [], "docs": [], "error": str(e)[:300]}
+    out["note"] = note
+    return out
+
+
+def _safe_pdf(p: str) -> Path | None:
+    """只认 data/ 与 uploads/ 里的 PDF。
+
+    路径是从浏览器传回来的，不校验就等于开了一个「随便读本机文件」的口子。
+    溯源卡里给的是材料原件的绝对路径，前端原样传回，必须在这里卡死。
+    """
+    raw = str(p or "").strip()
+    if not raw:
+        return None
+    try:
+        q = Path(raw).resolve()
+    except (OSError, ValueError):
+        return None
+    for d in (DATA_DIR, UPLOAD_DIR):
+        try:
+            q.relative_to(d.resolve())
+        except ValueError:
+            continue
+        if q.is_file() and q.suffix.lower() == ".pdf":
+            return q
+    return None
+
+
+def _pdfs_for(title: str, company: str = "", paths: list[str] | None = None,
+              limit: int = 3) -> list[Path]:
+    """找回 PDF：先用前端传来的原件路径，再按标题找，最后退回这一轮的材料。
+
+    标题对不上是常事：溯源卡里的文件名来自打包清单，标题来自公告，两者
+    不一定逐字相等。按标题 glob 在「2026年度信用评级报告」这种写法上必然落空。
+    """
+    out: list[Path] = []
+    for p in (paths or []):
+        q = _safe_pdf(p)
+        if q and q not in out:
+            out.append(q)
+    t = (title or "").strip()
+    if t and not out:
+        p = _find_pdf(t)
+        if p and p.is_file():
+            out.append(p)
+        else:
+            base = _base_name(t)
+            for d in (DATA_DIR, UPLOAD_DIR):
+                q = d / base
+                if q.is_file() and q.suffix.lower() == ".pdf":
+                    out.append(q)
+                    break
+    if not out and company:
+        with LOCK:
+            mats = ((STATE.get(_key(company)) or {}).get("materials") or [])
+        for m in mats:
+            q = _safe_pdf(m.get("path") or "")
+            if q and q not in out:
+                out.append(q)
+    return out[:limit]
+
+
+def api_trace_deep(payload: dict) -> dict:
+    """摘录里没找到的数，翻整份 PDF 再找一次。
+
+    回答的是「到底是材料里没有，还是那几页没进上下文」——这两种情形处理方式
+    完全不同，混在一起说，人就只能自己去翻 PDF。
+    """
+    title = (payload.get("title") or "").strip()
+    company = (payload.get("company") or "").strip()
+    num = str(payload.get("num") or "").strip()
+    unit = str(payload.get("unit") or "").strip()
+    if not num:
+        return {"pages": [], "note": "缺少要查的数字"}
+    paths = _pdfs_for(title, company, payload.get("paths") or
+                      ([payload["path"]] if payload.get("path") else []))
+    if not paths:
+        return {"pages": [], "note": "本地找不到这份 PDF，只能核对摘录里的部分"}
+    pages: list[dict] = []
+    near: list[dict] = []
+    used = ""
+    used_path = ""
+    for p in paths:
+        try:
+            got = trace_mod.deep_search(str(p), num, unit)
+        except Exception as e:                            # noqa: BLE001
+            return {"pages": [], "near": [], "note": f"读取 PDF 失败：{str(e)[:160]}"}
+        if got.get("pages"):
+            pages, used, used_path = got["pages"], p.name, str(p)
+            break
+        if got.get("near") and not near:
+            near, used, used_path = got["near"], p.name, str(p)
+    note = ""
+    if not pages and not near:
+        note = "翻过这一轮的整份材料，都没有这个值的写法：可能是换算、扣减，或计算得来"
+    return {"pages": pages, "near": near,
+            "file": used or paths[0].name, "path": used_path or str(paths[0]),
+            "note": note}
+
+
+def api_trace_page(payload: dict) -> dict:
+    """把某一页渲成图片。溯源要能「看见」那一页，只给页码还是得自己去找。"""
+    title = (payload.get("title") or "").strip()
+    company = (payload.get("company") or "").strip()
+    try:
+        page = int(payload.get("page") or 0)
+    except (TypeError, ValueError):
+        page = 0
+    if not page:
+        return {"data": "", "note": "缺少页码"}
+    paths = _pdfs_for(title, company, [payload["path"]] if payload.get("path") else [],
+                      limit=1)
+    if not paths:
+        return {"data": "", "note": "本地找不到这份 PDF"}
+    path = paths[0]
+    key = f"{path}|{page}"
+    with _PAGE_LOCK:
+        hit = _PAGE_IMG.get(key)
+    if hit:
+        return {"data": hit, "file": path.name}
+    try:
+        img = trace_mod.page_image(str(path), page)
+    except Exception as e:                                # noqa: BLE001
+        return {"data": "", "note": f"这一页渲不出来：{str(e)[:120]}"}
+    if not img:
+        return {"data": "", "note": "这一页是空的或页号超出范围"}
+    b64 = base64.b64encode(img).decode()
+    with _PAGE_LOCK:
+        if len(_PAGE_IMG) > 60:          # 一页约 100KB，攒多了吃内存
+            _PAGE_IMG.clear()
+        _PAGE_IMG[key] = b64
+    return {"data": b64, "file": path.name}
+
+
 def api_prompt(payload: dict) -> dict:
     company = (payload.get("company") or "").strip()
     with LOCK:
@@ -1745,6 +1936,9 @@ class Handler(BaseHTTPRequestHandler):
             "/api/company/suggest": api_company_suggest,
             "/api/market": api_market,
             "/api/check": api_check,
+            "/api/trace": api_trace,
+            "/api/trace/deep": api_trace_deep,
+            "/api/trace/page": api_trace_page,
             "/api/cost/preview": api_cost_preview,
             "/api/cost/save": api_cost_save,
         }

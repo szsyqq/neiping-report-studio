@@ -878,6 +878,98 @@ body.dragging .item-ghost{display:flex}
 .ck-auto .lst b{font-weight:500;color:var(--ink)}
 /* 勾完的整块换个颜色，剩下的自然浮上来 */
 .rail-r.all-done .ck-h b{color:#2e7d32}
+
+/* ── 右栏页签：核验 / 溯源 ──────────────────────────────────────
+   核验回答「哪里不对」，溯源回答「这个数哪来的」。两件事都会让人回头看正文，
+   但看的时候不是同一个时刻：核验是收尾，溯源是写的时候随手查。所以做成页签，
+   而不是把它俩堆在同一列里往下排——堆在一起，写稿时要滚很久才找得到。 */
+.rtabs{display:flex;gap:2px;background:var(--line2);border-radius:7px;padding:2px;margin:0 0 11px}
+/* 主页签吸顶：右栏自己滚动，翻到清单深处时页签不能跟着滚走——
+   否则想切回「核验」得先滚回顶。子页签（数字/文字）不吸，它挨着内容。 */
+#railR > .rtabs{position:sticky;top:0;z-index:6;background:var(--bg);padding:2px;
+  box-shadow:0 4px 8px -6px rgba(0,0,0,.18)}
+.rtabs button{flex:1;border:0;background:transparent;color:var(--ink2);font-size:11.5px;
+  padding:5px 0;border-radius:5px;cursor:pointer;font-family:inherit;white-space:nowrap}
+.rtabs button:hover{color:var(--ink)}
+.rtabs button.on{background:#fff;color:var(--ink);font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.rtabs .rn{font-variant-numeric:tabular-nums;color:#b0b6bf;margin-left:3px}
+.rtabs button.on .rn{color:var(--ink2)}
+.rpane.hide{display:none}
+
+/* 溯源：检索框 + 统计 + 筛选 + 清单 */
+.tr-q{width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:7px;
+  padding:6px 9px;font-size:12px;font-family:inherit;color:var(--ink);background:#fff;outline:none}
+.tr-q:focus{border-color:#b9c6de;box-shadow:0 0 0 3px rgba(47,95,208,.07)}
+.tr-q::placeholder{color:#c2c7cf}
+.tr-stat{font-size:10.5px;color:var(--muted);margin:9px 0 5px}
+.tr-s1{display:flex;align-items:baseline;justify-content:space-between;font-size:11px;
+  color:var(--ink2);font-variant-numeric:tabular-nums}
+.tr-s1 b{font-size:13.5px;color:var(--ink);font-weight:600}
+.tr-s2{margin-top:2px;font-variant-numeric:tabular-nums}
+.tr-s2 .no{color:#c0472b}
+.tr-bar{height:3px;border-radius:2px;background:var(--line2);overflow:hidden;margin:0 0 9px}
+.tr-bar i{display:block;height:100%;background:#3f7a45;border-radius:2px;transition:width .3s}
+.tr-f{display:flex;gap:4px;margin:0 0 9px;flex-wrap:wrap}
+.tr-f button{border:1px solid var(--line);background:#fff;color:var(--ink2);border-radius:12px;
+  font-size:10.5px;padding:2px 8px;cursor:pointer;font-family:inherit;line-height:16px}
+.tr-f button.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.tr-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:1px 6px;padding:5px 7px;
+  border-radius:6px;cursor:pointer;border:1px solid transparent}
+.tr-row:hover{background:#f7f9fc}
+.tr-row.on{background:#f2f6fd;border-color:#dbe6f7}
+.tr-row .n{font-size:11.5px;font-variant-numeric:tabular-nums;color:var(--ink);
+  font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.tr-row .k{font-size:10px;padding:0 4px;border-radius:4px;line-height:15px;height:15px;
+  align-self:center;white-space:nowrap}
+.tr-row .w{font-size:10.5px;color:var(--muted);overflow:hidden;grid-column:1/2;
+  text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.k-src{background:#eaf3ea;color:#2e7d32}
+.k-calc{background:#eef2fb;color:#2f5fd0}
+.k-none{background:#fdeeea;color:#c0472b}
+.k-mkt{background:#f3f0fb;color:#6b4bb0}
+.k-meta{background:#f3f4f6;color:#9aa1ac}
+
+/* 溯源详情卡 */
+.tr-d{border:1px solid var(--line);border-radius:8px;background:#fff;margin:0 0 9px;
+  padding:9px 10px}
+.tr-d-h{display:flex;align-items:baseline;gap:6px;margin:0 0 6px}
+.tr-d-h b{font-size:14.5px;font-variant-numeric:tabular-nums;font-weight:600}
+.tr-d-h .u{font-size:10.5px;color:var(--muted)}
+.tr-d-h .x{margin-left:auto;border:0;background:none;color:#c6cbd2;cursor:pointer;
+  font-size:14px;line-height:1;padding:0 2px}
+.tr-d-h .x:hover{color:var(--ink2)}
+.tr-sent{font-size:11px;color:var(--ink2);line-height:1.65;background:#fafbfc;
+  border-radius:6px;padding:6px 8px;margin:0 0 9px}
+.tr-sent mark{background:#fff3bf;color:var(--ink);padding:0 1px;border-radius:2px}
+.tr-sec{margin:0 0 9px}
+.tr-sec:last-child{margin-bottom:0}
+.tr-sec-h{font-size:10px;color:var(--muted);letter-spacing:.05em;margin:0 0 5px;
+  display:flex;align-items:center;gap:5px}
+.tr-sec-h::after{content:"";flex:1;height:1px;background:var(--line2)}
+.tr-file{font-size:11px;color:var(--ink2);line-height:1.55;margin:0 0 4px;
+  overflow-wrap:break-word}
+.tr-file .pg{color:#2f5fd0;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.tr-qt{font-size:11px;color:#5a626d;line-height:1.7;border-left:2px solid var(--line);
+  padding:0 0 0 8px;margin:0 0 5px;overflow-wrap:break-word}
+.tr-fx{font-size:11.5px;color:var(--ink);background:#f7f9fc;border-radius:6px;
+  padding:6px 8px;line-height:1.6;overflow-wrap:break-word;font-variant-numeric:tabular-nums}
+.tr-fx .eq{color:#2f5fd0}
+.tr-ops{margin:5px 0 0;padding:0;list-style:none}
+.tr-ops li{font-size:10.5px;color:var(--ink2);line-height:1.6;padding:2px 0;
+  font-variant-numeric:tabular-nums}
+.tr-ops li .p{color:#2f5fd0;cursor:pointer}
+.tr-ops li.miss{color:#c0472b}
+.tr-act{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
+.tr-act button{border:1px solid var(--line);background:#fff;border-radius:6px;font-size:10.5px;
+  padding:3px 8px;cursor:pointer;color:var(--ink2);font-family:inherit;line-height:16px}
+.tr-act button:hover{background:var(--hover);color:var(--ink)}
+.tr-img{margin:7px 0 0;border:1px solid var(--line);border-radius:6px;overflow:hidden;
+  background:#f7f8fa;min-height:54px;display:flex;align-items:center;justify-content:center;
+  font-size:10.5px;color:var(--muted);text-align:center;padding:14px 8px}
+.tr-img img{display:block;width:100%;height:auto;padding:0}
+.tr-empty{font-size:11px;color:var(--muted);line-height:1.7;padding:12px 2px}
+.tr-empty b{color:var(--ink2);font-weight:600}
+.tr-note{font-size:10.5px;color:#8a9099;line-height:1.6;margin:5px 0 0}
 /* 跳到正文时的落点提示：底色与左侧竖条闪一下，两秒后自己退掉 */
 .flash{animation:ckflash 1.9s ease-out;border-radius:4px}
 @keyframes ckflash{
@@ -3263,7 +3355,7 @@ function renderActions(d){
       </div>
     </div>
   </div>
-  <aside class="rail rail-r" id="railR"><div id="d-ana"></div>${ckHtml(v)}</aside>
+  <aside class="rail rail-r" id="railR">${railTabsHtml()}<div class="rpane" id="paneCheck"><div id="d-ana"></div>${ckHtml(v)}</div><div class="rpane hide" id="paneTrace">${traceHtml()}</div></aside>
 </div>`;
 
   $("#draftArea").innerHTML = h;
@@ -3276,6 +3368,7 @@ function renderActions(d){
   placeRailR();
   ckApplyFold();
   ckPaint();
+  traceReset();      // 换了稿子，上一份的溯源行号全部作废
   loadAna();          // 分析附件清单要问服务端，异步补进侧栏
   syncFab();
 }
@@ -3676,7 +3769,7 @@ function renderDraft(){
       </div>
     </div>
   </div></div>
-  <aside class="rail rail-r" id="railR"><div id="d-ana"></div>${ckHtml(v)}</aside>
+  <aside class="rail rail-r" id="railR">${railTabsHtml()}<div class="rpane" id="paneCheck"><div id="d-ana"></div>${ckHtml(v)}</div><div class="rpane hide" id="paneTrace">${traceHtml()}</div></aside>
 </div>`;
 
   $("#draftArea").innerHTML = h;
@@ -3696,6 +3789,7 @@ function renderDraft(){
   placeRailR();
   ckApplyFold();
   ckPaint();
+  traceReset();
   loadAna();
   autoGrowAll();
   paintRevChip();
@@ -4325,7 +4419,11 @@ function revalidateSoon(){
         { company: curCo(), draft: safeDraft(), titles: (S.loaded || []) });
       if(!r.validation || r.skipped || r.error) return;
       S.draft.validation = r.validation;
+      // 正文动过一个字，后面所有数字的偏移就都变了，溯源清单必须重算，
+      // 否则点「定位到正文」会选中隔壁那句话
+      TR.dirty = true;
       renderRailR();
+      if(TR.tab === "trace") traceEnsure();
     }catch(e){ /* 重算失败不影响改稿，下一次生成会重算 */ }
   }, 1500);
 }
@@ -4335,10 +4433,15 @@ function revalidateSoon(){
 function renderRailR(){
   const rail = $("#railR");
   if(!rail || !S.draft) return;
-  rail.innerHTML = `<div id="d-ana"></div>` + ckHtml(S.draft.validation || {});
+  rail.innerHTML = railTabsHtml()
+    + `<div class="rpane" id="paneCheck"><div id="d-ana"></div>`
+    + ckHtml(S.draft.validation || {}) + `</div>`
+    + `<div class="rpane hide" id="paneTrace">${traceHtml()}</div>`;
   ckApplyFold();
   ckPaint();
   loadAna();
+  railTabApply();
+  tracePaint();
   syncRails();
 }
 
@@ -4771,6 +4874,479 @@ function ckPaint(){
     if(c) c.textContent = `${on}/${rs.length}`;
   });
 }
+/* ══ 溯源：正文里的数，回到它来的地方 ═══════════════════════════════
+   与「核验」是一件事的两面：核验报哪里不对，溯源回答每个数哪来的。
+   三种来源按可信度排——材料原文（有文件、有页码、有原话）＞ 交底算式（模型自己
+   写的算法）＞ 同段反推（只知道数值关系，不知道业务含义）。
+   没有来源的数照样列出来：说「摘录里没有」不等于说「材料里没有」，
+   这两句话的区别，决定人是回去补材料还是回去改数。 */
+const TR = {rows: [], stats: {}, docs: [], q: "", filter: "all", open: -1,
+            loaded: false, busy: false, mode: "num", tab: "check", err: ""};
+
+// [样式类, 列表里的短标, 详情卡里的长标]。列表一行只有 300px 宽，
+// 「材料原文」四个字加段名就挤成两行；短标 + 颜色足够分得清，展开再看全称。
+const TR_KIND = {
+  source: ["k-src", "原文", "材料原文"],
+  calc: ["k-calc", "可算", "计算得出"],
+  none: ["k-none", "未找到", "没找到出处"],
+  market: ["k-mkt", "行情", "行情数据"],
+  meta: ["k-meta", "期次", "期次篇幅"],
+};
+
+function railTabsHtml(){
+  const v = (S.draft && S.draft.validation) || {};
+  const done = ckDoneSet();
+  let left = 0;
+  try{
+    const items = ckItems(v).filter(it => it.fix !== "auto" && it.fix !== "hint");
+    left = items.reduce((a, x) => a.concat(x.rows), []).filter(r => !done.has(r.k)).length;
+  }catch(e){ left = 0; }
+  const t = TR.tab || "check";
+  return `<div class="rtabs">
+    <button data-t="check" class="${t === "check" ? "on" : ""}" onclick="railTab('check')"
+      title="数据对不上的地方，一条一条核">核验${left ? `<span class="rn">${left}</span>` : ""}</button>
+    <button data-t="trace" class="${t === "trace" ? "on" : ""}" onclick="railTab('trace')"
+      title="正文里的每个数从哪来">溯源</button>
+  </div>`;
+}
+
+function railTab(t){
+  TR.tab = t;
+  railTabApply();
+  if(t === "trace"){
+    traceEnsure();
+    tracePaint();
+  }
+}
+function railTabApply(){
+  const rail = $("#railR");
+  if(!rail) return;
+  rail.querySelectorAll(".rtabs button[data-t]").forEach(b =>
+    b.classList.toggle("on", b.dataset.t === TR.tab));
+  const a = $("#paneCheck"), b = $("#paneTrace");
+  if(a) a.classList.toggle("hide", TR.tab !== "check");
+  if(b) b.classList.toggle("hide", TR.tab !== "trace");
+}
+
+function traceHtml(){
+  const numOn = TR.mode !== "text";
+  return `<div class="rtabs" style="margin-bottom:10px">
+      <button data-m="num" class="${numOn ? "on" : ""}" onclick="trMode('num')">数字检索</button>
+      <button data-m="text" class="${numOn ? "" : "on"}" onclick="trMode('text')">文字检索</button>
+    </div>
+    <div id="trNumBox" class="${numOn ? "" : "hide"}">
+      <input class="tr-q" id="trQ" placeholder="搜数字或段名，如 40.76、债务" value="${esc(TR.q)}"
+        oninput="trSearch(this.value)" spellcheck="false"/>
+      <div class="tr-stat" id="trStat"></div>
+      <div class="tr-bar"><i id="trBar" style="width:0"></i></div>
+      <div class="tr-f" id="trF"></div>
+      <div id="trList"></div>
+    </div>
+    <div id="trTextBox" class="${numOn ? "hide" : ""}">
+      <div class="tr-empty"><b>文字检索放到下一版。</b><br>
+        这条要解决的是「这句话凭什么这么判断」——把正文的句子对回材料的段落，比数字难：
+        数字靠值就能认，句子要先解决同义、改写、跨段合并。先做数字，是因为它可验证，
+        而且错了后果更直接。<br>
+        现在能用的：切回「数字检索」，或者点正文里的任意一个数。</div>
+    </div>`;
+}
+
+function trMode(m){
+  TR.mode = m;
+  const a = $("#trNumBox"), b = $("#trTextBox");
+  if(a) a.classList.toggle("hide", m !== "num");
+  if(b) b.classList.toggle("hide", m !== "text");
+  document.querySelectorAll("#paneTrace .rtabs button[data-m]").forEach(x =>
+    x.classList.toggle("on", x.dataset.m === m));
+}
+
+async function traceEnsure(){
+  if(TR.busy || !S.draft) return;
+  if(typeof DEMO !== "undefined" && DEMO.on) return;
+  // 改过正文就该重算：移动一个字符，后面的偏移全变，不重算会指到隔壁那句话
+  if(TR.loaded && !TR.dirty) return;
+  await traceLoad();
+}
+
+async function traceLoad(){
+  if(!S.draft || TR.busy) return;
+  TR.busy = true; TR.err = "";
+  tracePaint();
+  try{
+    const r = await api("/api/trace",
+      {company: curCo(), draft: safeDraft(), titles: (S.loaded || []),
+       history_id: (S.draft && S.draft.history_id) || ""});
+    TR.rows = r.rows || [];
+    TR.stats = r.stats || {};
+    TR.docs = r.docs || [];
+    TR.loaded = true;
+    TR.dirty = false;
+    TR.err = r.note || r.error || "";
+  }catch(e){
+    TR.rows = []; TR.stats = {}; TR.loaded = true;
+    TR.err = "溯源没跑起来：" + ((e && e.message) || e);
+  }
+  TR.busy = false;
+  tracePaint();
+}
+
+/* 生成新稿、换主体之后，旧的溯源结果全部作废——数字变了一批，
+   还按上一份的行号去点，会指到别的段落。 */
+function traceReset(){
+  TR.rows = []; TR.stats = {}; TR.docs = [];
+  TR.loaded = false; TR.open = -1; TR.q = ""; TR.filter = "all"; TR.err = "";
+}
+
+function trSearch(q){ TR.q = q || ""; TR.open = -1; tracePaint(); }
+function trFilter(f){ TR.filter = f; TR.open = -1; tracePaint(); }
+
+function trShown(){
+  const q = (TR.q || "").trim().toLowerCase();
+  return TR.rows.filter(r => {
+    // 年份与「35 家」这类篇幅数默认不占清单：它们不用核，但一列出来就把
+    // 真正要看的数挤到下面去了。要看点「期次」那颗按钮。
+    if(TR.filter === "all" && r.kind === "meta") return false;
+    if(TR.filter !== "all" && r.kind !== TR.filter) return false;
+    if(!q) return true;
+    const hay = [r.num, r.blk, r.sent, r.quote, r.doc_title,
+                 r.calc && (r.calc.name + " " + r.calc.disp)].filter(Boolean).join(" ").toLowerCase();
+    return hay.indexOf(q) >= 0;
+  });
+}
+
+function tracePaint(){
+  const list = $("#trList");
+  if(!list) return;
+  const s = TR.stats || {};
+  const stat = $("#trStat"), bar = $("#trBar"), fbox = $("#trF");
+  if(TR.busy && !TR.loaded){
+    if(stat) stat.innerHTML = `<span>正在把正文里的数字逐个对回材料…</span>`;
+    if(bar) bar.style.width = "0";
+    if(fbox) fbox.innerHTML = "";
+    list.innerHTML = `<div class="tr-empty">一份两三万字的稿子有近两百个数，第一次算要一两秒。</div>`;
+    return;
+  }
+  if(!TR.loaded){
+    if(stat) stat.innerHTML = `<span>${esc(TR.err || "打开这一栏会开始核对")}</span>`;
+    if(bar) bar.style.width = "0";
+    if(fbox) fbox.innerHTML = "";
+    list.innerHTML = `<div class="tr-empty">切到这一栏就自动开始。也可以直接点正文里的数字。</div>`;
+    return;
+  }
+  if(TR.err && !TR.rows.length){
+    if(stat) stat.innerHTML = `<span>${esc(TR.err)}</span>`;
+    list.innerHTML = `<div class="tr-empty">没有材料原文时，数字无从溯起。先检索并读取材料。</div>`;
+    return;
+  }
+  if(stat) stat.innerHTML =
+      `<div class="tr-s1"><span><b>${s.coverage || 0}%</b> 已定位</span>`
+    + `<span>共 ${s.total || 0} 个数</span></div>`
+    + `<div class="tr-s2">有原文 ${s.source || 0} · 可复算 ${s.calc || 0}`
+    + (s.market ? ` · 行情 ${s.market}` : "")
+    + (s.none ? ` · <span class="no">没找到 ${s.none}</span>` : "") + `</div>`;
+  if(bar) bar.style.width = (s.coverage || 0) + "%";
+  if(fbox){
+    const all = TR.rows.filter(r => r.kind !== "meta").length;
+    const tabs = [["all", "全部", all], ["source", "有原文", s.source || 0],
+                  ["calc", "可复算", s.calc || 0], ["none", "没找到", s.none || 0]];
+    fbox.innerHTML = tabs.map(([k, label, n]) =>
+      `<button class="${TR.filter === k ? "on" : ""}" onclick="trFilter('${k}')">${label} ${n}</button>`
+    ).join("") + `<button class="${TR.filter === "meta" ? "on" : ""}"
+      onclick="trFilter('meta')" title="年份、页数这类，不参与核对">期次 ${s.meta || 0}</button>`;
+  }
+  const rows = trShown();
+  if(!rows.length){
+    list.innerHTML = `<div class="tr-empty">没有符合的数。换个词，或点上面的「全部」。</div>`;
+    return;
+  }
+  list.innerHTML = rows.map(r => {
+    const i = TR.rows.indexOf(r);
+    return trRowHtml(r, i) + (TR.open === i ? trCardHtml(r, i) : "");
+  }).join("");
+}
+
+function trRowHtml(r, i){
+  const k = TR_KIND[r.kind] || TR_KIND.none;
+  // 行里只写「段名 · 第几页」：文件名太长，且同一个数的候选多半都在同一份里，
+  // 展开才需要知道是哪一份
+  const where = r.page ? ("第 " + r.page + " 页")
+                       : (r.kind === "calc" ? "算式可复算" : "");
+  return `<div class="tr-row ${TR.open === i ? "on" : ""}" onclick="traceOpen(${i})">
+    <span class="n">${esc(r.num)}</span>
+    <span class="k ${k[0]}">${k[1]}</span>
+    <span class="w">${esc(r.blk)}${where ? " · " + esc(where) : ""}</span>
+  </div>`;
+}
+
+function traceOpen(i){
+  TR.open = (TR.open === i) ? -1 : i;
+  tracePaint();
+  if(TR.open >= 0){
+    const el = document.querySelector(`#trList .tr-row.on`);
+    if(el) el.scrollIntoView({block: "nearest"});
+  }
+}
+
+function trShortDoc(t){
+  // 「2026年度中山城市建设集团有限公司信用评级报告」在一栏 300px 里放不下，
+  // 掐头留尾也没用——留「信用评级报告」「募集说明书」这几类，人认得出来。
+  const s = String(t || "");
+  for(const k of ["跟踪评级报告", "信用评级报告", "评级报告", "募集说明书", "审计报告",
+                  "财务报表", "半年度报告", "年度报告"]){
+    if(s.indexOf(k) >= 0){
+      const y = s.match(/(20\d{2})\s*年度/);
+      return (y ? y[1] + "年" : "") + k;
+    }
+  }
+  return s.length > 22 ? s.slice(0, 22) + "…" : s;
+}
+
+function trMarkNum(sent, raw){
+  const s = String(sent || ""), n = String(raw || "");
+  if(!n) return esc(s);
+  const i = s.indexOf(n);
+  if(i < 0) return esc(s);
+  return esc(s.slice(0, i)) + "<mark>" + esc(n) + "</mark>" + esc(s.slice(i + n.length));
+}
+
+function trCardHtml(r, i){
+  const k = TR_KIND[r.kind] || TR_KIND.none;
+  let h = `<div class="tr-d">
+    <div class="tr-d-h"><b>${esc(r.num)}</b><span class="u">${k[2]}</span>
+      <button class="x" onclick="traceOpen(-1)" title="收起">×</button></div>
+    <div class="tr-sent">${trMarkNum(r.sent, r.raw)}</div>`;
+
+  if(r.quote && r.doc_title){
+    h += `<div class="tr-sec"><div class="tr-sec-h">材料原文</div>
+      <div class="tr-file">${esc(r.doc_title)} · <span class="pg" onclick="trPage(${i})">第 ${r.page} 页</span></div>
+      <div class="tr-qt">${esc(r.quote)}</div>`;
+    const others = (r.hits || []).slice(1);
+    if(others.length){
+      h += `<div class="tr-note">另有 ${others.length} 处同值：` +
+        others.map(o => `${esc(trShortDoc(o.doc_title))} 第 ${o.page} 页`).join("；") + `</div>`;
+    }
+    h += `</div>`;
+  }
+
+  const c = r.calc;
+  if(c){
+    h += `<div class="tr-sec"><div class="tr-sec-h">${c.guess ? "算式（按同段数字反推）" : "算式（模型交底）"}</div>
+      <div class="tr-fx">${c.name ? esc(c.name) + " = " : ""}${esc(c.disp)}</div>
+      <ul class="tr-ops">` + (c.ops || []).map(o => o.miss
+        ? `<li class="miss">${esc(o.disp)} · 材料里没有这个原值（像是由另两个数相减或换算得来）</li>`
+        : `<li>${esc(o.disp)} · <span class="p">${esc(trShortDoc(o.doc_title))} 第 ${o.page} 页</span></li>`
+      ).join("") + `</ul>`;
+    const q = (c.ops || []).find(o => o.quote);
+    if(q) h += `<div class="tr-qt" style="margin-top:5px">${esc(q.quote)}</div>`;
+    h += `</div>`;
+  }
+
+  if(r.kind === "none" || r.kind === "market"){
+    h += `<div class="tr-sec"><div class="tr-sec-h">说明</div>
+      <div class="tr-qt">${esc(r.note || "")}</div></div>`;
+  }else if(r.note){
+    h += `<div class="tr-note">${esc(r.note)}</div>`;
+  }
+
+  h += `<div class="tr-act">
+      <button onclick="trJump(${i})">定位到正文</button>`;
+  if(r.quote && r.doc_title) h += `<button onclick="trPage(${i})">看这一页</button>`;
+  if(r.kind === "none") h += `<button onclick="trDeep(${i})">翻全文</button>`;
+  h += `</div><div id="trExtra${i}"></div></div>`;
+  return h;
+}
+
+/* 跳到正文并把这个数选中：滚过去还要自己找那个数，等于没省事。 */
+function trJump(i){
+  const r = TR.rows[i];
+  if(!r) return;
+  const list = ckTextFields();
+  let el = list.find(x => x.name === r.blk && x.f === r.field);
+  if(!el) el = list.find(x => x.f === r.field);
+  if(!el){
+    toast("这一段在页面上找不到，可能刚被删掉");
+    return;
+  }
+  const node = el.el;
+  const txt = node.tagName === "TEXTAREA" ? node.value : (node.innerText || "");
+  let at = r.at;
+  // 页面上的文字可能被改过，后端记的偏移就对不上了。按数字自身再找一次，
+  // 找最接近原偏移的那一处，比直接放弃强。
+  if(txt.slice(at, at + r.raw.length) !== r.raw){
+    let best = -1, bd = 1e9;
+    for(const t of trScan(txt)){
+      if(t.raw !== r.raw) continue;
+      const d = Math.abs(t.at - r.at);
+      if(d < bd){ bd = d; best = t.at; }
+    }
+    if(best < 0){ toast("正文里找不到这个数了，可能已被改掉"); return; }
+    at = best;
+  }
+  try{ node.scrollIntoView({block: "center", behavior: "smooth"}); }catch(e){}
+  trSelect(node, at, r.raw.length);
+  const blk = node.closest(".blk");
+  if(blk){
+    blk.classList.remove("flash");
+    void blk.offsetWidth;
+    blk.classList.add("flash");
+    clearTimeout(blk._fl);
+    blk._fl = setTimeout(() => blk.classList.remove("flash"), 1900);
+  }
+}
+
+/* textarea 用 setSelectionRange；分部段是 contenteditable，只能按文本节点累加。 */
+function trSelect(el, at, len){
+  try{
+    if(el.tagName === "TEXTAREA"){
+      el.focus({preventScroll: true});
+      el.setSelectionRange(at, at + len);
+      return true;
+    }
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    let acc = 0, n;
+    while((n = walker.nextNode())){
+      const t = n.nodeValue || "";
+      if(acc + t.length >= at + len){
+        const s = Math.max(0, at - acc), e = Math.max(0, Math.min(at - acc + len, t.length));
+        const r = document.createRange();
+        r.setStart(n, s); r.setEnd(n, e);
+        const sel = window.getSelection();
+        sel.removeAllRanges(); sel.addRange(r);
+        return true;
+      }
+      acc += t.length;
+    }
+  }catch(e){ /* 选不中不影响定位，光标落下就够了 */ }
+  return false;
+}
+
+async function trPage(i, page, title, path){
+  const r = TR.rows[i];
+  const box = $("#trExtra" + i);
+  if(!r || !box) return;
+  const pg = page || r.page;
+  const doc = title || r.doc_title;
+  box.innerHTML = `<div class="tr-img">正在渲染第 ${pg} 页…</div>`;
+  try{
+    const d = await api("/api/trace/page",
+      {title: doc, page: pg, path: path || r.doc_path || "", company: curCo()});
+    box.innerHTML = d.data
+      ? `<div class="tr-img" style="padding:0"><img src="data:image/jpeg;base64,${d.data}"
+           alt="第 ${pg} 页"/></div>`
+      : `<div class="tr-img">${esc(d.note || "取不到这一页")}</div>`;
+  }catch(e){
+    box.innerHTML = `<div class="tr-img">这一页取不出来：${esc(String((e && e.message) || e))}</div>`;
+  }
+}
+
+/* 摘录里没有 ≠ 材料里没有。翻全文就是把这句话验证掉：
+   找到就是把页码补上，找不到才敢说「材料里确实没有」，或者「是算出来的」。 */
+async function trDeep(i){
+  const r = TR.rows[i];
+  const box = $("#trExtra" + i);
+  if(!r || !box) return;
+  box.innerHTML = `<div class="tr-img">正在翻整份 PDF…</div>`;
+  try{
+    const d = await api("/api/trace/deep",
+      {title: r.doc_title || "", path: r.doc_path || "",
+       paths: (TR.docs || []).map(x => x.path).filter(Boolean),
+       num: r.raw, unit: r.unit, company: curCo()});
+    const pgs = d.pages || [];
+    const nr = d.near || [];
+    if(!pgs.length && !nr.length){
+      box.innerHTML = `<div class="tr-img">${esc(d.note || "整份文件里也没有")}</div>`;
+      return;
+    }
+    TR.deepFile = d.file || "";
+    TR.deepPath = d.path || "";
+    if(!pgs.length){
+      // 只差一点点就搜不到是常态：材料写成 7.61 或 75,980.00 万，正文是 7.60 亿元。
+      // 这时给「最接近的几个」，人才判断得出是四舍五入、口径不同，还是真没有。
+      box.innerHTML = `<div class="tr-sec" style="margin-top:7px">
+        <div class="tr-sec-h">没有完全一致的写法，最接近的是</div>`
+        + nr.map(p => `<div class="tr-file">${esc(trShortDoc(d.file || ""))} ·
+            <span class="pg" onclick="trPage(${i},${p.page},TR.deepFile,TR.deepPath)">第 ${p.page} 页</span></div>
+            <div class="tr-qt">${esc(p.quote)}</div>`).join("")
+        + `<div class="tr-note">差 ${(nr[0].rel * 100).toFixed(1)}% 以内。数值对不上但意思接近时，
+            多数是四舍五入或单位口径不同；差得远就是另一个数了。</div></div>`;
+      return;
+    }
+    box.innerHTML = `<div class="tr-sec" style="margin-top:7px">
+      <div class="tr-sec-h">全文里找到 ${pgs.length} 处（摘录未覆盖）</div>`
+      + pgs.slice(0, 5).map(p => `<div class="tr-file">${esc(trShortDoc(d.file || ""))} ·
+          <span class="pg" onclick="trPage(${i},${p.page},TR.deepFile,TR.deepPath)">第 ${p.page} 页</span></div>
+          <div class="tr-qt">${esc(p.quote)}</div>`).join("")
+      + `<div class="tr-note">这些页没有进模型读的摘录，数可能是从别处推的；核对时以这几页为准。</div>
+      </div>`;
+  }catch(e){
+    box.innerHTML = `<div class="tr-img">翻不动：${esc(String((e && e.message) || e))}</div>`;
+  }
+}
+
+/* 点正文里的数字：读出光标落在哪个数上，回到右栏展开它。
+   不做热区、不套一层只读视图——正文是 textarea，加了热区就没法改字了。
+   顺着光标找，编辑与查源就不打架。 */
+function trScan(text){
+  const out = [];
+  const re = /-?\d[\d,]*(?:\.\d+)?/g;
+  let m;
+  while((m = re.exec(text || ""))) out.push({raw: m[0], at: m.index, len: m[0].length});
+  return out;
+}
+
+function trCaretAt(el){
+  if(!el) return -1;
+  if(el.tagName === "TEXTAREA") return el.selectionStart == null ? -1 : el.selectionStart;
+  const sel = window.getSelection();
+  if(!sel || !sel.rangeCount) return -1;
+  const r = sel.getRangeAt(0);
+  if(!el.contains(r.startContainer)) return -1;
+  try{
+    const pre = document.createRange();
+    pre.selectNodeContents(el);
+    pre.setEnd(r.startContainer, r.startOffset);
+    return pre.toString().length;
+  }catch(e){ return -1; }
+}
+
+function trPickAt(el){
+  const box = el && el.closest && el.closest(".ta, .seg-line, .topic-body");
+  if(!box) return;
+  const meta = ckTextFields().find(x => x.el === box);
+  if(!meta) return;
+  const txt = box.tagName === "TEXTAREA" ? box.value : (box.innerText || "");
+  const at = trCaretAt(box);
+  if(at < 0) return;
+  const toks = trScan(txt);
+  let hit = toks.find(t => at >= t.at && at <= t.at + t.len);
+  if(!hit) hit = toks.find(t => t.at === at + 1 || t.at + t.len === at - 1);
+  if(!hit) return;
+  let idx = TR.rows.findIndex(r => r.field === meta.f && r.at === hit.at);
+  if(idx < 0) idx = TR.rows.findIndex(r =>
+    r.field === meta.f && r.raw === hit.raw && Math.abs(r.at - hit.at) <= 2);
+  if(idx < 0){
+    toast("这个数不在溯源清单里（可能是刚改的），换到「溯源」页可以整体重算");
+    return;
+  }
+  TR.open = idx;
+  if(TR.tab !== "trace") railTab("trace");
+  tracePaint();
+  const row = document.querySelector("#trList .tr-row.on");
+  if(row) row.scrollIntoView({block: "nearest"});
+  try{
+    if(box.tagName === "TEXTAREA") box.setSelectionRange(hit.at, hit.at + hit.len);
+  }catch(e){ /* 选不中不影响右栏已经展开 */ }
+}
+
+document.addEventListener("click", e => {
+  if(!e.target || !e.target.closest) return;
+  if(TR.tab !== "trace") return;
+  const box = e.target.closest(".ta, .seg-line, .topic-body");
+  if(!box) return;
+  // 等浏览器把光标放好再读，否则拿到的是上一次的位置
+  setTimeout(() => { if(TR.tab === "trace") trPickAt(box); }, 0);
+}, true);
+
 function ckOne(input){
   const row = input.closest(".ckr");
   if(!row) return;
