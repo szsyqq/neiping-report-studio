@@ -3737,7 +3737,8 @@ function renderDraft(){
       <div class="doc-h first">2、点评</div>
       ${(c.industry && (c.industry.lead || "").trim()) ? ta("in-lead lead", c.industry.lead) : ""}
       ${ta("in-body", c.industry && c.industry.body)}
-      ${addSec("industry", "行业段后")}
+      ${addSec("industry", d.issuer_type === "region" ? "区域段后" : "行业段后",
+                d.issuer_type === "region")}
     </div>
     <div class="blk" id="blk-overview">
       ${ta("ov-lead lead", c.overview && c.overview.lead)}
@@ -4044,6 +4045,9 @@ const ADD_TOPICS = {
   debt: ["债务期限结构", "授信与未使用额度", "对外融资渠道"],
   market: ["成交与估值水平", "与同评级主体的比较"],
 };
+// 区域开发类（城投）的第一段写的是城市与财政，不是行业景气。候选主题跟着换：
+// 摆着「区域市场容量与竞争格局」在那儿，人点进去只会补出一段行业套话。
+const REGION_TOPICS = ["区域经济与产业基础", "财政收支与财力", "政府债务与回款路径", "政府补助与注资"];
 const ADD_SECTION_LABEL = {
   basic: "1、基本情况", industry: "2、点评（第一段·行业）", overview: "2、点评（第二段·总述）",
   asset: "资产段", profit: "盈利与现金流", debt: "债务段", market: "二级市场定价",
@@ -4053,8 +4057,19 @@ const ADD_TA = {
   asset: "as-body", profit: "pf-body", debt: "db-body", market: "mk-body",
 };
 
-function addSec(key, label){
-  const items = (ADD_TOPICS[key] || []).map(t =>
+function isRegionDraft(){
+  return !!((S.draft || {}).issuer_type === "region");
+}
+/* 补写面板与右栏要显示的段名。行业段与区域段是同一个段位，叫法不同——
+   面板上写着「行业」而正文谈的是财政，读的人会以为补错了地方。 */
+function secLabel(key){
+  if(key === "industry") return isRegionDraft() ? "2、点评（第一段·区域）" : "2、点评（第一段·行业）";
+  return ADD_SECTION_LABEL[key] || key;
+}
+
+function addSec(key, label, region){
+  const topics = (key === "industry" && region) ? REGION_TOPICS : (ADD_TOPICS[key] || []);
+  const items = topics.map(t =>
     `<button onclick="expandTopic('${key}','${esc(t)}',event)">${esc(t)}</button>`).join("");
   return `<span class="addsec">
     <button class="add" onclick="addSecMenu(this,event)" title="补一段分析，或选中正文里的字就地改">+ 补一段分析</button>
@@ -4105,16 +4120,16 @@ async function expandRun(key, topic){
   const d = S.draft || {};
   RF.el = taEl; RF.start = -1; RF.end = -1; RF.before = ""; RF.after = "";
   RF.action = "expand"; RF.topic = topic;
-  rfmOpen({ title: `补一段：${topic}`, sub: `写在「${ADD_SECTION_LABEL[key] || key}」之后。生成完先给你看，确认了才写进去。`,
+  rfmOpen({ title: `补一段：${topic}`, sub: `写在「${secLabel(key)}」之后。生成完先给你看，确认了才写进去。`,
             before: "", after: "", note: "", busy: true });
   try{
     const j = await runJob("expand", {
-      company: curCo(), topic, section: ADD_SECTION_LABEL[key] || key,
+      company: curCo(), topic, section: secLabel(key),
       section_text: taEl.value || "", draft: safeDraft(),
       titles: S.loaded.slice(), model: curModel()
     });
     RF.key = key;
-    rfmOpen({ title: `补一段：${topic}`, sub: `写在「${ADD_SECTION_LABEL[key] || key}」之后。确认后点「换上去」。`,
+    rfmOpen({ title: `补一段：${topic}`, sub: `写在「${secLabel(key)}」之后。确认后点「换上去」。`,
               before: taEl.value.slice(-160), after: j.result.text,
               note: j.result.note || `${j.result.text.length} 字`, warn: j.result.warn || "",
               busy: false, append: true });
@@ -4203,7 +4218,9 @@ function selProbe(){
 function sectionOfTa(el){
   const blk = el.closest(".blk");
   if(!blk) return "";
-  const map = { "blk-basic": "基本情况", "blk-industry": "点评第一段（行业）", "blk-overview": "点评总述段",
+  const map = { "blk-basic": "基本情况",
+    "blk-industry": isRegionDraft() ? "点评第一段（区域）" : "点评第一段（行业）",
+    "blk-overview": "点评总述段",
     "blk-asset": "资产段", "blk-profit": "盈利与现金流", "blk-debt": "债务段",
     "blk-market": "二级市场定价", "blk-segments": "分部业务" };
   return map[blk.id] || "";
@@ -4614,6 +4631,11 @@ const CK_RULES = [
   [/正面不足/, "正面不足 3 条", "blk-pos"],
   [/关注不足/, "关注不足 3 条", "blk-con"],
   [/总述段缺加粗汇总句/, "总述段缺加粗句", "blk-overview"],
+  // 区域类两条要排在行业类前面：「点评缺第一段（区域）」也含「点评缺第一段」，
+  // 顺序反了就会被行业那条先收走，右栏标题和图上的段名对不上。
+  [/点评缺第一段（区域）/, "点评缺第一段（区域）", "blk-industry"],
+  [/区域段偏薄|区域段没有数据|区域段缺加粗句|区域段写成了行业|区域段没写财政|区域段写到了公司经营/,
+   "点评第一段（区域）", "blk-industry"],
   [/缺行业情况段|点评缺第一段/, "点评缺第一段（行业）", "blk-industry"],
   [/行业情况偏薄|行业段偏薄|行业段没有数据/, "点评第一段（行业）", "blk-industry"],
   [/缺注册资本|缺注册资本\/实收资本/, "注册资本与实收资本", "blk-basic"],
@@ -4623,7 +4645,11 @@ const CK_RULES = [
 ];
 /* 明细行形如「· 12.34（疑似占比）—— 3、点评：「…」」，按 —— 后面的段名找落点 */
 const WHERE_RULES = [
-  [/关注/, "blk-con"], [/正面/, "blk-pos"], [/点评|总述/, "blk-overview"],
+  [/关注/, "blk-con"], [/正面/, "blk-pos"],
+  // 区域段也要抢在 /点评|总述/ 前面：明细行的段名写「点评第一段（区域）」，
+  // 先命中「点评」就落到总述段，点一条跳到隔壁去了。
+  [/第一段（区域）|区域段/, "blk-industry"],
+  [/点评|总述/, "blk-overview"],
   [/分部|板块|业务/, "blk-segments"], [/资产/, "blk-asset"],
   [/盈利|利润|亏损|毛利|现金流|收现比|经营活动净现金流/, "blk-profit"],
   [/二级市场|利差|定价/, "blk-market"],
@@ -5592,8 +5618,8 @@ function ckTextFields(){
   push(document.querySelector(".ta.basic"), "basic", "基本情况");
   // 加粗句也要进候选池：主语类问题瞄准的就是加粗句，
   // 只收 body 的话，引文在加粗句里就搜不到，点了没反应。
-  push(document.querySelector(".ta.in-lead"), "in-lead", "行业段加粗句");
-  push(document.querySelector(".ta.in-body"), "in", "点评第一段（行业）");
+  push(document.querySelector(".ta.in-lead"), "in-lead", isRegionDraft() ? "区域段加粗句" : "行业段加粗句");
+  push(document.querySelector(".ta.in-body"), "in", isRegionDraft() ? "点评第一段（区域）" : "点评第一段（行业）");
   push(document.querySelector(".ta.ov-lead"), "ov-lead", "总述段加粗句");
   push(document.querySelector(".ta.ov-body"), "ov", "总述段");
   push(document.querySelector(".ta.as-lead"), "as-lead", "资产段加粗句");

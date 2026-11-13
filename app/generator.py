@@ -265,6 +265,168 @@ def period_labels(facts: dict) -> dict[str, dict[str, str]]:
     return out
 
 
+# ── 主体类型：产业类 vs 区域开发类（城投） ────────────────────────────
+# 这两类的第一段不是同一件事。产业类写行业（供需、价格、政策），区域开发类
+# 写区域（经济、财政收支、财力）——因为这类主体没有可比的行业，它的量与价由
+# 一座城市的建设节奏和财政安排决定。判据落在「钱从谁那里来」，不看名字里
+# 有没有「城投」：一家叫「××发展投资」的公司也可能大半收入来自自营开发。
+#
+# 强信号：直接就是替政府做事、按财政结算拿钱。
+_GOV_BIZ_STRONG = (
+    "土地整理", "土地开发", "土地一级开发", "土地转让", "土地出让", "土地指标",
+    "土地储备", "代建", "保障房", "保障性住房", "安置房", "棚户区", "棚改",
+    "政府购买服务", "项目回购", "特许经营",
+)
+# 弱信号：多为平台业务，但产业类主体也有（工程承包商做基建、水务公司供水）。
+# 只用来加权，不单独定性。
+_GOV_BIZ_WEAK = (
+    "基础设施", "城市建设", "市政", "园区开发", "供水", "水务", "污水处理",
+    "公交", "供热", "燃气", "道路", "交通基础设施",
+)
+# 名称里直接指向平台身份的写法（强）
+_PLATFORM_NAME = (
+    "城投", "城建", "城市建设", "国有资产投资", "国有资本投资运营", "国有资产经营",
+    "国有资产管理", "保障性住房", "安居", "公用事业", "新区投资",
+)
+# 名称里只是「像平台」的写法（弱）：「发展投资」「投资建设」「投资控股」既可能是
+# 平台，也可能是产业控股集团。只在没有分板块收入、且资产周转很慢时才认。
+_PLATFORM_NAME_WEAK = (
+    "发展投资", "投资建设", "开发建设", "园区投资", "投资控股",
+)
+# 名字里带这些词的，基本可以排除平台身份——有主业、有产品，行业段才写得下去。
+_INDUSTRY_NAME = (
+    "传媒", "科技", "电子", "医药", "生物", "化工", "食品", "汽车", "机械", "材料",
+    "钢铁", "水泥", "能源", "电力", "燃气", "环保", "地产", "置业", "贸易", "物流",
+    "证券", "银行", "保险", "信托", "租赁", "教育", "医疗", "旅游", "文化", "农业",
+    "林业", "渔业", "矿业", "纺织", "电器", "通信", "软件", "信息", "网络",
+)
+
+
+def region_issuer(facts: dict) -> dict:
+    """判主体是不是区域开发类。返回 {is_region, why, strong_share, weak_share}。
+
+    只在两个口径上判断，都不看行业标签：
+      ① 分板块收入里，政府结算类板块占多少（最主要）；
+      ② 名称与业务定位（没有分板块收入时的兜底，且要求资产周转慢）。
+    """
+    comp = facts.get("composition") or []
+    name = str((facts.get("company") or {}).get("name")
+               or facts.get("query_name") or "")
+    strong = weak = total = 0.0
+    hits: list[str] = []
+    for c in comp[:20]:
+        nm = str(c.get("主营构成") or c.get("产品") or c.get("业务板块")
+                 or c.get("项目") or c.get("行业") or "").strip()
+        try:
+            rev = float(c.get("主营收入") or c.get("营业收入") or c.get("收入") or 0)
+        except (TypeError, ValueError):
+            rev = 0.0
+        total += rev
+        if not nm:
+            continue
+        if any(w in nm for w in _GOV_BIZ_STRONG):
+            strong += rev
+            hits.append(nm)
+        elif any(w in nm for w in _GOV_BIZ_WEAK):
+            weak += rev
+    s_share = (strong / total) if total else 0.0
+    w_share = (weak / total) if total else 0.0
+    out = {"is_region": False, "why": "", "strong_share": round(s_share, 3),
+           "weak_share": round(w_share, 3)}
+
+    if s_share >= 0.30:
+        out["is_region"] = True
+        out["why"] = ("分板块收入里" + "、".join(dict.fromkeys(hits))[:40]
+                      + f"合计占 {s_share * 100:.0f}%，钱来自财政结算或特许经营")
+        return out
+
+    nm_strong = any(w in name for w in _PLATFORM_NAME) if name else False
+    nm_weak = any(w in name for w in _PLATFORM_NAME_WEAK) if name else False
+    if nm_strong and (s_share + w_share >= 0.20 or not comp):
+        out["is_region"] = True
+        out["why"] = ("名称为城市建设／国有资产投资运营类主体"
+                      + (f"，政府结算类板块占 {(s_share + w_share) * 100:.0f}%"
+                         if comp else "，未取到分板块收入"))
+        return out
+
+    fin = facts.get("financials") or {}
+    probe = _probe_period(fin.get("periods") or [], fin.get("data") or {})
+    ta, rev = _num(probe, "总资产"), _num(probe, "营业总收入")
+    # 有财务就要求周转慢（平台的钱不是卖产品挣的）；没有财务只能按名字认——
+    # 这一档置信度最低，但比把「××发展投资建设」当成一家产业公司写行业段要好。
+    if ta and rev is not None and ta > 0:
+        slow = rev / ta < 0.20
+        why_tail = f"营业收入仅为总资产的 {rev / ta * 100:.0f}%，收入不是靠卖产品挣的"
+    else:
+        slow = True
+        why_tail = "未取到分板块收入，名称指向投资建设类平台"
+    if nm_weak and not comp and slow:
+        out["is_region"] = True
+        out["why"] = "名称为投资建设／投资控股类，" + why_tail
+        return out
+
+    # 最后一条：名字就叫「××投资有限公司」、又不带任何产业词，且资产周转极慢。
+    # 这是平台最常见的命名，但裸的「投资」两字本身什么也说明不了——
+    # 所以要两个附加条件同时成立才认：没有分板块收入、周转低于 0.15。
+    bare_inv = ("投资" in name) and not any(w in name for w in _INDUSTRY_NAME)
+    if bare_inv and not comp and slow and ta and rev is not None and rev / ta < 0.15:
+        out["is_region"] = True
+        out["why"] = ("名称为投资类、无分板块收入，营业收入仅为总资产的 "
+                      f"{rev / ta * 100:.0f}%")
+        return out
+    return out
+
+
+def issuer_from_draft(draft: dict) -> str:
+    """从已成型的稿子推主体类型，只在拿不到 facts 时用（打开旧记录、导出）。
+
+    判据比 region_issuer 窄：只认「土地整理／代建／保障房」这类强信号板块名，
+    且要占到一半以上收入。宁可判不出来，也不能把工程承包商的「基础设施建设」
+    当成土地整理——判错的代价是让人照着错的规矩改整段。
+    """
+    c = (draft or {}).get("commentary") or {}
+    # 名称里带着「城市建设」「国有资产投资」这类写法的，直接认——这类词基本不会
+    # 出现在产业公司的名字里。留着它，是为了让半年报口径的旧稿也能认出来：
+    # 那一期的土地转让收入被摊薄，光看板块占比会漏。
+    _nm = str((draft or {}).get("company_full_name") or "")
+    if _nm and any(w in _nm for w in _PLATFORM_NAME):
+        return "region"
+    rows = ((c.get("segment_table") or {}).get("rows") or [])
+    hit = tot = 0.0
+    for r in rows:
+        if not r:
+            continue
+        nm = str(r[0] or "")
+        if _is_total_row(nm):
+            continue
+        try:
+            v = float(str(r[1]).replace(",", ""))
+        except (TypeError, ValueError, IndexError):
+            continue
+        tot += v
+        if any(w in nm for w in _GOV_BIZ_STRONG):
+            hit += v
+    return "region" if (tot > 0 and hit / tot >= 0.5) else ""
+
+
+def issuer_is_region(draft: dict, facts: dict) -> bool:
+    """这份稿子的第一段该写区域还是写行业。
+
+    先读 draft 里落的 issuer_type：生成时写入，之后重算校验、打开旧记录、
+    导出这些环节拿不到 facts，只能靠它。没有就按 facts 判，再没有就从
+    业务构成表的板块名认（旧记录）。都认不出按产业类处理——老稿本来就是
+    行业写法，按产业类校验不会新增误报。
+    """
+    t = str((draft or {}).get("issuer_type") or "").strip()
+    if t == "region":
+        return True
+    if t == "industry":
+        return False
+    if facts:
+        return bool(region_issuer(facts).get("is_region"))
+    return issuer_from_draft(draft) == "region"
+
+
 def describe_traits(facts: dict) -> dict:
     """从台账数据读出主体的结构特征，交给模型判断该写哪些段落。
 
@@ -410,7 +572,7 @@ SYSTEM_PROMPT = """你是信用评级机构的分析员，负责撰写内部「�
 全文只有两个小节号，行业不是单独一节，它是「2、点评」下面的第一段。
 
 点评由以下块按序组成（这个顺序就是成稿的顺序，不另加小标题）：
-　第一段 行业情况（industry，不加段首加粗句，直接写行业）
+　第一段 外部条件（industry）：产业类主体写行业，区域开发类主体写区域。行业段不加段首加粗句，区域段要有一句（见 12.1／12.1A）
 　第二段 总述段（overview，带加粗汇总句）
 　业务构成表（segment_table）
 　分部业务段（segments，1）2）…）
@@ -424,7 +586,7 @@ SYSTEM_PROMPT = """你是信用评级机构的分析员，负责撰写内部「�
 【硬规则】
 1. 摘要层是定性概括，除判断核心依赖量级外不得出现金额、百分比、倍数、占比。判定口径：删掉这个数字，这条判断是否仍成立？成立就删掉数字。
 2. 摘要一条只讲一件事，正面与关注不得重复同一事实，不得互相矛盾。
-3. 正文每段以一句加粗汇总句开篇（总述段、资产段、盈利与现金流段、债务段、专题段），汇总句带判断不带数字，且必须带主语（见 3.1）；分部业务段不加段首加粗。
+3. 正文每段以一句加粗汇总句开篇（区域段、总述段、资产段、盈利与现金流段、债务段、专题段）；行业段与分部业务段不加段首加粗。汇总句带判断不带数字，且必须带主语（见 3.1）；分部业务段不加段首加粗。
 3.1 主语写在生成时，不是事后补。正文（含加粗汇总句、各段正文）与摘要条目里，每一个判断句都要能回答「是谁」：主语用「公司」，需要点名身份时写「公司为……」「公司作为……」；涉及股东、政府、行业、政策时主语换成对应主体（如「中山市人民政府」「区域水泥需求」）。三种写法都不合格，生成时就别写出来：
 　（1）主语脱落：「区域专营地位较强」「股权关系清晰稳定」「债务规模持续扩张，短期偿付压力上升」——读者不知道说的是谁，也不像评级机构对受评主体的判断。
 　（2）主语飘移：前一分句的主语是公司，后一分句换了主语却当成同一件事继续说，例如「公司应收账款规模较大，回款依赖财政拨付，占用资金」——第三分句的主语变成了回款，读者会分不清被占用的是谁的资金。换主语就换分句、明写新主语。
@@ -475,6 +637,14 @@ SYSTEM_PROMPT = """你是信用评级机构的分析员，负责撰写内部「�
 　收口落在行业自身：这一格局下价格与成本朝哪个方向走、谁在承担、还能持续多久。不要用「对公司形成一定支撑」「有利于公司业务发展」这类句子收尾——那是在替总述段表态，也不带任何新信息。
 　写法要求：每个判断后面跟一个可核实的数（增速、幅度、利用率、区域投资额）；只有定性表述（「行业景气度下行」）时，就把这一条写到能成立的最小事实（产量连续两年下降、价格指数回落多少），不拿套话充数。不列行业风险清单——「行业竞争加剧」「政策存在不确定性」这类没有对象、也没有影响方向的句子一律不写。
 　与总述段分工：行业只在这里写；公司自己的量、价、毛利落到哪，写在总述段与分部业务段。同一个数字不在两处各写一遍（见 19）。
+　12.1A 区域开发类主体的第一段写「区域」，不写「行业」。判据是钱从谁那里来：收入主要来自政府结算（土地整理与出让、代建、政府购买服务、特许经营）的主体，没有可比的行业——它的量与价由一座城市的建设节奏和财政安排决定，写成「行业景气度」「产能利用率」，读者拿来对照不了任何东西。这类主体的第一段照下面四拍写，各一到两句，按对回款的影响排序：
+　① 城市与区域经济：行政层级、地区生产总值与增速、产业结构、人口与城镇化阶段；
+　② 财政收入：一般公共预算收入及增速、税收占比、政府性基金收入（土地出让为主），说明收入靠什么；
+　③ 支出与财力缺口：一般公共预算支出与财政自给率、上级补助占比、地方政府债务余额与债务率；
+　④ 落到公司：公司在这套收支里的位置——结算对象是谁、回款按什么节奏、注资与补助靠哪本账。
+　第 ④ 拍只写机制（谁付钱、按什么结算、什么时候能回），不写公司的收入结构、毛利率、板块占比——那是总述段与分部业务段的事。
+　与行业段只差一处，但很要紧：**区域段要有段首加粗句**，行业段没有。加粗句写这个区域的财力处在什么状态、对平台的回款意味着什么，判断不带数字，主语是区域或政府（「中山市财政自给率偏低」「区域土地出让收入连续两年下滑」）。
+　写法：材料给了数就用数（地区生产总值、一般公共预算收入、政府性基金收入、地方政府债务余额、财政自给率、上级补助占比），写明年份；某一拍材料没有数就整拍跳过，不写「未披露」。不写「区域财力持续增长」「政府支持力度较大」这类不带数、也没有对象的判断。
 12.2 基本情况必须交代注册资本与实收资本：写清注册资本多少、实收资本多少；两者不一致时要说明差额是什么（未实缴、分期到位、口径不同），不能只写其中一个。股东及持股比例只写当前状态与实际控制人；报告期内股权、控制权没有变化的，不写「未发生变化」（见 19.2）。
 13. 叙述视角：报告是评级机构对受评主体的判断，句中主语只能是公司、股东、政府、行业或政策，不能是「材料」。全文禁止出现「材料」「材料原文」「公开资料」「公开信息」「本报告」「本文」，禁止出现「披露」「未披露」「载明」「列示」「数据显示」「报表显示」这类转述来源的词，也禁止「从外部条件看」「从内部条件看」「从财务表现看」这类框架提示语——直接陈述事实与因果。判断标准：把这些词删掉后句子依然成立，就说明本来不该写。
 14. 正文不出现编制层面的说明：不写「因数据可得性」「受限于资料」「以××为准」「详见下表」「如下所示」。表格由程序排版，正文只管判断。也不写「统计口径调整」「口径不同」「按新口径重述」——自己的算法不该出现在报告里。两个口径确有差额的（全部债务与有息债务、受限与不受限货币资金），把差额装的是哪个科目写出来（其他应付款中的带息部分、应付票据、保证金存款），读者要的是这笔钱在哪，不是它为什么对不上。
@@ -579,7 +749,7 @@ SYSTEM_PROMPT = """你是信用评级机构的分析员，负责撰写内部「�
 25.6 不许写「市场认可度提升」「市场情绪转暖」「投资者信心增强」这类判断：利差只是个价，是涨是跌、是高是低已经写在数里。也不许把利差变动归因到某项经营事件，除非材料里明确写了那件事与定价的关联。不预测后续走势（「预计利差将……」是预测，不是事实），不写「中枢」「历史高位」这类要更长样本才成立的判断——手上只有一个月的数据。
 25.7 收口一句，只把位置说清：偏上沿还是偏下沿、相对同评级基准是更紧还是更松。不重复报数。
 25.8 正文里不要出现中债估值收益率这个数——本文只有利差与走势可用。
-26. 两类专项按条件触发，不按行业标签触发。（1）收入主要来自政府结算（土地整理、代建、特许经营、购买服务）的，总述段交代「钱从谁来」时就要带上区域财力的实数——地区 GDP 与增速、一般公共预算收入、政府性债务余额或债务率，各一句、写明年份，并点明公司在这套结算体系里的层级与回款路径；不要只写「区域财力持续增长」这种不带数的判断，也不要把区域情况另起一段展开。（2）在建工程占非流动资产比重较高的，写清计划总投资、已累计投资、剩余投资，并与货币资金对照说明缺口。材料没有这些数据就整段不写，不许用「预计」「大致」补位。
+26. 两类专项按条件触发，不按行业标签触发。（1）收入主要来自政府结算（土地整理、代建、特许经营、购买服务）的，区域财力与政府债务已按 12.1A 写在点评第一段，总述段不再重抄区域数，只写公司在这套结算体系里的层级、结算对象与回款路径，一句话交代清楚。（2）在建工程占非流动资产比重较高的，写清计划总投资、已累计投资、剩余投资，并与货币资金对照说明缺口。材料没有这些数据就整段不写，不许用「预计」「大致」补位。
 27. 标点一律用中文全角，全文统一，一段之内不混用。
 27.1 引号用中文弯引号（“……”那一种）：不用英文直引号，也不用直角引号（方头括号那种）。本说明里用直角引号只是为了把词标出来，不是正文体例——正文照它写，导出到 Word 里就是半个字宽的空当，挤在宋体正文里很难看。
 27.2 括号用（），顿号、逗号、分号、冒号、问号、叹号都用全角；省略号用六点……，破折号用两长横——。
@@ -648,8 +818,8 @@ PROMPT_SECTIONS: list[dict] = [
     {"key": "basic", "name": "1、基本情况",
      "hint": "成立与前身 → 主营与定位 → 注册资本与实收资本 → 股东与实控人",
      "rules": ["12.2"]},
-    {"key": "industry", "name": "2、点评 · 第一段：行业",
-     "hint": "点评的第一段，不另立小节、不带加粗句；只写行业，不出现公司",
+    {"key": "industry", "name": "2、点评 · 第一段：行业／区域",
+     "hint": "产业类写行业、不加加粗句；区域开发类（城投）改写区域与财政，带一句加粗总起句（12.1A 并在此节）",
      "rules": ["12", "12.1"]},
     {"key": "overview", "name": "2、点评 · 第二段：总述 + 业务构成表",
      "hint": "钱从谁来、收入结构；表前引导语由程序按表内期次生成",
@@ -735,10 +905,18 @@ def build_user_prompt(facts: dict, materials: list[dict], user_notes: str = "") 
         "external_condition_questions": tpl["design_principle"]["external_condition_questions"],
     }
     has_fin = bool((facts.get("financials") or {}).get("periods"))
+    # 第一段写行业还是写区域，由程序判定后写进台账：模型自己按名字猜会猜错
+    # （中山城建被写成「基础设施投融资行业」，就是把平台当成了行业里的一家企业）。
+    _ri = region_issuer(facts)
     fact_view: dict[str, Any] = {
         "企业": facts.get("company", {}).get("name"),
+        "主体类型": ("区域开发类：点评第一段写区域，必须有段首加粗句（按 12.1A 与末尾要求）"
+                  if _ri["is_region"] else
+                  "产业类：点评第一段写行业，不加段首加粗句（按 12.1）"),
         "结构特征（由台账算出，用来决定写什么；不要据此贴行业标签）": describe_traits(facts),
     }
+    if _ri["is_region"]:
+        fact_view["主体类型的判据"] = _ri["why"]
     for label, val in (
         ("工商指标", facts.get("company", {}).get("indicators")),
         ("实际控制人", (facts.get("equity") or {}).get("controller")),
@@ -792,7 +970,7 @@ def build_user_prompt(facts: dict, materials: list[dict], user_notes: str = "") 
   "concern_pool": ["候选：从正文回抽、够格但没进定稿的关注判断，5-8 条"],
   "basic_info": "150-300字，一段：成立与前身→主营与功能定位（含靠什么收钱）→注册资本与实收资本（两者不一致要说清差额原因）/股东及比例/实控人→增资到位、上市状态、并表子公司。报告期内股权、控制权、评级、审计机构没有变化的，一句都不写",
   "commentary": {
-    "industry": {"lead": "留空字符串。行业是点评第一段，不加段首加粗句", "body": "点评第一段（250-420字，接在「2、点评」下面直接开始，不写小标题）：供需格局（产量或需求增速、产能利用率、需求端构成）→ 价格与成本（价格走势与幅度、原材料与能源成本）→ 政策（真正作用在这一行业上的那一条）。只写行业，不出现公司及其收入、毛利率、销量；每个判断后跟一个可核实的数"},
+    "industry": {"lead": "第一段的段首加粗句：区域开发类必填（见末尾「第一段改写要求」），产业类留空字符串", "body": "点评第一段（产业类 250-420 字／区域开发类 300-460 字，接在「2、点评」下面直接开始，不写小标题）：产业类写供需格局（产量或需求增速、产能利用率、需求端构成）→ 价格与成本（价格走势与幅度、原材料与能源成本）→ 政策（真正作用在这一行业上的那一条），只写行业、不出现公司及其收入毛利销量；区域开发类写城市与区域经济 → 财政收入 → 支出与财力缺口 → 公司在这套收支里的位置，只在最后一拍写结算与回款机制。每个判断后跟一个可核实的数"},
     "overview": {"lead": "加粗汇总句（不带数字）", "body": "总述段正文：先交代钱的来源与公司自身的经营主线，再写收入结构概览。收口不用另写一句「如下表」——业务构成表前的引导语由程序按表内期次生成。行业的量价与政策已在行业段写过，这里不重抄"},
     "segments": [{"name": "该主体自己用的板块名，照原文写，不改写不带编号", "body": "承接『1）××业务方面，』之后的正文"}],
     "profit": {"lead": "加粗汇总句（不带数字，说清这一年利润被什么吃掉、经营获现够不够覆盖）", "body": "盈利与现金流一段（不拆段，位置在分部业务与资产段之间）。收入、利润、获现每一类至少一处写明变动幅度（优先同比，没有上年同期就写较上年全年并点明口径），不许用「分别为」把两年数并排：营业收入及同比 → 增量拆成量、价、结构 → 利润总额与净利润及同比 → 亏损或大幅下滑逐项归因（毛利、费用、减值、投资收益、补助、处置、所得税，每项带金额）→ 利润被什么吃掉、哪些偶发哪些持续 → 经营活动净现金流及同比、来源与去向 → 收现比 → 投资与筹资净额 → 利润与获现的差额落在哪 → 非受限货币资金对短期债务与利息支出的覆盖 → 缺口靠什么补"},
@@ -829,6 +1007,25 @@ def build_user_prompt(facts: dict, materials: list[dict], user_notes: str = "") 
             "4. 不要复述这段说明本身，也不要在正文里出现「分析员」「补充说明」这类字样。\n"
             f"{notes}\n"
         )
+    # 区域开发类的第一段要改写法。写在末尾而不是替换 schema 里的说明：
+    # 模型读到最后一段时已经在心里排好了段落，此时点明「这一段不写行业」比
+    # 在结构里埋一句更容易生效。schema 那一行也只做中性表述，两处不打架。
+    region_block = ""
+    if _ri["is_region"]:
+        region_block = (
+            "\n【第一段改写要求】本主体属区域开发类（判据：" + _ri["why"] + "）。"
+            "点评第一段写区域、不写行业：\n"
+            "1. commentary.industry.lead 必须写一句加粗总起句：判断不带数字，主语是区域或政府，"
+            "说清这个区域的财力处在什么状态、对平台的回款与注资意味着什么；\n"
+            "2. commentary.industry.body 四拍，各一到两句：城市与区域经济（地区生产总值与增速、"
+            "产业结构、人口与城镇化阶段）→ 财政收入（一般公共预算收入及增速、税收占比、"
+            "政府性基金收入与土地出让）→ 支出与财力缺口（一般公共预算支出、财政自给率、"
+            "上级补助占比、地方政府债务余额或债务率）→ 公司在这套收支里的位置（结算对象、"
+            "回款节奏、注资与补助靠哪本账）；\n"
+            "3. 每一拍写数并写明年份；材料某一拍没有数就整拍跳过，不写「未披露」；\n"
+            "4. 不写行业景气、产能利用率、行业竞争、产品价格这类行业话术——城投没有可比的行业；"
+            "第④拍不写公司的收入结构、毛利率与板块占比，那是总述段与分部业务段的事。\n"
+        )
     return f"""请为下列主体撰写内评简评报告，按给定 JSON 结构输出。
 
 【模板结构】{json.dumps(tmpl_brief, ensure_ascii=False)}
@@ -838,7 +1035,7 @@ def build_user_prompt(facts: dict, materials: list[dict], user_notes: str = "") 
 
 【材料原文】
 {mat_block}
-{market_block}{notes_block}
+{market_block}{notes_block}{region_block}
 【输出 JSON 结构】
 {schema}
 
@@ -1619,7 +1816,7 @@ def _clean_advice(raw) -> list[dict]:
 # 这些键不属于报告内容，但会贯穿整个流程。_ensure_structure 按白名单重建 dict，
 # 不过一遍就会把它们弄丢——修订轮里它被调用两次，user_notes 就这么丢过一次。
 _META_KEYS = ("truncated", "user_notes", "usage", "history_id",
-              "auto_fixed", "revise_calls")
+              "auto_fixed", "revise_calls", "issuer_type")
 
 
 def _ensure_structure(draft: dict, facts: dict) -> dict:
@@ -1630,6 +1827,9 @@ def _ensure_structure(draft: dict, facts: dict) -> dict:
             out[_k] = draft[_k]
     out["company_full_name"] = draft.get("company_full_name") or facts.get("company", {}).get("name") or facts.get("query_name", "")
     out["internal_rating_code"] = draft.get("internal_rating_code") or ""
+    # 主体类型跟 draft 一起存：校验、页面、导出、补写都要用它决定第一段怎么读，
+    # 而这些环节多半拿不到 facts（打开旧记录时只喂材料）。
+    out["issuer_type"] = ("region" if region_issuer(facts).get("is_region") else "industry")
     out["traits"] = describe_traits(facts)
     out["positive"] = [s for s in (polish_language(x) for x in (draft.get("positive") or [])) if s][:5]
     out["concern"] = [s for s in (polish_language(x) for x in (draft.get("concern") or [])) if s][:5]
@@ -2472,6 +2672,10 @@ def _subj_lead(lead: str) -> bool:
         return True                     # 没写加粗句是另一条规则的事
     if any(w in s for w in _SUBJ_WORDS):
         return True
+    # 区域段的主语就是那座城市：「中山市财政自给率偏低」「香洲区土地出让收入连续两年下滑」
+    # 是合格的主语，不是省略——这一段写的本来就是区域，不是公司。
+    if re.match(r"^(全市|市本级|[\u4e00-\u9fa5]{2,8}(市|区|县|省|州|盟|旗))", s):
+        return True
     return any(s.startswith(w) for w in (
         "行业", "政策", "区域需求", "市场需求", "价格", "水泥", "钢材", "煤炭",
         "利率", "汇率", "下游", "上游", "竞争"))
@@ -2539,7 +2743,8 @@ def _nochange_rows(draft: dict) -> list[dict]:
     c = draft.get("commentary") or {}
     fields: list[tuple[str, str, str]] = [
         ("基本情况", "basic", "blk-basic", draft.get("basic_info") or ""),
-        ("点评第一段（行业）", "in-body", "blk-industry", (c.get("industry") or {}).get("body") or ""),
+        ("点评第一段（区域）" if issuer_is_region(draft, {}) else "点评第一段（行业）",
+         "in-body", "blk-industry", (c.get("industry") or {}).get("body") or ""),
         ("总述段", "ov-body", "blk-overview", (c.get("overview") or {}).get("body") or ""),
         ("资产段", "as-body", "blk-asset", (c.get("asset") or {}).get("body") or ""),
         ("盈利段", "pf-body", "blk-profit", (c.get("profit") or {}).get("body") or ""),
@@ -2634,7 +2839,8 @@ def _abbr_rows(draft: dict) -> list[dict]:
     c = draft.get("commentary") or {}
     blocks: list[tuple[str, str, str, str]] = [
         ("基本情况", "blk-basic", "bi-body", draft.get("basic_info") or ""),
-        ("点评第一段（行业）", "blk-industry", "in-body", (c.get("industry") or {}).get("body") or ""),
+        ("点评第一段（区域）" if issuer_is_region(draft, {}) else "点评第一段（行业）",
+         "blk-industry", "in-body", (c.get("industry") or {}).get("body") or ""),
         ("总述段", "blk-overview", "ov-body", (c.get("overview") or {}).get("body") or ""),
     ]
     for i, b in enumerate(c.get("segments") or []):
@@ -2727,7 +2933,19 @@ def _approx_rows(draft: dict) -> list[dict]:
 # 校验规则的版本号。规则一改就加一，存量记录据此判断要不要重算——
 # 只看「有没有 issue_items」是不够的：新加的校验项不会进到老记录里，
 # 用户打开旧报告就看不到新提示，等于没上。
-VALIDATOR_REV = 16
+VALIDATOR_REV = 17
+
+# 区域段里不该出现的行业话术。不是禁词表，是「写错对象」的迹象：这些词
+# 出现在城投的第一段，说明作者把它当成了一家行业里的企业。
+_REGION_BAD_WORDS = (
+    "行业景气", "产能利用率", "行业竞争", "行业需求", "行业格局", "行业处于",
+    "行业增速", "行业内", "产品价格", "价格指数", "行业分化",
+)
+# 区域段该落到的财政口径。命中两项以下，基本等于只写了「区域概况」。
+_FISCAL_WORDS = (
+    "一般公共预算收入", "一般公共预算支出", "政府性基金", "土地出让", "财政自给",
+    "债务率", "债务余额", "地区生产总值", "上级补助", "转移支付", "税收收入", "税收占比",
+)
 
 # 校验项分三类，决定它出现在哪儿：
 #   auto   —— 表述与结构问题，程序能改。生成后自动走一轮修订，改掉了就不给人看。
@@ -2737,6 +2955,8 @@ VALIDATOR_REV = 16
 FIX_AUTO = (
     "摘要层措辞没有刻度", "摘要一条塞了两件事", "加粗句缺主语",
     "点评缺第一段（行业）", "行业段偏薄", "行业段没有数据",
+    "点评缺第一段（区域）", "区域段偏薄", "区域段没有数据",
+    "区域段缺加粗句", "区域段写成了行业", "区域段没写财政", "区域段写到了公司经营",
     "写了没有变化的事", "正面与关注说了同一件事",
     "资产段缺金额占比", "缺盈利段", "缺现金流段", "只写收入没写利润", "亏损没写成亏损",
     "亏损原因没说清", "归因还被空话占着", "财务表缺净利润行",
@@ -2902,6 +3122,10 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
     for _b in (_c0.get("special_topics") or []):
         _chunks += [_b.get("lead") or "", _b.get("body") or ""]
     _body_all = "\n".join(_chunks)
+    # 第一段该写区域还是写行业，后面十来处检查都要用，一次算清。
+    # 城投与产业类的规矩方向相反（前者必须有加粗句、后者必须没有），
+    # 各写一份分支比在一段逻辑里塞条件判断读起来清楚。
+    _is_region = issuer_is_region(draft, facts)
 
     def _sketch(t: str, width: int = 60) -> str:
         """取命中处前后一小段，提示里看得懂是哪句话。"""
@@ -3017,7 +3241,8 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
     _meta_rows: list[dict] = []
     _scan: list[tuple[str, str, str, str]] = [
         (draft.get("basic_info") or "", "基本情况", "blk-basic", "bi-body")]
-    for _k, _nm, _an, _fd in (("industry", "点评第一段（行业）", "blk-industry", "in-body"),
+    for _k, _nm, _an, _fd in (("industry", "区域段" if _is_region else "点评第一段（行业）",
+                               "blk-industry", "in-body"),
                               ("overview", "总述段", "blk-overview", "ov-body"),
                               ("asset", "资产段", "blk-asset", "as-body"),
                               ("profit", "盈利段", "blk-profit", "pf-body"),
@@ -3070,7 +3295,8 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
     # 这里只是漏网时的兜底。所以不做逐条清单——列出八条让人一条条改，
     # 比不提示还累；只说明「哪一段的加粗句看不出主体」和覆盖情况。
     _c0 = draft.get("commentary") or {}
-    _leads = [("行业段", "in-lead", "blk-industry", (_c0.get("industry") or {}).get("lead")),
+    _leads = [("区域段" if _is_region else "行业段", "in-lead", "blk-industry",
+               (_c0.get("industry") or {}).get("lead")),
               ("总述段", "ov-lead", "blk-overview", (_c0.get("overview") or {}).get("lead")),
               ("资产段", "as-lead", "blk-asset", (_c0.get("asset") or {}).get("lead")),
               ("盈利与现金流段", "pf-lead", "blk-profit", (_c0.get("profit") or {}).get("lead")),
@@ -3116,41 +3342,127 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
             + "）：一条只讲一件事、一句话，把并列的那半句拆出去。")
         issue_items.append({"t": "摘要一条塞了两件事", "a": "blk-pos", "d": long_rows[:8]})
 
-    # 1.16) 行业：点评的第一段，且每句站得住
+    # 1.16) 点评第一段：产业类写行业，区域开发类写区域
     # 它在成稿里接在「2、点评」下面、总述段之前，不另立小节。这里兜底检查：
     # 少了这一段，点评就直接从公司自己的收入讲起，外部条件一个字没有。
+    # 城投不是行业：把平台塞进「基础设施投融资行业」，读者拿这一段比不了任何
+    # 同业的量价，而真正决定回款的那件事（这座城市的财力）一个字都读不到。
     _ind = _c0.get("industry") or {}
     _ind_body = str(_ind.get("body") or "").strip()
-    if not (_ind_body or str(_ind.get("lead") or "").strip()):
+    _ind_lead = str(_ind.get("lead") or "").strip()
+    _is_region = issuer_is_region(draft, facts)
+    _s1 = "区域" if _is_region else "行业"
+    _s1_full = f"点评第一段（{_s1}）"
+    if not (_ind_body or _ind_lead):
         issues.append(
-            "点评缺第一段（行业）。行业处在什么阶段、量由什么决定、价由谁定，"
-            "这一段写在「2、点评」下面、总述段之前，不能省掉、也不能与公司自己的收入结构混成一段。")
-        issue_items.append({"t": "点评缺第一段（行业）", "a": "blk-industry",
-                            "d": [{"num": "", "where": "点评第一段（行业）", "kind": "结构",
+            f"点评缺第一段（{_s1}）。"
+            + ("区域的财力处在什么状态、政府按什么节奏付钱给公司，"
+               if _is_region else
+               "行业处在什么阶段、量由什么决定、价由谁定，")
+            + "这一段写在「2、点评」下面、总述段之前，不能省掉、也不能与公司自己的收入结构混成一段。")
+        issue_items.append({"t": f"点评缺第一段（{_s1}）", "a": "blk-industry",
+                            "d": [{"num": "", "where": _s1_full, "kind": "结构",
                                    "full": "", "si": 0, "anchor": "blk-industry",
                                    "field": "in-body",
-                                   "note": "补一段：供需 → 价格与成本 → 政策，只写行业"}]})
+                                   "note": ("补一段：城市与区域经济 → 财政收入 → 支出与财力缺口 → "
+                                            "公司在这套收支里的位置" if _is_region else
+                                            "补一段：供需 → 价格与成本 → 政策，只写行业")}]})
     elif len(_ind_body) < 120:
-        issues.append(f"点评第一段（行业）只有 {len(_ind_body)} 字，"
-                      "写不完整就退化成一句行业概述。按供需 → 价格与成本 → 政策三件事展开，不写公司。")
-        issue_items.append({"t": "行业段偏薄", "a": "blk-industry",
-                            "d": [{"num": f"{len(_ind_body)} 字", "where": "点评第一段（行业）",
+        issues.append(
+            f"{_s1_full}只有 {len(_ind_body)} 字，写不完整就退化成一句概述。"
+            + ("按城市与区域经济 → 财政收入 → 支出与财力缺口 → 公司在这套收支里的位置四拍展开。"
+               if _is_region else
+               "按供需 → 价格与成本 → 政策三件事展开，不写公司。"))
+        issue_items.append({"t": f"{_s1}段偏薄", "a": "blk-industry",
+                            "d": [{"num": f"{len(_ind_body)} 字", "where": _s1_full,
                                    "kind": "写法", "full": _ind_body[:140], "si": 0,
                                    "anchor": "blk-industry", "field": "in-body",
-                                   "note": "补价格与成本、政策两条，都只用行业自身的数"}]})
+                                   "note": ("补财政收入与支出缺口两条，只用材料里的财政数"
+                                            if _is_region else
+                                            "补价格与成本、政策两条，都只用行业自身的数")}]})
     elif not re.search(r"\d", _ind_body):
         issues.append(
-            "点评第一段（行业）整段没有一个数字。行业分析靠的是产量增速、产能利用率、价格涨跌幅、"
-            "区域投资额这类可核实的量，纯定性的行业判断换个人写也一样，读者据此比不了强弱。")
-        issue_items.append({"t": "行业段没有数据", "a": "blk-industry",
-                            "d": [{"num": "缺数据", "where": "点评第一段（行业）", "kind": "写法",
+            f"{_s1_full}整段没有一个数字。"
+            + ("区域分析靠的是地区生产总值、一般公共预算收入、政府性基金收入、债务余额"
+               "这类可核实的量；写成定性判断，读者判断不了回款能不能来。"
+               if _is_region else
+               "行业分析靠的是产量增速、产能利用率、价格涨跌幅、区域投资额这类可核实的量，"
+               "纯定性的行业判断换个人写也一样，读者据此比不了强弱。"))
+        issue_items.append({"t": f"{_s1}段没有数据", "a": "blk-industry",
+                            "d": [{"num": "缺数据", "where": _s1_full, "kind": "写法",
                                    "full": _ind_body[:140], "si": 0,
                                    "anchor": "blk-industry", "field": "in-body",
-                                   "note": "每个判断后面跟一个数（增速、幅度、利用率、区域投资额）"}]})
+                                   "note": ("每个判断后面跟一个财政数（一般公共预算收入、政府性基金收入、债务率）"
+                                            if _is_region else
+                                            "每个判断后面跟一个数（增速、幅度、利用率、区域投资额）")}]})
 
-    # 1.16b) 行业段只写行业，不写公司。单独一条，不挂在「偏薄」的 elif 链上——
-    # 一段写满 300 字却把公司销量、毛利也拉进来的情况更常见，也更要紧。
-    if _ind_body:
+    # 区域段必须有段首加粗句。这是它与行业段唯一的体例差别，也是最要紧的一处：
+    # 读者先要一句判断（这地方的财力行不行），后面的四拍才有地方落。
+    if _is_region and _ind_body and not _ind_lead:
+        issues.append(
+            "点评第一段（区域）没有段首加粗句。产业类的行业段不加，区域段要加："
+            "这一句先给判断——区域财力在哪一档、对平台的回款与注资意味着什么，"
+            "后面四拍再给支撑这个判断的数。")
+        issue_items.append({"t": "区域段缺加粗句", "a": "blk-industry",
+                            "d": [{"num": "", "where": "点评第一段（区域）·加粗句",
+                                   "kind": "结构", "full": "", "si": 0,
+                                   "anchor": "blk-industry", "field": "in-lead",
+                                   "note": "补一句加粗判断：区域财力水平 + 对回款/注资的影响，不带数字"}]})
+
+    # 1.16b) 第一段的边界。分开写，不挂在「偏薄」的 elif 链上——
+    # 一段写满 400 字却写错了对象（把城投写成行业、把公司收入塞进区域段），
+    # 比写得短更常见，也更难被读者发现。
+    if _ind_body and _is_region:
+        # 城投写成行业是最常见的错法：一整段「化债攻坚、产能利用率、行业分化」，
+        # 读起来像行业综述，但隔壁另一家平台并不受这条「行业」约束——
+        # 决定它的是各自的区财政。
+        _ind_words = [w for w in _REGION_BAD_WORDS if w in _ind_body]
+        # 「××行业」这个说法本身也是信号：区域段写的是这座城市的收支，
+        # 不该出现「基础设施投融资行业」「城投行业」这类把主体归到某一行里的说法。
+        _ind_m = re.search(r"[\u4e00-\u9fa5]{2,10}行业", _ind_body)
+        if _ind_m and _ind_m.group(0) not in _ind_words:
+            _ind_words.append(_ind_m.group(0))
+        _ind_words = list(dict.fromkeys(_ind_words))
+        if _ind_words:
+            issues.append(
+                "点评第一段（区域）写成了行业（出现「" + "、".join(_ind_words[:3]) + "」）。"
+                "城投没有可比的行业：它的量与价由这座城市的建设节奏和财政安排决定，"
+                "这一段要写地区的经济总量、财政收入、支出与财力缺口，不是行业景气与产能利用率。")
+            issue_items.append({"t": "区域段写成了行业", "a": "blk-industry",
+                                "d": [{"num": "、".join(_ind_words[:3]), "where": _s1_full,
+                                       "kind": "口径", "full": _ind_body[:160], "si": 0,
+                                       "anchor": "blk-industry", "field": "in-body",
+                                       "note": "删掉行业话术，换成区域经济与财政收支的实数"}]})
+        _fiscal = [w for w in _FISCAL_WORDS if w in _ind_body]
+        if len(_fiscal) < 2:
+            issues.append(
+                "点评第一段（区域）没有落到财政上（只写到 "
+                + ("、".join(_fiscal) if _fiscal else "区域概况") + "）。"
+                "决定回款的是财政：一般公共预算收入及增速、税收占比、政府性基金收入与土地出让、"
+                "财政自给率、上级补助占比、地方政府债务余额或债务率——至少写三项，写明年份。")
+            issue_items.append({"t": "区域段没写财政", "a": "blk-industry",
+                                "d": [{"num": f"{len(_fiscal)} 项", "where": _s1_full,
+                                       "kind": "数据", "full": _ind_body[:160], "si": 0,
+                                       "anchor": "blk-industry", "field": "in-body",
+                                       "note": "补一般公共预算收入、政府性基金收入、债务率中的至少两项"}]})
+        # 这一段允许出现公司，但只允许「谁付钱、按什么结算、什么时候能回」这类机制；
+        # 收入结构、毛利率、板块占比属于总述段与分部业务段。
+        _biz = re.search(r"公司[^。；]{0,16}(毛利率|营业收入|收入占比|板块|销量|产能)", _ind_body)
+        if _biz:
+            _frag = _biz.group(0)
+            _sent = next((x for x in _sentences(_ind_body) if _frag[:12] in x), _frag)
+            issues.append(
+                f"点评第一段（区域）里写了公司的经营数字（「{_frag}」）。"
+                "这一段最后一拍只说公司在区财政里的位置——向谁结算、按什么节奏回款、"
+                "注资与补助靠哪本账；收入结构与毛利率写在总述段与分部业务段。")
+            issue_items.append({"t": "区域段写到了公司经营", "a": "blk-industry",
+                                "d": [{"num": "", "where": _s1_full, "kind": "写法",
+                                       "full": _sent[:160],
+                                       "si": _index_of_sent(_ind_body, _sent),
+                                       "anchor": "blk-industry", "field": "in-body",
+                                       "note": "把收入、毛利这半句挪到总述段或分部业务段"}]})
+    elif _ind_body:
+        # 产业类：行业段只写行业，不写公司。
         # 找问题分句用「。；」切（越界往往只在一个分句里），
         # 但定位要用整句——前端按整句在正文里搜，分句对不上就只落到段落。
         _bad = [x for x in re.split(r"[。；]", _ind_body)
@@ -3164,7 +3476,7 @@ def validate(draft: dict, facts: dict, materials: list[dict]) -> dict:
                 + "）。这一段只分析行业：供需、价格与成本、政策，主语是行业或政策；"
                 "行业落到公司的哪一项指标上，写在总述段与分部业务段，不在这里提前表态。")
             issue_items.append({"t": "行业段写到了公司", "a": "blk-industry",
-                                "d": [{"num": "", "where": "点评第一段（行业）", "kind": "写法",
+                                "d": [{"num": "", "where": _s1_full, "kind": "写法",
                                        "full": _sent[:160] if _sent else _ind_body[:120],
                                        "si": _index_of_sent(_ind_body, _sent) if _sent else 0,
                                        "anchor": "blk-industry", "field": "in-body",

@@ -273,7 +273,10 @@ def draft_brief(draft: dict) -> str:
         return ""
     c = draft.get("commentary") or {}
     bits = []
-    for key, name in (("industry", "行业"), ("overview", "总述"), ("asset", "资产"),
+    # 城投的第一段写的是区域，不是行业。这段摘要只用来防重复，叫法错了
+    # 模型会以为自己手上还有一段行业没写。
+    _s1 = "区域" if str(draft.get("issuer_type") or "") == "region" else "行业"
+    for key, name in (("industry", _s1), ("overview", "总述"), ("asset", "资产"),
                       ("profit", "盈利与现金流"), ("debt", "债务"), ("market", "二级市场")):
         lead = str((c.get(key) or {}).get("lead") or "").strip()
         if lead:

@@ -1287,6 +1287,16 @@ def _upgrade_record(rec: dict) -> dict:
     # 不是一套规则，不能拿 generator.validate 去重算，否则会得出无意义的结论。
     if (draft.get("mode") or "new") == "update":
         return rec
+    # 第一段写行业还是写区域，页面要按它改段名与补写主题。老记录没有这个字段，
+    # 打开时就地判一次并落盘，不然中山城建这类主体还挂在「行业段」下面。
+    if not draft.get("issuer_type"):
+        draft["issuer_type"] = ("region" if generator.issuer_is_region(draft, {})
+                                else "industry")
+        rec["draft"] = draft
+        try:
+            history.replace_draft(rec.get("id") or "", draft)
+        except Exception:                                   # noqa: BLE001 — 落盘失败不影响阅读
+            pass
     # 老稿的「盈利段 + 现金流段」现在是同一段（规则 23）：打开旧记录时就地合并，
     # 页面、校验、导出读到的是同一份文本，不必等用户重新生成才看到新版式。
     _cash = (draft.get("commentary") or {}).get("cash") or {}
