@@ -6572,10 +6572,25 @@ function closeSettings(){
 }
 
 async function reloadSettings(){
+  let err = "";
   try{
-    SET.data = await (await fetch(apiUrl("/api/settings"))).json();
+    SET.data = await (await fetch(apiUrl("/api/settings"),
+                                  {signal: timeoutSignal(12000)})).json();
   }catch(e){
     SET.data = null;
+    const m = String((e && e.message) || e || "");
+    err = /abort/i.test(m) ? "读取超时" : (m || "读取失败");
+  }
+  // 读不到就把失败说出来并给重试：留一句「正在读取配置…」在那儿，
+  // 人只会以为设置打不开。
+  if(!SET.data || SET.data.error || err){
+    const why = esc(err || (SET.data && SET.data.error) || "服务没有响应");
+    $("#setBox").innerHTML = `<div class="sh"><b>设置</b>
+        <button class="x" onclick="closeSettings()">×</button></div>
+      <div class="sets"><div class="sd">设置没能读出来：${why}
+        <div style="margin-top:8px"><button class="btn-sm" onclick="reloadSettings()">重试</button></div>
+      </div></div>`;
+    return;
   }
   renderSettings();
 }
@@ -6861,16 +6876,31 @@ function closeMail(){
   $("#mailPanel").classList.remove("show");
 }
 
+/* 请求超时：清单里要现算债券代码与财务指标，网络半通时会吊住。
+   没有上限的话，面板就永远停在「正在读取…」，人以为功能坏了。 */
+function timeoutSignal(ms){
+  try{
+    const c = new AbortController();
+    setTimeout(() => { try{ c.abort(); }catch(e){} }, ms);
+    return c.signal;
+  }catch(e){ return undefined; }
+}
+
 async function loadMailPanel(){
   const panel = $("#mailPanel");
   panel.innerHTML = `<div class="ml-h">发送邮件<span class="x" onclick="closeMail()">×</span></div>
     <div class="ml-sub">正在读取发件配置…</div>`;
   try{
-    MAIL.cfg = await (await fetch(apiUrl("/api/mail/config"))).json();
+    MAIL.cfg = await (await fetch(apiUrl("/api/mail/config"),
+                                  {signal: timeoutSignal(8000)})).json();
   }catch(err){
     MAIL.cfg = { ready: false, default_to: "" };
   }
+  // 配置到手就先出面板：收件人、标题、正文、发送按钮都不依赖附件清单。
+  // 原来两件事串着等，清单一慢，整块面板就空白——发信其实不差这一步。
+  renderMailPanel();
   await loadMailList();
+  mailSnapshot();            // 重绘会把已经填的字冲掉，先收回状态
   renderMailPanel();
 }
 
@@ -6885,7 +6915,10 @@ async function loadMailList(){
     await fetchFileList(true);
     MAIL.listErr = "";
   }catch(err){
-    MAIL.listErr = (err && err.message) || "读取文件清单失败";
+    const m = String((err && err.message) || err || "");
+    MAIL.listErr = /abort/i.test(m)
+      ? "读取超时。清单里要现算债券代码与财务指标，网络慢时会久——报告正文仍可正常发。"
+      : (m || "读取文件清单失败");
   }
 }
 
@@ -7146,7 +7179,8 @@ async function fetchFileList(force){
   const hid = (S.draft && S.draft.history_id) || "";
   if(hid) q.set("history_id", hid);
   (S.loaded || []).forEach(t => q.append("title", t));
-  const r = await (await fetch(apiUrl("/api/bundle?" + q.toString()))).json();
+  const r = await (await fetch(apiUrl("/api/bundle?" + q.toString()),
+                                {signal: timeoutSignal(15000)})).json();
   if(r.error) throw new Error(r.error);
   PKG.data = r;
   return r;

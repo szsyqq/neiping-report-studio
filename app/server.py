@@ -19,6 +19,7 @@ import os
 import re
 import sys
 import threading
+import time
 import traceback
 import zipfile
 from datetime import datetime
@@ -100,8 +101,10 @@ def _persist(company: str) -> None:
         state_store.save(_key(company), snap)
 
 
-def _client() -> CaihuiClient:
-    return CaihuiClient()
+def _client(timeout: int = 180) -> CaihuiClient:
+    """timeout 默认沿用原来的 180 秒（检索、下载要等）；
+    列清单这类「顺手问一句」的场合要传短超时，不然网络半通会把页面吊死。"""
+    return CaihuiClient(timeout=timeout)
 
 
 def _key(company: str) -> str:
@@ -1017,12 +1020,17 @@ def _company_bonds(company: str) -> tuple[list[dict], str]:
         return [], "未指定主体"
     with _BOND_LOCK:
         hit = _BOND_CACHE.get(key)
-    if hit is not None:
+    # 取到了就一直用；没取到的只记 60 秒——否则一次网络抖动就被当成「没有债券」，
+    # 后面生成报告时也跟着少一份附件。
+    if hit is not None and (hit.get("rows")
+                            or time.time() - (hit.get("at") or 0) < 60):
         return hit.get("rows") or [], hit.get("err") or ""
     rows: list[dict] = []
     err = ""
     try:
-        out = _client().execute("get_company_issued_bonds", {
+        # 这是给发送／打包列附件用的，等不了三分钟：8 秒问不到就先标「取不到」，
+        # 面板照常给出发送按钮，不至于卡在「正在读取清单」。
+        out = _client(timeout=8).execute("get_company_issued_bonds", {
             "target_company": [company],
             "sort_field": "issuance_start_date:desc",
             "limit": 200,
@@ -1035,7 +1043,7 @@ def _company_bonds(company: str) -> tuple[list[dict], str]:
     except Exception as e:                                  # noqa: BLE001
         err = f"{type(e).__name__}: {e}"[:160]
     with _BOND_LOCK:
-        _BOND_CACHE[key] = {"rows": rows, "err": err}
+        _BOND_CACHE[key] = {"rows": rows, "err": err, "at": time.time()}
     return rows, err
 
 
